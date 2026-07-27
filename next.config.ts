@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Server components can import googleapis (server-only)
+  serverExternalPackages: ["googleapis", "bcryptjs"],
 };
 
 export default nextConfig;
