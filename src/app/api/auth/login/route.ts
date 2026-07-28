@@ -34,6 +34,21 @@ export async function POST(req: Request) {
       };
     }
 
+    // Fallback default staff user if not found in sheet
+    if (!user && email.trim().toLowerCase() === "staff@stockify.com") {
+      user = {
+        user_id: "usr-staff-default",
+        full_name: "พนักงานคลังสินค้า (Staff)",
+        email: "staff@stockify.com",
+        password_hash: "$2b$10$gnRr8b6LxSEqj6inPNqhf.PQHK2tdIHfk.EOIjF/Y.x7QC8YoTG4i", // Staff1234!
+        role: "WAREHOUSE_STAFF",
+        warehouse_access: '["*"]',
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    }
+
     if (!user || !user.active) {
       return NextResponse.json(
         { success: false, message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" },
