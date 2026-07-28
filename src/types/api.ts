@@ -185,3 +185,18 @@ export const MovementFilterSchema = z.object({
 export type MovementFilterInput = z.infer<typeof MovementFilterSchema>;
 
 export const UserRoles: UserRole[] = ["ADMIN", "WAREHOUSE_STAFF", "VIEWER"];
+
+// ------ User / Staff ------
+export const CreateUserSchema = z.object({
+  full_name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล").max(100),
+  email: z.string().min(1, "กรุณากรอกอีเมล").email("รูปแบบอีเมลไม่ถูกต้อง"),
+  password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"),
+  role: z.enum(["ADMIN", "WAREHOUSE_STAFF", "VIEWER"]),
+  warehouse_access: z.string().default('["*"]'),
+});
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+
+export const UpdateUserSchema = CreateUserSchema.partial().extend({
+  active: z.boolean().optional(),
+});
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
