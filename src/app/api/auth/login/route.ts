@@ -90,6 +90,10 @@ export async function POST(req: Request) {
 
     response.cookies.set("authjs.session-token", token, cookieOptions);
     response.cookies.set("next-auth.session-token", token, cookieOptions);
+    if (process.env.NODE_ENV === "production") {
+      response.cookies.set("__Secure-authjs.session-token", token, cookieOptions);
+      response.cookies.set("__Secure-next-auth.session-token", token, cookieOptions);
+    }
 
     return response;
   } catch (e) {

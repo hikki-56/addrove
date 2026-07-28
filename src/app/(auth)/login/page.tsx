@@ -31,8 +31,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (json.success) {
-        router.push("/dashboard");
-        router.refresh();
+        window.location.href = "/dashboard";
       } else {
         setError(json.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       }
