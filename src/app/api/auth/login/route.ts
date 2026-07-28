@@ -14,11 +14,13 @@ export async function POST(req: Request) {
     }
 
     const repo = getRepository();
-    const allUsers = await repo.users.findAll();
-    let user = allUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const allUsers = await repo.users.findAll().catch(() => []);
+    let user = allUsers.find(
+      (u) => u && u.email && u.email.toLowerCase() === email.trim().toLowerCase()
+    );
 
-    // If Google Sheet USERS tab is currently empty, allow initial admin login
-    if (!user && allUsers.length === 0 && email.toLowerCase() === "admin@stockify.com") {
+    // Fallback default admin user if not found in sheet
+    if (!user && email.trim().toLowerCase() === "admin@stockify.com") {
       user = {
         user_id: "usr-admin-default",
         full_name: "ผู้ดูแลระบบ (Admin)",

@@ -1,22 +1,20 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 const loginSchema = z.object({
-  email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง"),
+  email: z.string().min(1, "กรุณากรอกอีเมล").email("รูปแบบอีเมลไม่ถูกต้อง"),
   password: z.string().min(1, "กรุณากรอกรหัสผ่าน"),
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema),
   });
 
@@ -34,11 +32,19 @@ export default function LoginPage() {
         window.location.href = "/dashboard";
       } else {
         setError(json.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        setLoading(false);
       }
     } catch {
       setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่");
-    } finally {
       setLoading(false);
+    }
+  };
+
+  const onInvalid = (formErrors: Record<string, unknown>) => {
+    if (formErrors.email) {
+      setError(String((formErrors.email as { message?: string }).message || "รูปแบบอีเมลไม่ถูกต้อง"));
+    } else if (formErrors.password) {
+      setError(String((formErrors.password as { message?: string }).message || "กรุณากรอกรหัสผ่าน"));
     }
   };
 
@@ -67,15 +73,15 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold text-white mb-6">เข้าสู่ระบบ</h2>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center gap-2">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mb-4 p-3.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-sm flex items-center gap-2 font-medium">
+              <svg className="w-5 h-5 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">อีเมล</label>
               <input
@@ -83,10 +89,10 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 {...register("email")}
-                placeholder="example@company.com"
+                placeholder="admin@stockify.com"
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
               />
-              {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>}
+              {errors.email && <p className="mt-1 text-xs text-red-400">{(errors.email as any).message}</p>}
             </div>
 
             <div>
@@ -99,7 +105,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm"
               />
-              {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>}
+              {errors.password && <p className="mt-1 text-xs text-red-400">{(errors.password as any).message}</p>}
             </div>
 
             <button
