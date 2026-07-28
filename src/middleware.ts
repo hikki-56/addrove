@@ -4,10 +4,11 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow static files, login page, and NextAuth endpoints
+  // Allow root, login, static files, and auth API endpoints
   if (
-    pathname.startsWith("/api/auth") ||
+    pathname === "/" ||
     pathname === "/login" ||
+    pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname.includes(".")
   ) {
@@ -23,7 +24,7 @@ export function middleware(request: NextRequest) {
 
   if (!sessionToken) {
     if (!pathname.startsWith("/api/")) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/login", request.nextUrl.origin);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
