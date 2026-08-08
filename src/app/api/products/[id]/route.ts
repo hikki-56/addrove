@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { UpdateProductSchema } from "@/types/api";
 import {
@@ -14,11 +14,11 @@ import {
 import { ZodError } from "zod";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     const { id } = await params;
     const repo = getRepository();
@@ -35,9 +35,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
-    if (session.user.role === "VIEWER") return forbiddenResponse();
+    if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่แก้ไขข้อมูลสินค้าได้");
     const { id } = await params;
     const body = await req.json();
     const input = UpdateProductSchema.parse(body);

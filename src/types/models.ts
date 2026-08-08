@@ -21,17 +21,34 @@ export interface Warehouse {
   updated_at: string;
 }
 
+export type ShelfId = string;
+
 // ------ Location ------
 export interface Location {
   location_id: LocationId;
   warehouse_id: WarehouseId;
-  zone: string;
-  aisle: string;
-  rack: string;
-  shelf: string;
-  bin: string;
-  location_code: string; // W001-ZA-A02-R03-S04-B01
-  description: string;
+  location_code: string;
+  location_name?: string;
+  shelf_code?: string;
+  shelf_name?: string;
+  zone?: string;
+  aisle?: string;
+  rack?: string;
+  shelf?: string;
+  bin?: string;
+  description?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ------ Shelf ------
+export interface Shelf {
+  shelf_id: ShelfId;
+  location_id: LocationId;
+  shelf_code: string;
+  shelf_name: string;
+  shelf_level: string;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -46,10 +63,22 @@ export interface Product {
   category: string;
   base_unit: string;
   minimum_stock: number;
+  quantity?: number;
+  total_quantity?: number;
+  locations_breakdown?: Array<{
+    warehouse_id: string;
+    warehouse_name: string;
+    location: string;
+    quantity: number;
+  }>;
   description: string;
+  supplier?: string;
+  location?: string;
   active: boolean;
   created_at: string;
   updated_at: string;
+  created_by?: string;
+  created_by_name?: string;
 }
 
 // ------ Document ------
@@ -62,7 +91,7 @@ export type DocumentType =
   | "ADJUST"
   | "REVERSAL";
 
-export type DocumentStatus = "DRAFT" | "POSTED" | "CANCELLED";
+export type DocumentStatus = "DRAFT" | "PENDING" | "PROCESSING" | "POSTED" | "COMPLETED" | "REJECTED" | "CANCELLED";
 
 export interface Document {
   document_id: DocumentId;
@@ -80,6 +109,7 @@ export interface Document {
 export type MovementType =
   | "RECEIVE"
   | "ISSUE"
+  | "ISSUE_OUT"
   | "MOVE_OUT"
   | "MOVE_IN"
   | "TRANSFER_OUT"
@@ -134,13 +164,14 @@ export interface StockCount {
 }
 
 // ------ User ------
-export type UserRole = "ADMIN" | "WAREHOUSE_STAFF" | "VIEWER";
+export type UserRole = "ADMIN" | "MANAGER" | "WAREHOUSE_STAFF" | "STAFF" | "VIEWER";
 
 export interface User {
   user_id: UserId;
   full_name: string;
   email: string;
   password_hash: string;
+  pin_hash: string;          // bcrypt hash of 4-digit PIN for QR login (empty = not set)
   role: UserRole;
   warehouse_access: string; // JSON array of warehouse_ids, or "*" for all
   active: boolean;
@@ -192,4 +223,17 @@ export interface DashboardStats {
     received: number;
     issued: number;
   }[];
+}
+
+// ------ LoginLog ------
+export interface LoginLog {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_role: UserRole;
+  login_method: "PASSWORD" | "QR_CODE";
+  login_at: string;
+  ip_address?: string;
+  user_agent?: string;
 }

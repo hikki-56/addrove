@@ -1,13 +1,18 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   readSheet,
-  appendRows,
   batchAppendRows,
   SHEETS,
 } from "@/lib/google-sheets/client";
 import type { IStockMovementRepository } from "../interfaces";
 import type { StockMovement, MovementWithDetails, MovementType } from "@/types/models";
 import type { MovementFilterInput } from "@/types/api";
+
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 // Columns: movement_id, document_id, product_id, warehouse_id, location_id, qty_change, movement_type, idempotency_key, created_by, created_at
 function rowToMovement(row: string[]): StockMovement {
@@ -69,7 +74,12 @@ export class SheetsStockMovementRepository
     const docMap = new Map(docRows.filter((r) => r[0]).map((r) => [r[0], r]));
     const productMap = new Map(productRows.filter((r) => r[0]).map((r) => [r[0], r]));
     const warehouseMap = new Map(warehouseRows.filter((r) => r[0]).map((r) => [r[0], r]));
-    const locationMap = new Map(locationRows.filter((r) => r[0]).map((r) => [r[0], r]));
+    const locationMap = new Map<string, string[]>();
+    locationRows.filter((r) => r[0]).forEach((r) => {
+      locationMap.set(r[0], r);
+      if (r[2]) locationMap.set(r[2], r);
+      if (r[7] && r.length >= 12) locationMap.set(r[7], r);
+    });
     const userMap = new Map(userRows.filter((r) => r[0]).map((r) => [r[0], r]));
 
     let movements: MovementWithDetails[] = movRows
@@ -79,8 +89,14 @@ export class SheetsStockMovementRepository
         const doc = docMap.get(mov.document_id);
         const product = productMap.get(mov.product_id);
         const warehouse = warehouseMap.get(mov.warehouse_id);
-        const location = locationMap.get(mov.location_id);
+        const location = locationMap.get(mov.location_id) || locationMap.get(mov.location_id.replace(/^loc-/, ""));
         const user = userMap.get(mov.created_by);
+
+        let resolvedLocCode = mov.location_id;
+        if (location) {
+          resolvedLocCode = (location.length >= 12 && location[7] ? location[7] : location[2]) || mov.location_id;
+        }
+
         return {
           ...mov,
           document_no: doc?.[1] ?? "",
@@ -88,7 +104,7 @@ export class SheetsStockMovementRepository
           product_name: product?.[3] ?? "",
           sku: product?.[1] ?? "",
           warehouse_name: warehouse?.[2] ?? "",
-          location_code: location?.[7] ?? "",
+          location_code: resolvedLocCode,
           created_by_name: user?.[1] ?? mov.created_by,
         };
       });
@@ -173,15 +189,15 @@ export class SheetsStockMovementRepository
     movements: Omit<StockMovement, "movement_id" | "created_at">[]
   ): Promise<StockMovement[]> {
     const now = new Date().toISOString();
-    const created: StockMovement[] = movements.map((m) => ({
+    const newMovements: StockMovement[] = movements.map((m) => ({
       ...m,
-      movement_id: uuidv4(),
+      movement_id: `mov-${generateUuid()}`,
       created_at: now,
     }));
     await batchAppendRows(
       SHEETS.STOCK_MOVEMENTS,
-      created.map(movementToRow)
+      newMovements.map(movementToRow)
     );
-    return created;
+    return newMovements;
   }
 }

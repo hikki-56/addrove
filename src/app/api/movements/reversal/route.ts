@@ -1,27 +1,47 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { ReversalDocumentSchema } from "@/types/api";
-import { InventoryService } from "@/lib/services/inventory.service";
+import { reverseStock, mapStockErrorToResponse, ReverseStockSchema } from "@/lib/services/stock";
 import {
-  successResponse, unauthorizedResponse, forbiddenResponse,
-  zodErrorResponse, serverErrorResponse,
+  successResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
 } from "@/lib/api-response";
-import { ZodError } from "zod";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session) return unauthorizedResponse();
-    if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่สามารถกลับยอด");
-    const body = await req.json();
-    const input = ReversalDocumentSchema.parse(body);
+    const session = await getAuthSession(req);
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+
+    const body = await req.json().catch(() => ({}));
+    const parsed = ReverseStockSchema.safeParse(body);
+    if (!parsed.success) {
+      return mapStockErrorToResponse(parsed.error);
+    }
+
+    try {
+      authorize(actor, PERMISSIONS.STOCK_REVERSE);
+    } catch (authErr: any) {
+      if (authErr.statusCode === 401) return unauthorizedResponse(authErr.message);
+      return forbiddenResponse(authErr.message);
+    }
+
     const repo = getRepository();
-    const service = new InventoryService(repo);
-    const doc = await service.reversal({ ...input, user_id: session.user.id });
-    return successResponse(doc, "กลับยอดสำเร็จ", 201);
+    const doc = await reverseStock(
+      { repo },
+      {
+        ...parsed.data,
+        user_id: actor.id,
+        role: actor.role,
+        correlation_id: actor.correlationId,
+      }
+    );
+
+    return successResponse(doc, "กลับรายการสำเร็จและปรับยอดสต็อกคืนเรียบร้อยแล้ว", 201);
   } catch (e) {
-    if (e instanceof ZodError) return zodErrorResponse(e);
-    return serverErrorResponse(e);
+    return mapStockErrorToResponse(e) || serverErrorResponse(e);
   }
 }

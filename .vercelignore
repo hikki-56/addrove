@@ -1,0 +1,36 @@
+# Vercel deploy ignore — keep the bundle lean
+
+# Environment variables (except example template)
+.env*
+!.env.example
+
+# Local and test data files
+data/
+data/*.json
+*.log
+
+# Temporary and research folders
+.tmp_*
+.tmp/
+.temp*
+scratch/
+
+# Testing and coverage files not required at runtime
+__tests__/
+*.test.ts
+*.test.tsx
+coverage/
+jest.config.js
+
+# Build and IDE artifacts
+.next/cache/
+*.tsbuildinfo
+.idea/
+.vscode/
+
+# Documentation (optional — not needed at runtime)
+docs/
+
+# Scripts not needed at runtime
+scripts/seed-users.ts
+scripts/test-csv.ts

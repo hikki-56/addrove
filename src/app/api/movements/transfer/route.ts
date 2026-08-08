@@ -1,31 +1,48 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { TransferDocumentSchema } from "@/types/api";
-import { InventoryService } from "@/lib/services/inventory.service";
+import { createTransfer, mapStockErrorToResponse, CreateTransferSchema } from "@/lib/services/stock";
 import {
-  successResponse, unauthorizedResponse, forbiddenResponse,
-  zodErrorResponse, serverErrorResponse, hasWarehouseAccess,
+  successResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
 } from "@/lib/api-response";
-import { ZodError } from "zod";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session) return unauthorizedResponse();
-    if (session.user.role === "VIEWER") return forbiddenResponse();
-    const body = await req.json();
-    const input = TransferDocumentSchema.parse(body);
-    if (
-      !hasWarehouseAccess(session.user.warehouse_access, input.from_warehouse_id) ||
-      !hasWarehouseAccess(session.user.warehouse_access, input.to_warehouse_id)
-    ) return forbiddenResponse("คุณไม่มีสิทธิ์เข้าถึงโกดังดังกล่าว");
+    const session = await getAuthSession(req);
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+
+    const body = await req.json().catch(() => ({}));
+    const parsed = CreateTransferSchema.safeParse(body);
+    if (!parsed.success) {
+      return mapStockErrorToResponse(parsed.error);
+    }
+
+    try {
+      authorize(actor, PERMISSIONS.STOCK_TRANSFER_CREATE, parsed.data.from_warehouse_id);
+    } catch (authErr: any) {
+      if (authErr.statusCode === 401) return unauthorizedResponse(authErr.message);
+      return forbiddenResponse(authErr.message);
+    }
+
     const repo = getRepository();
-    const service = new InventoryService(repo);
-    const doc = await service.transfer({ ...input, user_id: session.user.id });
-    return successResponse(doc, "โอนสินค้าสำเร็จ", 201);
+    const doc = await createTransfer(
+      { repo },
+      {
+        ...parsed.data,
+        user_id: actor.id,
+        role: actor.role,
+        correlation_id: actor.correlationId,
+        warehouse_access: actor.warehouseAccess,
+      }
+    );
+
+    return successResponse(doc, "บันทึกการโอนสินค้าระหว่างโกดังสำเร็จ", 201);
   } catch (e) {
-    if (e instanceof ZodError) return zodErrorResponse(e);
-    return serverErrorResponse(e);
+    return mapStockErrorToResponse(e) || serverErrorResponse(e);
   }
 }

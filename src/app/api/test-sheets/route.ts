@@ -1,8 +1,21 @@
-import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthSession } from "@/lib/auth-session";
 
-export async function GET() {
+async function requireAdmin(req: NextRequest) {
+  const session = await getAuthSession(req);
+  if (!session) {
+    return NextResponse.json({ success: false, message: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
+  }
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ success: false, message: "เฉพาะ Admin เท่านั้น" }, { status: 403 });
+  }
+  return null;
+}
+
+export async function GET(req: NextRequest) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
+
   const sheetId = process.env.GOOGLE_SHEET_ID || "";
   const scriptUrl = process.env.GOOGLE_SCRIPT_URL || "";
 
@@ -26,45 +39,18 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    sheetId,
-    scriptUrl,
+    sheetIdConfigured: Boolean(sheetId),
+    scriptUrlConfigured: Boolean(scriptUrl),
     scriptStatus,
     scriptMessage,
   });
 }
 
-export async function POST(req: Request) {
-  try {
-    const { scriptUrl, sheetId } = await req.json();
-    const envPath = path.join(process.cwd(), ".env.local");
-
-    let envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : "";
-
-    if (sheetId !== undefined) {
-      if (envText.includes("GOOGLE_SHEET_ID=")) {
-        envText = envText.replace(/GOOGLE_SHEET_ID=.*/g, `GOOGLE_SHEET_ID="${sheetId}"`);
-      } else {
-        envText += `\nGOOGLE_SHEET_ID="${sheetId}"`;
-      }
-    }
-
-    if (scriptUrl !== undefined) {
-      if (envText.includes("GOOGLE_SCRIPT_URL=")) {
-        envText = envText.replace(/GOOGLE_SCRIPT_URL=.*/g, `GOOGLE_SCRIPT_URL="${scriptUrl}"`);
-      } else {
-        envText += `\nGOOGLE_SCRIPT_URL="${scriptUrl}"`;
-      }
-    }
-
-    fs.writeFileSync(envPath, envText, "utf-8");
-    process.env.GOOGLE_SCRIPT_URL = scriptUrl ?? process.env.GOOGLE_SCRIPT_URL;
-    if (sheetId) process.env.GOOGLE_SHEET_ID = sheetId;
-
-    return NextResponse.json({ success: true, message: "อัปเดตการตั้งค่าสำเร็จ" });
-  } catch (e) {
-    return NextResponse.json(
-      { success: false, message: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" },
-      { status: 500 }
-    );
-  }
+export async function POST(req: NextRequest) {
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
+  return NextResponse.json(
+    { success: false, message: "API นี้ใช้ตรวจการเชื่อมต่อเท่านั้น กรุณาตั้งค่าผ่าน server environment" },
+    { status: 405, headers: { Allow: "GET" } }
+  );
 }

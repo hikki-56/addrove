@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   readSheet,
   appendRows,
@@ -8,6 +7,13 @@ import {
 import type { IStockCountRepository } from "../interfaces";
 import type { StockCount, StockCountStatus } from "@/types/models";
 import type { CreateStockCountInput } from "@/types/api";
+
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 // Columns: count_id, count_no, product_id, warehouse_id, location_id, system_qty, counted_qty, difference, status, counted_by, counted_at, approved_by, approved_at
 function rowToCount(row: string[]): StockCount {
@@ -68,8 +74,8 @@ export class SheetsStockCountRepository implements IStockCountRepository {
   async create(
     input: CreateStockCountInput & { system_qty: number; count_no: string }
   ): Promise<StockCount> {
-    const count: StockCount = {
-      count_id: uuidv4(),
+    const newCount: StockCount = {
+      count_id: `cnt-${generateUuid()}`,
       count_no: input.count_no,
       product_id: input.product_id,
       warehouse_id: input.warehouse_id,
@@ -83,8 +89,8 @@ export class SheetsStockCountRepository implements IStockCountRepository {
       approved_by: null,
       approved_at: null,
     };
-    await appendRows(SHEETS.STOCK_COUNTS, [countToRow(count)]);
-    return count;
+    await appendRows(SHEETS.STOCK_COUNTS, [countToRow(newCount)]);
+    return newCount;
   }
 
   async update(

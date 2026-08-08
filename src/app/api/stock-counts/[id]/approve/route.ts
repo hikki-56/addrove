@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { StockCountService } from "@/lib/services/stock-count.service";
 import {
@@ -8,11 +8,11 @@ import {
 } from "@/lib/api-response";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่สามารถอนุมัติ");
     const { id } = await params;

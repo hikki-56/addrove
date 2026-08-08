@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   readSheet,
   appendRows,
@@ -8,6 +7,13 @@ import {
 import type { IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
 import type { MovementFilterInput } from "@/types/api";
+
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 // Columns: document_id, document_no, document_type, reference_no, document_date, status, note, created_by, created_at
 function rowToDocument(row: string[]): Document {
@@ -98,7 +104,7 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     const now = new Date().toISOString();
     const newDoc: Document = {
       ...doc,
-      document_id: uuidv4(),
+      document_id: `doc-${generateUuid()}`,
       document_no,
       created_at: now,
     };

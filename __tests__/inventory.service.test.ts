@@ -2,6 +2,41 @@
 // Unit Tests for InventoryService — 8 required test cases
 // Uses in-memory mock repositories (no Google Sheets needed)
 // ============================================================
+jest.mock("@/lib/google-sheets/client", () => {
+  let sheets: Record<string, string[][]> = {};
+  const clone = (rows: string[][]) => rows.map((row) => [...row]);
+
+  return {
+    SHEETS: {
+      DOCUMENTS: "DOCUMENTS",
+      STOCK_MOVEMENTS: "STOCK_MOVEMENTS",
+      STOCK_SUMMARY: "STOCK_SUMMARY",
+    },
+    getWarehouseSheetName: (warehouseId: string) => `warehouse:${warehouseId}`,
+    readSheet: jest.fn(async (sheetName: string) => clone(sheets[sheetName] || [])),
+    appendRows: jest.fn(async (sheetName: string, rows: unknown[][]) => {
+      sheets[sheetName] = [...(sheets[sheetName] || []), ...rows.map((row) => row.map(String))];
+    }),
+    updateRow: jest.fn(async (sheetName: string, rowNumber: number, row: unknown[]) => {
+      const rows = sheets[sheetName] || [];
+      rows[rowNumber - 2] = row.map(String);
+      sheets[sheetName] = rows;
+    }),
+    deleteRows: jest.fn(async (sheetName: string, rowIndices: number[]) => {
+      const rows = sheets[sheetName] || [];
+      for (const rowIndex of [...rowIndices].sort((a, b) => b - a)) {
+        rows.splice(rowIndex - 1, 1);
+      }
+      sheets[sheetName] = rows;
+    }),
+    clearSheetCache: jest.fn(),
+    __resetSheets: () => { sheets = {}; },
+    __setWarehouseRows: (warehouseId: string, rows: string[][]) => {
+      sheets[`warehouse:${warehouseId}`] = clone(rows);
+    },
+  };
+});
+
 import { InventoryService } from "@/lib/services/inventory.service";
 import type { IStockRepository } from "@/lib/repositories/interfaces";
 import type {
@@ -16,6 +51,11 @@ import type {
   MovementWithDetails,
   DashboardStats,
 } from "@/types/models";
+
+const sheetMock = jest.requireMock("@/lib/google-sheets/client") as {
+  __resetSheets: () => void;
+  __setWarehouseRows: (warehouseId: string, rows: string[][]) => void;
+};
 
 // ------ In-memory store ------
 class MockRepo implements IStockRepository {
@@ -204,6 +244,32 @@ const mockProduct: Product = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
+function seedStock(repo: MockRepo, quantity: number, locationId = "loc-A") {
+  repo.movementsList.push({
+    movement_id: `opening-${locationId}`,
+    document_id: "opening-doc",
+    product_id: "prod-1",
+    warehouse_id: "wh-1",
+    location_id: locationId,
+    qty_change: quantity,
+    movement_type: "OPENING",
+    idempotency_key: `opening-${locationId}`,
+    created_by: "system",
+    created_at: "2024-01-01T00:00:00Z",
+  });
+  sheetMock.__setWarehouseRows("wh-1", [[
+    "SKU001",
+    "1234567890",
+    "สินค้าทดสอบ",
+    "ทั่วไป",
+    "ชิ้น",
+    String(quantity),
+    locationId.replace(/^loc-/, ""),
+    "",
+    "2024-01-01T00:00:00Z",
+  ]]);
+}
+
 // ============================================================
 // Tests
 // ============================================================
@@ -213,13 +279,14 @@ describe("InventoryService", () => {
   let service: InventoryService;
 
   beforeEach(() => {
+    sheetMock.__resetSheets();
     repo = new MockRepo();
     service = new InventoryService(repo);
   });
 
-  // Test 1: รับเข้า 100 ชิ้น ยอดต้องเป็น 100
-  test("1. รับสินค้าเข้า 100 ชิ้น ยอดคงเหลือต้องเป็น 100", async () => {
-    await service.receive({
+  // Test 1: Receive requests are pending until an Admin approves them.
+  test("1. รับสินค้าเข้าต้องสร้างเอกสาร PENDING โดยยังไม่เพิ่มยอด", async () => {
+    const doc = await service.receive({
       warehouse_id: "wh-1",
       reference_no: "PO-001",
       document_date: "2024-01-01",
@@ -230,20 +297,14 @@ describe("InventoryService", () => {
     });
 
     const balance = await repo.movements.getBalance("prod-1", "wh-1", "loc-A");
-    expect(balance).toBe(100);
+    expect(doc.status).toBe("PENDING");
+    expect(balance).toBe(0);
+    expect(JSON.parse(doc.note).idempotency_key).toBe("recv-001");
   });
 
   // Test 2: เบิก 20 ชิ้น ยอดต้องเหลือ 80
   test("2. เบิกสินค้าออก 20 ชิ้น ยอดคงเหลือต้องเป็น 80", async () => {
-    await service.receive({
-      warehouse_id: "wh-1",
-      reference_no: "",
-      document_date: "2024-01-01",
-      note: "",
-      idempotency_key: "recv-002",
-      lines: [{ product_id: "prod-1", location_id: "loc-A", qty: 100 }],
-      user_id: "user-1",
-    });
+    seedStock(repo, 100);
 
     await service.issue({
       warehouse_id: "wh-1",
@@ -261,25 +322,7 @@ describe("InventoryService", () => {
 
   // Test 3: ย้าย 30 ชิ้นจาก A ไป B
   test("3. ย้าย 30 ชิ้นจาก A ไป B: ยอด A=50, B=30, รวม=80", async () => {
-    await service.receive({
-      warehouse_id: "wh-1",
-      reference_no: "",
-      document_date: "2024-01-01",
-      note: "",
-      idempotency_key: "recv-003",
-      lines: [{ product_id: "prod-1", location_id: "loc-A", qty: 100 }],
-      user_id: "user-1",
-    });
-
-    await service.issue({
-      warehouse_id: "wh-1",
-      reference_no: "",
-      document_date: "2024-01-01",
-      note: "",
-      idempotency_key: "iss-002",
-      lines: [{ product_id: "prod-1", location_id: "loc-A", qty: 20 }],
-      user_id: "user-1",
-    });
+    seedStock(repo, 80);
 
     await service.move({
       warehouse_id: "wh-1",
@@ -305,15 +348,7 @@ describe("InventoryService", () => {
 
   // Test 4: เบิก 81 ชิ้น (เกินยอด 80) ต้องถูกปฏิเสธ
   test("4. เบิก 81 ชิ้น (เกินยอดคงเหลือ 80) ต้องถูกปฏิเสธ", async () => {
-    await service.receive({
-      warehouse_id: "wh-1",
-      reference_no: "",
-      document_date: "2024-01-01",
-      note: "",
-      idempotency_key: "recv-004",
-      lines: [{ product_id: "prod-1", location_id: "loc-A", qty: 80 }],
-      user_id: "user-1",
-    });
+    seedStock(repo, 80);
 
     await expect(
       service.issue({
@@ -344,20 +379,13 @@ describe("InventoryService", () => {
     await expect(service.receive(input)).rejects.toThrow(/idempotency_key ซ้ำ/);
 
     const balance = await repo.movements.getBalance("prod-1", "wh-1", "loc-A");
-    expect(balance).toBe(50); // ยังเป็น 50 ไม่ใช่ 100
+    expect(balance).toBe(0); // ยังไม่เพิ่มยอดจนกว่า Admin จะอนุมัติ
+    expect(repo.documentsList).toHaveLength(1);
   });
 
   // Test 6: กลับรายการเบิก 20 ชิ้น ยอดต้องกลับเป็น 100
   test("6. กลับรายการเบิก 20 ชิ้น ยอดต้องกลับเป็น 100", async () => {
-    await service.receive({
-      warehouse_id: "wh-1",
-      reference_no: "",
-      document_date: "2024-01-01",
-      note: "",
-      idempotency_key: "recv-005",
-      lines: [{ product_id: "prod-1", location_id: "loc-A", qty: 100 }],
-      user_id: "user-1",
-    });
+    seedStock(repo, 100);
 
     const issueDoc = await service.issue({
       warehouse_id: "wh-1",

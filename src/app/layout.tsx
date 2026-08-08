@@ -3,7 +3,8 @@ import { Noto_Sans_Thai, Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/lib/auth";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { ThemeProvider } from "@/context/ThemeProvider";
+import { TabAuthProvider } from "@/context/TabAuthContext";
 
 const notoSansThai = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -30,12 +31,14 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   return (
-    <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`}>
-      <body className="font-thai antialiased bg-gray-950 text-white">
+    <html lang="th" className={`${notoSansThai.variable} ${inter.variable} light`} data-theme="light">
+      <body className="font-thai antialiased">
         <SessionProvider session={session}>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
+          <TabAuthProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </TabAuthProvider>
         </SessionProvider>
       </body>
     </html>

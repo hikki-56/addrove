@@ -36,13 +36,13 @@ export default function HistoryPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">ประวัติการเคลื่อนไหว</h1>
-        <p className="text-gray-400 text-sm mt-1">รายการเคลื่อนไหวสินค้าทั้งหมด</p>
+        <h1 className="text-xl font-bold text-slate-100 tracking-tight">ประวัติการเคลื่อนไหว</h1>
+        <p className="text-slate-500 text-sm mt-0.5">รายการเคลื่อนไหวสินค้าทั้งหมดในระบบ</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -52,63 +52,63 @@ export default function HistoryPage() {
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && load()}
             placeholder="ค้นหาเลขเอกสาร..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 text-sm transition-all"
           />
         </div>
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm" />
+          className="px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm font-medium" />
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm" />
+          className="px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm font-medium" />
         <button onClick={load}
-          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-all shadow-md shadow-emerald-600/30">
+          className="btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
           ค้นหา
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">กำลังโหลด...</div>
+        <div className="text-center py-12 text-slate-500 text-sm">กำลังโหลด...</div>
       ) : (
-        <div className="glass-card rounded-2xl overflow-hidden border border-emerald-900/30">
+        <div className="glass-card rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs text-emerald-400/80 uppercase tracking-wider bg-emerald-950/40">
-                  <th className="text-left px-6 py-3.5">เลขเอกสาร</th>
-                  <th className="text-left px-6 py-3.5">ประเภท</th>
-                  <th className="text-left px-6 py-3.5">สินค้า</th>
-                  <th className="text-right px-6 py-3.5">จำนวน</th>
-                  <th className="text-left px-6 py-3.5">ตำแหน่ง</th>
-                  <th className="text-left px-6 py-3.5">โกดัง</th>
-                  <th className="text-left px-6 py-3.5">ผู้ทำรายการ</th>
-                  <th className="text-left px-6 py-3.5">วันที่</th>
+                <tr className="border-b border-white/[0.08]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">เลขเอกสาร</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ประเภท</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">สินค้า</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">จำนวน</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ตำแหน่ง</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">โกดัง</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ผู้ทำรายการ</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">วันที่</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-emerald-900/20">
+              <tbody className="divide-y divide-white/[0.04]">
                 {movements.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-10 text-gray-500">ไม่พบรายการ</td></tr>
+                  <tr><td colSpan={8} className="text-center py-10 text-slate-500 text-sm">ไม่พบรายการ</td></tr>
                 ) : movements.map(m => (
-                  <tr key={m.movement_id} className="hover:bg-emerald-950/30 transition-colors">
-                    <td className="px-6 py-3.5 font-mono text-sm text-emerald-400 font-semibold whitespace-nowrap">{m.document_no}</td>
-                    <td className="px-6 py-3.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                  <tr key={m.movement_id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-400 whitespace-nowrap">{m.document_no}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full border ${
                         m.qty_change > 0 ? 'badge-normal' : 'badge-out'
                       }`}>
                         {movTypeLabel[m.movement_type] ?? m.movement_type}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5">
-                      <p className="text-sm text-white truncate max-w-[160px] font-medium">{m.product_name}</p>
-                      <p className="text-xs text-gray-500">{m.sku}</p>
+                    <td className="px-5 py-3.5">
+                      <p className="text-xs text-slate-200 truncate max-w-[160px] font-medium">{m.product_name}</p>
+                      <p className="text-[11px] text-slate-500 font-mono">{m.sku}</p>
                     </td>
-                    <td className={`px-6 py-3.5 text-sm font-semibold text-right ${
+                    <td className={`px-5 py-3.5 text-xs font-mono font-bold text-right ${
                       m.qty_change > 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}>
                       {m.qty_change > 0 ? '+' : ''}{m.qty_change.toLocaleString()}
                     </td>
-                    <td className="px-6 py-3.5 text-xs font-mono text-emerald-300">{m.location_code || '-'}</td>
-                    <td className="px-6 py-3.5 text-sm text-gray-300">{m.warehouse_name}</td>
-                    <td className="px-6 py-3.5 text-sm text-gray-300">{m.created_by_name}</td>
-                    <td className="px-6 py-3.5 text-xs text-gray-400 whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-xs font-mono text-indigo-300">{m.location_code || '-'}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-400">{m.warehouse_name}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-400">{m.created_by_name}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">
                       {new Date(m.created_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
                     </td>
                   </tr>
@@ -116,16 +116,16 @@ export default function HistoryPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-6 py-3.5 border-t border-emerald-900/30 flex items-center justify-between">
-            <p className="text-xs text-gray-500">ทั้งหมด {total.toLocaleString()} รายการ</p>
+          <div className="px-5 py-3 border-t border-white/[0.07] flex items-center justify-between">
+            <p className="text-xs text-slate-500">ทั้งหมด {total.toLocaleString()} รายการ</p>
             <div className="flex gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/30 text-gray-300 hover:bg-emerald-900/50 disabled:opacity-30 text-xs transition-colors">
+                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:bg-white/[0.08] disabled:opacity-30 text-xs transition-colors cursor-pointer">
                 ก่อนหน้า
               </button>
-              <span className="px-3 py-1.5 text-xs text-gray-300">หน้า {page}</span>
+              <span className="px-3 py-1.5 text-xs text-slate-400 font-medium">หน้า {page}</span>
               <button onClick={() => setPage(p => p + 1)} disabled={movements.length < 50}
-                className="px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/30 text-gray-300 hover:bg-emerald-900/50 disabled:opacity-30 text-xs transition-colors">
+                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:bg-white/[0.08] disabled:opacity-30 text-xs transition-colors cursor-pointer">
                 ถัดไป
               </button>
             </div>

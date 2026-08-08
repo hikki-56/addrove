@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { UpdateLocationSchema } from "@/types/api";
 import {
@@ -17,7 +17,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     if (session.user.role !== "ADMIN") return forbiddenResponse();
     const { id } = await params;

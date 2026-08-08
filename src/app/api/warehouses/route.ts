@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { CreateWarehouseSchema } from "@/types/api";
 import {
@@ -9,15 +9,21 @@ import {
   forbiddenResponse,
   zodErrorResponse,
   serverErrorResponse,
+  hasWarehouseAccess,
 } from "@/lib/api-response";
 import { ZodError } from "zod";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     const repo = getRepository();
-    const warehouses = await repo.warehouses.findAll();
+    const allWarehouses = await repo.warehouses.findAll();
+    const warehouses = session.user.role === "ADMIN"
+      ? allWarehouses
+      : allWarehouses.filter((warehouse) =>
+          hasWarehouseAccess(session.user.warehouse_access, warehouse.warehouse_id)
+        );
     return successResponse(warehouses, "โหลดข้อมูลโกดังสำเร็จ");
   } catch (e) {
     return serverErrorResponse(e);
@@ -26,7 +32,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่สามารถเพิ่มโกดัง");
     const body = await req.json();

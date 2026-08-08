@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   readSheet,
   appendRows,
@@ -10,6 +9,13 @@ import {
 import type { IWarehouseRepository } from "../interfaces";
 import type { Warehouse } from "@/types/models";
 import type { CreateWarehouseInput } from "@/types/api";
+
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 // Columns: warehouse_id, warehouse_code, warehouse_name, address, active, created_at, updated_at
 function rowToWarehouse(row: string[]): Warehouse {
@@ -36,10 +42,20 @@ function warehouseToRow(w: Warehouse): (string | boolean)[] {
   ];
 }
 
+const DEFAULT_OFFICIAL_WAREHOUSES: Warehouse[] = [
+  { warehouse_id: "wh-01", warehouse_code: "WH-1", warehouse_name: "โกดัง1", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+  { warehouse_id: "wh-02", warehouse_code: "WH-2", warehouse_name: "โกดัง2", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+  { warehouse_id: "wh-03", warehouse_code: "WH-3", warehouse_name: "โกดัง3", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+  { warehouse_id: "wh-04", warehouse_code: "WH-4", warehouse_name: "โกดัง4", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+  { warehouse_id: "wh-05", warehouse_code: "WH-5", warehouse_name: "โกดัง5", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+];
+
 export class SheetsWarehouseRepository implements IWarehouseRepository {
   private async getAllRows(): Promise<{ data: Warehouse[]; rows: string[][] }> {
     const rows = await readSheet(SHEETS.WAREHOUSES, "A2:G");
-    return { data: rows.filter(r => r[0]).map(rowToWarehouse), rows };
+    const validRows = rows.filter((r) => r[0] && !r[2]?.startsWith("$2b$"));
+    const data = validRows.map(rowToWarehouse);
+    return { data: data.length > 0 ? data : DEFAULT_OFFICIAL_WAREHOUSES, rows };
   }
 
   async findAll(): Promise<Warehouse[]> {
@@ -60,7 +76,7 @@ export class SheetsWarehouseRepository implements IWarehouseRepository {
   async create(input: CreateWarehouseInput): Promise<Warehouse> {
     const now = new Date().toISOString();
     const warehouse: Warehouse = {
-      warehouse_id: uuidv4(),
+      warehouse_id: `wh-${generateUuid()}`,
       warehouse_code: input.warehouse_code,
       warehouse_name: input.warehouse_name,
       address: input.address,

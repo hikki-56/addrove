@@ -1,18 +1,77 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useTabAuth } from "@/context/TabAuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (!session) redirect("/login");
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, status } = useTabAuth();
+  const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("stockify_sidebar_collapsed");
+    if (saved === "true") {
+      setCollapsed(true);
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("stockify_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (mounted && status === "unauthenticated") {
+      if (typeof window !== "undefined") {
+        const currentUrl = window.location.pathname + window.location.search;
+        const urlParams = new URLSearchParams(window.location.search);
+        const wh = urlParams.get("warehouse_id") || urlParams.get("wh");
+        let loginUrl = `/employee-login?callbackUrl=${encodeURIComponent(currentUrl)}`;
+        if (wh) {
+          loginUrl += `&warehouse_id=${encodeURIComponent(wh)}`;
+        }
+        router.push(loginUrl);
+      } else {
+        router.push("/employee-login");
+      }
+    }
+  }, [mounted, status, router]);
+
+  if (!mounted || status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="flex h-screen bg-[#050807] text-white overflow-hidden">
-      <Sidebar role={session.user.role} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar user={session.user} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 fade-in">
+    <div className={`flex h-screen bg-white text-slate-900 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
+      <Sidebar
+        role={user.role}
+        userName={user.name ?? undefined}
+        collapsed={collapsed}
+        onToggle={toggleSidebar}
+      />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden w-full max-w-full">
+        <Navbar
+          user={user}
+          onToggleSidebar={toggleSidebar}
+          isSidebarCollapsed={collapsed}
+        />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 fade-in w-full max-w-full bg-white">
           {children}
         </main>
       </div>

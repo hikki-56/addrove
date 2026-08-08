@@ -20,7 +20,10 @@ export class StockCountService {
     const countNo = await this.generateCountNo();
 
     const count = await this.repo.stockCounts.create({
-      ...input,
+      product_id: input.product_id,
+      warehouse_id: input.warehouse_id,
+      location_id: input.location_id,
+      counted_qty: input.counted_qty,
       system_qty: systemQty,
       count_no: countNo,
     });

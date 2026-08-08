@@ -1,12 +1,13 @@
 import {
   readSheet,
   appendRows,
-  updateRow,
   batchUpdateRows,
+  deleteRows,
   SHEETS,
 } from "@/lib/google-sheets/client";
 import type { IStockSummaryRepository } from "../interfaces";
 import type { StockSummary } from "@/types/models";
+import { withKeyedLock } from "@/lib/keyed-lock";
 
 // Columns: product_id, warehouse_id, location_id, quantity, last_updated
 function rowToSummary(row: string[]): StockSummary {
@@ -17,16 +18,6 @@ function rowToSummary(row: string[]): StockSummary {
     quantity: parseFloat(row[3] ?? "0") || 0,
     last_updated: row[4] ?? "",
   };
-}
-
-function summaryToRow(s: StockSummary): (string | number)[] {
-  return [
-    s.product_id,
-    s.warehouse_id,
-    s.location_id,
-    s.quantity,
-    s.last_updated,
-  ];
 }
 
 export class SheetsStockSummaryRepository implements IStockSummaryRepository {
@@ -62,12 +53,24 @@ export class SheetsStockSummaryRepository implements IStockSummaryRepository {
       delta: number;
     }[]
   ): Promise<void> {
-    const rows = await this.getAllRows();
-    const now = new Date().toISOString();
-    const updates: { rowNumber: number; values: (string | number)[] }[] = [];
-    const newRows: (string | number)[][] = [];
+    await withKeyedLock("stock-summary", async () => {
+      const rows = await this.getAllRows();
+      const now = new Date().toISOString();
+      const updates: { rowNumber: number; values: (string | number)[] }[] = [];
+      const newRows: (string | number)[][] = [];
 
-    for (const change of changes) {
+      const aggregated = new Map<
+        string,
+        { productId: string; warehouseId: string; locationId: string; delta: number }
+      >();
+      for (const change of changes) {
+        const key = `${change.productId}|${change.warehouseId}|${change.locationId}`;
+        const current = aggregated.get(key);
+        if (current) current.delta += change.delta;
+        else aggregated.set(key, { ...change });
+      }
+
+      for (const change of aggregated.values()) {
       const idx = rows.findIndex(
         (r) =>
           r[0] === change.productId &&
@@ -98,14 +101,15 @@ export class SheetsStockSummaryRepository implements IStockSummaryRepository {
           now,
         ]);
       }
-    }
+      }
 
-    if (updates.length > 0) {
-      await batchUpdateRows(SHEETS.STOCK_SUMMARY, updates);
-    }
-    if (newRows.length > 0) {
-      await appendRows(SHEETS.STOCK_SUMMARY, newRows);
-    }
+      if (updates.length > 0) {
+        await batchUpdateRows(SHEETS.STOCK_SUMMARY, updates);
+      }
+      if (newRows.length > 0) {
+        await appendRows(SHEETS.STOCK_SUMMARY, newRows);
+      }
+    });
   }
 
   async rebuild(): Promise<void> {
@@ -128,8 +132,13 @@ export class SheetsStockSummaryRepository implements IStockSummaryRepository {
     });
 
     // Clear and rewrite (use a dummy first row to maintain header)
-    const sheets = await readSheet(SHEETS.STOCK_SUMMARY, "A1:A1");
-    // Overwrite from row 2
+    const currentRows = await this.getAllRows();
+    if (currentRows.length > 0) {
+      await deleteRows(
+        SHEETS.STOCK_SUMMARY,
+        currentRows.map((_, index) => index + 1)
+      );
+    }
     if (newSummaries.length > 0) {
       await appendRows(SHEETS.STOCK_SUMMARY, newSummaries);
     }

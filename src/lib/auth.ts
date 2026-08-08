@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getRepository } from "@/lib/repositories";
+import { getAuthSecret } from "@/lib/server-secrets";
 import type { UserRole } from "@/types/models";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -19,29 +20,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          const repo = getRepository();
-          const user = await repo.users.findByEmail(
-            credentials.email as string
-          );
+          const cleanEmail = (credentials.email as string).trim().toLowerCase();
+          const cleanPass = credentials.password as string;
 
-          if (!user || !user.active) {
+          const repo = getRepository();
+          const user = await repo.users.findByEmail(cleanEmail);
+
+          // Fail closed: User must exist, be active, and have a password hash
+          if (!user || !user.active || !user.password_hash) {
             return null;
           }
 
-          const isValid = await bcrypt.compare(
-            credentials.password as string,
-            user.password_hash
-          );
-
+          // Strict bcrypt comparison only — no fallback to plaintext or hardcoded values
+          const isValid = await bcrypt.compare(cleanPass, user.password_hash).catch(() => false);
           if (!isValid) {
             return null;
           }
 
-          let warehouseAccess: string[];
+          // Parse warehouse_access with fail-closed behavior on malformed JSON
+          let warehouseAccess: string[] = [];
           try {
-            warehouseAccess = JSON.parse(user.warehouse_access);
+            const parsed = JSON.parse(user.warehouse_access);
+            if (Array.isArray(parsed)) {
+              warehouseAccess = parsed.filter((v): v is string => typeof v === "string");
+            } else if (parsed === "*") {
+              warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
+            }
           } catch {
-            warehouseAccess = user.warehouse_access === "*" ? ["*"] : [];
+            warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
           }
 
           return {
@@ -63,6 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
         token.role = user.role;
         token.warehouse_access = user.warehouse_access;
       }
@@ -71,6 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
+        session.user.name = token.name as string;
         session.user.role = token.role as UserRole;
         session.user.warehouse_access = token.warehouse_access as string[];
       }
@@ -81,5 +89,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
     error: "/login",
   },
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "stockify-secret-key-super-secure-2026",
+  secret: getAuthSecret(),
 });

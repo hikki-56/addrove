@@ -1,0 +1,19 @@
+import type { AuditOutcome, AuditLogEntry } from "@/lib/repositories/interfaces/audit.repository.interface";
+
+export type { AuditOutcome, AuditLogEntry };
+
+export const AUDIT_ACTIONS = {
+  STOCK_RECEIVE: "STOCK_RECEIVE",
+  STOCK_ISSUE: "STOCK_ISSUE",
+  STOCK_MOVE: "STOCK_MOVE",
+  STOCK_TRANSFER_CREATE: "STOCK_TRANSFER_CREATE",
+  STOCK_TRANSFER_COMPLETE: "STOCK_TRANSFER_COMPLETE",
+  STOCK_TRANSFER_CANCEL: "STOCK_TRANSFER_CANCEL",
+  STOCK_REVERSAL: "STOCK_REVERSAL",
+  STOCK_COUNT_CREATE: "STOCK_COUNT_CREATE",
+  STOCK_COUNT_APPROVE: "STOCK_COUNT_APPROVE",
+  AUTH_DENIED: "AUTH_DENIED",
+  RECOVERY_ATTEMPT: "RECOVERY_ATTEMPT",
+} as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS] | string;

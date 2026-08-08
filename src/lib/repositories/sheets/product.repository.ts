@@ -1,84 +1,96 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   readSheet,
   appendRows,
   updateRow,
   SHEETS,
-  parseBoolean,
-  formatBoolean,
 } from "@/lib/google-sheets/client";
 import type { IProductRepository } from "../interfaces";
 import type { Product } from "@/types/models";
 import type { CreateProductInput, UpdateProductInput } from "@/types/api";
 
-function parseNumber(val: string | undefined): number {
-  if (!val) return 0;
-  const clean = val.replace(/,/g, "").trim();
-  const num = parseFloat(clean);
-  return isNaN(num) ? 0 : num;
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-// Support both Thai header format (8 columns) and English schema format (11 columns)
 function rowToProduct(row: string[], idx: number = 0): Product | null {
-  if (!row || row.length === 0 || row.every(c => !c || !c.trim())) return null;
-  if (row[0]?.trim() === "รหัสสินค้า" || row[0]?.trim() === "product_id") return null;
+  if (!row || row.length === 0 || row.every((c) => !c || !c.trim())) return null;
+  const col0 = row[0]?.trim() ?? "";
+  const col1 = row[1]?.trim() ?? "";
+  const col2 = row[2]?.trim() ?? "";
 
-  // Check if row matches Thai Sheet layout: [รหัสสินค้า, ชื่อสินค้า, หมวดหมู่, หน่วย, สต็อกขั้นต่ำ, ตำแหน่ง, สร้างเมื่อ, อัปเดตเมื่อ]
-  // In Thai layout, row[0] is SKU (e.g. AD01) and row[1] is Product Name (e.g. D8400 #AD-01 ก๊อกบอล)
-  const isThaiLayout = Boolean(row[1] && (row[2] || row[3] || parseNumber(row[4]) > 0));
-
-  if (isThaiLayout && (!row[8] || row[8] === "TRUE" || row[8] === "FALSE" || row[8] === "true" || row[8] === "false")) {
-    const sku = row[0]?.trim() ?? "";
-    const productName = row[1]?.trim() ?? "";
-    const category = row[2]?.trim() ?? "";
-    const baseUnit = row[3]?.trim() ?? "";
-    const minStock = parseNumber(row[4]);
-    const location = row[5]?.trim() ?? "";
-
-    if (!sku && !productName) return null;
-
-    return {
-      product_id: sku ? `prod-${sku}` : `prod-gen-${idx}`,
-      sku: sku || `SKU-${idx}`,
-      barcode: "",
-      product_name: productName || sku,
-      category: category,
-      base_unit: baseUnit || "ชิ้น",
-      minimum_stock: minStock,
-      description: location ? `ตำแหน่ง: ${location}` : "",
-      active: true,
-      created_at: row[6] ?? new Date().toISOString(),
-      updated_at: row[7] ?? new Date().toISOString(),
-    };
+  // Skip header rows
+  if (
+    col0 === "ลำดับ" ||
+    col0 === "รหัสสินค้า" ||
+    col0 === "product_id" ||
+    col0 === "SKU" ||
+    col2 === "รหัสสินค้า" ||
+    col2 === "SKU"
+  ) {
+    return null;
   }
 
-  // Standard English layout: [product_id, sku, barcode, product_name, category, base_unit, minimum_stock, description, active, created_at, updated_at]
+  let sku = "";
+  let barcode = "";
+  let productName = "";
+  let category = "ทั่วไป";
+  let baseUnit = "ชิ้น";
+  let supplier = "";
+
+  // Detect New 7-Column Layout: [0:ลำดับ, 1:ผู้จัดจำหน่าย, 2:รหัสสินค้า, 3:รหัสนำหน้า 4 หลัก, 4:รายละเอียด, 5:หมวดสินค้า, 6:บาร์โค้ด]
+  if (col2 || (row.length >= 7 && !isNaN(Number(col0)))) {
+    supplier = col1;
+    sku = col2 || col0;
+    productName = row[4]?.trim() || sku;
+    category = row[5]?.trim() || "ทั่วไป";
+    barcode = row[6]?.trim() || sku;
+  } else if (row.length >= 4) {
+    // Legacy 8-col layout: [0:รหัสสินค้า, 1:บาร์โค้ด, 2:ชื่อสินค้า, 3:หมวดหมู่, 4:หน่วยนับ, 5:สต็อกขั้นต่ำ, 6:ตำแหน่ง, 7:ผู้จัดจำหน่าย]
+    sku = col0 || `SKU-${idx}`;
+    barcode = col1;
+    productName = col2 || sku;
+    category = row[3]?.trim() || "ทั่วไป";
+    baseUnit = row[4]?.trim() || "ชิ้น";
+    supplier = row[7]?.trim() ?? "";
+  } else {
+    sku = col0 || `SKU-${idx}`;
+    productName = col1 || sku;
+    category = col2 || "ทั่วไป";
+    baseUnit = row[3]?.trim() || "ชิ้น";
+  }
+
+  if (!sku && !productName) return null;
+
   return {
-    product_id: row[0] ? row[0] : `prod-gen-${idx}-${row[1] || uuidv4()}`,
-    sku: row[1] ?? row[0] ?? "",
-    barcode: row[2] ?? "",
-    product_name: row[3] ?? row[1] ?? "",
-    category: row[4] ?? "",
-    base_unit: row[5] ?? "",
-    minimum_stock: parseNumber(row[6]),
-    description: row[7] ?? "",
-    active: parseBoolean(row[8] ?? "true"),
-    created_at: row[9] ?? "",
-    updated_at: row[10] ?? "",
+    product_id: `prod-${sku}`,
+    sku: sku,
+    barcode: barcode || sku,
+    product_name: productName,
+    category: category || "ทั่วไป",
+    base_unit: baseUnit || "ชิ้น",
+    minimum_stock: 0,
+    supplier: supplier,
+    description: supplier ? `ผู้จำหน่าย: ${supplier}` : "",
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
-function productToRow(p: Product): (string | number | boolean)[] {
-  // Write in Thai Sheet layout format matching Google Sheet columns
+function productToRow(p: Product, seqNum: number = 1): (string | number | boolean)[] {
+  // New PRODUCTS sheet layout: [ลำดับ, ผู้จัดจำหน่าย, รหัสสินค้า, รหัสนำหน้า 4 หลัก, รายละเอียด, หมวดสินค้า, บาร์โค้ด]
+  const prefix4 = p.sku.slice(0, 4);
   return [
+    seqNum,
+    p.supplier || "",
     p.sku,
+    prefix4,
     p.product_name,
-    p.category,
-    p.base_unit,
-    p.minimum_stock,
-    p.description.replace(/^ตำแหน่ง:\s*/, ""),
-    p.created_at,
-    p.updated_at,
+    p.category || "ทั่วไป",
+    p.barcode || p.sku,
   ];
 }
 
@@ -92,12 +104,35 @@ export class SheetsProductRepository implements IProductRepository {
     const products = rows
       .map((r, idx) => rowToProduct(r, idx))
       .filter((p): p is Product => p !== null);
-    return opts?.activeOnly ? products.filter((p) => p.active) : products;
+
+    // Deduplicate duplicate product entries by product_id to ensure unique React keys
+    const seen = new Set<string>();
+    const uniqueProducts: Product[] = [];
+    for (const p of products) {
+      if (!seen.has(p.product_id)) {
+        seen.add(p.product_id);
+        uniqueProducts.push(p);
+      }
+    }
+
+    return opts?.activeOnly ? uniqueProducts.filter((p) => p.active) : uniqueProducts;
   }
 
   async findById(id: string): Promise<Product | null> {
     const products = await this.findAll();
-    return products.find((p) => p.product_id === id || p.sku === id) ?? null;
+    if (!id) return null;
+    const cleanId = id.trim().toLowerCase();
+    const rawSku = cleanId.replace(/^prod-/, "");
+    return (
+      products.find(
+        (p) =>
+          p.product_id.toLowerCase() === cleanId ||
+          p.sku.toLowerCase() === cleanId ||
+          p.sku.toLowerCase() === rawSku ||
+          p.product_id.toLowerCase() === `prod-${rawSku}` ||
+          p.sku.toLowerCase().replace(/[^a-zA-Z0-9]/g, "") === rawSku.replace(/[^a-zA-Z0-9]/g, "")
+      ) ?? null
+    );
   }
 
   async findBySku(sku: string): Promise<Product | null> {
@@ -113,26 +148,34 @@ export class SheetsProductRepository implements IProductRepository {
 
   async create(input: CreateProductInput): Promise<Product> {
     const now = new Date().toISOString();
+    const rows = await this.getAllRows();
+    const seqNum = rows.length > 0 ? rows.length : 1;
+
     const product: Product = {
-      product_id: `prod-${input.sku}`,
-      sku: input.sku,
+      product_id: `prod-${generateUuid()}`,
+      sku: input.sku.trim(),
       barcode: input.barcode,
       product_name: input.product_name,
       category: input.category,
       base_unit: input.base_unit,
       minimum_stock: input.minimum_stock,
       description: input.description,
+      supplier: input.supplier || "",
       active: true,
       created_at: now,
       updated_at: now,
     };
-    await appendRows(SHEETS.PRODUCTS, [productToRow(product)]);
+    await appendRows(SHEETS.PRODUCTS, [productToRow(product, seqNum)]);
     return product;
   }
 
   async update(id: string, input: UpdateProductInput): Promise<Product | null> {
     const rows = await this.getAllRows();
-    const idx = rows.findIndex((r) => r[0] === id || `prod-${r[0]}` === id);
+    const cleanId = id.trim().toLowerCase().replace(/^prod-/, "");
+    const idx = rows.findIndex((r) => {
+      const sku = (r[2] || r[0] || "").trim().toLowerCase().replace(/^prod-/, "");
+      return sku === cleanId;
+    });
     if (idx === -1) return null;
     const existing = rowToProduct(rows[idx], idx);
     if (!existing) return null;
@@ -141,7 +184,7 @@ export class SheetsProductRepository implements IProductRepository {
       ...input,
       updated_at: new Date().toISOString(),
     };
-    await updateRow(SHEETS.PRODUCTS, idx + 1, productToRow(updated));
+    await updateRow(SHEETS.PRODUCTS, idx + 2, productToRow(updated, idx + 1));
     return updated;
   }
 
