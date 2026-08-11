@@ -57,8 +57,7 @@ export default function WarehouseQrPage() {
     const generateQrs = async () => {
       const urls: Record<string, string> = {};
       for (const wh of WAREHOUSES) {
-        const targetPath = `${actionObj.path}?warehouse_id=${wh.id}`;
-        const fullTargetUrl = `${qrBaseUrl}/employee-login?warehouse_id=${wh.id}&callbackUrl=${encodeURIComponent(targetPath)}`;
+        const fullTargetUrl = `${qrBaseUrl}/w/${wh.id}`;
         try {
           const dataUrl = await QRCode.toDataURL(fullTargetUrl, {
             width: 320,

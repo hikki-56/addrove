@@ -51,6 +51,15 @@ export function detectWarehouseCode(code: string | null | undefined): string | n
   const s = code.trim().toLowerCase();
   if (!s) return null;
 
+  // Support scanned URLs containing /w/wh-01, /w/1, /wh/wh-01, warehouse_id=wh-01, wh=wh-01
+  if (s.includes("http://") || s.includes("https://") || s.includes("/w/") || s.includes("/wh/")) {
+    const urlMatch =
+      s.match(/(?:\/w\/|\/wh\/|warehouse_id=|wh=)(wh-0?[1-5]|wh0?[1-5]|[1-5])/i);
+    if (urlMatch && urlMatch[1]) {
+      return normalizeWarehouseId(urlMatch[1]);
+    }
+  }
+
   if (/^wh-0[1-5]$/.test(s)) return s;
   if (/^wh-[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
   if (/^wh0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
