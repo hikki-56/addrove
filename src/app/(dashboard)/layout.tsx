@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className={`flex h-screen bg-white text-slate-900 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
+    <div className={`flex h-screen bg-[#f4f6f8] text-slate-900 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
       <Sidebar
         role={user.role}
         userName={user.name ?? undefined}
@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={collapsed}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 fade-in w-full max-w-full bg-white">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 fade-in w-full max-w-full bg-[#f4f6f8]">
           {children}
         </main>
       </div>

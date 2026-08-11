@@ -19,11 +19,7 @@ export async function GET(req: NextRequest) {
     if (!session) return unauthorizedResponse();
     const repo = getRepository();
     const allWarehouses = await repo.warehouses.findAll();
-    const warehouses = session.user.role === "ADMIN"
-      ? allWarehouses
-      : allWarehouses.filter((warehouse) =>
-          hasWarehouseAccess(session.user.warehouse_access, warehouse.warehouse_id)
-        );
+    const warehouses = allWarehouses;
     return successResponse(warehouses, "โหลดข้อมูลโกดังสำเร็จ");
   } catch (e) {
     return serverErrorResponse(e);

@@ -20,6 +20,21 @@ export interface SignedEnvelope {
   signature: string;
 }
 
+/**
+ * Compatibility mode for the legacy Apps Script deployment used by local
+ * development. Production always uses signed envelopes, even if the flag is
+ * accidentally configured there.
+ */
+export function isLegacyAppsScriptMode(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+
+  const explicitlyEnabled =
+    process.env.GOOGLE_SCRIPT_LEGACY_MODE?.trim().toLowerCase() === "true";
+  const localAppUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+
+  return explicitlyEnabled || /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(localAppUrl);
+}
+
 // ---- Signing Secret ----
 
 export function getSigningSecret(): string {
@@ -27,6 +42,11 @@ export function getSigningSecret(): string {
   if (!secret) {
     throw new Error(
       "GOOGLE_SCRIPT_SIGNING_SECRET is required for Apps Script mutations"
+    );
+  }
+  if (Buffer.byteLength(secret, "utf8") < 32) {
+    throw new Error(
+      "GOOGLE_SCRIPT_SIGNING_SECRET must be at least 32 bytes"
     );
   }
   return secret;
@@ -144,7 +164,7 @@ export const ALLOWED_SHEETS = [
   "Users",
   "ประวัติการเข้าระบบ",
   "Idempotency",
-  "AuditLog",
+  "AuditLogs",
   "OperationJournal",
   "โกดัง1",
   "โกดัง2",
@@ -242,12 +262,20 @@ export async function sendSignedAppsScriptRequest(
     );
   }
 
-  const envelope = createSignedEnvelope(payload);
+  validateActionAndSheet(
+    String((payload as { action?: unknown }).action || ""),
+    (payload as { sheetName?: string }).sheetName
+  );
+  validateMutationPayload(payload as Record<string, unknown>);
+
+  const requestBody = isLegacyAppsScriptMode()
+    ? JSON.stringify(payload)
+    : JSON.stringify(createSignedEnvelope(payload));
 
   return fetch(scriptUrl, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(envelope),
+    body: requestBody,
     redirect: "follow",
     cache: "no-store",
   });

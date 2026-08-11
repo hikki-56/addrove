@@ -184,7 +184,7 @@ export class SheetsProductRepository implements IProductRepository {
       ...input,
       updated_at: new Date().toISOString(),
     };
-    await updateRow(SHEETS.PRODUCTS, idx + 2, productToRow(updated, idx + 1));
+    await updateRow(SHEETS.PRODUCTS, idx + 1, productToRow(updated, idx + 1));
     return updated;
   }
 

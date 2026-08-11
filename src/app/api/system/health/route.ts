@@ -11,6 +11,7 @@ export async function GET() {
   let storageError: string | null = null;
   let appsScriptStatus = "UNCHECKED";
   let appsScriptError: string | null = null;
+  let legacyAppsScriptMode = false;
 
   // 1. Google Sheets read check
   try {
@@ -25,10 +26,15 @@ export async function GET() {
   if (process.env.GOOGLE_SCRIPT_URL) {
     try {
       // Dynamic import to avoid bundling crypto in client code
-      const { sendSignedAppsScriptRequest } = await import(
+      const { isLegacyAppsScriptMode, sendSignedAppsScriptRequest } = await import(
         "@/lib/google-sheets/script-signer"
       );
-      const response = await sendSignedAppsScriptRequest({ action: "ping" });
+      legacyAppsScriptMode = isLegacyAppsScriptMode();
+      const response = await sendSignedAppsScriptRequest(
+        legacyAppsScriptMode
+          ? { action: "ping", sheetName: SHEETS.WAREHOUSES }
+          : { action: "ping" }
+      );
       const text = await response.text();
 
       if (!response.ok) {
@@ -43,9 +49,16 @@ export async function GET() {
           };
           if (json.success && json.message === "pong") {
             appsScriptStatus = "CONNECTED";
+          } else if (
+            isLegacyAppsScriptMode() &&
+            json.message?.toLowerCase().includes("unknown action")
+          ) {
+            // The legacy deployment has no ping action, but this response
+            // confirms that the endpoint is reachable and parsed the request.
+            appsScriptStatus = "CONNECTED_LEGACY";
           } else {
             appsScriptStatus = "ERROR";
-            appsScriptError = json.error || "Unexpected response";
+            appsScriptError = json.error || json.message || "Unexpected response";
           }
         } catch {
           appsScriptStatus = "ERROR";
@@ -70,6 +83,7 @@ export async function GET() {
 
   const appsScriptOk =
     appsScriptStatus === "CONNECTED" ||
+    appsScriptStatus === "CONNECTED_LEGACY" ||
     appsScriptStatus === "SKIPPED" ||
     (process.env.NODE_ENV !== "production" &&
       appsScriptStatus !== "ERROR");
@@ -98,6 +112,9 @@ export async function GET() {
       },
       appsScript: {
         status: appsScriptStatus,
+        ...(process.env.NODE_ENV !== "production" && {
+          mode: legacyAppsScriptMode ? "legacy" : "signed",
+        }),
         ...(process.env.NODE_ENV !== "production" &&
           appsScriptError && { error: appsScriptError }),
       },

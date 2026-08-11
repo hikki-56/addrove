@@ -105,3 +105,4 @@ export function hasWarehouseAccess(
   const accessible = getAccessibleWarehouseIds(warehouseAccess);
   return accessible === null || accessible.includes(normalizeWarehouseAccessId(warehouseId));
 }
+

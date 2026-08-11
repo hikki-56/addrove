@@ -1,19 +1,23 @@
 # Vercel deploy ignore — keep the bundle lean
 
-# Environment variables (except example template)
+# Environment variables and local credentials (except the empty example template)
 .env*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
-# Local and test data files
+# Local data and files that may contain PII
 data/
-data/*.json
+data/**
 *.log
 
 # Temporary and research folders
-.tmp_*
-.tmp/
+.tmp*
 .temp*
 scratch/
+scratch/**
 
 # Testing and coverage files not required at runtime
 __tests__/
@@ -23,6 +27,7 @@ coverage/
 jest.config.js
 
 # Build and IDE artifacts
+.vercel/
 .next/cache/
 *.tsbuildinfo
 .idea/

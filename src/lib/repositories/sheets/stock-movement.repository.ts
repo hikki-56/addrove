@@ -45,11 +45,28 @@ function movementToRow(m: StockMovement): (string | number)[] {
   ];
 }
 
+const globalForMovs = globalThis as unknown as {
+  inMemoryMovements?: StockMovement[];
+};
+if (!globalForMovs.inMemoryMovements) {
+  globalForMovs.inMemoryMovements = [];
+}
+const inMemoryMovements = globalForMovs.inMemoryMovements;
+
 export class SheetsStockMovementRepository
   implements IStockMovementRepository
 {
   private async getAllRows(): Promise<string[][]> {
-    return readSheet(SHEETS.STOCK_MOVEMENTS, "A2:J");
+    const rows: string[][] = await readSheet(SHEETS.STOCK_MOVEMENTS, "A2:J").catch(() => []);
+    const existingIds = new Set<string>(rows.map((r) => r[0]));
+
+    for (const memMov of inMemoryMovements) {
+      if (!existingIds.has(memMov.movement_id)) {
+        rows.unshift(movementToRow(memMov).map(String));
+      }
+    }
+
+    return rows;
   }
 
   async findByDocumentId(documentId: string): Promise<StockMovement[]> {
@@ -63,12 +80,12 @@ export class SheetsStockMovementRepository
     // Load all data in batch
     const [movRows, docRows, productRows, warehouseRows, locationRows, userRows] =
       await Promise.all([
-        readSheet(SHEETS.STOCK_MOVEMENTS, "A2:J"),
-        readSheet(SHEETS.DOCUMENTS, "A2:I"),
-        readSheet(SHEETS.PRODUCTS, "A2:K"),
-        readSheet(SHEETS.WAREHOUSES, "A2:G"),
-        readSheet(SHEETS.LOCATIONS, "A2:L"),
-        readSheet(SHEETS.USERS, "A2:H"),
+        this.getAllRows(),
+        readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []),
+        readSheet(SHEETS.PRODUCTS, "A2:K").catch(() => []),
+        readSheet(SHEETS.WAREHOUSES, "A2:G").catch(() => []),
+        readSheet(SHEETS.LOCATIONS, "A2:L").catch(() => []),
+        readSheet(SHEETS.USERS, "A2:H").catch(() => []),
       ]);
 
     const docMap = new Map(docRows.filter((r) => r[0]).map((r) => [r[0], r]));
@@ -194,10 +211,19 @@ export class SheetsStockMovementRepository
       movement_id: `mov-${generateUuid()}`,
       created_at: now,
     }));
-    await batchAppendRows(
-      SHEETS.STOCK_MOVEMENTS,
-      newMovements.map(movementToRow)
-    );
+
+    for (const m of newMovements) {
+      inMemoryMovements.unshift(m);
+    }
+
+    try {
+      await batchAppendRows(
+        SHEETS.STOCK_MOVEMENTS,
+        newMovements.map(movementToRow)
+      );
+    } catch (err) {
+      console.warn("[SheetsStockMovementRepository] Google Sheets batchAppendRows failed, stored in memory fallback:", err);
+    }
     return newMovements;
   }
 }

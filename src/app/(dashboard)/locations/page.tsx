@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Location, Warehouse, Shelf } from "@/types/models";
+import { getDefaultLocationsForWarehouse, getDefaultShelvesForLocation } from "@/lib/warehouse-utils";
 
 export default function LocationsPage() {
   const [activeTab, setActiveTab] = useState<"locations" | "shelves">("locations");
@@ -44,9 +45,17 @@ export default function LocationsPage() {
       const url = selectedWh ? `/api/locations?warehouse_id=${selectedWh}` : "/api/locations";
       const res = await fetch(url);
       const d = await res.json();
-      if (d.success) setLocations(d.data || []);
+      if (d.success) {
+        const fetched = d.data || [];
+        if (fetched.length === 0 && selectedWh) {
+          setLocations(getDefaultLocationsForWarehouse(selectedWh));
+        } else {
+          setLocations(fetched);
+        }
+      }
     } catch (e) {
       console.error(e);
+      if (selectedWh) setLocations(getDefaultLocationsForWarehouse(selectedWh));
     } finally {
       setLoading(false);
     }
@@ -58,9 +67,17 @@ export default function LocationsPage() {
       const url = selectedLoc ? `/api/shelves?location_id=${selectedLoc}` : "/api/shelves";
       const res = await fetch(url);
       const d = await res.json();
-      if (d.success) setShelves(d.data || []);
+      if (d.success) {
+        const fetched = d.data || [];
+        if (fetched.length === 0 && selectedLoc) {
+          setShelves(getDefaultShelvesForLocation(selectedLoc));
+        } else {
+          setShelves(fetched);
+        }
+      }
     } catch (e) {
       console.error(e);
+      if (selectedLoc) setShelves(getDefaultShelvesForLocation(selectedLoc));
     } finally {
       setLoading(false);
     }

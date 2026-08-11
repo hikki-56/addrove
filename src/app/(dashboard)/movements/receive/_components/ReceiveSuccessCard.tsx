@@ -15,9 +15,9 @@ export default function ReceiveSuccessCard({ onReset }: ReceiveSuccessCardProps)
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-100">รับสินค้าเข้าคลังสำเร็จ</h2>
-        <p className="text-slate-400 text-sm max-w-sm mx-auto">
-          เอกสารรับสินค้าถูกสร้างและบันทึกเข้าสู่ระบบเรียบร้อยแล้ว
+        <h2 className="text-xl font-bold text-slate-100">ส่งรายการรับสินค้าสำเร็จ</h2>
+        <p className="text-slate-300 text-sm max-w-md mx-auto leading-relaxed">
+          เอกสารขอรับสินค้าถูกส่งไปยัง <strong className="text-emerald-400 font-extrabold">หน้าอนุมัติของ Admin (/approvals)</strong> เรียบร้อยแล้ว (สถานะ: รอดำเนินการอนุมัติ)
         </p>
         <div className="pt-4">
           <button

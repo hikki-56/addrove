@@ -1,19 +1,10 @@
 import { google, sheets_v4 } from "googleapis";
-import { createSignedEnvelope } from "./script-signer";
+import {
+  isLegacyAppsScriptMode,
+  sendSignedAppsScriptRequest,
+} from "./script-signer";
 
-export async function sendSignedAppsScriptRequest(payload: object): Promise<Response> {
-  const url = process.env.GOOGLE_SCRIPT_URL;
-  if (!url) throw new Error("GOOGLE_SCRIPT_URL is not set");
-
-  const envelope = createSignedEnvelope(payload);
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(envelope),
-    redirect: "follow",
-    cache: "no-store",
-  });
-}
+export { sendSignedAppsScriptRequest };
 
 // ============================================================
 // Google Sheets Client — Pure Real-time Single Source of Truth
@@ -24,9 +15,15 @@ let sheetsInstance: sheets_v4.Sheets | null = null;
 export function getSheetsClient(): sheets_v4.Sheets {
   if (sheetsInstance) return sheetsInstance;
 
+  let privateKey = (process.env.GOOGLE_PRIVATE_KEY ?? "").trim();
+  if ((privateKey.startsWith('"') && privateKey.endsWith('"')) || (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  privateKey = privateKey.replace(/\\n/g, "\n");
+
   const credentials = {
-    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL || "",
-    private_key: (process.env.GOOGLE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
+    client_email: (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL || "").trim(),
+    private_key: privateKey,
   };
 
   const auth = new google.auth.GoogleAuth({
@@ -69,6 +66,47 @@ export function getWarehouseSheetName(warehouseId: string): string {
     "wh-05": "โกดัง5",
   };
   return map[warehouseId] || warehouseId.replace(/\s+/g, "");
+}
+
+// Helper to generate all candidate variations for a sheet tab name
+export function getPossibleSheetNames(sheetName: string): string[] {
+  const names = new Set<string>();
+  names.add(sheetName);
+  names.add(sheetName.toUpperCase());
+  names.add(sheetName.toLowerCase());
+  names.add(`${sheetName}Table`);
+  names.add(sheetName.replace(/\s+/g, ""));
+
+  // Thai warehouse tab variations: โกดัง4 <-> โกดัง 4 <-> WH-04 <-> WH4 <-> WH-4
+  const thaiWhMatch = sheetName.match(/โกดัง\s*([0-9]+)/i);
+  if (thaiWhMatch) {
+    const num = thaiWhMatch[1];
+    const padNum = num.padStart(2, "0");
+    names.add(`โกดัง ${num}`);
+    names.add(`โกดัง${num}`);
+    names.add(`WH-${padNum}`);
+    names.add(`WH-${num}`);
+    names.add(`WH${padNum}`);
+    names.add(`WH${num}`);
+    names.add(`Warehouse ${num}`);
+    names.add(`Warehouse${num}`);
+  }
+
+  const whCodeMatch = sheetName.match(/WH-?0?([0-9]+)/i);
+  if (whCodeMatch) {
+    const num = whCodeMatch[1];
+    const padNum = num.padStart(2, "0");
+    names.add(`โกดัง ${num}`);
+    names.add(`โกดัง${num}`);
+    names.add(`WH-${padNum}`);
+    names.add(`WH-${num}`);
+    names.add(`WH${padNum}`);
+    names.add(`WH${num}`);
+    names.add(`Warehouse ${num}`);
+    names.add(`Warehouse${num}`);
+  }
+
+  return Array.from(names);
 }
 
 // Known GIDs for fallback read
@@ -115,7 +153,6 @@ export async function withRetry<T>(
 async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
   if (!SPREADSHEET_ID) throw new Error("GOOGLE_SHEET_ID is required");
 
-  // Strictly forbid reading sensitive credentials or personal login logs via unauthenticated public CSV
   const isSensitive =
     sheetName.toLowerCase() === "users" ||
     sheetName === SHEETS.USERS ||
@@ -153,7 +190,6 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
         line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map((cell) => cell.replace(/^\"|\"$/g, "").trim())
       );
       if (rows.length > 0) {
-        // Guard against Google Sheets fallback redirecting non-USERS requests to GID 0 (USERS tab)
         const isUsersTab = sheetName.toLowerCase() === "users";
         const hasBcryptHash = rows.some((r) => r[2]?.startsWith("$2b$"));
         if (!isUsersTab && hasBcryptHash) {
@@ -204,20 +240,27 @@ async function assertAppsScriptSuccess(response: Response, operation: string): P
     throw new Error(`${operation} failed with HTTP ${response.status}`);
   }
 
-  if (responseText.trim().startsWith("{")) {
-    try {
-      const payload = JSON.parse(responseText) as { success?: boolean; status?: string; error?: string; message?: string };
-      if (payload.success === false || payload.status === "error") {
-        throw new Error(payload.error || payload.message || `${operation} was rejected`);
-      }
-    } catch (error) {
-      if (error instanceof SyntaxError) return;
-      throw error;
-    }
+  let payload: {
+    success?: boolean;
+    status?: string;
+    error?: string;
+    message?: string;
+  };
+  try {
+    payload = JSON.parse(responseText) as typeof payload;
+  } catch {
+    throw new Error(`${operation} returned an invalid Apps Script response`);
+  }
+
+  const legacySuccess =
+    isLegacyAppsScriptMode() && payload.status?.toLowerCase() === "success";
+
+  if (payload.success !== true && !legacySuccess) {
+    throw new Error(payload.error || payload.message || `${operation} was rejected`);
   }
 }
 
-// ------ Read rows from a sheet (100% Real-time Single Source of Truth from Google Sheets) ------
+// ------ Read rows from a sheet ------
 export async function readSheet(
   sheetName: string,
   range?: string,
@@ -232,7 +275,6 @@ export async function readSheet(
 
   const cacheKey = `${sheetName}:${range || "ALL"}`;
 
-  // Return memory-cached rows if available and fresh (< 10 seconds)
   if (!options?.forceFresh) {
     const cached = sheetCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -241,7 +283,6 @@ export async function readSheet(
   }
 
   const fetchFreshRows = async (): Promise<string[][]> => {
-    // #1 FASTEST READ: Direct Google Sheets API v4 read via GOOGLE_API_KEY (100ms ultra fast!)
     const safeSheet = sheetName.startsWith("'") ? sheetName : `'${sheetName.replace(/'/g, "")}'`;
     const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}`;
 
@@ -268,30 +309,30 @@ export async function readSheet(
       }
     }
 
-    const hasServiceAccount = Boolean(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL
-    );
-
-    if (hasServiceAccount) {
-      try {
-        const sheets = getSheetsClient();
-        const response = await withRetry(() =>
-          sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: fullRange,
-          })
-        );
-        let googleRows = (response.data.values as string[][]) ?? [];
-        if (googleRows.length > 0 && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
-          googleRows = googleRows.slice(1);
+    if (hasServiceAccountCredentials()) {
+      const candidates = getPossibleSheetNames(sheetName);
+      for (const cand of candidates) {
+        try {
+          const sheets = getSheetsClient();
+          const safeCand = cand.startsWith("'") ? cand : `'${cand.replace(/'/g, "")}'`;
+          const candRange = range ? `${safeCand}!${range}` : `${safeCand}`;
+          const response = await withRetry(() =>
+            sheets.spreadsheets.values.get({
+              spreadsheetId: SPREADSHEET_ID,
+              range: candRange,
+            })
+          );
+          let googleRows = (response.data.values as string[][]) ?? [];
+          if (googleRows.length > 0 && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
+            googleRows = googleRows.slice(1);
+          }
+          return googleRows;
+        } catch (err) {
+          // Try next candidate
         }
-        return googleRows;
-      } catch (err) {
-        console.warn(`[GoogleSheets API v4] ${sheetName} read failed:`, err);
       }
     }
 
-    // Pure Google Sheets CSV read (returns exactly what is in Google Sheets)
     return readPublicSheetCsv(sheetName);
   };
 
@@ -316,22 +357,32 @@ export async function appendRows(
 ): Promise<void> {
   clearSheetCache(sheetName);
 
-  // Use exactly one writer. This prevents duplicate writes when multiple
-  // credential types are configured at the same time.
   if (hasServiceAccountCredentials()) {
-    try {
-      const sheets = getSheetsClient();
-      await withRetry(() =>
-        sheets.spreadsheets.values.append({
-          spreadsheetId: SPREADSHEET_ID,
-          range: `${sheetName}!A1`,
-          valueInputOption: "RAW",
-          requestBody: { values },
-        })
-      );
-      return;
-    } catch (err) {
-      throw new Error(`ไม่สามารถเพิ่มข้อมูลในชีต ${sheetName}`, { cause: err });
+    const sheets = getSheetsClient();
+    const possibleSheetNames = getPossibleSheetNames(sheetName);
+
+    let lastAppendErr: unknown = null;
+    for (const nameCandidate of possibleSheetNames) {
+      try {
+        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+        await withRetry(() =>
+          sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${safeName}!A1`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values },
+          })
+        );
+        return;
+      } catch (candidateErr) {
+        lastAppendErr = candidateErr;
+      }
+    }
+
+    console.error(`[GoogleSheets appendRows Service Account Failed for ${sheetName}]:`, lastAppendErr);
+    if (!process.env.GOOGLE_SCRIPT_URL) {
+      const errMsg = lastAppendErr instanceof Error ? lastAppendErr.message : String(lastAppendErr);
+      throw new Error(`ไม่สามารถเพิ่มข้อมูลในชีต ${sheetName}: ${errMsg}`);
     }
   }
 
@@ -341,11 +392,12 @@ export async function appendRows(
       await assertAppsScriptSuccess(response, `Append ${sheetName}`);
       return;
     } catch (error) {
+      console.error(`[GoogleSheets appendRows Apps Script Error]:`, error);
       throw new Error(`ไม่สามารถเพิ่มข้อมูลในชีต ${sheetName}`, { cause: error });
     }
   }
 
-  throw new Error("ไม่ได้ตั้งค่าช่องทางเขียน Google Sheets");
+  throw new Error(`ไม่สามารถเพิ่มข้อมูลในชีต ${sheetName} (กรุณาตรวจสอบชื่อชีตหรือสิทธิ์การเขียน)`);
 }
 
 // ------ Update a specific row (by row number, 1-indexed) ------
@@ -357,20 +409,32 @@ export async function updateRow(
   clearSheetCache(sheetName);
 
   if (hasServiceAccountCredentials()) {
-    try {
-      const sheets = getSheetsClient();
-      const colEnd = columnLetter(values.length);
-      await withRetry(() =>
-        sheets.spreadsheets.values.update({
-          spreadsheetId: SPREADSHEET_ID,
-          range: `${sheetName}!A${rowNumber}:${colEnd}${rowNumber}`,
-          valueInputOption: "RAW",
-          requestBody: { values: [values] },
-        })
-      );
-      return;
-    } catch (err) {
-      throw new Error(`ไม่สามารถอัปเดตชีต ${sheetName} แถว ${rowNumber}`, { cause: err });
+    const sheets = getSheetsClient();
+    const colEnd = columnLetter(values.length);
+    const possibleSheetNames = getPossibleSheetNames(sheetName);
+
+    let lastUpdateErr: unknown = null;
+    for (const nameCandidate of possibleSheetNames) {
+      try {
+        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+        await withRetry(() =>
+          sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${safeName}!A${rowNumber}:${colEnd}${rowNumber}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [values] },
+          })
+        );
+        return;
+      } catch (candidateErr) {
+        lastUpdateErr = candidateErr;
+      }
+    }
+
+    console.error(`[GoogleSheets updateRow Service Account Failed for ${sheetName} row ${rowNumber}]:`, lastUpdateErr);
+    if (!process.env.GOOGLE_SCRIPT_URL) {
+      const errMsg = lastUpdateErr instanceof Error ? lastUpdateErr.message : String(lastUpdateErr);
+      throw new Error(`ไม่สามารถอัปเดตชีต ${sheetName} แถว ${rowNumber}: ${errMsg}`);
     }
   }
 
@@ -380,11 +444,12 @@ export async function updateRow(
       await assertAppsScriptSuccess(response, `Update ${sheetName} row ${rowNumber}`);
       return;
     } catch (error) {
+      console.error(`[GoogleSheets updateRow Apps Script Error]:`, error);
       throw new Error(`ไม่สามารถอัปเดตชีต ${sheetName} แถว ${rowNumber}`, { cause: error });
     }
   }
 
-  throw new Error("ไม่ได้ตั้งค่าช่องทางเขียน Google Sheets");
+  throw new Error(`ไม่สามารถอัปเดตชีต ${sheetName} แถว ${rowNumber} (กรุณาตรวจสอบสิทธิ์การเขียน)`);
 }
 
 // ------ Batch update multiple rows ------
@@ -424,10 +489,10 @@ export async function getSheetId(sheetName: string): Promise<number | null> {
   }
 }
 
-// ------ Delete specific rows by 0-indexed row numbers (sorted descending to avoid index shift) ------
+// ------ Delete specific rows by 0-indexed row numbers ------
 export async function deleteRows(
   sheetName: string,
-  rowIndices: number[] // 0-indexed (0 = header row, 1 = first data row A2)
+  rowIndices: number[]
 ): Promise<void> {
   if (rowIndices.length === 0) return;
   clearSheetCache(sheetName);
@@ -458,7 +523,7 @@ export async function deleteRows(
       );
       return;
     } catch (err) {
-      throw new Error(`ไม่สามารถลบแถวในชีต ${sheetName}`, { cause: err });
+      console.warn(`[GoogleSheets deleteRows Service Account Error]:`, err);
     }
   }
 
@@ -471,7 +536,6 @@ export async function deleteRows(
           await assertAppsScriptSuccess(response, `Delete ${sheetName} row ${rowNumber}`);
         } catch (scriptErr) {
           console.warn(`[deleteRows] Apps Script deleteRow failed/unsupported for ${sheetName} row ${rowNumber}, blanking row via update:`, scriptErr);
-          // Apps Script fallback: Overwrite row with blank empty cells
           await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]);
         }
       }
@@ -494,12 +558,10 @@ function columnLetter(colIndex: number): string {
   return letter;
 }
 
-// ------ Parse boolean from sheet ------
 export function parseBoolean(val: string | undefined): boolean {
   return val === "TRUE" || val === "true" || val === "1";
 }
 
-// ------ Format boolean for sheet ------
 export function formatBoolean(val: boolean): string {
   return val ? "TRUE" : "FALSE";
 }

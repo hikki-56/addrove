@@ -17,7 +17,7 @@
  * SECURITY MODEL:
  * - The Web App is accessible to "Anyone" so Vercel can call it.
  * - EVERY mutation request must include a valid HMAC-SHA256 signed envelope.
- * - The SIGNING_SECRET is stored in Script Properties (never hard-coded).
+ * - SIGNING_SECRET is stored in Script Properties (never hard-coded).
  * - Requests with missing, invalid, expired, or replayed signatures are rejected.
  * - doGet is read-only and returns no sensitive information.
  */
@@ -25,18 +25,25 @@
 // ---- Configuration ----
 
 var ALLOWED_ACTIONS = ['ping', 'append', 'update', 'deleteRow', 'atomicStockOperation'];
+var ALLOWED_ATOMIC_ACTIONS = ['append', 'update', 'updateStatus', 'checkBalance'];
 var ALLOWED_SHEETS = [
   'Warehouses', 'Locations', 'Shelves', 'PRODUCTS', 'Documents',
   'StockMovements', 'StockSummary', 'StockCounts', 'Users',
-  '\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e01\u0e32\u0e23\u0e40\u0e02\u0e49\u0e32\u0e23\u0e30\u0e1a\u0e1a', 'Idempotency', 'AuditLog', 'OperationJournal',
+  '\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e01\u0e32\u0e23\u0e40\u0e02\u0e49\u0e32\u0e23\u0e30\u0e1a\u0e1a', 'Idempotency', 'AuditLogs', 'OperationJournal',
   '\u0e42\u0e01\u0e14\u0e31\u0e071', '\u0e42\u0e01\u0e14\u0e31\u0e072', '\u0e42\u0e01\u0e14\u0e31\u0e073', '\u0e42\u0e01\u0e14\u0e31\u0e074', '\u0e42\u0e01\u0e14\u0e31\u0e075'
 ];
 
 var MAX_PAYLOAD_BYTES = 500000; // 500 KB
+var MAX_ENVELOPE_BYTES = MAX_PAYLOAD_BYTES + 1000;
 var MAX_ROWS_PER_APPEND = 100;
 var MAX_COLS_PER_ROW = 30;
+var MAX_CELL_BYTES = 50000;
+var MAX_ROW_NUMBER = 1000000;
+var MAX_ATOMIC_STEPS = 100;
 var TIMESTAMP_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
-var NONCE_CACHE_TTL_SECONDS = 360; // 6 minutes (> timestamp window)
+var TIMESTAMP_MAX_FUTURE_SKEW_MS = 30000;
+var NONCE_PROPERTY_PREFIX = 'STOCKIFY_NONCE_';
+var SIGNING_SECRET_PROPERTY = 'SIGNING_SECRET';
 
 // ---- Helpers ----
 
@@ -52,9 +59,9 @@ function errorResponse(error, code) {
 // ---- HMAC-SHA256 Verification ----
 
 function getSigningSecret() {
-  var secret = PropertiesService.getScriptProperties().getProperty('SIGNING_SECRET');
-  if (!secret) {
-    throw new Error('SIGNING_SECRET not configured in Script Properties');
+  var secret = PropertiesService.getScriptProperties().getProperty(SIGNING_SECRET_PROPERTY);
+  if (!secret || getUtf8ByteLength(secret) < 32) {
+    throw new Error(SIGNING_SECRET_PROPERTY + ' must be configured with at least 32 bytes');
   }
   return secret;
 }
@@ -82,32 +89,141 @@ function timingSafeCompare(a, b) {
   return result === 0;
 }
 
+function getUtf8ByteLength(value) {
+  return Utilities.newBlob(String(value), 'text/plain').getBytes().length;
+}
+
+function sha256Hex(value) {
+  var digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    value,
+    Utilities.Charset.UTF_8
+  );
+  return digest.map(function(byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('');
+}
+
+function assertValidRowNumber(value, operation) {
+  var rowNumber = Number(value);
+  if (!isFinite(rowNumber) || Math.floor(rowNumber) !== rowNumber ||
+      rowNumber < 2 || rowNumber > MAX_ROW_NUMBER) {
+    throw new Error(
+      'VALIDATION: ' + operation + ' rowNumber must be an integer between 2 and ' + MAX_ROW_NUMBER
+    );
+  }
+  return rowNumber;
+}
+
+function assertAllowedSheet(sheetName) {
+  if (typeof sheetName !== 'string' || ALLOWED_SHEETS.indexOf(sheetName) === -1) {
+    throw new Error('SHEET_DENIED: Unknown sheet "' + sheetName + '"');
+  }
+}
+
+function assertCellValue(value) {
+  var valueType = typeof value;
+  if (value !== null && valueType !== 'string' && valueType !== 'number' && valueType !== 'boolean') {
+    throw new Error('VALIDATION: cell values must be string, number, boolean, or null');
+  }
+  if (valueType === 'number' && !isFinite(value)) {
+    throw new Error('VALIDATION: numeric cell values must be finite');
+  }
+  if (valueType === 'string' && getUtf8ByteLength(value) > MAX_CELL_BYTES) {
+    throw new Error('VALIDATION: cell value exceeds maximum size');
+  }
+}
+
+function assertRowValues(values, operation) {
+  if (!Array.isArray(values) || values.length === 0 || values.length > MAX_COLS_PER_ROW) {
+    throw new Error(
+      'VALIDATION: ' + operation + ' values must contain 1-' + MAX_COLS_PER_ROW + ' columns'
+    );
+  }
+  for (var i = 0; i < values.length; i++) {
+    assertCellValue(values[i]);
+  }
+}
+
+function assertAppendValues(values) {
+  if (!Array.isArray(values) || values.length === 0 || values.length > MAX_ROWS_PER_APPEND) {
+    throw new Error(
+      'VALIDATION: append values must contain 1-' + MAX_ROWS_PER_APPEND + ' rows'
+    );
+  }
+
+  var expectedColumns = null;
+  for (var i = 0; i < values.length; i++) {
+    assertRowValues(values[i], 'append');
+    if (expectedColumns === null) expectedColumns = values[i].length;
+    if (values[i].length !== expectedColumns) {
+      throw new Error('VALIDATION: append rows must all have the same number of columns');
+    }
+  }
+}
+
+/**
+ * Must be called while holding the script lock. Script Properties are used
+ * instead of CacheService so replay protection is not lost to cache eviction.
+ */
+function registerNonce(nonce, timestamp, now) {
+  var properties = PropertiesService.getScriptProperties();
+  var nonceKey = NONCE_PROPERTY_PREFIX + sha256Hex(nonce);
+  var existing = properties.getProperty(nonceKey);
+  if (existing !== null) {
+    throw new Error('HMAC_REPLAY: Nonce already used');
+  }
+
+  var allProperties = properties.getProperties();
+  var staleKeys = [];
+  Object.keys(allProperties).forEach(function(key) {
+    if (key.indexOf(NONCE_PROPERTY_PREFIX) !== 0) return;
+    var storedAt = Number(allProperties[key]);
+    if (!isFinite(storedAt) || now - storedAt > TIMESTAMP_MAX_AGE_MS + TIMESTAMP_MAX_FUTURE_SKEW_MS) {
+      staleKeys.push(key);
+    }
+  });
+  for (var i = 0; i < staleKeys.length; i++) {
+    properties.deleteProperty(staleKeys[i]);
+  }
+
+  properties.setProperty(nonceKey, String(timestamp));
+}
+
 /**
  * Verify the signed envelope. Returns the parsed payload object.
  * Throws on any verification failure.
  */
 function verifyEnvelope(envelope) {
   // 1. Required fields
-  if (!envelope || !envelope.timestamp || !envelope.nonce ||
-      !envelope.payload || !envelope.signature) {
+  if (!envelope || typeof envelope.timestamp !== 'number' ||
+      typeof envelope.nonce !== 'string' || typeof envelope.payload !== 'string' ||
+      typeof envelope.signature !== 'string') {
     throw new Error('HMAC_MISSING: Missing required envelope fields');
+  }
+
+  if (!isFinite(envelope.timestamp) || Math.floor(envelope.timestamp) !== envelope.timestamp ||
+      envelope.timestamp <= 0) {
+    throw new Error('HMAC_INVALID: Invalid timestamp');
+  }
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(envelope.nonce)) {
+    throw new Error('HMAC_INVALID: Invalid nonce');
+  }
+  if (!envelope.payload || getUtf8ByteLength(envelope.payload) > MAX_PAYLOAD_BYTES) {
+    throw new Error('HMAC_INVALID: Invalid payload size');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(envelope.signature)) {
+    throw new Error('HMAC_INVALID: Invalid signature format');
   }
 
   // 2. Timestamp freshness
   var now = Date.now();
-  var age = now - Number(envelope.timestamp);
-  if (age > TIMESTAMP_MAX_AGE_MS || age < -30000) {
+  var age = now - envelope.timestamp;
+  if (age > TIMESTAMP_MAX_AGE_MS || age < -TIMESTAMP_MAX_FUTURE_SKEW_MS) {
     throw new Error('HMAC_EXPIRED: Timestamp outside acceptable window');
   }
 
-  // 3. Nonce replay check
-  var cache = CacheService.getScriptCache();
-  var nonceKey = 'nonce_' + envelope.nonce;
-  if (cache.get(nonceKey) !== null) {
-    throw new Error('HMAC_REPLAY: Nonce already used');
-  }
-
-  // 4. Verify signature
+  // 3. Verify signature
   var secret = getSigningSecret();
   var message = envelope.timestamp + '.' + envelope.nonce + '.' + envelope.payload;
   var expected = computeHmac(secret, message);
@@ -116,20 +232,26 @@ function verifyEnvelope(envelope) {
     throw new Error('HMAC_INVALID: Signature mismatch');
   }
 
-  // 5. Store nonce to prevent replay
-  cache.put(nonceKey, '1', NONCE_CACHE_TTL_SECONDS);
-
-  // 6. Parse and return payload
-  return JSON.parse(envelope.payload);
+  // 4. Parse and return payload. The caller registers the nonce after it
+  // acquires the script-wide lock so concurrent replays cannot race.
+  try {
+    return JSON.parse(envelope.payload);
+  } catch (parseError) {
+    throw new Error('VALIDATION: Signed payload is not valid JSON');
+  }
 }
 
 // ---- Payload Validation ----
 
 function validatePayload(parsed) {
+  if (!parsed || Object.prototype.toString.call(parsed) !== '[object Object]') {
+    throw new Error('VALIDATION: payload must be a JSON object');
+  }
+
   var action = parsed.action;
 
   // Action allowlist
-  if (ALLOWED_ACTIONS.indexOf(action) === -1) {
+  if (typeof action !== 'string' || ALLOWED_ACTIONS.indexOf(action) === -1) {
     throw new Error('ACTION_DENIED: Unknown action "' + action + '"');
   }
 
@@ -138,55 +260,79 @@ function validatePayload(parsed) {
     if (!parsed.sheetName) {
       throw new Error('VALIDATION: Missing sheetName');
     }
-    if (ALLOWED_SHEETS.indexOf(parsed.sheetName) === -1) {
-      throw new Error('SHEET_DENIED: Unknown sheet "' + parsed.sheetName + '"');
-    }
+    assertAllowedSheet(parsed.sheetName);
   }
 
   // Per-action validation
   if (action === 'append') {
-    if (!Array.isArray(parsed.values) || parsed.values.length === 0) {
-      throw new Error('VALIDATION: append requires non-empty values array');
-    }
-    if (parsed.values.length > MAX_ROWS_PER_APPEND) {
-      throw new Error('VALIDATION: append max ' + MAX_ROWS_PER_APPEND + ' rows per request');
-    }
-    for (var i = 0; i < parsed.values.length; i++) {
-      if (!Array.isArray(parsed.values[i]) || parsed.values[i].length > MAX_COLS_PER_ROW) {
-        throw new Error('VALIDATION: each row must be an array with max ' + MAX_COLS_PER_ROW + ' columns');
-      }
-    }
+    assertAppendValues(parsed.values);
   }
 
   if (action === 'update') {
-    var rowNum = Number(parsed.rowNumber);
-    if (!rowNum || rowNum < 2) {
-      throw new Error('VALIDATION: update rowNumber must be >= 2');
-    }
-    if (!Array.isArray(parsed.values) || parsed.values.length > MAX_COLS_PER_ROW) {
-      throw new Error('VALIDATION: update values must be an array with max ' + MAX_COLS_PER_ROW + ' columns');
-    }
+    assertValidRowNumber(parsed.rowNumber, 'update');
+    assertRowValues(parsed.values, 'update');
   }
 
   if (action === 'deleteRow') {
-    var delRow = Number(parsed.rowNumber);
-    if (!delRow || delRow < 2) {
-      throw new Error('VALIDATION: deleteRow rowNumber must be >= 2');
-    }
+    assertValidRowNumber(parsed.rowNumber, 'deleteRow');
   }
 
   if (action === 'atomicStockOperation') {
-    if (!parsed.idempotencyKey || !parsed.operationType) {
+    if (typeof parsed.idempotencyKey !== 'string' || !parsed.idempotencyKey ||
+        parsed.idempotencyKey.length > 200 || typeof parsed.operationType !== 'string' ||
+        !parsed.operationType || parsed.operationType.length > 100) {
       throw new Error('VALIDATION: atomicStockOperation requires idempotencyKey and operationType');
     }
-    if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) {
-      throw new Error('VALIDATION: atomicStockOperation requires non-empty steps array');
+    if (parsed.actorId !== undefined &&
+        (typeof parsed.actorId !== 'string' || !parsed.actorId || parsed.actorId.length > 200)) {
+      throw new Error('VALIDATION: atomicStockOperation actorId is invalid');
     }
-    // Validate each step's sheetName
+    if (!Array.isArray(parsed.steps) || parsed.steps.length === 0 ||
+        parsed.steps.length > MAX_ATOMIC_STEPS) {
+      throw new Error(
+        'VALIDATION: atomicStockOperation requires 1-' + MAX_ATOMIC_STEPS + ' steps'
+      );
+    }
+
     for (var j = 0; j < parsed.steps.length; j++) {
       var step = parsed.steps[j];
-      if (step.sheetName && ALLOWED_SHEETS.indexOf(step.sheetName) === -1) {
-        throw new Error('SHEET_DENIED: Unknown sheet "' + step.sheetName + '" in step ' + j);
+      if (!step || typeof step !== 'object' ||
+          ALLOWED_ATOMIC_ACTIONS.indexOf(step.action) === -1) {
+        throw new Error('ACTION_DENIED: Unknown atomic action in step ' + j);
+      }
+
+      if (step.action === 'append') {
+        assertAllowedSheet(step.sheetName);
+        assertAppendValues(step.values);
+      } else if (step.action === 'update') {
+        assertAllowedSheet(step.sheetName);
+        assertValidRowNumber(step.rowNumber, 'atomic update');
+        assertRowValues(step.values, 'atomic update');
+      } else if (step.action === 'updateStatus') {
+        if (step.sheetName !== 'Documents') {
+          throw new Error('SHEET_DENIED: updateStatus may only target Documents');
+        }
+        if (typeof step.documentId !== 'string' || !step.documentId || step.documentId.length > 200) {
+          throw new Error('VALIDATION: updateStatus requires a valid documentId');
+        }
+        if (typeof step.newStatus !== 'string' ||
+            ['DRAFT', 'PENDING', 'PROCESSING', 'POSTED', 'COMPLETED', 'REJECTED', 'CANCELLED'].indexOf(step.newStatus) === -1) {
+          throw new Error('VALIDATION: updateStatus contains an invalid status');
+        }
+        if (step.statusColumnIndex !== undefined && step.statusColumnIndex !== 5) {
+          throw new Error('VALIDATION: Documents status column index must be 5');
+        }
+      } else if (step.action === 'checkBalance') {
+        if (step.sheetName !== 'StockMovements') {
+          throw new Error('SHEET_DENIED: checkBalance may only target StockMovements');
+        }
+        if (typeof step.productId !== 'string' || !step.productId ||
+            typeof step.warehouseId !== 'string' || !step.warehouseId ||
+            typeof step.locationId !== 'string' || !step.locationId ||
+            typeof step.minRequired !== 'number' || !isFinite(step.minRequired) ||
+            step.minRequired < 0) {
+          throw new Error('VALIDATION: checkBalance step is invalid');
+        }
       }
     }
   }
@@ -210,6 +356,12 @@ function doAppend(parsed) {
   var lastRow = sheet.getLastRow();
   var numRows = values.length;
   var numCols = values[0].length;
+  if (lastRow + numRows > MAX_ROW_NUMBER || lastRow + numRows > sheet.getMaxRows()) {
+    throw new Error('VALIDATION: append exceeds sheet row bounds');
+  }
+  if (numCols > sheet.getMaxColumns()) {
+    throw new Error('VALIDATION: append exceeds sheet column bounds');
+  }
   sheet.getRange(lastRow + 1, 1, numRows, numCols).setValues(values);
   SpreadsheetApp.flush();
   return { success: true, message: 'Appended rows successfully', rowCount: numRows };
@@ -217,11 +369,14 @@ function doAppend(parsed) {
 
 function doUpdate(parsed) {
   var sheet = getSheet(parsed.sheetName);
-  var rowNumber = Number(parsed.rowNumber);
+  var rowNumber = assertValidRowNumber(parsed.rowNumber, 'update');
   var rowValues = parsed.values;
 
   if (rowNumber > sheet.getLastRow()) {
     throw new Error('VALIDATION: rowNumber exceeds last row');
+  }
+  if (rowValues.length > sheet.getMaxColumns()) {
+    throw new Error('VALIDATION: update exceeds sheet column bounds');
   }
 
   sheet.getRange(rowNumber, 1, 1, rowValues.length).setValues([rowValues]);
@@ -231,7 +386,7 @@ function doUpdate(parsed) {
 
 function doDeleteRow(parsed) {
   var sheet = getSheet(parsed.sheetName);
-  var rowNumber = Number(parsed.rowNumber);
+  var rowNumber = assertValidRowNumber(parsed.rowNumber, 'deleteRow');
 
   if (rowNumber > sheet.getLastRow()) {
     throw new Error('VALIDATION: rowNumber exceeds last row');
@@ -253,66 +408,80 @@ function doDeleteRow(parsed) {
  * The lock prevents concurrent execution across ALL Vercel instances.
  */
 function doAtomicStockOperation(parsed) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var idempSheet = getSheet('Idempotency');
+  var journalSheet = getSheet('OperationJournal');
+  var actorId = parsed.actorId || 'system';
+  var payloadHash = sha256Hex(JSON.stringify({
+    operationType: parsed.operationType,
+    actorId: actorId,
+    steps: parsed.steps
+  }));
 
-  // Check idempotency within the lock
-  var idempSheet = ss.getSheetByName('Idempotency');
-  if (idempSheet) {
-    var idempData = idempSheet.getDataRange().getValues();
-    for (var i = 1; i < idempData.length; i++) {
-      if (idempData[i][0] === parsed.idempotencyKey) {
-        if (idempData[i][3] === 'COMPLETED') {
-          // Return cached result
-          var cachedResult = {};
-          try {
-            cachedResult = JSON.parse(idempData[i][4] || '{}');
-          } catch (e) { /* ignore parse error */ }
-          return {
-            success: true,
-            isReplay: true,
-            result: cachedResult,
-            message: 'Idempotent replay — already completed'
-          };
-        }
-        if (idempData[i][3] === 'PROCESSING') {
-          throw new Error('IDEMPOTENCY_IN_PROGRESS: Operation is currently being processed');
-        }
-      }
+  // Idempotency uses the repository schema:
+  // key, operation_type, actor_id, payload_hash, status, response_payload,
+  // error_message, created_at, updated_at.
+  var idempData = idempSheet.getDataRange().getValues();
+  for (var i = 1; i < idempData.length; i++) {
+    if (idempData[i][0] !== parsed.idempotencyKey) continue;
+    if (idempData[i][3] && idempData[i][3] !== payloadHash) {
+      throw new Error('IDEMPOTENCY_CONFLICT: Key was already used with a different payload');
     }
+    if (idempData[i][4] === 'COMPLETED') {
+      var cachedResult = {};
+      try {
+        cachedResult = JSON.parse(idempData[i][5] || '{}');
+      } catch (parseError) {
+        throw new Error('IDEMPOTENCY_CORRUPT: Cached response is invalid JSON');
+      }
+      return {
+        success: true,
+        isReplay: true,
+        result: cachedResult,
+        message: 'Idempotent replay - already completed'
+      };
+    }
+    if (idempData[i][4] === 'PROCESSING') {
+      throw new Error('IDEMPOTENCY_IN_PROGRESS: Operation is currently being processed');
+    }
+    throw new Error('IDEMPOTENCY_FAILED: Previous attempt requires manual recovery');
   }
 
-  // Record IN_PROGRESS
-  if (!idempSheet) {
-    idempSheet = ss.insertSheet('Idempotency');
-    idempSheet.getRange(1, 1, 1, 6).setValues([['key', 'operation_type', 'actor_id', 'status', 'response_payload', 'timestamp']]);
-  }
-  var inProgressRow = [
+  var createdAt = new Date().toISOString();
+  idempSheet.appendRow([
     parsed.idempotencyKey,
     parsed.operationType,
-    parsed.actorId || 'system',
+    actorId,
+    payloadHash,
     'PROCESSING',
     '',
-    new Date().toISOString()
-  ];
-  idempSheet.appendRow(inProgressRow);
+    '',
+    createdAt,
+    createdAt
+  ]);
   var idempRowNum = idempSheet.getLastRow();
-  SpreadsheetApp.flush();
 
-  // Record journal
-  var journalSheet = ss.getSheetByName('OperationJournal');
-  if (!journalSheet) {
-    journalSheet = ss.insertSheet('OperationJournal');
-    journalSheet.getRange(1, 1, 1, 7).setValues([['operation_id', 'idempotency_key', 'operation_type', 'status', 'steps', 'last_error', 'timestamp']]);
-  }
-  var operationId = 'op-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  // OperationJournal uses the repository's 12-column schema.
+  var operationId = 'op-' + Utilities.getUuid();
+  var journalSteps = parsed.steps.map(function(step, index) {
+    return {
+      step_name: step.action + '_' + index,
+      status: 'PENDING'
+    };
+  });
+  var completedStepNames = [];
   journalSheet.appendRow([
     operationId,
     parsed.idempotencyKey,
     parsed.operationType,
+    payloadHash,
+    actorId,
+    JSON.stringify(journalSteps),
+    JSON.stringify(completedStepNames),
     'IN_PROGRESS',
-    JSON.stringify(parsed.steps.map(function(s) { return s.action; })),
+    0,
     '',
-    new Date().toISOString()
+    createdAt,
+    createdAt
   ]);
   var journalRowNum = journalSheet.getLastRow();
   SpreadsheetApp.flush();
@@ -321,49 +490,51 @@ function doAtomicStockOperation(parsed) {
   var completedStepCount = 0;
 
   try {
-    // Execute each step
     for (var s = 0; s < parsed.steps.length; s++) {
       var step = parsed.steps[s];
 
-      if (step.action === 'append' && step.sheetName) {
-        if (ALLOWED_SHEETS.indexOf(step.sheetName) === -1) {
-          throw new Error('SHEET_DENIED: "' + step.sheetName + '"');
-        }
+      if (step.action === 'append') {
         var appendSheet = getSheet(step.sheetName);
         var vals = step.values;
-        if (Array.isArray(vals) && vals.length > 0) {
-          var lr = appendSheet.getLastRow();
-          appendSheet.getRange(lr + 1, 1, vals.length, vals[0].length).setValues(vals);
+        var lastRow = appendSheet.getLastRow();
+        if (lastRow + vals.length > MAX_ROW_NUMBER ||
+            lastRow + vals.length > appendSheet.getMaxRows()) {
+          throw new Error('VALIDATION: atomic append exceeds sheet row bounds');
         }
-        stepResults.push({ step: s, action: 'append', sheetName: step.sheetName, rowCount: vals ? vals.length : 0 });
-      }
-
-      else if (step.action === 'update' && step.sheetName) {
-        if (ALLOWED_SHEETS.indexOf(step.sheetName) === -1) {
-          throw new Error('SHEET_DENIED: "' + step.sheetName + '"');
+        if (vals[0].length > appendSheet.getMaxColumns()) {
+          throw new Error('VALIDATION: atomic append exceeds sheet column bounds');
         }
+        appendSheet.getRange(lastRow + 1, 1, vals.length, vals[0].length).setValues(vals);
+        stepResults.push({
+          step: s,
+          action: 'append',
+          sheetName: step.sheetName,
+          rowCount: vals.length
+        });
+      } else if (step.action === 'update') {
         var updateSheet = getSheet(step.sheetName);
-        var rn = Number(step.rowNumber);
-        if (rn < 2 || rn > updateSheet.getLastRow()) {
-          throw new Error('VALIDATION: Invalid rowNumber ' + rn);
+        var rowNumber = assertValidRowNumber(step.rowNumber, 'atomic update');
+        if (rowNumber > updateSheet.getLastRow()) {
+          throw new Error('VALIDATION: atomic update rowNumber exceeds last row');
         }
-        updateSheet.getRange(rn, 1, 1, step.values.length).setValues([step.values]);
-        stepResults.push({ step: s, action: 'update', sheetName: step.sheetName, rowNumber: rn });
-      }
-
-      else if (step.action === 'updateStatus' && step.sheetName) {
-        if (ALLOWED_SHEETS.indexOf(step.sheetName) === -1) {
-          throw new Error('SHEET_DENIED: "' + step.sheetName + '"');
+        if (step.values.length > updateSheet.getMaxColumns()) {
+          throw new Error('VALIDATION: atomic update exceeds sheet column bounds');
         }
-        var statusSheet = getSheet(step.sheetName);
-        // Find row by document_id in column A
+        updateSheet.getRange(rowNumber, 1, 1, step.values.length).setValues([step.values]);
+        stepResults.push({
+          step: s,
+          action: 'update',
+          sheetName: step.sheetName,
+          rowNumber: rowNumber
+        });
+      } else if (step.action === 'updateStatus') {
+        var statusSheet = getSheet('Documents');
         var statusData = statusSheet.getDataRange().getValues();
         var found = false;
+        var statusColumnIndex = step.statusColumnIndex === undefined ? 5 : step.statusColumnIndex;
         for (var r = 1; r < statusData.length; r++) {
           if (statusData[r][0] === step.documentId) {
-            // Status is typically in a specific column; use step.statusColumn or default to column index from step
-            var statusCol = step.statusColumnIndex || 4; // 0-indexed, so column E
-            statusSheet.getRange(r + 1, statusCol + 1).setValue(step.newStatus);
+            statusSheet.getRange(r + 1, statusColumnIndex + 1).setValue(step.newStatus);
             found = true;
             stepResults.push({ step: s, action: 'updateStatus', rowNumber: r + 1 });
             break;
@@ -372,70 +543,78 @@ function doAtomicStockOperation(parsed) {
         if (!found) {
           throw new Error('DOCUMENT_NOT_FOUND: ' + step.documentId);
         }
-      }
-
-      else if (step.action === 'checkBalance') {
-        // Read StockMovements sheet and compute balance for product/warehouse/location
-        var movSheet = ss.getSheetByName('StockMovements');
-        if (!movSheet) {
-          throw new Error('SHEET_NOT_FOUND: StockMovements');
-        }
-        var movData = movSheet.getDataRange().getValues();
+      } else if (step.action === 'checkBalance') {
+        var movementSheet = getSheet('StockMovements');
+        var movementData = movementSheet.getDataRange().getValues();
         var balance = 0;
-        // Columns: movement_id(0), document_id(1), product_id(2), warehouse_id(3), location_id(4), qty_change(5)
-        for (var m = 1; m < movData.length; m++) {
-          if (movData[m][2] === step.productId &&
-              movData[m][3] === step.warehouseId &&
-              movData[m][4] === step.locationId) {
-            balance += Number(movData[m][5]) || 0;
+        for (var m = 1; m < movementData.length; m++) {
+          if (movementData[m][2] === step.productId &&
+              movementData[m][3] === step.warehouseId &&
+              movementData[m][4] === step.locationId) {
+            var quantity = Number(movementData[m][5]);
+            if (!isFinite(quantity)) {
+              throw new Error('DATA_CORRUPT: StockMovements contains a non-numeric quantity');
+            }
+            balance += quantity;
           }
         }
-        if (typeof step.minRequired === 'number' && balance < step.minRequired) {
+        if (balance < step.minRequired) {
           throw new Error('INSUFFICIENT_STOCK: Balance=' + balance + ' Required=' + step.minRequired);
         }
         stepResults.push({ step: s, action: 'checkBalance', balance: balance });
+      } else {
+        throw new Error('ACTION_DENIED: Unknown atomic action');
       }
 
       completedStepCount = s + 1;
+      var completedAt = new Date().toISOString();
+      journalSteps[s].status = 'COMPLETED';
+      journalSteps[s].executed_at = completedAt;
+      completedStepNames.push(journalSteps[s].step_name);
+      journalSheet.getRange(journalRowNum, 6).setValue(JSON.stringify(journalSteps));
+      journalSheet.getRange(journalRowNum, 7).setValue(JSON.stringify(completedStepNames));
+      journalSheet.getRange(journalRowNum, 12).setValue(completedAt);
+      SpreadsheetApp.flush();
     }
 
-    SpreadsheetApp.flush();
-
-    // Mark idempotency as COMPLETED
-    var resultPayload = JSON.stringify({ steps: stepResults, operationId: operationId });
-    idempSheet.getRange(idempRowNum, 4).setValue('COMPLETED');
-    idempSheet.getRange(idempRowNum, 5).setValue(resultPayload);
-    idempSheet.getRange(idempRowNum, 6).setValue(new Date().toISOString());
-
-    // Update journal
-    journalSheet.getRange(journalRowNum, 4).setValue('COMPLETED');
-    journalSheet.getRange(journalRowNum, 7).setValue(new Date().toISOString());
+    var result = { steps: stepResults, operationId: operationId };
+    var resultPayload = JSON.stringify(result);
+    var completedAt = new Date().toISOString();
+    idempSheet.getRange(idempRowNum, 5).setValue('COMPLETED');
+    idempSheet.getRange(idempRowNum, 6).setValue(resultPayload);
+    idempSheet.getRange(idempRowNum, 7).setValue('');
+    idempSheet.getRange(idempRowNum, 9).setValue(completedAt);
+    journalSheet.getRange(journalRowNum, 8).setValue('COMPLETED');
+    journalSheet.getRange(journalRowNum, 12).setValue(completedAt);
     SpreadsheetApp.flush();
 
     return {
       success: true,
       isReplay: false,
-      result: { steps: stepResults, operationId: operationId },
+      result: result,
       message: 'Atomic operation completed successfully'
     };
-
   } catch (stepError) {
-    // Mark idempotency as FAILED
     try {
-      idempSheet.getRange(idempRowNum, 4).setValue('FAILED');
-      idempSheet.getRange(idempRowNum, 5).setValue(stepError.toString());
-      idempSheet.getRange(idempRowNum, 6).setValue(new Date().toISOString());
-
-      // Update journal with failure
-      journalSheet.getRange(journalRowNum, 4).setValue('FAILED');
-      journalSheet.getRange(journalRowNum, 6).setValue(stepError.toString());
-      journalSheet.getRange(journalRowNum, 7).setValue(new Date().toISOString());
+      var failedAt = new Date().toISOString();
+      var errorMessage = stepError && stepError.message ? stepError.message : String(stepError);
+      if (completedStepCount < journalSteps.length) {
+        journalSteps[completedStepCount].status = 'FAILED';
+        journalSteps[completedStepCount].error = errorMessage;
+        journalSteps[completedStepCount].executed_at = failedAt;
+      }
+      idempSheet.getRange(idempRowNum, 5).setValue('FAILED');
+      idempSheet.getRange(idempRowNum, 7).setValue(errorMessage);
+      idempSheet.getRange(idempRowNum, 9).setValue(failedAt);
+      journalSheet.getRange(journalRowNum, 6).setValue(JSON.stringify(journalSteps));
+      journalSheet.getRange(journalRowNum, 7).setValue(JSON.stringify(completedStepNames));
+      journalSheet.getRange(journalRowNum, 8).setValue('RECOVERABLE');
+      journalSheet.getRange(journalRowNum, 10).setValue(errorMessage);
+      journalSheet.getRange(journalRowNum, 12).setValue(failedAt);
       SpreadsheetApp.flush();
-    } catch (cleanupErr) {
-      // Log but don't swallow the original error
-      console.error('Failed to record failure status:', cleanupErr);
+    } catch (cleanupError) {
+      console.error('Failed to record failure status:', cleanupError);
     }
-
     throw stepError;
   }
 }
@@ -451,8 +630,8 @@ function doPost(e) {
     if (!e || !e.postData || !e.postData.contents) {
       return errorResponse('Missing request body', 'MISSING_BODY');
     }
-    if (e.postData.contents.length > MAX_PAYLOAD_BYTES) {
-      return errorResponse('Payload too large (max ' + MAX_PAYLOAD_BYTES + ' bytes)', 'PAYLOAD_TOO_LARGE');
+    if (getUtf8ByteLength(e.postData.contents) > MAX_ENVELOPE_BYTES) {
+      return errorResponse('Request envelope is too large', 'PAYLOAD_TOO_LARGE');
     }
 
     // Parse envelope
@@ -478,10 +657,22 @@ function doPost(e) {
       return errorResponse(valErr.message, 'VALIDATION_FAILED');
     }
 
-    // Acquire lock
+    // Acquire the script-wide lock before registering the nonce. This makes
+    // replay detection and every subsequent mutation one serialized unit.
     hasLock = lock.tryLock(30000);
     if (!hasLock) {
       return errorResponse('Lock timeout: Could not acquire script lock within 30 seconds', 'LOCK_TIMEOUT');
+    }
+
+    try {
+      var lockedNow = Date.now();
+      var lockedAge = lockedNow - envelope.timestamp;
+      if (lockedAge > TIMESTAMP_MAX_AGE_MS || lockedAge < -TIMESTAMP_MAX_FUTURE_SKEW_MS) {
+        throw new Error('HMAC_EXPIRED: Timestamp outside acceptable window');
+      }
+      registerNonce(envelope.nonce, envelope.timestamp, lockedNow);
+    } catch (replayErr) {
+      return errorResponse(replayErr.message, 'AUTH_FAILED');
     }
 
     // Route action

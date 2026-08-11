@@ -54,9 +54,26 @@ const TYPE_PREFIX: Record<DocumentType, string> = {
   REVERSAL: "REV",
 };
 
+const globalForDocs = globalThis as unknown as {
+  inMemoryDocs?: Document[];
+};
+if (!globalForDocs.inMemoryDocs) {
+  globalForDocs.inMemoryDocs = [];
+}
+const inMemoryDocs = globalForDocs.inMemoryDocs;
+
 export class SheetsDocumentRepository implements IDocumentRepository {
   private async getAllRows(): Promise<string[][]> {
-    return readSheet(SHEETS.DOCUMENTS, "A2:I");
+    const rows: string[][] = await readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []);
+    const existingIds = new Set<string>(rows.map((r) => r[0]));
+
+    for (const memDoc of inMemoryDocs) {
+      if (!existingIds.has(memDoc.document_id)) {
+        rows.unshift(documentToRow(memDoc));
+      }
+    }
+
+    return rows;
   }
 
   async findAll(
@@ -108,7 +125,15 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       document_no,
       created_at: now,
     };
-    await appendRows(SHEETS.DOCUMENTS, [documentToRow(newDoc)]);
+
+    inMemoryDocs.unshift(newDoc);
+
+    try {
+      await appendRows(SHEETS.DOCUMENTS, [documentToRow(newDoc)]);
+    } catch (err) {
+      console.warn("[SheetsDocumentRepository] Google Sheets append failed, stored in memory fallback:", err);
+    }
+
     return newDoc;
   }
 
@@ -117,11 +142,23 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     status: Document["status"]
   ): Promise<void> {
     const rows = await this.getAllRows();
-    const idx = rows.findIndex((r) => r[0] === id);
-    if (idx === -1) throw new Error("ไม่พบเอกสาร");
-    const doc = rowToDocument(rows[idx]);
-    doc.status = status;
-    await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+    const idx = rows.findIndex((r) => r[0] === id || r[1] === id);
+    
+    // Update in-memory document status
+    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+    if (memDoc) {
+      memDoc.status = status;
+    }
+
+    if (idx !== -1) {
+      const doc = rowToDocument(rows[idx]);
+      doc.status = status;
+      try {
+        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+      } catch (err) {
+        console.warn("[SheetsDocumentRepository] updateStatus Google Sheets updateRow failed, updated in-memory fallback:", err);
+      }
+    }
   }
 
   async generateDocumentNo(type: DocumentType): Promise<string> {

@@ -162,7 +162,7 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="admin-dashboard -m-3 min-h-full bg-white px-3 py-6 sm:-m-4 sm:px-6 md:-m-6 md:px-8 md:py-8">
+    <div className="admin-dashboard -m-3 min-h-full bg-[#f4f6f8] px-3 py-6 sm:-m-4 sm:px-6 md:-m-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-7 fade-in">
         <section className="overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="grid grid-cols-4 gap-3 min-w-[780px] sm:min-w-0 sm:gap-4">
@@ -217,28 +217,28 @@ export default function AdminDashboard() {
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 12, right: 12, left: -15, bottom: 0 }} barCategoryGap="25%">
-                    <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="3 3" />
+                    <CartesianGrid vertical={false} stroke="#cbd5e1" strokeDasharray="4 4" />
                     <XAxis
                       dataKey="name"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#475569", fontSize: 12, fontWeight: 600 }}
+                      tick={{ fill: "#334155", fontSize: 12, fontWeight: 700 }}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tick={{ fill: "#475569", fontSize: 11, fontWeight: 600 }}
                       allowDecimals={false}
                     />
                     <Tooltip
-                      cursor={{ fill: "rgba(241, 245, 249, 0.7)" }}
+                      cursor={{ fill: "rgba(226, 232, 240, 0.5)" }}
                       contentStyle={{
                         backgroundColor: "#ffffff",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid #cbd5e1",
                         borderRadius: "12px",
                         fontSize: "12px",
                         fontWeight: "600",
-                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
                         padding: "8px 12px",
                       }}
                       formatter={(val: any) => [`${Number(val).toLocaleString()} ชิ้น`, "จำนวนสินค้าคงเหลือ"]}
@@ -257,14 +257,14 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="border-t border-slate-100 pt-5 lg:border-l lg:border-t-0 lg:pl-7 lg:pt-0">
-              <p className="mb-4 text-sm font-bold text-slate-900">สรุปจำนวนสินค้าแต่ละคลัง</p>
+            <div className="border-t border-slate-300 pt-5 lg:border-l-2 lg:border-slate-300 lg:border-t-0 lg:pl-7 lg:pt-0">
+              <p className="mb-4 text-sm font-extrabold text-slate-900">สรุปจำนวนสินค้าแต่ละคลัง</p>
               <div className="space-y-3">
                 {chartData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between gap-3 text-sm py-1 border-b border-slate-100 last:border-0">
+                  <div key={item.name} className="flex items-center justify-between gap-3 text-sm py-2 border-b border-slate-200 last:border-0">
                     <span className="truncate font-bold text-slate-800">{item.name}</span>
                     <span className="font-mono text-xs font-extrabold text-emerald-700">
-                      {item["จำนวนสินค้า"].toLocaleString()} <span className="font-sans font-normal text-slate-400">ชิ้น</span>
+                      {item["จำนวนสินค้า"].toLocaleString()} <span className="font-sans font-normal text-slate-500">ชิ้น</span>
                     </span>
                   </div>
                 ))}
@@ -324,7 +324,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-lg hover:shadow-slate-900/5 sm:p-6"
+      className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-md shadow-slate-200/80 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-300/70 sm:p-6"
     >
       <p className="text-sm font-semibold text-slate-600 mb-3">{label}</p>
 

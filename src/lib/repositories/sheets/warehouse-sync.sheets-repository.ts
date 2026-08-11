@@ -122,7 +122,10 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
 
       if (remainingQty <= 0) {
         try {
-          await deleteRows(sheetName, matchingRowIndices);
+          await deleteRows(
+            sheetName,
+            matchingRowIndices.map((index) => index + 1)
+          );
           for (const idx of matchingRowIndices) {
             const rowNumber = idx + 2;
             await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]).catch(() => {});
@@ -141,7 +144,10 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
         const secondaryIndices = matchingRowIndices.filter((idx) => idx !== primaryRowIndex);
         if (secondaryIndices.length > 0) {
           try {
-            await deleteRows(sheetName, secondaryIndices);
+            await deleteRows(
+              sheetName,
+              secondaryIndices.map((index) => index + 1)
+            );
           } catch {}
         }
       }
@@ -310,7 +316,10 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
 
       if (newSourceQty <= 0) {
         try {
-          await deleteRows(sheetName, matchingIndices);
+          await deleteRows(
+            sheetName,
+            matchingIndices.map((index) => index + 1)
+          );
           for (const idx of matchingIndices) {
             const rowNumber = idx + 2;
             await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]).catch(() => {});
@@ -329,7 +338,10 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
         const secondaryIndices = matchingIndices.filter((idx) => idx !== primaryIndex);
         if (secondaryIndices.length > 0) {
           try {
-            await deleteRows(sheetName, secondaryIndices);
+            await deleteRows(
+              sheetName,
+              secondaryIndices.map((index) => index + 1)
+            );
           } catch {}
         }
       }

@@ -82,7 +82,7 @@ export async function POST(
             document_id: doc.document_id,
             product_id: line.product_id,
             warehouse_id: warehouseId,
-            location_id: line.location_id || "loc-14A1",
+            location_id: line.location_id || "",
             qty_change: Number(line.qty),
             movement_type: "RECEIVE",
             idempotency_key: `approval-${doc.document_id}-${idx}`,
@@ -92,14 +92,14 @@ export async function POST(
       } else if (parsedPayload.rows && parsedPayload.rows.length > 0) {
         for (let idx = 0; idx < parsedPayload.rows.length; idx++) {
           const row = parsedPayload.rows[idx];
-          const sku = String(row[0]);
-          const loc = String(row[6] || "loc-14A1");
+          const sku = String(row[0] ?? "").trim();
+          const loc = String(row[1] ?? "").trim();
           movementInputs.push({
             document_id: doc.document_id,
             product_id: sku.startsWith("prod-") ? sku : `prod-${sku}`,
             warehouse_id: warehouseId,
-            location_id: loc.startsWith("loc-") ? loc : `loc-${loc}`,
-            qty_change: Number(row[5] || row[4] || 0),
+            location_id: loc,
+            qty_change: Number(row[4] || row[5] || 0),
             movement_type: "RECEIVE",
             idempotency_key: `approval-${doc.document_id}-${idx}`,
             created_by: doc.created_by || actor.id,
@@ -112,37 +112,46 @@ export async function POST(
       }
 
       const createdMovements = await repo.movements.batchCreate(movementInputs);
-      await repo.stockSummary.applyChanges(
-        createdMovements.map((movement: StockMovement) => ({
-          productId: movement.product_id,
-          warehouseId: movement.warehouse_id,
-          locationId: movement.location_id,
-          delta: movement.qty_change,
-        }))
-      );
+
+      try {
+        await repo.stockSummary.applyChanges(
+          createdMovements.map((movement: StockMovement) => ({
+            productId: movement.product_id,
+            warehouseId: movement.warehouse_id,
+            locationId: movement.location_id,
+            delta: movement.qty_change,
+          }))
+        );
+      } catch (sumErr) {
+        console.warn("[Approve Route] stockSummary.applyChanges warning:", sumErr);
+      }
 
       await repo.documents.updateStatus(doc.document_id, "POSTED");
 
       // Synchronize via repository adapter
       if (repo.warehouseSync) {
         for (const mov of createdMovements) {
-          const prod =
-            (await repo.products.findById(mov.product_id)) ||
-            (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")));
+          try {
+            const prod =
+              (await repo.products.findById(mov.product_id)) ||
+              (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")));
 
-          await repo.warehouseSync.syncAdd(
-            warehouseId,
-            {
-              sku: prod?.sku || mov.product_id.replace(/^prod-/, ""),
-              barcode: prod?.barcode || prod?.sku || mov.product_id,
-              product_name: prod?.product_name || mov.product_id,
-              category: prod?.category || "ทั่วไป",
-              base_unit: prod?.base_unit || "ชิ้น",
-              supplier: prod?.supplier || "รับสินค้าเข้าคลัง",
-            },
-            mov.qty_change,
-            mov.location_id
-          );
+            await repo.warehouseSync.syncAdd(
+              warehouseId,
+              {
+                sku: prod?.sku || mov.product_id.replace(/^prod-/, ""),
+                barcode: prod?.barcode || prod?.sku || mov.product_id,
+                product_name: prod?.product_name || mov.product_id,
+                category: prod?.category || "ทั่วไป",
+                base_unit: prod?.base_unit || "ชิ้น",
+                supplier: prod?.supplier || "รับสินค้าเข้าคลัง",
+              },
+              mov.qty_change,
+              mov.location_id
+            );
+          } catch (syncErr) {
+            console.warn("[Approve Route] warehouseSync.syncAdd warning:", syncErr);
+          }
         }
       }
 

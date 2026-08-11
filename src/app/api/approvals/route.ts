@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
+import { getRepository } from "@/lib/repositories";
 import { readSheet, SHEETS } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import {
   successResponse,
   unauthorizedResponse,
-  forbiddenResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
 
@@ -18,12 +18,16 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
-    if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่ดูรายการอนุมัติได้");
+    // Allow all roles to view approvals (Admin can approve, staff can check status)
 
     const { searchParams } = new URL(req.url);
     const targetStatus = (searchParams.get("status") || "PENDING").toUpperCase();
 
-    const rows = await readSheet(SHEETS.DOCUMENTS);
+    // Read documents through repository (includes in-memory fallback documents)
+    const repo = getRepository();
+    const allDocsResult = await repo.documents.findAll({ page: 1, limit: 99999 });
+    const allDocuments = allDocsResult.data || [];
+
     const resultDocs: Array<{
       document_id: string;
       document_no: string;
@@ -49,18 +53,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    for (const r of rows) {
-      if (!r || r.length === 0) continue;
-      // Skip header row if present
-      if (r[0] === "document_id" || r[0] === "ID" || r[0] === "document_no") continue;
+    // Fetch PRODUCTS repository to build SKU -> Supplier map
+    const allProducts = await repo.products.findAll().catch(() => []);
+    const productSupplierMap = new Map<string, string>();
+    allProducts.forEach((p: any) => {
+      const s = p.supplier || (p.description ? p.description.replace(/^ผู้จำหน่าย:\s*/, "") : "");
+      if (s && p.sku) productSupplierMap.set(p.sku.toLowerCase(), s);
+    });
 
-      const docType = (r[2] || "").trim().toUpperCase();
-      const rawDocStatus = (r[5] || "").trim().toUpperCase();
-      const overrideStatus = getDocumentStatus(r[0]) || getDocumentStatus(r[1]);
+    for (const doc of allDocuments) {
+      if (!doc.document_id) continue;
+
+      const docType = (doc.document_type || "").trim().toUpperCase();
+      const rawDocStatus = (doc.status || "").trim().toUpperCase();
+      const overrideStatus = getDocumentStatus(doc.document_id) || getDocumentStatus(doc.document_no);
       const docStatus = overrideStatus || rawDocStatus;
 
-      // Approvals page is for RECEIVE documents (or payloads containing target_sheet)
-      const isReceive = docType.includes("RECEIVE") || docType.includes("RCV") || (r[6] && r[6].includes("target_sheet"));
+      // Approvals page is for RECEIVE documents
+      const isReceive = docType.includes("RECEIVE") || docType.includes("RCV") || (doc.note && doc.note.includes("target_sheet"));
       if (!isReceive) continue;
 
       const isApprovedOrRejected = ["POSTED", "APPROVED", "COMPLETED", "REJECTED", "REJECT", "CANCELLED"].includes(docStatus);
@@ -71,15 +81,15 @@ export async function GET(req: NextRequest) {
         (targetStatus === "POSTED" && (docStatus === "POSTED" || docStatus === "APPROVED" || docStatus === "COMPLETED")) ||
         (targetStatus === "REJECTED" && (docStatus === "REJECTED" || docStatus === "REJECT" || docStatus === "CANCELLED"));
 
-      if (r[0] && matchesStatus) {
-        let parsedPayload = { warehouse_id: r[3] || "wh-1", target_sheet: "โกดัง1", rows: [] as Array<any[]> };
+      if (matchesStatus) {
+        let parsedPayload = { warehouse_id: "wh-1", target_sheet: "โกดัง1", rows: [] as Array<any[]> };
         try {
-          if (r[6] && r[6].startsWith("{")) {
-            parsedPayload = JSON.parse(r[6]);
+          if (doc.note && doc.note.startsWith("{")) {
+            parsedPayload = JSON.parse(doc.note);
           }
         } catch {}
 
-        // Resolve numeric barcodes for all items in parsedPayload.rows
+        // Resolve numeric barcodes & supplier for all items in parsedPayload.rows
         const resolvedRows = (parsedPayload.rows || []).map((rowItem) => {
           const itemRow = [...rowItem];
           const sku = String(itemRow[0] ?? "").trim();
@@ -87,15 +97,12 @@ export async function GET(req: NextRequest) {
           const r2 = String(itemRow[2] ?? "").trim();
           const r3 = String(itemRow[3] ?? "").trim();
 
-          // 1. First priority: Check PRODUCTS sheet lookup map for real barcode
           let rawBarcode = productBarcodeMap.get(sku.toLowerCase()) || "";
 
-          // 2. Second priority: Check if r2 is a numeric/distinct barcode
           if (!rawBarcode && r2 && r2 !== "ทั่วไป" && r2.toLowerCase() !== sku.toLowerCase()) {
             rawBarcode = r2;
           }
 
-          // 3. Third priority: Extract leading numbers from product name (r3 or r1)
           if (!rawBarcode || rawBarcode.toLowerCase() === sku.toLowerCase()) {
             const textToSearch = r3 || r1;
             const match = textToSearch.match(/^(\d{3,10})/);
@@ -107,17 +114,22 @@ export async function GET(req: NextRequest) {
           const formattedBarcode = to8DigitBarcode(rawBarcode, sku);
           itemRow[2] = formattedBarcode || rawBarcode || r1 || sku;
 
+          const currentSupplier = String(itemRow[6] ?? "").trim();
+          if (!currentSupplier || currentSupplier === "-" || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(currentSupplier)) {
+            itemRow[6] = productSupplierMap.get(sku.toLowerCase()) || "-";
+          }
+
           return itemRow;
         });
 
         resultDocs.push({
-          document_id: r[0],
-          document_no: r[1] || "",
-          warehouse_id: r[3] || parsedPayload.warehouse_id || "wh-1",
-          document_date: r[4] || "",
+          document_id: doc.document_id,
+          document_no: doc.document_no || "",
+          warehouse_id: parsedPayload.warehouse_id || "wh-1",
+          document_date: doc.document_date || "",
           status: docStatus,
-          created_by: r[7] || "Staff",
-          created_at: r[8] || new Date().toISOString(),
+          created_by: doc.created_by || "Staff",
+          created_at: doc.created_at || new Date().toISOString(),
           target_sheet: parsedPayload.target_sheet || "โกดัง1",
           rows: resolvedRows as any,
         });

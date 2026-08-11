@@ -37,18 +37,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // Parse warehouse_access with fail-closed behavior on malformed JSON
-          let warehouseAccess: string[] = [];
-          try {
-            const parsed = JSON.parse(user.warehouse_access);
-            if (Array.isArray(parsed)) {
-              warehouseAccess = parsed.filter((v): v is string => typeof v === "string");
-            } else if (parsed === "*") {
-              warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
-            }
-          } catch {
-            warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
-          }
+          // All users get access to all warehouses
+          const warehouseAccess: string[] = ["*"];
 
           return {
             id: user.user_id,

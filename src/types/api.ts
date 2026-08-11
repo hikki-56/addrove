@@ -105,6 +105,7 @@ export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 export const ReceiveLineSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
   location_id: z.string().default("loc-14A1"),
+  extra_locations: z.array(z.string()).optional().default([]),
   qty: z.number().positive("จำนวนต้องมากกว่า 0"),
   boxes: z.number().default(1),
   barcode: z.string().default(""),

@@ -27,6 +27,17 @@ function formatUserName(userVal?: string): string {
   return trimmed;
 }
 
+// Format supplier display value (filters out UUIDs)
+function formatSupplierName(supplierVal?: string): string {
+  if (!supplierVal) return "-";
+  const trimmed = supplierVal.trim();
+  if (!trimmed || trimmed === "-") return "-";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(trimmed)) {
+    return "-";
+  }
+  return trimmed;
+}
+
 // Format quantity safely
 function formatQuantity(val: any): string {
   if (val === null || val === undefined) return "1";
@@ -407,43 +418,37 @@ export default function ApprovalsPage() {
                         <th className="py-2.5 px-3 font-semibold">ผู้จำหน่าย</th>
                         <th className="py-2.5 px-3 font-semibold">บาร์โค้ด</th>
                         <th className="py-2.5 px-3 font-semibold">ชื่อสินค้า</th>
-                        <th className="py-2.5 px-3 font-semibold text-center">จำนวนรับเข้า</th>
-                        <th className="py-2.5 px-3 font-semibold">สต็อกขั้นต่ำ</th>
+                        <th className="py-2.5 px-3 font-semibold text-center">จำนวน</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {doc.rows.map((row, idx) => (
                         <tr key={idx} className="hover:bg-white/[0.03] transition-colors text-slate-300">
                           {/* รหัสสินค้า */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
                             {row[0] || "-"}
                           </td>
 
-                          {/* ผู้จำหน่าย / ตำแหน่ง */}
-                          <td className="py-2.5 px-3 text-slate-700 font-semibold">
-                            {row[6] || "-"}
+                          {/* ผู้จำหน่าย */}
+                          <td className="py-2.5 px-3 text-slate-300 font-semibold">
+                            {formatSupplierName(row[6])}
                           </td>
 
                           {/* บาร์โค้ด */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
                             {to8DigitBarcode(row[2], row[0]) || row[2] || row[1] || "-"}
                           </td>
 
                           {/* ชื่อสินค้า */}
-                          <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs truncate">
+                          <td className="py-2.5 px-3 font-bold text-slate-200 max-w-xs truncate">
                             {row[3] || "-"}
                           </td>
 
-                          {/* จำนวนรับเข้า */}
-                          <td className="py-2.5 px-3 text-center font-mono font-extrabold text-emerald-700 text-sm">
+                          {/* จำนวน */}
+                          <td className="py-2.5 px-3 text-center font-mono font-extrabold text-emerald-400 text-sm">
                             {!isNaN(Number(row[4])) && String(row[4]).trim() !== ""
                               ? Number(row[4])
                               : 1}
-                          </td>
-
-                          {/* สต็อกขั้นต่ำ */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                            {row[5] || "-"}
                           </td>
                         </tr>
                       ))}

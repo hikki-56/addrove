@@ -43,6 +43,27 @@ export function normalizeWarehouseId(val: string | null | undefined): string {
 }
 
 /**
+ * Detects if a scanned barcode or input string represents a warehouse code (e.g. WH-01..WH-05, WH1..WH5, โกดัง1..โกดัง5).
+ * Returns canonical warehouse_id (wh-01..wh-05) if matched, or null if not a warehouse barcode.
+ */
+export function detectWarehouseCode(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const s = code.trim().toLowerCase();
+  if (!s) return null;
+
+  if (/^wh-0[1-5]$/.test(s)) return s;
+  if (/^wh-[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^wh0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^warehouse-0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^warehouse0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
+
+  const thaiMatch = s.match(/^โกดัง\s*([1-5])$/);
+  if (thaiMatch) return `wh-0${thaiMatch[1]}`;
+
+  return null;
+}
+
+/**
  * Saves the active warehouse ID to localStorage and sessionStorage.
  */
 export function setActiveWarehouse(whId: string): string {
@@ -152,6 +173,34 @@ export function getDefaultLocationsForWarehouse(whId: string): Location[] {
       active: true,
       created_at: "",
       updated_at: "",
+    },
+  ];
+}
+
+/**
+ * Generates default fallback shelves for a location.
+ */
+export function getDefaultShelvesForLocation(locationId: string): any[] {
+  return [
+    {
+      shelf_id: `shelf-${locationId}-S1`,
+      location_id: locationId,
+      shelf_code: `${locationId}-S01`,
+      shelf_name: `ชั้นวาง 1`,
+      level: 1,
+      active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      shelf_id: `shelf-${locationId}-S2`,
+      location_id: locationId,
+      shelf_code: `${locationId}-S02`,
+      shelf_name: `ชั้นวาง 2`,
+      level: 2,
+      active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
   ];
 }

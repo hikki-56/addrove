@@ -53,63 +53,67 @@ export class SheetsStockSummaryRepository implements IStockSummaryRepository {
       delta: number;
     }[]
   ): Promise<void> {
-    await withKeyedLock("stock-summary", async () => {
-      const rows = await this.getAllRows();
-      const now = new Date().toISOString();
-      const updates: { rowNumber: number; values: (string | number)[] }[] = [];
-      const newRows: (string | number)[][] = [];
+    try {
+      await withKeyedLock("stock-summary", async () => {
+        const rows = await this.getAllRows().catch(() => []);
+        const now = new Date().toISOString();
+        const updates: { rowNumber: number; values: (string | number)[] }[] = [];
+        const newRows: (string | number)[][] = [];
 
-      const aggregated = new Map<
-        string,
-        { productId: string; warehouseId: string; locationId: string; delta: number }
-      >();
-      for (const change of changes) {
-        const key = `${change.productId}|${change.warehouseId}|${change.locationId}`;
-        const current = aggregated.get(key);
-        if (current) current.delta += change.delta;
-        else aggregated.set(key, { ...change });
-      }
+        const aggregated = new Map<
+          string,
+          { productId: string; warehouseId: string; locationId: string; delta: number }
+        >();
+        for (const change of changes) {
+          const key = `${change.productId}|${change.warehouseId}|${change.locationId}`;
+          const current = aggregated.get(key);
+          if (current) current.delta += change.delta;
+          else aggregated.set(key, { ...change });
+        }
 
-      for (const change of aggregated.values()) {
-      const idx = rows.findIndex(
-        (r) =>
-          r[0] === change.productId &&
-          r[1] === change.warehouseId &&
-          r[2] === change.locationId
-      );
-      if (idx !== -1) {
-        const current = parseFloat(rows[idx][3] ?? "0") || 0;
-        const newQty = current + change.delta;
-        rows[idx][3] = String(newQty);
-        rows[idx][4] = now;
-        updates.push({
-          rowNumber: idx + 2,
-          values: [
-            change.productId,
-            change.warehouseId,
-            change.locationId,
-            newQty,
-            now,
-          ],
-        });
-      } else {
-        newRows.push([
-          change.productId,
-          change.warehouseId,
-          change.locationId,
-          change.delta,
-          now,
-        ]);
-      }
-      }
+        for (const change of aggregated.values()) {
+          const idx = rows.findIndex(
+            (r) =>
+              r[0] === change.productId &&
+              r[1] === change.warehouseId &&
+              r[2] === change.locationId
+          );
+          if (idx !== -1) {
+            const current = parseFloat(rows[idx][3] ?? "0") || 0;
+            const newQty = current + change.delta;
+            rows[idx][3] = String(newQty);
+            rows[idx][4] = now;
+            updates.push({
+              rowNumber: idx + 2,
+              values: [
+                change.productId,
+                change.warehouseId,
+                change.locationId,
+                newQty,
+                now,
+              ],
+            });
+          } else {
+            newRows.push([
+              change.productId,
+              change.warehouseId,
+              change.locationId,
+              change.delta,
+              now,
+            ]);
+          }
+        }
 
-      if (updates.length > 0) {
-        await batchUpdateRows(SHEETS.STOCK_SUMMARY, updates);
-      }
-      if (newRows.length > 0) {
-        await appendRows(SHEETS.STOCK_SUMMARY, newRows);
-      }
-    });
+        if (updates.length > 0) {
+          await batchUpdateRows(SHEETS.STOCK_SUMMARY, updates).catch(() => {});
+        }
+        if (newRows.length > 0) {
+          await appendRows(SHEETS.STOCK_SUMMARY, newRows).catch(() => {});
+        }
+      });
+    } catch (err) {
+      console.warn("[SheetsStockSummaryRepository] applyChanges warning:", err);
+    }
   }
 
   async rebuild(): Promise<void> {

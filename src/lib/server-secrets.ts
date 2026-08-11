@@ -1,5 +1,10 @@
 const MIN_SECRET_LENGTH = 32;
 
+function normalizeSecret(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
 function requireSecret(name: string, value: string | undefined): string {
   const secret = value?.trim();
   if (!secret) {
@@ -19,8 +24,10 @@ export function getAuthSecret(): string {
 }
 
 export function getQrTokenSecret(): string {
-  const qrSecret = process.env.QR_TOKEN_SECRET?.trim();
-  const authSecret = (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET)?.trim();
+  const qrSecret = normalizeSecret(process.env.QR_TOKEN_SECRET);
+  const authSecret = normalizeSecret(
+    process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+  );
 
   if (process.env.NODE_ENV === "production") {
     if (!qrSecret) {
@@ -38,17 +45,42 @@ export function getQrTokenSecret(): string {
   return qrSecret || authSecret || "default-dev-qr-secret-key-32-chars-long";
 }
 
+export function getGoogleScriptSigningSecret(): string {
+  const signingSecret = requireSecret(
+    "GOOGLE_SCRIPT_SIGNING_SECRET",
+    process.env.GOOGLE_SCRIPT_SIGNING_SECRET
+  );
+
+  if (process.env.NODE_ENV === "production") {
+    const authSecret = normalizeSecret(
+      process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+    );
+    const qrSecret = normalizeSecret(process.env.QR_TOKEN_SECRET);
+
+    if (authSecret && signingSecret === authSecret) {
+      throw new Error("GOOGLE_SCRIPT_SIGNING_SECRET must not match AUTH_SECRET.");
+    }
+    if (qrSecret && signingSecret === qrSecret) {
+      throw new Error("GOOGLE_SCRIPT_SIGNING_SECRET must not match QR_TOKEN_SECRET.");
+    }
+  }
+
+  return signingSecret;
+}
+
 export function validateEnvironment(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  const authSecret = normalizeSecret(
+    process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+  );
   if (!authSecret) {
     errors.push("AUTH_SECRET is missing");
   } else if (process.env.NODE_ENV === "production" && authSecret.length < 32) {
     errors.push("AUTH_SECRET must be at least 32 characters in production");
   }
 
-  const qrSecret = process.env.QR_TOKEN_SECRET;
+  const qrSecret = normalizeSecret(process.env.QR_TOKEN_SECRET);
   if (process.env.NODE_ENV === "production") {
     if (!qrSecret) {
       errors.push("QR_TOKEN_SECRET is missing in production");
@@ -86,27 +118,43 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
     }
   }
 
-  const sheetId = process.env.GOOGLE_SHEET_ID;
+  const sheetId = normalizeSecret(process.env.GOOGLE_SHEET_ID);
   if (!sheetId) {
     errors.push("GOOGLE_SHEET_ID is required for storage");
   }
 
-  const hasServiceAccount = Boolean(
-    (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL) &&
-      process.env.GOOGLE_PRIVATE_KEY
+  const serviceAccountEmail = normalizeSecret(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL
   );
-  const hasScriptUrl = Boolean(process.env.GOOGLE_SCRIPT_URL);
+  const serviceAccountPrivateKey = normalizeSecret(process.env.GOOGLE_PRIVATE_KEY);
+  const hasServiceAccount = Boolean(
+    serviceAccountEmail && serviceAccountPrivateKey
+  );
+  const hasScriptUrl = Boolean(process.env.GOOGLE_SCRIPT_URL?.trim());
+  const scriptSigningSecret = normalizeSecret(
+    process.env.GOOGLE_SCRIPT_SIGNING_SECRET
+  );
 
   if (process.env.NODE_ENV === "production" && !hasServiceAccount && !hasScriptUrl) {
     errors.push("Google Sheets writer credentials missing (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY or GOOGLE_SCRIPT_URL)");
   }
 
   if (process.env.NODE_ENV === "production" && hasScriptUrl) {
-    const scriptSigningSecret = process.env.GOOGLE_SCRIPT_SIGNING_SECRET;
     if (!scriptSigningSecret) {
-      errors.push("GOOGLE_SCRIPT_SIGNING_SECRET is required when GOOGLE_SCRIPT_URL is set in production");
-    } else if (scriptSigningSecret.length < 32) {
-      errors.push("GOOGLE_SCRIPT_SIGNING_SECRET must be at least 32 characters");
+      errors.push(
+        "GOOGLE_SCRIPT_SIGNING_SECRET is required when GOOGLE_SCRIPT_URL is configured"
+      );
+    } else if (scriptSigningSecret.length < MIN_SECRET_LENGTH) {
+      errors.push(
+        `GOOGLE_SCRIPT_SIGNING_SECRET must be at least ${MIN_SECRET_LENGTH} characters in production`
+      );
+    } else {
+      if (authSecret && scriptSigningSecret === authSecret) {
+        errors.push("GOOGLE_SCRIPT_SIGNING_SECRET must not match AUTH_SECRET");
+      }
+      if (qrSecret && scriptSigningSecret === qrSecret) {
+        errors.push("GOOGLE_SCRIPT_SIGNING_SECRET must not match QR_TOKEN_SECRET");
+      }
     }
   }
 
@@ -124,4 +172,3 @@ export function assertServerEnvironment(): void {
     }
   }
 }
-

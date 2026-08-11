@@ -6,7 +6,7 @@ export interface BarcodeScanInputProps {
   value: string;
   onChange: (val: string) => void;
   onScanSubmit: (code: string) => void;
-  onOpenScannerModal: () => void;
+  onOpenScannerModal?: () => void;
   placeholder?: string;
   disabled?: boolean;
   isProcessing?: boolean;
@@ -63,10 +63,10 @@ export default function BarcodeScanInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || isProcessing}
-          className="w-full pl-11 pr-24 py-3.5 bg-slate-900/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-2xl text-slate-100 placeholder-slate-500 text-sm md:text-base outline-none transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full pl-11 pr-12 py-3.5 bg-slate-900/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-2xl text-slate-100 placeholder-slate-500 text-sm md:text-base outline-none transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
-        <div className="absolute inset-y-0 right-1.5 flex items-center pr-1 gap-1">
+        <div className="absolute inset-y-0 right-2 flex items-center pr-1 gap-1">
           {value && (
             <button
               type="button"
@@ -83,18 +83,20 @@ export default function BarcodeScanInput({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={onOpenScannerModal}
-            disabled={disabled || isProcessing}
-            className="px-3 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="hidden sm:inline">กล้อง</span>
-          </button>
+          {onOpenScannerModal && (
+            <button
+              type="button"
+              onClick={onOpenScannerModal}
+              disabled={disabled || isProcessing}
+              className="px-3 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="hidden sm:inline">กล้อง</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import {
 import type { ILocationRepository } from "../interfaces";
 import type { Location } from "@/types/models";
 import type { CreateLocationInput, UpdateLocationInput } from "@/types/api";
+import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 
 function generateUuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -63,15 +64,17 @@ function locationToRow(l: Location): (string | boolean)[] {
     l.updated_at,
   ];
 }
-
 export class SheetsLocationRepository implements ILocationRepository {
   async findAll(warehouseId?: string): Promise<Location[]> {
-    const [locRows, shelfRows, shelvesTableRows] = await Promise.all([
-      readSheet(SHEETS.LOCATIONS, "A2:H"),
+    const [locRows1, locRows2, locRows3, shelfRows, shelvesTableRows] = await Promise.all([
+      readSheet(SHEETS.LOCATIONS, "A2:H").catch(() => []),
+      readSheet("LOCATIONS", "A2:H").catch(() => []),
+      readSheet("LocationsTable", "A2:H").catch(() => []),
       readSheet(SHEETS.SHELVES, "A2:F").catch(() => []),
       readSheet("ShelvesTable", "A2:F").catch(() => []),
     ]);
 
+    const locRows = locRows1.length > 0 ? locRows1 : locRows2.length > 0 ? locRows2 : locRows3;
     const allShelves = [...(shelfRows || []), ...(shelvesTableRows || [])];
     const shelfMapByLocId = new Map<string, { shelf_code: string; shelf_name: string; shelf_level: string }>();
 
@@ -100,9 +103,12 @@ export class SheetsLocationRepository implements ILocationRepository {
       return loc;
     });
 
-    return warehouseId
-      ? locations.filter((l) => l.warehouse_id === warehouseId)
-      : locations;
+    if (warehouseId) {
+      const targetWh = normalizeWarehouseId(warehouseId);
+      return locations.filter((l) => normalizeWarehouseId(l.warehouse_id) === targetWh);
+    }
+
+    return locations;
   }
 
   async findById(id: string): Promise<Location | null> {

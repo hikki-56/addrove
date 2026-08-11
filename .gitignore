@@ -63,3 +63,6 @@ scratch/
 # OS
 Thumbs.db
 Desktop.ini
+
+.vercel
+.env*

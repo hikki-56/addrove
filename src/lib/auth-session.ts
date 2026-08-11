@@ -30,11 +30,7 @@ async function decodeSessionToken(token: string) {
           name: typeof decoded.name === "string" ? decoded.name : "ผู้ใช้งานระบบ",
           email: typeof decoded.email === "string" ? decoded.email : "",
           role: role as UserRole,
-          warehouse_access: Array.isArray(decoded.warehouse_access)
-            ? decoded.warehouse_access.filter(
-                (value): value is string => typeof value === "string"
-              )
-            : [],
+          warehouse_access: ["*"],
         },
         expires: new Date(expiresAt * 1000).toISOString(),
       };

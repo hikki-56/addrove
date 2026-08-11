@@ -11,8 +11,11 @@ import {
   validateActionAndSheet,
   validateMutationPayload,
   timingSafeEqual,
+  sendSignedAppsScriptRequest,
+  isLegacyAppsScriptMode,
   type SignedEnvelope,
 } from "@/lib/google-sheets/script-signer";
+import { appendRows } from "@/lib/google-sheets/client";
 import { createHmac, randomUUID } from "crypto";
 
 describe("Apps Script Authentication", () => {
@@ -24,6 +27,11 @@ describe("Apps Script Authentication", () => {
     jest.resetModules();
     process.env = { ...OLD_ENV };
     process.env.GOOGLE_SCRIPT_SIGNING_SECRET = MOCK_SECRET;
+    delete process.env.GOOGLE_SCRIPT_LEGACY_MODE;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -129,6 +137,9 @@ describe("Apps Script Authentication", () => {
       validateActionAndSheet("append", "StockMovements")
     ).not.toThrow();
     expect(() =>
+      validateActionAndSheet("append", "AuditLogs")
+    ).not.toThrow();
+    expect(() =>
       validateActionAndSheet("append", "โกดัง1")
     ).not.toThrow();
     expect(() =>
@@ -215,6 +226,100 @@ describe("Apps Script Authentication", () => {
     expect(() => getSigningSecret()).toThrow(
       "GOOGLE_SCRIPT_SIGNING_SECRET is required"
     );
+  });
+
+  test("getSigningSecret rejects a secret shorter than 32 bytes", () => {
+    process.env.GOOGLE_SCRIPT_SIGNING_SECRET = "too-short";
+    expect(() => getSigningSecret()).toThrow("at least 32 bytes");
+  });
+
+  test("signed ping uses POST and the canonical authenticated envelope", async () => {
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/apps-script";
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ success: true, message: "pong" })));
+
+    await sendSignedAppsScriptRequest({ action: "ping" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(process.env.GOOGLE_SCRIPT_URL);
+    expect(options?.method).toBe("POST");
+    expect(options?.headers).toEqual({ "Content-Type": "text/plain" });
+    const envelope = JSON.parse(String(options?.body)) as SignedEnvelope;
+    expect(verifySignedEnvelope(envelope, MOCK_SECRET)).toEqual({ action: "ping" });
+    fetchMock.mockRestore();
+  });
+
+  test("legacy mode sends the direct payload only outside production", async () => {
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/apps-script";
+    process.env.GOOGLE_SCRIPT_LEGACY_MODE = "true";
+    process.env.NODE_ENV = "development";
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ status: "success" })));
+
+    expect(isLegacyAppsScriptMode()).toBe(true);
+    await sendSignedAppsScriptRequest({ action: "ping" });
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(options?.body))).toEqual({ action: "ping" });
+  });
+
+  test("legacy status:success response is accepted by the local writer", async () => {
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/apps-script";
+    process.env.GOOGLE_SCRIPT_LEGACY_MODE = "true";
+    process.env.NODE_ENV = "development";
+    delete process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ status: "success", action: "append" })));
+
+    await expect(appendRows("Documents", [["doc-1"]])).resolves.toBeUndefined();
+  });
+
+  test("Apps Script writer rejects a non-JSON success response", async () => {
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/apps-script";
+    delete process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response("<html>unexpected redirect</html>"));
+
+    let cause: unknown;
+    try {
+      await appendRows("Documents", [["doc-1"]]);
+    } catch (error) {
+      cause = (error as Error & { cause?: unknown }).cause;
+    }
+
+    expect(cause).toBeInstanceOf(Error);
+    expect((cause as Error).message).toContain("invalid Apps Script response");
+    fetchMock.mockRestore();
+  });
+
+  test("Apps Script writer requires an explicit success:true response", async () => {
+    process.env.GOOGLE_SCRIPT_URL = "https://example.test/apps-script";
+    delete process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ status: "OK" })));
+
+    let cause: unknown;
+    try {
+      await appendRows("Documents", [["doc-1"]]);
+    } catch (error) {
+      cause = (error as Error & { cause?: unknown }).cause;
+    }
+
+    expect(cause).toBeInstanceOf(Error);
+    expect((cause as Error).message).toContain("was rejected");
+    fetchMock.mockRestore();
   });
 
   // ---- Timing-safe comparison ----
