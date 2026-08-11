@@ -212,7 +212,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
         existingRow[5] = String(newQty);
         existingRow[8] = new Date().toISOString();
 
-        await updateRow(sheetName, rowNumber, existingRow).catch(() => {});
+        await updateRow(sheetName, rowNumber, existingRow);
       } else {
         const newRow = [
           product.sku,
@@ -225,7 +225,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
           product.supplier || "เพิ่มสต็อก",
           new Date().toISOString(),
         ];
-        await appendRows(sheetName, [newRow]).catch(() => {});
+        await appendRows(sheetName, [newRow]);
       }
     } catch (e) {
       console.error("[SheetsWarehouseSync] syncAdd error:", e);

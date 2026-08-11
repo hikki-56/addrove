@@ -78,26 +78,14 @@ export function getPossibleSheetNames(sheetName: string): string[] {
   names.add(sheetName.replace(/\s+/g, ""));
 
   // Thai warehouse tab variations: โกดัง4 <-> โกดัง 4 <-> WH-04 <-> WH4 <-> WH-4
-  const thaiWhMatch = sheetName.match(/โกดัง\s*([0-9]+)/i);
-  if (thaiWhMatch) {
-    const num = thaiWhMatch[1];
+  const whMatch = sheetName.match(/(?:โกดัง|WH|Warehouse)\s*-?\s*0*([0-9]+)/i);
+  if (whMatch) {
+    const num = whMatch[1];
     const padNum = num.padStart(2, "0");
-    names.add(`โกดัง ${num}`);
     names.add(`โกดัง${num}`);
-    names.add(`WH-${padNum}`);
-    names.add(`WH-${num}`);
-    names.add(`WH${padNum}`);
-    names.add(`WH${num}`);
-    names.add(`Warehouse ${num}`);
-    names.add(`Warehouse${num}`);
-  }
-
-  const whCodeMatch = sheetName.match(/WH-?0?([0-9]+)/i);
-  if (whCodeMatch) {
-    const num = whCodeMatch[1];
-    const padNum = num.padStart(2, "0");
     names.add(`โกดัง ${num}`);
-    names.add(`โกดัง${num}`);
+    names.add(`โกดัง${padNum}`);
+    names.add(`โกดัง ${padNum}`);
     names.add(`WH-${padNum}`);
     names.add(`WH-${num}`);
     names.add(`WH${padNum}`);
