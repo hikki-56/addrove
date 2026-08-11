@@ -55,12 +55,12 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
       const [whRes, locRes, prodRes] = await Promise.all([
         fetch("/api/warehouses").then((r) => (r.ok ? r.json() : { data: [] })),
         fetch("/api/locations").then((r) => (r.ok ? r.json() : { data: [] })),
-        fetch("/api/products").then((r) => (r.ok ? r.json() : { data: [] })),
+        fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}`).then((r) => (r.ok ? r.json() : { data: [] })),
       ]);
 
       const fetchedWarehouses: Warehouse[] = whRes.data || [];
       const fetchedLocations: Location[] = locRes.data || [];
-      const fetchedProducts: Product[] = prodRes.data || [];
+      const fetchedProducts: Product[] = Array.isArray(prodRes.data) ? prodRes.data : prodRes.data?.items || [];
 
       setWarehouses(fetchedWarehouses.length > 0 ? fetchedWarehouses : (DEFAULT_WAREHOUSES as unknown as Warehouse[]));
       setLocations(fetchedLocations);
@@ -70,7 +70,7 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeWhId]);
 
   useEffect(() => {
     let mounted = true;

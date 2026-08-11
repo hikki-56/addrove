@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { MoveDocumentSchema, type MoveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import { v4 as uuidv4 } from "uuid";
-import { normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { normalizeWarehouseId, detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 export const MOVE_DRAFT_KEY = "stockify_move_draft_v1";
@@ -26,6 +26,7 @@ export function cleanLocStr(str?: string): string {
 
 export interface UseMoveMovementOptions {
   activeWhId: string;
+  setActiveWhId?: (whId: string) => void;
   activeWhName: string;
   locations: Location[];
   products: Product[];
@@ -35,13 +36,14 @@ export interface UseMoveMovementOptions {
 
 export function useMoveMovement({
   activeWhId,
+  setActiveWhId,
   activeWhName,
   locations,
   products,
   setProducts,
   refreshWarehouseData,
 }: UseMoveMovementOptions) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [sourceBalance, setSourceBalance] = useState<number | null>(null);
@@ -56,7 +58,7 @@ export function useMoveMovement({
       product_id: "",
       from_location_id: "",
       to_location_id: "",
-      qty: 1,
+      qty: "" as any,
       reference_no: "",
       note: "",
       document_date: new Date().toISOString().slice(0, 10),
@@ -96,6 +98,8 @@ export function useMoveMovement({
       ) ||
       null
     : null;
+
+
 
   let pBarcode = (selectedProduct?.barcode && selectedProduct.barcode.trim() !== "-") ? selectedProduct.barcode.trim() : "";
   let pSku = selectedProduct?.sku || "";
@@ -140,56 +144,24 @@ export function useMoveMovement({
       return;
     }
 
-    const scannedClean = cleanLocStr(trimmed);
-
-    // Step 1: Scan Source Location
-    if (step === 1) {
-      const matchedLoc = locations.find((l) => {
-        const lId = l.location_id.trim().toLowerCase();
-        const lCode = l.location_code.trim().toLowerCase();
-        const lName = (l.location_name || "").trim().toLowerCase();
-        const shelfCode = ((l as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-        const shelfName = ((l as unknown as { shelf_name?: string }).shelf_name || "").trim().toLowerCase();
-
-        if (trimmed === lId || trimmed === lCode || trimmed === lName || (shelfCode && trimmed === shelfCode) || (shelfName && trimmed === shelfName)) {
-          return true;
-        }
-
-        const cCode = cleanLocStr(lCode);
-        const cId = cleanLocStr(lId);
-        const cShelfCode = cleanLocStr(shelfCode);
-
-        return Boolean(
-          (cCode && scannedClean === cCode) ||
-          (cId && scannedClean === cId) ||
-          (cShelfCode && scannedClean === cShelfCode)
-        );
-      });
-
-      if (matchedLoc) {
-        const targetCode = matchedLoc.location_code || matchedLoc.location_id;
-        setValue("from_location_id", targetCode, { shouldValidate: true });
-        setScanFeedback({
-          type: "success",
-          message: `✓ สแกนเลือกตำแหน่งต้นทางสำเร็จ: ${matchedLoc.location_code} (${(matchedLoc as unknown as { shelf_name?: string }).shelf_name || matchedLoc.location_name || "ชั้นวาง"})`,
-        });
-        setBarcodeInput("");
-        setTimeout(() => setScanFeedback(null), 3000);
-        lastStepTransitionRef.current = Date.now();
-        setStep(2);
-        return;
-      } else {
-        setScanFeedback({
-          type: "error",
-          message: `✕ ไม่พบรหัสตำแหน่ง "${code}" ในโกดังนี้ (กรุณาสแกนหรือเลือกป้ายตำแหน่งที่มี)`,
-        });
-        setBarcodeInput("");
-        return;
+    // 0. Detect Warehouse Barcode / QR Code
+    const detectedWh = detectWarehouseCode(code);
+    if (detectedWh) {
+      if (setActiveWhId) {
+        setActiveWhId(detectedWh);
       }
+      setScanFeedback({
+        type: "success",
+        message: `✓ สลับโกดัง: ${getWarehouseName(detectedWh)}`,
+      });
+      setBarcodeInput("");
+      return;
     }
 
-    // Step 2: Scan Product Barcode
-    if (step === 2) {
+    const scannedClean = cleanLocStr(trimmed);
+
+    // Step 1: Scan Product Barcode
+    if (step === 1) {
       let matched = (products || []).find(
         (p) =>
           (p.barcode && p.barcode.trim().toLowerCase() === trimmed) ||
@@ -215,10 +187,6 @@ export function useMoveMovement({
             const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
             if (list.length > 0) {
               matched = list[0];
-              setProducts((prev) => {
-                const exists = (prev || []).some((p) => p.product_id === matched!.product_id);
-                return exists ? prev : [matched!, ...(prev || [])];
-              });
             }
           }
         } catch (e) {
@@ -227,19 +195,20 @@ export function useMoveMovement({
       }
 
       if (matched) {
-        const pid = matched.product_id || matched.sku;
+        const pid = matched.sku || matched.product_id;
         setValue("product_id", pid, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
         setScanFeedback({
           type: "success",
-          message: `✓ สแกนเลือกสินค้าสำเร็จ: [${matched.sku}] ${matched.product_name} (กรุณาระบุจำนวน แล้วกดถัดไป)`,
+          message: `✓ สแกนสำเร็จ: ${matched.sku || matched.product_name}`,
         });
         setBarcodeInput("");
-        setTimeout(() => setScanFeedback(null), 4000);
+        setTimeout(() => setScanFeedback(null), 3000);
         return;
       } else {
+        setValue("product_id", "", { shouldValidate: true, shouldDirty: true, shouldTouch: true });
         setScanFeedback({
           type: "error",
-          message: `✕ บาร์โค้ดสินค้า "${code}" ไม่มีอยู่ใน ${activeWhName} (ไม่อนุญาตให้ย้ายสินค้าที่ไม่มีอยู่ในโกดังนี้)`,
+          message: `✕ ไม่พบสินค้า "${code.trim()}" ใน ${activeWhName}`,
           scannedCode: code.trim(),
         });
         setBarcodeInput("");
@@ -247,8 +216,8 @@ export function useMoveMovement({
       }
     }
 
-    // Step 3: Scan Destination Location
-    if (step === 3) {
+    // Step 2: Scan Destination Location
+    if (step === 2) {
       const matchedLoc = locations.find((l) => {
         const lId = l.location_id.trim().toLowerCase();
         const lCode = l.location_code.trim().toLowerCase();
@@ -271,33 +240,17 @@ export function useMoveMovement({
         );
       });
 
-      if (matchedLoc) {
-        const targetCode = matchedLoc.location_code || matchedLoc.location_id;
-        if (targetCode === watchFromLocation || matchedLoc.location_id === watchFromLocation) {
-          setScanFeedback({
-            type: "error",
-            message: `✕ ตำแหน่งปลายทางต้องไม่ซ้ำกับตำแหน่งต้นทาง (${matchedLoc.location_code})`,
-          });
-          return;
-        }
-        setValue("to_location_id", targetCode, { shouldValidate: true });
-        setScanFeedback({
-          type: "success",
-          message: `✓ สแกนเลือกตำแหน่งปลายทางสำเร็จ: ${matchedLoc.location_code} (${(matchedLoc as unknown as { shelf_name?: string }).shelf_name || matchedLoc.location_name || "ชั้นวาง"})`,
-        });
-        setBarcodeInput("");
-        setTimeout(() => setScanFeedback(null), 4000);
-        return;
-      } else {
-        setScanFeedback({
-          type: "error",
-          message: `✕ ไม่พบรหัสตำแหน่ง "${code}" ในโกดังนี้ (กรุณาสแกนหรือเลือกป้ายตำแหน่งปลายทางที่มี)`,
-        });
-        setBarcodeInput("");
-        return;
-      }
+      const targetCode = matchedLoc ? (matchedLoc.location_code || matchedLoc.location_id) : code.trim().toUpperCase();
+      setValue("to_location_id", targetCode, { shouldValidate: true });
+      setScanFeedback({
+        type: "success",
+        message: `✓ ปลายทาง: ${targetCode}`,
+      });
+      setBarcodeInput("");
+      setTimeout(() => setScanFeedback(null), 4000);
+      return;
     }
-  }, [step, locations, products, activeWhId, activeWhName, setValue, setProducts, watchFromLocation]);
+  }, [step, locations, products, activeWhId, activeWhName, setValue, setProducts, setActiveWhId]);
 
   // Global scanner event listener
   const handleScanRef = useRef(handleScanBarcode);
@@ -307,85 +260,83 @@ export function useMoveMovement({
 
   useEffect(() => {
     let buffer = "";
-    let timeoutId: NodeJS.Timeout;
     let lastScanTime = 0;
 
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
         target &&
-        (target.tagName === "TEXTAREA" || target.isContentEditable)
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
       ) {
         return;
       }
 
-      if (e.key === "Enter" || e.key === "NumpadEnter") {
-        const currentTime = Date.now();
-        if (currentTime - lastScanTime < 400) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
+      const now = Date.now();
+      if (now - lastScanTime > 200) {
+        buffer = "";
+      }
+      lastScanTime = now;
 
-        if (buffer.trim().length >= 2) {
+      if (e.key === "Enter") {
+        if (buffer.length >= 2) {
           e.preventDefault();
-          e.stopPropagation();
-          lastScanTime = currentTime;
-          const text = buffer.trim();
-          buffer = "";
-          handleScanRef.current(text);
+          handleScanRef.current(buffer);
         }
+        buffer = "";
         return;
       }
 
       if (e.key.length === 1) {
         buffer += e.key;
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          buffer = "";
-        }, 150);
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown);
-      clearTimeout(timeoutId);
     };
   }, []);
 
+  const maxAvailableQty = selectedProduct
+    ? Number(selectedProduct.quantity ?? selectedProduct.minimum_stock ?? 0)
+    : null;
+
   const handleNextStep1 = () => {
     setError("");
-    if (!watchFromLocation) {
-      setError("กรุณาสแกนหรือเลือกตำแหน่งต้นทางก่อนทำรายการถัดไป");
-      return;
-    }
-    setStep(2);
-  };
-
-  const handleNextStep2 = () => {
-    setError("");
     if (!watchProduct) {
-      setError(`กรุณายิงสแกนบาร์โค้ดสินค้าที่มีใน ${activeWhName} ก่อนทำรายการถัดไป`);
+      setError("กรุณายิงสแกนสินค้าก่อน");
       return;
     }
+
     const isWhProduct = (products || []).some(
       (p) =>
         p.product_id.toLowerCase() === watchProduct.toLowerCase() ||
         p.sku.toLowerCase() === watchProduct.toLowerCase() ||
         (p.barcode && p.barcode.trim().toLowerCase() === watchProduct.toLowerCase()) ||
         p.product_id.toLowerCase() === `prod-${watchProduct.toLowerCase()}`
-    );
-    if (!isWhProduct && selectedProduct === null) {
-      setError(`ไม่พบสินค้า "${watchProduct}" ใน ${activeWhName} (กรุณาสแกนหรือเลือกสินค้าที่มีอยู่ในโกดังนี้เท่านั้น)`);
+    ) || selectedProduct !== null;
+
+    if (!isWhProduct) {
+      setError(`ไม่พบสินค้า "${watchProduct}" ใน ${activeWhName}`);
       return;
     }
+
     const currentQty = Number(watchQty);
     if (!currentQty || currentQty <= 0) {
-      setError("กรุณาระบุจำนวนสินค้าให้ถูกต้อง (มากกว่า 0)");
+      setError("กรุณาระบุจำนวนมากกว่า 0");
       return;
     }
-    setStep(3);
+
+    if (maxAvailableQty !== null && maxAvailableQty > 0 && currentQty > maxAvailableQty) {
+      setError(`จำนวนที่ระบุ (${currentQty}) เกินจำนวนคงเหลือในโกดัง (มีอยู่ ${maxAvailableQty} ชิ้น)`);
+      return;
+    }
+
+    setStep(2);
+  };
+
+  const handleNextStep2 = () => {
+    // 2-step flow step 2 is final submit
   };
 
   const onSubmit = async (data: MoveDocumentInput) => {
@@ -393,20 +344,14 @@ export function useMoveMovement({
     const rawFrom = (selectedFromLoc?.location_code || watchFromLocation || data.from_location_id || "").trim();
     const rawTo = (selectedToLoc?.location_code || watchToLocation || data.to_location_id || "").trim();
 
-    if (!rawFrom) {
-      setError("กรุณาเลือกหรือสแกนตำแหน่งต้นทาง");
-      return;
-    }
     if (!rawTo) {
       setError("กรุณาเลือกหรือสแกนตำแหน่งปลายทางก่อนกดบันทึก");
       return;
     }
 
-    const normFrom = rawFrom.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").toLowerCase();
-    const normTo = rawTo.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").toLowerCase();
-
-    if (normFrom === normTo) {
-      setError("ตำแหน่งปลายทางต้องไม่เหมือนตำแหน่งต้นทาง");
+    const currentQty = Number(data.qty) || 1;
+    if (maxAvailableQty !== null && maxAvailableQty > 0 && currentQty > maxAvailableQty) {
+      setError(`จำนวนที่ระบุ (${currentQty}) เกินจำนวนคงเหลือในโกดัง (มีอยู่ ${maxAvailableQty} ชิ้น)`);
       return;
     }
 
@@ -418,7 +363,7 @@ export function useMoveMovement({
           ...data,
           from_location_id: rawFrom,
           to_location_id: rawTo,
-          qty: Number(data.qty) || 1,
+          qty: currentQty,
         }),
       });
       const json = await res.json();
@@ -449,7 +394,7 @@ export function useMoveMovement({
       product_id: "",
       from_location_id: "",
       to_location_id: "",
-      qty: 1,
+      qty: "" as any,
       document_date: new Date().toISOString().slice(0, 10),
       idempotency_key: uuidv4(),
     });
@@ -470,6 +415,7 @@ export function useMoveMovement({
     error,
     setError,
     sourceBalance,
+    maxAvailableQty,
     barcodeInput,
     setBarcodeInput,
     scanFeedback,

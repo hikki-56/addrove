@@ -214,6 +214,9 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
         const newQty = currentQty + qty;
 
         existingRow[5] = String(newQty);
+        if (locationId && locationId.trim()) {
+          existingRow[6] = locationId.replace(/^loc-/, "").trim();
+        }
         existingRow[8] = new Date().toISOString();
 
         await updateRow(sheetName, rowNumber, existingRow);

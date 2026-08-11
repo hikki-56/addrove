@@ -63,7 +63,7 @@ export default function BarcodeScanInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || isProcessing}
-          className="w-full pl-11 pr-12 py-3.5 bg-slate-900/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-2xl text-slate-100 placeholder-slate-500 text-sm md:text-base outline-none transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full pl-11 pr-12 py-3.5 bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl text-slate-900 font-bold placeholder-slate-400 text-sm md:text-base outline-none transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         <div className="absolute inset-y-0 right-2 flex items-center pr-1 gap-1">

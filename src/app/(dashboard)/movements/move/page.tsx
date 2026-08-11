@@ -31,6 +31,7 @@ export default function MovePage() {
 
   const moveHook = useMoveMovement({
     activeWhId,
+    setActiveWhId,
     activeWhName,
     locations,
     products,
@@ -74,41 +75,32 @@ export default function MovePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* 3-Step Guided Progress Indicator Header */}
-      <div className="glass-card rounded-2xl p-5 border border-white/10 shadow-xl space-y-4">
-        <WarehouseTabs
-          activeWarehouseId={activeWhId}
-          onSelectWarehouse={(whId) => {
-            setActiveWhId(whId);
-            resetForm();
-          }}
-          warehouses={warehouses}
-        />
-
-        <div className="flex items-center justify-between max-w-md mx-auto px-4 pt-2">
+      {/* 2-Step Guided Progress Indicator Header */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-lg space-y-4">
+        <div className="flex items-center justify-between max-w-xs mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                 step >= 1
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-500/20 scale-105"
-                  : "bg-white text-slate-600 border-2 border-slate-300 shadow-sm"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
+                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
             </div>
             <span
-              className={`text-[11px] font-bold text-center leading-tight pt-1 ${
-                step >= 1 ? "text-emerald-400" : "text-slate-400"
+              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
+                step >= 1 ? "text-emerald-600" : "text-slate-400"
               }`}
             >
-              {step > 1 ? "ต้นทางถูกต้อง" : "ตำแหน่งต้นทาง"}
+              {step > 1 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
             </span>
           </div>
 
           <div
-            className={`h-0.5 w-12 -mt-5 transition-all duration-300 ${
-              step > 1 ? "bg-emerald-500" : "bg-slate-300 opacity-60"
+            className={`h-0.5 w-16 -mt-5 transition-all duration-300 ${
+              step > 1 ? "bg-emerald-500" : "bg-slate-200 opacity-80"
             }`}
           />
 
@@ -117,41 +109,15 @@ export default function MovePage() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                 step >= 2
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-500/20 scale-105"
-                  : "bg-white text-slate-600 border-2 border-slate-300 shadow-sm"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
+                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
               }`}
             >
-              {step > 2 ? "✓" : "2"}
+              2
             </div>
             <span
-              className={`text-[11px] font-bold text-center leading-tight pt-1 ${
-                step >= 2 ? "text-emerald-400" : "text-slate-400"
-              }`}
-            >
-              {step > 2 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
-            </span>
-          </div>
-
-          <div
-            className={`h-0.5 w-12 -mt-5 transition-all duration-300 ${
-              step > 2 ? "bg-emerald-500" : "bg-slate-300 opacity-60"
-            }`}
-          />
-
-          {/* Step 3 */}
-          <div className="flex flex-col items-center gap-1.5 flex-1">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                step >= 3
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-500/20 scale-105"
-                  : "bg-white text-slate-600 border-2 border-slate-300 shadow-sm"
-              }`}
-            >
-              3
-            </div>
-            <span
-              className={`text-[11px] font-bold text-center leading-tight pt-1 ${
-                step >= 3 ? "text-emerald-400" : "text-slate-400"
+              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
+                step >= 2 ? "text-emerald-600" : "text-slate-400"
               }`}
             >
               ตำแหน่งปลายทาง
@@ -165,24 +131,14 @@ export default function MovePage() {
         value={barcodeInput}
         onChange={setBarcodeInput}
         onScanSubmit={handleScanBarcode}
-        onOpenScannerModal={() => setIsCameraOpen(true)}
         placeholder={
           step === 1
-            ? `สแกน QR Code ตำแหน่งต้นทางใน ${activeWhName}...`
-            : step === 2
-            ? `สแกนบาร์โค้ดสินค้าใน ${activeWhName}...`
-            : `สแกน QR Code ตำแหน่งปลายทางใน ${activeWhName}...`
+            ? "สแกนบาร์โค้ดสินค้า..."
+            : "สแกน QR Code / บาร์โค้ด ตำแหน่งปลายทาง..."
         }
       />
 
-      {/* Selected Product Card Preview */}
-      <MoveProductCard
-        selectedProduct={selectedProduct}
-        displayName={displayName}
-        displaySku={displaySku}
-        displayBarcode={displayBarcode}
-        watchProduct={watchProduct}
-      />
+
 
       {/* Main Move Form */}
       <MoveForm
@@ -199,6 +155,7 @@ export default function MovePage() {
         watchFromLocation={watchFromLocation}
         watchToLocation={watchToLocation}
         watchQty={watchQty}
+        maxAvailableQty={moveHook.maxAvailableQty}
         displayName={displayName}
         displaySku={displaySku}
         displayBarcode={displayBarcode}

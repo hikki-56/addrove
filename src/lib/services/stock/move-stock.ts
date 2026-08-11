@@ -21,11 +21,11 @@ export async function moveStock(
   deps: StockUseCaseDeps,
   input: MoveStockInput & { user_id: string; role?: string; correlation_id?: string }
 ): Promise<Document> {
-  const fromLoc = input.from_location_id || "loc-14A1";
+  const fromLoc = (input.from_location_id || "").trim();
   const toLoc = input.to_location_id;
 
   const lockKeys = [
-    formatStockLockKey(input.warehouse_id, fromLoc, input.product_id),
+    ...(fromLoc ? [formatStockLockKey(input.warehouse_id, fromLoc, input.product_id)] : []),
     formatStockLockKey(input.warehouse_id, toLoc, input.product_id),
   ];
 
@@ -78,25 +78,29 @@ export async function moveStock(
         created_by: input.user_id,
       });
 
-      // 5. Create movements (OUT from fromLoc, IN to to_location_id)
+      // 5. Create movements (OUT from fromLoc if specified, IN to to_location_id)
       const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [
-        {
-          document_id: doc.document_id,
-          product_id: input.product_id,
-          warehouse_id: warehouse.warehouse_id,
-          location_id: fromLoc,
-          qty_change: -input.qty,
-          movement_type: "MOVE_OUT",
-          idempotency_key: `${input.idempotency_key}-0`,
-          created_by: input.user_id,
-        },
+        ...(fromLoc
+          ? [
+              {
+                document_id: doc.document_id,
+                product_id: input.product_id,
+                warehouse_id: warehouse.warehouse_id,
+                location_id: fromLoc,
+                qty_change: -input.qty,
+                movement_type: "MOVE_OUT" as const,
+                idempotency_key: `${input.idempotency_key}-0`,
+                created_by: input.user_id,
+              },
+            ]
+          : []),
         {
           document_id: doc.document_id,
           product_id: input.product_id,
           warehouse_id: warehouse.warehouse_id,
           location_id: input.to_location_id,
           qty_change: input.qty,
-          movement_type: "MOVE_IN",
+          movement_type: "MOVE_IN" as const,
           idempotency_key: `${input.idempotency_key}-1`,
           created_by: input.user_id,
         },
