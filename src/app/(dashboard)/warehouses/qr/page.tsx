@@ -31,7 +31,13 @@ export default function WarehouseQrPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setBaseUrl(window.location.origin);
+      const currentOrigin = window.location.origin;
+      // If hosted on Vercel (.vercel.app), force canonical production domain to prevent Vercel Preview Login prompt when scanning from phone
+      if (currentOrigin.includes(".vercel.app")) {
+        setBaseUrl("https://addrove-app.vercel.app");
+      } else {
+        setBaseUrl(currentOrigin);
+      }
     }
     // Auto-detect server Wi-Fi IP
     fetch("/api/system/ip")
