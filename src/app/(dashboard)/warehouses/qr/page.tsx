@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
+import {
+  getWarehouseQrProductionOrigin,
+  resolveWarehouseQrBaseUrl,
+} from "./_lib/warehouse-qr-url";
 
 interface WarehouseItem {
   id: string;
@@ -31,13 +35,7 @@ export default function WarehouseQrPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const currentOrigin = window.location.origin;
-      // If hosted on Vercel (.vercel.app), force canonical production domain to prevent Vercel Preview Login prompt when scanning from phone
-      if (currentOrigin.includes(".vercel.app")) {
-        setBaseUrl("https://addrove-app.vercel.app");
-      } else {
-        setBaseUrl(currentOrigin);
-      }
+      setBaseUrl(resolveWarehouseQrBaseUrl(window.location.origin));
     }
     // Auto-detect server Wi-Fi IP
     fetch("/api/system/ip")
@@ -51,15 +49,16 @@ export default function WarehouseQrPage() {
   }, []);
 
   const actionObj = ACTIONS.find((a) => a.id === selectedAction) || ACTIONS[0];
+  const qrBaseUrl = resolveWarehouseQrBaseUrl(baseUrl);
 
   useEffect(() => {
-    if (!baseUrl) return;
+    if (!qrBaseUrl) return;
 
     const generateQrs = async () => {
       const urls: Record<string, string> = {};
       for (const wh of WAREHOUSES) {
         const targetPath = `${actionObj.path}?warehouse_id=${wh.id}`;
-        const fullTargetUrl = `${baseUrl}/employee-login?warehouse_id=${wh.id}&callbackUrl=${encodeURIComponent(targetPath)}`;
+        const fullTargetUrl = `${qrBaseUrl}/employee-login?warehouse_id=${wh.id}&callbackUrl=${encodeURIComponent(targetPath)}`;
         try {
           const dataUrl = await QRCode.toDataURL(fullTargetUrl, {
             width: 320,
@@ -78,7 +77,7 @@ export default function WarehouseQrPage() {
     };
 
     generateQrs();
-  }, [baseUrl, actionObj]);
+  }, [qrBaseUrl, actionObj]);
 
   const handlePrint = () => {
     window.print();
@@ -151,6 +150,7 @@ export default function WarehouseQrPage() {
               type="text"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
+              onBlur={() => setBaseUrl(resolveWarehouseQrBaseUrl(baseUrl))}
               className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-emerald-400 font-mono text-xs font-semibold focus:outline-none focus:border-indigo-500 w-64"
             />
             <button
@@ -162,10 +162,10 @@ export default function WarehouseQrPage() {
             </button>
             <button
               type="button"
-              onClick={() => typeof window !== "undefined" && setBaseUrl(window.location.origin)}
+              onClick={() => setBaseUrl(getWarehouseQrProductionOrigin())}
               className="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition-colors"
             >
-              ใช้ URL ปัจจุบัน
+              ใช้ URL Production
             </button>
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function WarehouseQrPage() {
         {WAREHOUSES.map((wh) => {
           const qrDataUrl = qrUrls[wh.id];
           const targetPath = `${actionObj.path}?warehouse_id=${wh.id}`;
-          const fullTargetUrl = `${baseUrl}/employee-login?warehouse_id=${wh.id}&callbackUrl=${encodeURIComponent(targetPath)}`;
+          const fullTargetUrl = `${qrBaseUrl}/employee-login?warehouse_id=${wh.id}&callbackUrl=${encodeURIComponent(targetPath)}`;
 
           return (
             <div
