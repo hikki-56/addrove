@@ -89,9 +89,10 @@ export async function POST(
       return notFoundResponse("ไม่พบเอกสารขอรับสินค้านี้");
     }
 
-    if (doc.status !== "PENDING" && doc.status !== "DRAFT" && doc.status !== "NEW") {
+    const currentStatus = String(doc.status || "").toUpperCase();
+    if (currentStatus !== "PENDING" && currentStatus !== "DRAFT" && currentStatus !== "NEW") {
       return conflictResponse(
-        doc.status === "POSTED"
+        currentStatus === "POSTED" || currentStatus === "APPROVED"
           ? "เอกสารนี้ถูกอนุมัติไปแล้ว"
           : `ไม่สามารถอนุมัติเอกสารสถานะ ${doc.status || "ไม่ทราบสถานะ"}`
       );
