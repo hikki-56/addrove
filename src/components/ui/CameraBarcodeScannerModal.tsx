@@ -22,6 +22,14 @@ export default function CameraBarcodeScannerModal({
   const [cameraError, setCameraError] = useState<string>("");
   const [manualCode, setManualCode] = useState<string>("");
   const [isScanningLive, setIsScanningLive] = useState<boolean>(false);
+  const [isContinuous, setIsContinuous] = useState<boolean>(true);
+
+  const isContinuousRef = useRef<boolean>(true);
+  const lastScannedCodeRef = useRef<{ code: string; time: number }>({ code: "", time: 0 });
+
+  useEffect(() => {
+    isContinuousRef.current = isContinuous;
+  }, [isContinuous]);
 
   // Stop camera helper
   const stopLiveCamera = async () => {
@@ -108,10 +116,23 @@ export default function CameraBarcodeScannerModal({
           },
           (decodedText) => {
             if (isSubscribed && decodedText) {
+              const now = Date.now();
+              // Prevent duplicate camera triggers for same code within 1.5 seconds in continuous mode
+              if (
+                decodedText === lastScannedCodeRef.current.code &&
+                now - lastScannedCodeRef.current.time < 1500
+              ) {
+                return;
+              }
+              lastScannedCodeRef.current = { code: decodedText, time: now };
+
               playSuccessBeep();
               if (onScan) onScan(decodedText);
               if (onScanSuccess) onScanSuccess(decodedText);
-              onClose();
+
+              if (!isContinuousRef.current) {
+                onClose();
+              }
             }
           },
           () => {
@@ -213,14 +234,30 @@ export default function CameraBarcodeScannerModal({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsContinuous(!isContinuous)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                isContinuous
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm"
+                  : "bg-white/[0.04] text-slate-400 border-white/10"
+              }`}
+              title={isContinuous ? "โหมดสแกนต่อเนื่อง (สแกนหลายๆ บาร์โค้ดได้โดยไม่ต้องปิดกล้อง)" : "โหมดสแกนทีละครั้ง"}
+            >
+              <span className={`w-2 h-2 rounded-full ${isContinuous ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+              <span>{isContinuous ? "⚡ สแกนต่อเนื่อง" : "สแกนทีละครั้ง"}</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Video Camera Viewport */}

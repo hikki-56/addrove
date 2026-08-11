@@ -180,7 +180,7 @@ export function useReceiveMovement({
       }
     }
 
-    const finalLocCode = matchedLoc ? matchedLoc.location_code : rawTrimmed.toUpperCase();
+    const finalLocCode = rawTrimmed.toUpperCase();
     const finalLocId = matchedLoc ? matchedLoc.location_id : rawTrimmed.toUpperCase();
 
     if (!matchedLoc) {
@@ -226,26 +226,7 @@ export function useReceiveMovement({
       return;
     }
 
-    // 0.5 Check if scanned code is a Location Barcode
-    let matchedLoc = locations.find((l) => {
-      const shelfCode = ((l as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-      const locCode = (l.location_code || "").trim().toLowerCase();
-      const locId = (l.location_id || "").trim().toLowerCase();
-      const locName = (l.location_name || "").trim().toLowerCase();
-      return (
-        (locCode && locCode === trimmed) ||
-        (locId && locId === trimmed) ||
-        (shelfCode && shelfCode === trimmed) ||
-        (locName && locName === trimmed)
-      );
-    });
-
-    const isExplicitLocationPattern =
-      Boolean(matchedLoc) ||
-      /^(loc|wh[0-9]|shelf|rack|a|b|c|d|e|f|k\d)[-_]?[a-z0-9]+/i.test(trimmed) ||
-      /^[a-z0-9]{3,15}$/i.test(trimmed);
-
-    // Step 1: Product scanning match check
+    // Step 1: Product Scanning Match Check (Local Array + API Search Fallback)
     let matched = (products || []).find(
       (p) =>
         (p.barcode && p.barcode.trim().toLowerCase() === trimmed) ||
@@ -253,66 +234,6 @@ export function useReceiveMovement({
         (p.product_id && p.product_id.trim().toLowerCase() === trimmed) ||
         (p.product_id && p.product_id.trim().toLowerCase() === `prod-${trimmed}`)
     );
-
-    // If it's a location code or no product matched and looks like location code
-    if ((isExplicitLocationPattern && !matched) || (matchedLoc && !matched)) {
-      const currentLines = watchLines || [];
-      if (currentLines.length > 0) {
-        const rawTrimmed = code.trim();
-        const finalLocCode = matchedLoc ? matchedLoc.location_code : rawTrimmed.toUpperCase();
-        const finalLocId = matchedLoc ? matchedLoc.location_id : rawTrimmed.toUpperCase();
-
-        if (!matchedLoc) {
-          const newLocObj: Location = {
-            location_id: finalLocId,
-            warehouse_id: activeWhId || "wh-01",
-            location_code: finalLocCode,
-            location_name: `ตำแหน่ง ${finalLocCode}`,
-            active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          if (setLocations) setLocations((prev) => [newLocObj, ...prev]);
-        }
-
-        const firstUnconfirmed = currentLines.findIndex(
-          (_, idx) => !confirmedLines[idx] && (idx === 0 || confirmedLines[idx - 1])
-        );
-        const targetIdx = firstUnconfirmed !== -1 ? firstUnconfirmed : 0;
-        const targetLine = currentLines[targetIdx];
-
-        const currentExtras: string[] = Array.isArray((targetLine as any).extra_locations)
-          ? [...(targetLine as any).extra_locations]
-          : [];
-
-        const emptyExtraIdx = currentExtras.findIndex((loc) => !loc || !loc.trim());
-
-        if (emptyExtraIdx !== -1) {
-          // Empty extra slot explicitly exists (created by + เพิ่มตำแหน่งสแกน) -> Fill extra slot!
-          currentExtras[emptyExtraIdx] = finalLocCode;
-          setValue(`lines.${targetIdx}.extra_locations` as any, currentExtras, { shouldValidate: true, shouldDirty: true });
-        } else {
-          // No empty extra slot -> Re-scanning / replacing the primary location (Location 1)!
-          setValue(`lines.${targetIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
-          setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocCode }));
-        }
-
-        // Location scan only updates location fields for the current targetIdx card.
-        // Item card confirmation is ONLY toggled when user explicitly clicks the "ยืนยัน" button.
-
-        const lineProduct = products?.find((p) => p.product_id === currentLines[targetIdx].product_id || p.sku === currentLines[targetIdx].product_id);
-        const prodName = lineProduct ? lineProduct.product_name : currentLines[targetIdx].product_id;
-
-        setScanFeedback({
-          type: "success",
-          title: "ระบุตำแหน่งจัดเก็บสำเร็จ",
-          message: `📍 บันทึกตำแหน่ง [${finalLocCode}] ให้กับสินค้า ${prodName} แล้ว`,
-        });
-        setBarcodeInput("");
-        isProcessingRef.current = false;
-        return;
-      }
-    }
 
     if (!matched) {
       matched = (products || []).find(
@@ -342,6 +263,7 @@ export function useReceiveMovement({
       }
     }
 
+    // IF PRODUCT MATCHED -> ADD OR INCREMENT PRODUCT
     if (matched) {
       const pid = matched.product_id || matched.sku;
       const currentLines = watchLines || [];
@@ -360,20 +282,6 @@ export function useReceiveMovement({
           message: `${barcodePrefix}[${matched.sku}] ${matched.product_name} (เพิ่มเป็น ${currentBoxes + 1} กล่อง)`,
         });
       } else {
-        // Block scanning next product if any existing line item is NOT yet confirmed!
-        const unconfirmedIdx = currentLines.findIndex((_, idx) => !confirmedLines[idx]);
-        if (unconfirmedIdx !== -1) {
-          setError(`🔒 กรุณากดยืนยันรายการสินค้าที่ #${unconfirmedIdx + 1} ก่อนยิงสแกนสินค้าถัดไป`);
-          setScanFeedback({
-            type: "error",
-            title: "ต้องยืนยันรายการเดิมก่อน",
-            message: `🔒 กรุณากดยืนยันรายการสินค้าที่ #${unconfirmedIdx + 1} ให้เสร็จสิ้นก่อนยิงสแกนสินค้าถัดไป`,
-          });
-          setBarcodeInput("");
-          isProcessingRef.current = false;
-          return;
-        }
-
         append({
           product_id: pid,
           location_id: "",
@@ -396,17 +304,93 @@ export function useReceiveMovement({
         setScanFeedback(null);
         setLastScannedId(null);
       }, 4000);
-    } else {
-      setScanFeedback({
-        type: "error",
-        title: "ไม่มีข้อมูล",
-        message: `บาร์โค้ด "${code}" ไม่พบในระบบ`,
-      });
-      setBarcodeInput("");
-      setTimeout(() => {
-        setScanFeedback(null);
-      }, 4000);
+      isProcessingRef.current = false;
+      return;
     }
+
+    // Step 2: Location Scanning Check (ONLY executed if NO Product matched!)
+    let matchedLoc = locations.find((l) => {
+      const shelfCode = ((l as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
+      const locCode = (l.location_code || "").trim().toLowerCase();
+      const locId = (l.location_id || "").trim().toLowerCase();
+      const locName = (l.location_name || "").trim().toLowerCase();
+      return (
+        (locCode && locCode === trimmed) ||
+        (locId && locId === trimmed) ||
+        (shelfCode && shelfCode === trimmed) ||
+        (locName && locName === trimmed)
+      );
+    });
+
+    const isExplicitLocationPattern =
+      Boolean(matchedLoc) ||
+      /^(loc|wh[0-9]?|shelf|rack|bin|slf|sh|tier|zone)[-_]/i.test(trimmed) ||
+      (!/^\d+$/.test(trimmed) && /^[a-z]{1,3}[-_]?[0-9]{1,4}[a-z0-9]*$/i.test(trimmed));
+
+    if (matchedLoc || isExplicitLocationPattern) {
+      const currentLines = watchLines || [];
+      if (currentLines.length > 0) {
+        const rawTrimmed = code.trim();
+        const finalLocCode = rawTrimmed.toUpperCase();
+        const finalLocId = matchedLoc ? matchedLoc.location_id : rawTrimmed.toUpperCase();
+
+        if (!matchedLoc) {
+          const newLocObj: Location = {
+            location_id: finalLocId,
+            warehouse_id: activeWhId || "wh-01",
+            location_code: finalLocCode,
+            location_name: `ตำแหน่ง ${finalLocCode}`,
+            active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          if (setLocations) setLocations((prev) => [newLocObj, ...prev]);
+        }
+
+        const firstUnconfirmed = currentLines.findIndex(
+          (_, idx) => !confirmedLines[idx] && (idx === 0 || confirmedLines[idx - 1])
+        );
+        const targetIdx = firstUnconfirmed !== -1 ? firstUnconfirmed : 0;
+        const targetLine = currentLines[targetIdx];
+
+        const currentExtras: string[] = Array.isArray((targetLine as any).extra_locations)
+          ? [...(targetLine as any).extra_locations]
+          : [];
+
+        const emptyExtraIdx = currentExtras.findIndex((loc) => !loc || !loc.trim());
+
+        if (emptyExtraIdx !== -1) {
+          currentExtras[emptyExtraIdx] = finalLocCode;
+          setValue(`lines.${targetIdx}.extra_locations` as any, currentExtras, { shouldValidate: true, shouldDirty: true });
+        } else {
+          setValue(`lines.${targetIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
+          setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocCode }));
+        }
+
+        const lineProduct = products?.find((p) => p.product_id === currentLines[targetIdx].product_id || p.sku === currentLines[targetIdx].product_id);
+        const prodName = lineProduct ? lineProduct.product_name : currentLines[targetIdx].product_id;
+
+        setScanFeedback({
+          type: "success",
+          title: "ระบุตำแหน่งจัดเก็บสำเร็จ",
+          message: `📍 บันทึกตำแหน่ง [${finalLocCode}] ให้กับสินค้า ${prodName} แล้ว`,
+        });
+        setBarcodeInput("");
+        isProcessingRef.current = false;
+        return;
+      }
+    }
+
+    // Step 3: Neither Product nor Location
+    setScanFeedback({
+      type: "error",
+      title: "ไม่พบข้อมูล",
+      message: `บาร์โค้ด "${code}" ไม่พบในระบบสินค้า หรือ รหัสตำแหน่งไม่ถูกต้อง`,
+    });
+    setBarcodeInput("");
+    setTimeout(() => {
+      setScanFeedback(null);
+    }, 4000);
 
     isProcessingRef.current = false;
   }, [step, locations, products, activeWhId, watchLines, setValue, append, setLocations, setProducts]);
@@ -534,19 +518,6 @@ export function useReceiveMovement({
         message: `${barcodePrefix}[${product.sku}] ${product.product_name} (เพิ่มเป็น ${currentBoxes + 1} กล่อง)`,
       });
       } else {
-        // Block adding next product if any existing line item is NOT yet confirmed!
-        const unconfirmedIdx = currentLines.findIndex((_, idx) => !confirmedLines[idx]);
-        if (unconfirmedIdx !== -1) {
-          setError(`🔒 กรุณากดยืนยันรายการสินค้าที่ #${unconfirmedIdx + 1} ก่อนเพิ่มสินค้าถัดไป`);
-          setScanFeedback({
-            type: "error",
-            title: "ต้องยืนยันรายการเดิมก่อน",
-            message: `🔒 กรุณากดยืนยันรายการสินค้าที่ #${unconfirmedIdx + 1} ให้เสร็จสิ้นก่อนเพิ่มสินค้าถัดไป`,
-          });
-          setSearchOpen(false);
-          return;
-        }
-
         append({
           product_id: pid,
           location_id: "",

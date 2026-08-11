@@ -61,6 +61,21 @@ export default function ReceiveLineItem({
   const currentLocation = watch(`lines.${index}.location_id`) || "";
   const extraLocations: string[] = watch(`lines.${index}.extra_locations` as any) || [];
 
+  const getLocationDisplay = (locVal: string): string => {
+    if (!locVal || !locVal.trim()) return "";
+    const cleanVal = locVal.trim().toLowerCase();
+    const matched = locations.find(
+      (l) =>
+        (l.location_code || "").trim().toLowerCase() === cleanVal ||
+        (l.location_id || "").trim().toLowerCase() === cleanVal ||
+        ((l as any).shelf_code || "").trim().toLowerCase() === cleanVal
+    );
+    if (matched) {
+      return matched.location_code || matched.location_name || locVal.trim().toUpperCase();
+    }
+    return locVal.trim().toUpperCase();
+  };
+
   const handleAddExtraSlot = () => {
     const current: string[] = form.getValues(`lines.${index}.extra_locations` as any) || [];
     setValue(`lines.${index}.extra_locations` as any, [...current, ""], { shouldValidate: true, shouldDirty: true });
@@ -131,10 +146,7 @@ export default function ReceiveLineItem({
           {!isExpanded && allSelectedLocations.length > 0 && (
             <div className="pt-1 flex items-center gap-2 text-xs sm:text-sm flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-xs sm:text-sm">
-                📍 {allSelectedLocations.map((locVal) => {
-                  const m = locations.find((l) => (l.location_code || l.location_id).trim().toLowerCase() === locVal.trim().toLowerCase());
-                  return m ? m.location_code : locVal;
-                }).join(", ")}
+                📍 {allSelectedLocations.map((locVal) => getLocationDisplay(locVal)).join(", ")}
               </span>
               <span className="text-slate-600 font-mono text-xs sm:text-sm font-semibold">
                 ({currentBoxes} กล่อง / {currentQty} ชิ้น)
@@ -190,7 +202,7 @@ export default function ReceiveLineItem({
                         <span className="text-emerald-600 text-lg">📍</span>
                         <div>
                           <span className="text-slate-500 text-[10px] sm:text-xs font-sans font-medium block">ตำแหน่ง (1):</span>
-                          <span className="text-sm sm:text-base font-extrabold text-emerald-800">{currentLocation}</span>
+                          <span className="text-sm sm:text-base font-extrabold text-emerald-800">{getLocationDisplay(currentLocation)}</span>
                         </div>
                       </div>
                       <span className="text-xs text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full font-sans font-bold border border-emerald-200 flex items-center gap-1">
@@ -234,7 +246,7 @@ export default function ReceiveLineItem({
                           <span className="text-emerald-600 text-lg">📍</span>
                           <div>
                             <span className="text-slate-500 text-[10px] sm:text-xs font-sans font-medium block">ตำแหน่ง ({extraIdx + 2}):</span>
-                            <span className="text-sm sm:text-base font-extrabold text-emerald-800">{extraLoc}</span>
+                            <span className="text-sm sm:text-base font-extrabold text-emerald-800">{getLocationDisplay(extraLoc)}</span>
                           </div>
                         </div>
                         <span className="text-xs text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full font-sans font-bold border border-emerald-200">
