@@ -33,16 +33,63 @@ export async function POST(
       return forbiddenResponse(authErr instanceof Error ? authErr.message : "คุณไม่มีสิทธิ์อนุมัติเอกสารนี้");
     }
 
+    const rawBody = await req.json().catch(() => ({}));
     const { id } = await params;
-    setDocumentStatus(id, "POSTED");
+    const decodedId = decodeURIComponent(id).trim();
+
+    setDocumentStatus(decodedId, "POSTED");
 
     const repo = getRepository();
-    const doc = (await repo.documents.findById(id)) || (await repo.documents.findByNo(id));
+    let doc =
+      (await repo.documents.findById(decodedId)) ||
+      (await repo.documents.findByNo(decodedId));
+
+    if (!doc && (rawBody.document_id || rawBody.document_no || (rawBody.rows && rawBody.rows.length > 0))) {
+      const docNo = rawBody.document_no || decodedId;
+      const targetSheet = rawBody.target_sheet || "โกดัง1";
+      const whId = rawBody.warehouse_id || (targetSheet.includes("4") ? "wh-04" : "wh-01");
+
+      doc = {
+        document_id: rawBody.document_id || decodedId || `doc-${Date.now()}`,
+        document_no: docNo,
+        document_type: "RECEIVE",
+        reference_no: "",
+        document_date: rawBody.document_date || new Date().toISOString().slice(0, 10),
+        status: "PENDING",
+        note: JSON.stringify({
+          warehouse_id: whId,
+          target_sheet: targetSheet,
+          rows: rawBody.rows || [],
+          lines: rawBody.lines || [],
+        }),
+        created_by: rawBody.created_by || actor.id,
+        created_at: rawBody.created_at || new Date().toISOString(),
+      };
+
+      try {
+        await repo.documents.create(doc);
+      } catch (err) {
+        console.warn("[Approve Route] Failed to auto-persist missing document:", err);
+      }
+    }
+
+    if (!doc) {
+      const allDocsResult = await repo.documents.findAll({ page: 1, limit: 9999 });
+      doc =
+        allDocsResult.data.find(
+          (d) =>
+            d.document_id.trim().toLowerCase() === decodedId.toLowerCase() ||
+            d.document_no.trim().toLowerCase() === decodedId.toLowerCase() ||
+            d.document_id.includes(decodedId) ||
+            d.document_no.includes(decodedId)
+        ) || null;
+    }
+
     if (!doc) {
       return notFoundResponse("ไม่พบเอกสารขอรับสินค้านี้");
     }
 
-    if (doc.status !== "PENDING") {
+    if (doc.status !== "PENDING" && doc.status !== "DRAFT" && doc.status !== "NEW") {
       return conflictResponse(
         doc.status === "POSTED"
           ? "เอกสารนี้ถูกอนุมัติไปแล้ว"

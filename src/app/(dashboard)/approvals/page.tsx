@@ -98,8 +98,10 @@ export default function ApprovalsPage() {
   const handleApprove = async (doc: ApprovalDoc) => {
     setActionLoading(doc.document_id);
     try {
-      const res = await fetch(`/api/approvals/${doc.document_id}/approve`, {
+      const res = await fetch(`/api/approvals/${encodeURIComponent(doc.document_id)}/approve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(doc),
       });
       const json = await res.json();
       if (json.success) {
