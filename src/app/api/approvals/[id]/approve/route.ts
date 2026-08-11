@@ -177,27 +177,37 @@ export async function POST(
 
       // Synchronize via repository adapter
       if (repo.warehouseSync) {
-        for (const mov of createdMovements) {
+        const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
+        for (let idx = 0; idx < createdMovements.length; idx++) {
+          const mov = createdMovements[idx];
           try {
             const prod =
               (await repo.products.findById(mov.product_id)) ||
               (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")));
 
+            const rowData = parsedPayload.rows && parsedPayload.rows[idx] ? parsedPayload.rows[idx] : null;
+
+            const skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
+            const barcodeVal = prod?.barcode || (rowData ? String(rowData[2] ?? "") : skuVal);
+            const nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
+            const supplierVal = prod?.supplier || (rowData ? String(rowData[6] ?? "") : "รับสินค้าเข้าคลัง");
+            const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "");
+
             await repo.warehouseSync.syncAdd(
-              warehouseId,
+              targetWh,
               {
-                sku: prod?.sku || mov.product_id.replace(/^prod-/, ""),
-                barcode: prod?.barcode || prod?.sku || mov.product_id,
-                product_name: prod?.product_name || mov.product_id,
+                sku: skuVal,
+                barcode: barcodeVal,
+                product_name: nameVal,
                 category: prod?.category || "ทั่วไป",
                 base_unit: prod?.base_unit || "ชิ้น",
-                supplier: prod?.supplier || "รับสินค้าเข้าคลัง",
+                supplier: supplierVal,
               },
               mov.qty_change,
-              mov.location_id
+              locVal
             );
           } catch (syncErr) {
-            console.warn("[Approve Route] warehouseSync.syncAdd warning:", syncErr);
+            console.error("[Approve Route] warehouseSync.syncAdd error:", syncErr);
           }
         }
       }

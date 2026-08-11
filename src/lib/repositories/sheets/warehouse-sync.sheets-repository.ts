@@ -175,12 +175,16 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       const targetLoc = cleanLocCode(locationId);
 
       let foundIndex = -1;
+      let firstEmptyIndex = -1;
       let existingRow: string[] = [];
 
       if (rows && rows.length > 0) {
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
-          if (!r || !r[0] || !r[0].trim()) continue;
+          if (!r || !r[0] || !r[0].trim()) {
+            if (firstEmptyIndex === -1) firstEmptyIndex = i;
+            continue;
+          }
 
           const rSku = cleanSkuCode(r[0]);
           const rBarcode = cleanSkuCode(r[1]);
@@ -225,7 +229,13 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
           product.supplier || "เพิ่มสต็อก",
           new Date().toISOString(),
         ];
-        await appendRows(sheetName, [newRow]);
+
+        if (firstEmptyIndex !== -1) {
+          const rowNumber = firstEmptyIndex + 2;
+          await updateRow(sheetName, rowNumber, newRow);
+        } else {
+          await appendRows(sheetName, [newRow]);
+        }
       }
     } catch (e) {
       console.error("[SheetsWarehouseSync] syncAdd error:", e);
