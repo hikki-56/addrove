@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
       const json = await res.json();
       if (json.success) {
         if (json.user && json.token) {
-          tabLogin(json.user, json.token);
+          tabLogin(json.user, json.token, json.expires_at);
         }
         router.replace("/dashboard");
       } else {

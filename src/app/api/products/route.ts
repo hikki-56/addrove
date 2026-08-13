@@ -181,25 +181,43 @@ export async function GET(req: NextRequest) {
     });
 
     const deduplicateBySku = (rawList: any[]) => {
-      const skuSeen = new Set<string>();
-      const consolidated: any[] = [];
+      const map = new Map<string, any>();
 
       rawList.forEach((p) => {
         const skuKey = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
-        if (!skuSeen.has(skuKey)) {
-          skuSeen.add(skuKey);
-          const totalQty = totalStockMap.get(skuKey) ?? Number(p.quantity ?? p.minimum_stock ?? 0);
-          const breakdowns = locationBreakdownMap.get(skuKey) || [];
+        if (!skuKey) return;
 
-          consolidated.push({
+        const qty = Number(p.quantity ?? p.minimum_stock ?? 0);
+        const existing = map.get(skuKey);
+
+        if (!existing) {
+          const breakdowns = locationBreakdownMap.get(skuKey) || [];
+          map.set(skuKey, {
             ...p,
-            total_quantity: totalQty,
-            minimum_stock: totalQty,
+            quantity: qty,
+            total_quantity: totalStockMap.get(skuKey) ?? qty,
+            minimum_stock: totalStockMap.get(skuKey) ?? qty,
             locations_breakdown: breakdowns,
+          });
+        } else {
+          const newWhQty = (Number(existing.quantity) || 0) + qty;
+          let combinedLoc = existing.location || "";
+          if (p.location && p.location !== existing.location && p.location !== "-") {
+            if (!combinedLoc || combinedLoc === "-") {
+              combinedLoc = p.location;
+            } else if (!combinedLoc.split(", ").includes(p.location)) {
+              combinedLoc = `${combinedLoc}, ${p.location}`;
+            }
+          }
+
+          map.set(skuKey, {
+            ...existing,
+            quantity: newWhQty,
+            location: combinedLoc,
           });
         }
       });
-      return consolidated;
+      return Array.from(map.values());
     };
 
     if (masterOnly) {

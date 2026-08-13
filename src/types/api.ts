@@ -170,15 +170,17 @@ export type MoveStockInput = MoveDocumentInput;
 export const TransferDocumentSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
   from_warehouse_id: z.string().min(1, "กรุณาเลือกโกดังต้นทาง"),
-  from_location_id: z.string().default(""),
+  from_location_id: z.string().optional().default(""),
   to_warehouse_id: z.string().min(1, "กรุณาเลือกโกดังปลายทาง"),
-  to_location_id: z.string().default(""),
-  qty: z.number().positive("จำนวนต้องมากกว่า 0"),
-  moved_by: z.string().min(1, "กรุณาระบุชื่อผู้ย้าย").default("พนักงาน"),
-  reference_no: z.string().max(100).default(""),
-  document_date: z.string().min(1, "กรุณาเลือกวันที่"),
-  note: z.string().max(500).default(""),
-  idempotency_key: z.string().min(1),
+  to_location_id: z.string().optional().default(""),
+  qty: z.coerce.number().positive("จำนวนต้องมากกว่า 0"),
+  moved_by: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : "พนักงาน")),
+  assigned_to_user_id: z.string().optional(),
+  assigned_to_name: z.string().optional(),
+  reference_no: z.string().max(100).optional().default(""),
+  document_date: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : new Date().toISOString().slice(0, 10))),
+  note: z.string().max(500).optional().default(""),
+  idempotency_key: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : `idem-trf-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)),
 });
 export type TransferDocumentInput = z.infer<typeof TransferDocumentSchema>;
 
@@ -186,10 +188,19 @@ export type TransferDocumentInput = z.infer<typeof TransferDocumentSchema>;
 export const CreateTransferSchema = TransferDocumentSchema;
 export type CreateTransferInput = TransferDocumentInput;
 
+export const TransferAllocationSchema = z.object({
+  location_id: z.string().min(1),
+  qty: z.coerce.number().positive("จำนวนต้องมากกว่า 0"),
+});
+export type TransferAllocation = z.infer<typeof TransferAllocationSchema>;
+
 export const CompleteTransferSchema = z.object({
+  from_location_id: z.string().optional(),
+  to_location_id: z.string().optional(),
   completed_location_id: z.string().optional(),
   completed_location_name: z.string().optional(),
   completed_by: z.string().optional(),
+  source_allocations: z.array(TransferAllocationSchema).optional(),
 });
 export type CompleteTransferInput = z.infer<typeof CompleteTransferSchema>;
 

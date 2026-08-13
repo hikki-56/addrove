@@ -1,4 +1,35 @@
 /**
+ * Standard Code 128 Encoding patterns (0..106)
+ * Each pattern string represents widths of [bar, space, bar, space, bar, space]
+ */
+export const CODE128_PATTERNS: Record<number, string> = {
+  0: "212222", 1: "222122", 2: "222221", 3: "121223", 4: "121322",
+  5: "131222", 6: "122213", 7: "122312", 8: "132212", 9: "221213",
+  10: "221312", 11: "231212", 12: "112232", 13: "122132", 14: "122231",
+  15: "113222", 16: "123122", 17: "123221", 18: "223211", 19: "221132",
+  20: "221231", 21: "213212", 22: "223112", 23: "312131", 24: "311222",
+  25: "321122", 26: "321221", 27: "312212", 28: "322112", 29: "322211",
+  30: "212123", 31: "212321", 32: "232121", 33: "111323", 34: "131123",
+  35: "131321", 36: "112313", 37: "132113", 38: "132311", 39: "211313",
+  40: "231113", 41: "231311", 42: "112133", 43: "112331", 44: "132131",
+  45: "113123", 46: "113321", 47: "133121", 48: "313121", 49: "211331",
+  50: "231131", 51: "213113", 52: "213311", 53: "213131", 54: "311123",
+  55: "311321", 56: "331121", 57: "312113", 58: "312311", 59: "332111",
+  60: "314111", 61: "221411", 62: "431111", 63: "111224", 64: "111422",
+  65: "121124", 66: "121421", 67: "141122", 68: "141221", 69: "112214",
+  70: "112412", 71: "142112", 72: "142211", 73: "241211", 74: "221114",
+  75: "413111", 76: "241112", 77: "134111", 78: "111242", 79: "121142",
+  80: "121241", 81: "114212", 82: "124112", 83: "124211", 84: "411212",
+  85: "421112", 86: "421211", 87: "212141", 88: "214121", 89: "412121",
+  90: "111143", 91: "111341", 92: "131141", 93: "114113", 94: "114311",
+  95: "411113", 96: "411311", 97: "113141", 98: "114131", 99: "311141",
+  100: "411131", 101: "211412", 102: "211214", 103: "211232",
+  104: "211214", // Start B
+  105: "211232", // Start C
+  106: "2331112", // Stop
+};
+
+/**
  * Returns clean exact barcode string or SKU without modifying digits
  */
 export function to8DigitBarcode(rawBarcode?: string, sku?: string): string {
@@ -11,6 +42,218 @@ export function to8DigitBarcode(rawBarcode?: string, sku?: string): string {
     return s;
   }
   return "";
+}
+
+/**
+ * Encodes string to Code 128-B alternating bar/space modules
+ */
+export function encodeCode128Modules(cleanValue: string): { isBar: boolean; width: number }[] {
+  const codeValues: number[] = [104]; // Start Code B (104)
+  let checksum = 104;
+
+  for (let i = 0; i < cleanValue.length; i++) {
+    const charCode = cleanValue.charCodeAt(i);
+    let val = charCode - 32;
+    if (val < 0 || val > 95) val = 0;
+    codeValues.push(val);
+    checksum += val * (i + 1);
+  }
+
+  const checksumVal = checksum % 103;
+  codeValues.push(checksumVal);
+  codeValues.push(106); // Stop symbol
+
+  const modules: { isBar: boolean; width: number }[] = [];
+  codeValues.forEach((code) => {
+    const pattern = CODE128_PATTERNS[code] || "212222";
+    let isBar = true;
+    for (let j = 0; j < pattern.length; j++) {
+      const w = parseInt(pattern[j], 10) || 1;
+      modules.push({ isBar, width: w });
+      isBar = !isBar;
+    }
+  });
+
+  return modules;
+}
+
+/**
+ * Generates a high-contrast PNG data URL for Code 128 Barcode on the client
+ */
+export function generateCode128PngDataUrl(
+  value: string,
+  options?: {
+    scale?: number;
+    height?: number;
+    showText?: boolean;
+    label?: string;
+    textPosition?: "top" | "bottom";
+  }
+): string {
+  if (typeof document === "undefined") return "";
+
+  const cleanValue = (to8DigitBarcode(value) || value || "").trim();
+  if (!cleanValue) return "";
+
+  const modules = encodeCode128Modules(cleanValue);
+  const scale = options?.scale || 4;
+  const height = options?.height || 100;
+  const showText = options?.showText !== false;
+  const textPosition = options?.textPosition || "top";
+  const quietZone = 14;
+
+  const totalUnits = modules.reduce((sum, m) => sum + m.width, 0);
+  const fullUnits = totalUnits + quietZone * 2;
+  const canvasWidth = fullUnits * scale;
+  const textHeight = showText ? Math.max(32, Math.floor(scale * 9)) : 0;
+  const canvasHeight = height + textHeight;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  // 1. High contrast crisp white background
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  const displayText = options?.label || cleanValue;
+  const fontSize = Math.max(16, Math.floor(scale * 6.5));
+
+  // 2. Human readable text (Top or Bottom)
+  if (showText && textPosition === "top") {
+    ctx.font = `bold ${fontSize}px monospace, Courier, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#000000";
+    ctx.fillText(displayText, canvasWidth / 2, Math.floor(textHeight / 2) + 2);
+  }
+
+  // 3. Barcode black bars
+  const barsStartY = showText && textPosition === "top" ? textHeight : 10;
+  const barsHeight = height - 10;
+
+  let currentX = quietZone * scale;
+  ctx.fillStyle = "#000000";
+  for (const m of modules) {
+    const barW = m.width * scale;
+    if (m.isBar) {
+      ctx.fillRect(currentX, barsStartY, barW, barsHeight);
+    }
+    currentX += barW;
+  }
+
+  // 4. Human readable text (Bottom)
+  if (showText && textPosition === "bottom") {
+    ctx.font = `bold ${fontSize}px monospace, Courier, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#000000";
+    ctx.fillText(displayText, canvasWidth / 2, height + 14);
+  }
+
+  return canvas.toDataURL("image/png");
+}
+
+/**
+ * Generates a high-resolution sticker label PNG matching card design with top title & boxed barcode
+ */
+export function generateShelfBarcodeStickerDataUrl(
+  locationCode: string
+): string {
+  if (typeof document === "undefined") return "";
+
+  const cleanCode = (to8DigitBarcode(locationCode) || locationCode || "").trim();
+  if (!cleanCode) return "";
+
+  const modules = encodeCode128Modules(cleanCode);
+  const barUnitWidth = 3;
+  const quietZoneUnits = 10;
+  const totalUnits = modules.reduce((sum, m) => sum + m.width, 0);
+  const barcodeCoreWidth = (totalUnits + quietZoneUnits * 2) * barUnitWidth;
+  const barcodeHeight = 105;
+
+  // Inner box dimensions (containing the barcode stripes)
+  const innerBoxPaddingX = 24;
+  const innerBoxPaddingY = 18;
+  const innerBoxWidth = barcodeCoreWidth + innerBoxPaddingX * 2;
+  const innerBoxHeight = barcodeHeight + innerBoxPaddingY * 2;
+
+  // Outer card dimensions
+  const outerPaddingX = 32;
+  const outerPaddingTop = 28;
+  const outerPaddingBottom = 28;
+  const titleHeight = 72;
+  const gap = 16;
+
+  const cardWidth = Math.max(500, innerBoxWidth + outerPaddingX * 2);
+  const cardHeight = outerPaddingTop + titleHeight + gap + innerBoxHeight + outerPaddingBottom;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cardWidth;
+  canvas.height = cardHeight;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  const drawRoundRect = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    radius: number,
+    fillColor?: string,
+    strokeColor?: string,
+    lineWidth: number = 1
+  ) => {
+    ctx.beginPath();
+    if (typeof (ctx as any).roundRect === "function") {
+      (ctx as any).roundRect(x, y, w, h, radius);
+    } else {
+      ctx.rect(x, y, w, h);
+    }
+    if (fillColor) {
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+    if (strokeColor) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+  };
+
+  // 1. Draw Outer Card (Pure white background with rounded corners & soft border)
+  drawRoundRect(2, 2, cardWidth - 4, cardHeight - 4, 28, "#FFFFFF", "#e2e8f0", 2.5);
+
+  // 2. Draw Top Location Code Title - Extra Large
+  ctx.fillStyle = "#0f172a";
+  ctx.font = '900 68px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(cleanCode, cardWidth / 2, outerPaddingTop + Math.floor(titleHeight / 2));
+
+  // 3. Draw Inner Barcode Box (Rounded box with gray outline)
+  const innerBoxX = (cardWidth - innerBoxWidth) / 2;
+  const innerBoxY = outerPaddingTop + titleHeight + gap;
+  drawRoundRect(innerBoxX, innerBoxY, innerBoxWidth, innerBoxHeight, 18, "#FFFFFF", "#cbd5e1", 2);
+
+  // 4. Draw Barcode Stripes inside Inner Box
+  let currentX = innerBoxX + innerBoxPaddingX + quietZoneUnits * barUnitWidth;
+  const barY = innerBoxY + innerBoxPaddingY;
+  ctx.fillStyle = "#000000";
+
+  for (const m of modules) {
+    const barW = m.width * barUnitWidth;
+    if (m.isBar) {
+      ctx.fillRect(currentX, barY, barW, barcodeHeight);
+    }
+    currentX += barW;
+  }
+
+  return canvas.toDataURL("image/png");
 }
 
 /**

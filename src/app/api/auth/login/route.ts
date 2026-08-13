@@ -101,18 +101,23 @@ export async function POST(req: Request) {
       warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
     }
 
+    const ADMIN_SESSION_MAX_AGE = 24 * 60 * 60; // 24 Hours session timeout (86,400 seconds)
+    const expiresAtMs = Date.now() + ADMIN_SESSION_MAX_AGE * 1000;
+
     const tokenPayload = {
       id: user.user_id,
       email: user.email,
       name: user.full_name,
       role: user.role,
       warehouse_access: warehouseAccess,
+      exp: Math.floor(expiresAtMs / 1000),
     };
 
     const token = await encode({
       token: tokenPayload,
       secret: getAuthSecret(),
       salt: "authjs.session-token",
+      maxAge: ADMIN_SESSION_MAX_AGE,
     });
 
     // Record login log to durable storage and wait for result
@@ -131,11 +136,13 @@ export async function POST(req: Request) {
       message: "เข้าสู่ระบบสำเร็จ",
       user: tokenPayload,
       token,
+      expires_at: expiresAtMs,
     });
 
     const cookieOptions = {
       httpOnly: true,
       path: "/",
+      maxAge: ADMIN_SESSION_MAX_AGE,
       sameSite: "lax" as const,
       secure: process.env.NODE_ENV === "production",
     };

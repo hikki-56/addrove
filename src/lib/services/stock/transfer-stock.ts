@@ -4,6 +4,7 @@ import {
   claimIdempotencyKey,
   completeIdempotencyKey,
   failIdempotencyKey,
+  computePayloadHash,
 } from "@/lib/idempotency";
 import { logAudit } from "@/lib/audit";
 import {
@@ -39,8 +40,8 @@ export async function createTransfer(
   deps: StockUseCaseDeps,
   input: CreateTransferInput & { user_id: string; role?: string; correlation_id?: string; warehouse_access?: string | string[] }
 ): Promise<Document> {
-  const fromWhKey = formatStockLockKey(input.from_warehouse_id, input.from_location_id || "A1", input.product_id);
-  const toWhKey = formatStockLockKey(input.to_warehouse_id, input.to_location_id || "A1", input.product_id);
+  const fromWhKey = formatStockLockKey(input.from_warehouse_id, "*", input.product_id);
+  const toWhKey = formatStockLockKey(input.to_warehouse_id, "*", input.product_id);
 
   if (input.from_warehouse_id === input.to_warehouse_id) {
     throw new InvalidTransferStateError("โกดังต้นทางและโกดังปลายทางต้องไม่ซ้ำกัน");
@@ -72,102 +73,69 @@ export async function createTransfer(
         throw new StockNotFoundError("ไม่พบโกดังต้นทางหรือโกดังปลายทาง");
       }
 
-      const finalToLocId = (input.to_location_id || "A1").replace(/^loc-wh-0?[0-9]-?/, "").replace(/^loc-/, "") || "A1";
-      const fromLoc = input.from_location_id || "A1";
+      // Lookup product by product_id or SKU to snapshot product details
+      const cleanProdId = (input.product_id || "").trim();
+      let prod = await repo.products.findById(cleanProdId);
+      if (!prod) {
+        prod = await repo.products.findBySku(cleanProdId);
+      }
+      if (!prod) {
+        // Fallback: check if product_id without 'prod-' prefix matches SKU
+        const cleanSku = cleanProdId.replace(/^prod-/, "");
+        prod = await repo.products.findBySku(cleanSku);
+      }
+      if (!prod) {
+        throw new StockNotFoundError(`ไม่พบข้อมูลสินค้าสำหรับรหัส "${input.product_id}"`);
+      }
 
-      const currentBalance = await repo.movements.getBalance(
-        input.product_id,
-        fromWh.warehouse_id,
-        fromLoc
-      );
-      if (currentBalance < input.qty) {
+      const rawFromLoc = input.from_location_id || "";
+      const rawToLoc = input.to_location_id || "";
+
+      const finalFromLocId = rawFromLoc.trim();
+      const finalToLocId = rawToLoc.trim();
+
+      // Check TOTAL warehouse stock across all locations in source warehouse
+      const currentWarehouseBalance = typeof repo.movements.getWarehouseBalance === "function"
+        ? await repo.movements.getWarehouseBalance(prod.product_id, fromWh.warehouse_id)
+        : await repo.movements.getBalance(prod.product_id, fromWh.warehouse_id, rawFromLoc);
+
+      if (currentWarehouseBalance < input.qty) {
         throw new InsufficientStockError(
-          `ยอดคงเหลือสินค้าในโกดังต้นทาง (${currentBalance}) ไม่เพียงพอสำหรับจำนวนที่ต้องการย้าย (${input.qty})`
+          `ยอดคงเหลือรวมสินค้าในโกดังต้นทาง (${currentWarehouseBalance}) ไม่เพียงพอสำหรับจำนวนที่ต้องการย้าย (${input.qty})`
         );
       }
 
       const notePayload = JSON.stringify({
         from_warehouse_id: fromWh.warehouse_id,
         to_warehouse_id: toWh.warehouse_id,
-        from_location_id: fromLoc,
+        from_location_id: finalFromLocId,
         to_location_id: finalToLocId,
-        product_id: input.product_id,
+        product_id: prod.product_id,
+        sku: prod.sku,
+        barcode: prod.barcode || prod.sku,
+        product_name: prod.product_name,
+        base_unit: prod.base_unit || "ชิ้น",
         qty: input.qty,
-        moved_by: input.moved_by,
+        moved_by: input.moved_by || input.assigned_to_name || "พนักงาน",
+        assigned_to_user_id: input.assigned_to_user_id || "",
+        assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
+        assigned_by_user_id: input.user_id,
         original_note: input.note,
         idempotency_key: input.idempotency_key,
       });
 
+      // Always create document in PENDING status. Stock movements are created when completed by assigned staff.
       const doc = await repo.documents.create({
         document_type: "TRANSFER",
         reference_no: input.reference_no,
         document_date: input.document_date,
-        status: "POSTED",
+        status: "PENDING",
         note: notePayload,
         created_by: input.user_id,
+        assigned_to_user_id: input.assigned_to_user_id || "",
+        assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
+        assigned_by_user_id: input.user_id,
       });
-
-      const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [
-        {
-          document_id: doc.document_id,
-          product_id: input.product_id,
-          warehouse_id: fromWh.warehouse_id,
-          location_id: fromLoc,
-          qty_change: -input.qty,
-          movement_type: "TRANSFER_OUT",
-          idempotency_key: `${input.idempotency_key}-out`,
-          created_by: input.user_id,
-        },
-        {
-          document_id: doc.document_id,
-          product_id: input.product_id,
-          warehouse_id: toWh.warehouse_id,
-          location_id: finalToLocId,
-          qty_change: input.qty,
-          movement_type: "TRANSFER_IN",
-          idempotency_key: `${input.idempotency_key}-in`,
-          created_by: input.user_id,
-        },
-      ];
-
-      const created = await repo.movements.batchCreate(movements);
-      await repo.stockSummary.applyChanges(
-        created.map((m: StockMovement) => ({
-          productId: m.product_id,
-          warehouseId: m.warehouse_id,
-          locationId: m.location_id,
-          delta: m.qty_change,
-        }))
-      );
-
-      if (repo.warehouseSync) {
-        let product = await repo.products.findById(input.product_id);
-        if (!product) {
-          product = await repo.products.findBySku(input.product_id.replace(/^prod-/, ""));
-        }
-        const skuVal = product?.sku || input.product_id.replace(/^prod-/, "");
-
-        const sourceInfo = await repo.warehouseSync.syncDeduct(
-          fromWh.warehouse_id,
-          skuVal,
-          input.qty,
-          fromLoc
-        );
-
-        await repo.warehouseSync.syncAdd(
-          toWh.warehouse_id,
-          {
-            sku: sourceInfo?.sku || skuVal,
-            barcode: sourceInfo?.barcode || product?.barcode || skuVal,
-            product_name: sourceInfo?.product_name || product?.product_name || skuVal,
-            category: sourceInfo?.category || product?.category || "ทั่วไป",
-            base_unit: sourceInfo?.base_unit || product?.base_unit || "ชิ้น",
-            supplier: sourceInfo?.supplier || product?.supplier || "ย้ายสินค้าเข้า",
-          },
-          input.qty,
-          finalToLocId
-        );
-      }
 
       return doc;
     },
@@ -178,10 +146,16 @@ export async function completeTransfer(
   deps: StockUseCaseDeps,
   docId: string,
   toLocationId?: string,
+  fromLocationId?: string,
   userId?: string,
   userRole?: string,
-  warehouseAccess?: string | string[]
+  warehouseAccess?: string | string[],
+  sourceAllocations?: Array<{ location_id: string; qty: number }>
 ): Promise<Document> {
+  if (userRole === "VIEWER") {
+    throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในการปิดงานใบย้ายสินค้า");
+  }
+
   const doc =
     (await deps.repo.documents.findById(docId)) ||
     (await deps.repo.documents.findByNo(docId));
@@ -211,7 +185,12 @@ export async function completeTransfer(
     to_location_id?: string;
     product_id: string;
     qty: number;
-    idempotency_key: string;
+    moved_by?: string;
+    assigned_to_user_id?: string;
+    assigned_to_name?: string;
+    idempotency_key?: string;
+    completed_at?: string;
+    completed_by?: string;
   };
 
   try {
@@ -224,17 +203,161 @@ export async function completeTransfer(
     throw new InvalidTransferStateError("ข้อมูลเอกสารใบย้ายสินค้าไม่สมบูรณ์หรือไม่ถูกต้อง");
   }
 
+  let realUserId = userId;
+  let realUserRole = userRole;
+  let realWarehouseAccess = warehouseAccess;
+  let rawFromLoc = fromLocationId || "";
+
+  // Handle signature overload when called as completeTransfer(deps, docId, toLocId, userId, userRole, warehouseAccess)
+  if (
+    fromLocationId &&
+    (fromLocationId.startsWith("user-") ||
+      fromLocationId.startsWith("usr-") ||
+      fromLocationId.startsWith("admin-") ||
+      fromLocationId.startsWith("staff-")) &&
+    (userId === "WAREHOUSE_STAFF" || userId === "ADMIN" || userId === "VIEWER" || !userId)
+  ) {
+    realUserId = fromLocationId;
+    realUserRole = userId;
+    realWarehouseAccess = userRole;
+    rawFromLoc = meta.from_location_id || "A1";
+  } else if (!rawFromLoc) {
+    rawFromLoc = meta.from_location_id || "A1";
+  }
+
   // Warehouse authorization check: receiver MUST have destination warehouse access (unless ADMIN)
-  if (userRole && userRole !== "ADMIN" && warehouseAccess !== undefined) {
-    const hasTo = hasWarehouseAccess(warehouseAccess, meta.to_warehouse_id);
+  if (realUserRole && realUserRole !== "ADMIN" && realWarehouseAccess !== undefined) {
+    const hasTo = hasWarehouseAccess(realWarehouseAccess, meta.to_warehouse_id);
     if (!hasTo) {
       throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในโกดังปลายทางสำหรับเอกสารใบย้ายสินค้านี้");
     }
   }
 
+  const normId = (id?: string) =>
+    (id || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^usr-/, "")
+      .replace(/^user-/, "");
+
+  // Assignee authorization check: non-ADMIN user MUST be the assigned staff member
+  if (realUserRole && realUserRole !== "ADMIN") {
+    const assignedUserId = String(doc.assigned_to_user_id || meta.assigned_to_user_id || "").trim();
+    const assignedName = String(doc.assigned_to_name || meta.assigned_to_name || meta.moved_by || "").trim();
+    const actorId = String(realUserId || "").trim();
+    const normActorId = normId(actorId);
+
+    const cleanAssignedName = assignedName.toLowerCase().replace(/^(?:พนักงาน|มอบหมาย|ย้ายโดย):\s*/i, "").trim();
+    const isGenericStaff =
+      !cleanAssignedName ||
+      cleanAssignedName === "พนักงาน" ||
+      cleanAssignedName === "พนักงานโกดัง" ||
+      cleanAssignedName === "ผู้ใช้งานระบบ";
+
+    if (assignedUserId) {
+      // Primary check by User ID
+      const normAssignedId = normId(assignedUserId);
+      if (normAssignedId === normActorId) {
+        // Direct User ID match -> Authorized
+      } else {
+        // Fallback for tasks created with dummy IDs (e.g. usr-staff-01) where assigned_to_name matches user
+        let isNameAuthorized = false;
+        if (!isGenericStaff) {
+          if (deps.repo.users && typeof deps.repo.users.findAll === "function") {
+            try {
+              const allUsers = await deps.repo.users.findAll();
+              const matchingUsers = (allUsers || []).filter((u: any) => {
+                if (u && u.active === false) return false;
+                const uName = String(u.full_name || u.name || "").trim().toLowerCase();
+                return uName === cleanAssignedName;
+              });
+
+              if (matchingUsers.length === 1) {
+                const matchedUserId = matchingUsers[0].user_id || (matchingUsers[0] as any).id;
+                if (normId(matchedUserId) === normActorId) {
+                  isNameAuthorized = true;
+                }
+              }
+            } catch {}
+          }
+        }
+
+        if (!isNameAuthorized) {
+          throw new UnauthorizedStockOperationError("คุณไม่ใช่ผู้ได้รับมอบหมายให้ปิดงานใบย้ายสินค้านี้");
+        }
+      }
+    } else if (assignedName) {
+      // Legacy Fallback when assigned_to_user_id is missing
+      if (!isGenericStaff) {
+        let matchingUsers: any[] = [];
+        if (deps.repo.users && typeof deps.repo.users.findAll === "function") {
+          try {
+            const allUsers = await deps.repo.users.findAll();
+            matchingUsers = (allUsers || []).filter((u: any) => {
+              if (u && u.active === false) return false;
+              const uName = String(u.full_name || u.name || "").trim().toLowerCase();
+              return uName === cleanAssignedName;
+            });
+          } catch {}
+        }
+
+        if (matchingUsers.length === 1) {
+          const matchedUserId = matchingUsers[0].id || matchingUsers[0].user_id;
+          if (normId(matchedUserId) !== normActorId) {
+            throw new UnauthorizedStockOperationError("คุณไม่ใช่ผู้ได้รับมอบหมายให้ปิดงานใบย้ายสินค้านี้");
+          }
+        } else {
+          throw new UnauthorizedStockOperationError(
+            "ใบงานนี้ไม่มีรหัสผู้รับมอบหมาย (User ID) และพบพนักงานชื่อนี้หลายคน/ไม่พบในระบบ กรุณาให้ Admin มอบหมายงานใหม่"
+          );
+        }
+      }
+    }
+  }
+  const finalFromLocId = rawFromLoc.trim();
+  if (!finalFromLocId) {
+    throw new InvalidTransferStateError("กรุณาระบุ/สแกนตำแหน่งต้นทางในการย้ายสินค้า");
+  }
+
   const rawToLoc = toLocationId || meta.to_location_id || "";
-  const finalToLocId = rawToLoc.replace(/^loc-wh-0?[0-9]-?/, "").replace(/^loc-/, "") || "A1";
-  const executorId = userId || doc.created_by || "staff";
+  const finalToLocId = rawToLoc.trim();
+  if (!finalToLocId) {
+    throw new InvalidTransferStateError("กรุณาระบุ/สแกนตำแหน่งปลายทางในการย้ายสินค้า");
+  }
+
+  const executorId = realUserId || doc.created_by || "staff";
+
+  // Validate source and destination location existence and active status if location repository is available
+  if (deps.repo.locations) {
+    const allLocations = await deps.repo.locations.findAll();
+    if (Array.isArray(allLocations) && allLocations.length > 0) {
+      const matchedSourceLoc = allLocations.find(
+        (l) =>
+          (l.location_id === rawFromLoc ||
+            l.location_code === rawFromLoc ||
+            l.location_id === finalFromLocId ||
+            l.location_code === finalFromLocId) &&
+          (l.warehouse_id === meta.from_warehouse_id || l.warehouse_id === meta.from_warehouse_id.replace(/^wh-0*/, "wh-"))
+      );
+
+      if (matchedSourceLoc && matchedSourceLoc.active === false) {
+        throw new InvalidTransferStateError(`ตำแหน่งต้นทาง "${rawFromLoc}" ไม่พร้อมใช้งาน (Inactive)`);
+      }
+
+      const matchedDestLoc = allLocations.find(
+        (l) =>
+          (l.location_id === rawToLoc ||
+            l.location_code === rawToLoc ||
+            l.location_id === finalToLocId ||
+            l.location_code === finalToLocId) &&
+          (l.warehouse_id === meta.to_warehouse_id || l.warehouse_id === meta.to_warehouse_id.replace(/^wh-0*/, "wh-"))
+      );
+
+      if (matchedDestLoc && matchedDestLoc.active === false) {
+        throw new InvalidTransferStateError(`ตำแหน่งปลายทาง "${rawToLoc}" ไม่พร้อมใช้งาน (Inactive)`);
+      }
+    }
+  }
 
   let product = await deps.repo.products.findById(meta.product_id);
   if (!product) {
@@ -258,19 +381,27 @@ export async function completeTransfer(
     updated_at: new Date().toISOString(),
   };
 
-  const fromLock = formatStockLockKey(meta.from_warehouse_id, meta.from_location_id || "A1", meta.product_id);
+  const fromLock = formatStockLockKey(meta.from_warehouse_id, finalFromLocId, meta.product_id);
   const toLock = formatStockLockKey(meta.to_warehouse_id, finalToLocId, meta.product_id);
+
+  const opPayload = {
+    docId: doc.document_id,
+    toLocationId: finalToLocId,
+    fromLocationId: finalFromLocId,
+    sourceAllocations: Array.isArray(sourceAllocations) && sourceAllocations.length > 0 ? sourceAllocations : undefined,
+  };
+  const attemptHash = computePayloadHash(opPayload);
 
   return executeAtomicOperation({
     repo: deps.repo,
     operationType: "TRANSFER_COMPLETE",
-    idempotencyKey: `complete-transfer-${doc.document_id}`,
+    idempotencyKey: `complete-transfer-${doc.document_id}-${attemptHash}`,
     actorId: executorId,
     actorRole: userRole || "STAFF",
     lockKeys: [fromLock, toLock],
     auditAction: "STOCK_TRANSFER_COMPLETE",
     warehouseId: meta.to_warehouse_id,
-    payload: { docId, toLocationId },
+    payload: opPayload,
     execute: async ({ repo }) => {
       // Re-check document status after acquiring lock
       const freshDoc =
@@ -283,33 +414,92 @@ export async function completeTransfer(
         throw new InvalidTransferStateError("ไม่สามารถเปลี่ยนใบย้ายที่ยกเลิกแล้วเป็น COMPLETED");
       }
 
+      // Check if multi-source location picking allocations are provided
+      const allocations = Array.isArray(sourceAllocations) && sourceAllocations.length > 0
+        ? sourceAllocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
+        : [];
+
+      if (allocations.length > 0) {
+        const totalAllocatedQty = allocations.reduce((sum, a) => sum + Number(a.qty), 0);
+        if (totalAllocatedQty !== meta.qty) {
+          throw new InvalidTransferStateError(
+            `จำนวนสินค้ารวมที่เลือกจากทุกตำแหน่ง (${totalAllocatedQty.toLocaleString()} ชิ้น) ไม่ตรงกับจำนวนตามใบงาน (${meta.qty.toLocaleString()} ชิ้น)`
+          );
+        }
+
+        // Validate stock balance for each source location inside atomic lock
+        for (const alloc of allocations) {
+          const locId = alloc.location_id.trim();
+          const allocQty = Number(alloc.qty);
+          const bal = await repo.movements.getBalance(
+            meta.product_id,
+            meta.from_warehouse_id,
+            locId
+          );
+          if (bal < allocQty) {
+            throw new InsufficientStockError(
+              `ยอดสินค้าในตำแหน่ง "${locId}" มีเพียง ${bal.toLocaleString()} ชิ้น ไม่เพียงพอสำหรับจำนวนที่เลือกหยิบ ${allocQty.toLocaleString()} ชิ้น`
+            );
+          }
+        }
+      } else {
+        // Single location fallback
+        const currentSourceBalance = await repo.movements.getBalance(
+          meta.product_id,
+          meta.from_warehouse_id,
+          finalFromLocId
+        );
+
+        if (currentSourceBalance < meta.qty) {
+          throw new InsufficientStockError(
+            `ยอดสินค้าในตำแหน่ง "${finalFromLocId}" มีเพียง ${currentSourceBalance.toLocaleString()} ชิ้น ซึ่งไม่พอย้ายจำนวน ${meta.qty.toLocaleString()} ชิ้น (หากสินค้ากระจายอยู่หลายตำแหน่ง กรุณาเลือกหยิบจากหลายตำแหน่งให้ครบตามจำนวน)`
+          );
+        }
+      }
+
       // Check if movements already exist (single stock effect guarantee)
       const existingMovements = await repo.movements.findByDocumentId(doc.document_id);
       const hasIn = existingMovements.some((m: StockMovement) => m.movement_type === "TRANSFER_IN");
 
       if (!hasIn) {
-        const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [
-          {
+        const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [];
+
+        if (allocations.length > 0) {
+          allocations.forEach((alloc, idx) => {
+            movements.push({
+              document_id: doc.document_id,
+              product_id: meta.product_id,
+              warehouse_id: meta.from_warehouse_id,
+              location_id: alloc.location_id.trim(),
+              qty_change: -Number(alloc.qty),
+              movement_type: "TRANSFER_OUT",
+              idempotency_key: `${meta.idempotency_key || doc.document_id}-out-${idx}`,
+              created_by: executorId,
+            });
+          });
+        } else {
+          movements.push({
             document_id: doc.document_id,
             product_id: meta.product_id,
             warehouse_id: meta.from_warehouse_id,
-            location_id: meta.from_location_id || "A1",
+            location_id: finalFromLocId,
             qty_change: -meta.qty,
             movement_type: "TRANSFER_OUT",
             idempotency_key: `${meta.idempotency_key || doc.document_id}-out`,
             created_by: executorId,
-          },
-          {
-            document_id: doc.document_id,
-            product_id: meta.product_id,
-            warehouse_id: meta.to_warehouse_id,
-            location_id: finalToLocId,
-            qty_change: meta.qty,
-            movement_type: "TRANSFER_IN",
-            idempotency_key: `${meta.idempotency_key || doc.document_id}-in`,
-            created_by: executorId,
-          },
-        ];
+          });
+        }
+
+        movements.push({
+          document_id: doc.document_id,
+          product_id: meta.product_id,
+          warehouse_id: meta.to_warehouse_id,
+          location_id: finalToLocId,
+          qty_change: meta.qty,
+          movement_type: "TRANSFER_IN",
+          idempotency_key: `${meta.idempotency_key || doc.document_id}-in`,
+          created_by: executorId,
+        });
 
         const created = await repo.movements.batchCreate(movements);
         await repo.stockSummary.applyChanges(
@@ -322,12 +512,25 @@ export async function completeTransfer(
         );
 
         if (repo.warehouseSync) {
-          const sourceInfo = await repo.warehouseSync.syncDeduct(
-            meta.from_warehouse_id,
-            prodObj.sku,
-            meta.qty,
-            meta.from_location_id
-          );
+          let sourceInfo: any = null;
+          if (allocations.length > 0) {
+            for (const alloc of allocations) {
+              const info = await repo.warehouseSync.syncDeduct(
+                meta.from_warehouse_id,
+                prodObj.sku,
+                alloc.qty,
+                alloc.location_id
+              );
+              if (info) sourceInfo = info;
+            }
+          } else {
+            sourceInfo = await repo.warehouseSync.syncDeduct(
+              meta.from_warehouse_id,
+              prodObj.sku,
+              meta.qty,
+              finalFromLocId
+            );
+          }
 
           const finalProductSync = {
             sku: sourceInfo?.sku || prodObj.sku,
@@ -347,11 +550,16 @@ export async function completeTransfer(
         }
       }
 
+      meta.from_location_id = finalFromLocId;
+      meta.to_location_id = finalToLocId;
+      meta.completed_at = new Date().toISOString();
+      meta.completed_by = executorId;
+
       // Mark completed only after all operations succeed
       await repo.documents.updateStatus(doc.document_id, "COMPLETED");
 
-      return { ...doc, status: "COMPLETED" };
-    }
+      return { ...doc, status: "COMPLETED", note: JSON.stringify(meta) };
+    },
   });
 }
 
@@ -363,6 +571,10 @@ export async function cancelTransfer(
   userRole?: string,
   warehouseAccess?: string | string[]
 ): Promise<Document> {
+  if (userRole === "VIEWER") {
+    throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในการยกเลิกใบย้ายสินค้า");
+  }
+
   const doc =
     (await deps.repo.documents.findById(docId)) ||
     (await deps.repo.documents.findByNo(docId));

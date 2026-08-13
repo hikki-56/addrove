@@ -366,7 +366,7 @@ export default function ReceiveLineItem({
             <div className="text-center space-y-1.5">
               <h4 className="text-base font-extrabold text-slate-900">ยืนยันการยกเลิกรายการ?</h4>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                คุณต้องการยกเลิกและลบรายการสินค้า <strong className="text-slate-900 font-bold block mt-1">"{name}" (#{index + 1})</strong> ออกจากรายการใช่หรือไม่?
+                คุณต้องการยกเลิกและลบรายการสินค้า <strong className="text-slate-900 font-bold block mt-1">&ldquo;{name}&rdquo; (#{index + 1})</strong> ออกจากรายการใช่หรือไม่?
               </p>
             </div>
             <div className="flex gap-2.5 pt-2">

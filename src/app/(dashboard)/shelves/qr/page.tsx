@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import type { Location, Warehouse } from "@/types/models";
 import { getDefaultLocationsForWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
+import BarcodeSvg from "@/components/ui/BarcodeSvg";
+import { generateCode128PngDataUrl, generateShelfBarcodeStickerDataUrl } from "@/lib/barcode-utils";
 
 interface ShelfQrItem {
   location_id: string;
@@ -13,6 +15,7 @@ interface ShelfQrItem {
   warehouse_name: string;
   level_name: string;
   qr_data_url?: string;
+  barcode_data_url?: string;
 }
 
 const WAREHOUSES = [
@@ -57,6 +60,7 @@ export default function ShelfQrPage() {
   const [selectedWh, setSelectedWh] = useState<string>("ALL");
   const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [displayFormat, setDisplayFormat] = useState<"barcode" | "qr">("barcode");
   const [shelfItems, setShelfItems] = useState<ShelfQrItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +85,7 @@ export default function ShelfQrPage() {
           }
         }
 
-        // Build Shelf QR items & Generate QR Codes
+        // Build Shelf items & Generate Barcode & QR Codes
         const items: ShelfQrItem[] = [];
         for (const loc of allLocs) {
           const whName = getWarehouseName(loc.warehouse_id);
@@ -90,12 +94,11 @@ export default function ShelfQrPage() {
             ? `ชั้นที่ ${(loc as any).shelf_level}`
             : extractShelfLevel(loc.location_code, shelfName);
 
-          // Code encoded inside QR for barcode scanner
-          const qrCodeValue = loc.location_code || loc.location_id;
+          const codeValue = loc.location_code || loc.location_id;
 
-          let dataUrl = "";
+          let qrDataUrl = "";
           try {
-            dataUrl = await QRCode.toDataURL(qrCodeValue, {
+            qrDataUrl = await QRCode.toDataURL(codeValue, {
               width: 320,
               margin: 2,
               color: {
@@ -107,6 +110,8 @@ export default function ShelfQrPage() {
             console.error("Failed to generate QR code for location:", loc.location_code, e);
           }
 
+          const barcodeDataUrl = generateShelfBarcodeStickerDataUrl(codeValue);
+
           items.push({
             location_id: loc.location_id,
             location_code: loc.location_code,
@@ -114,7 +119,8 @@ export default function ShelfQrPage() {
             warehouse_id: loc.warehouse_id,
             warehouse_name: whName,
             level_name: levelName,
-            qr_data_url: dataUrl,
+            qr_data_url: qrDataUrl,
+            barcode_data_url: barcodeDataUrl,
           });
         }
 
@@ -160,243 +166,406 @@ export default function ShelfQrPage() {
     items: filteredItems.filter((i) => i.level_name === lvl),
   })).filter((group) => group.items.length > 0);
 
+  // Group filtered items into chunks of 9 for A4 3x3 sticker sheet printing
+  const stickerPages: ShelfQrItem[][] = [];
+  for (let i = 0; i < filteredItems.length; i += 9) {
+    stickerPages.push(filteredItems.slice(i, i + 9));
+  }
+
   const handlePrint = () => {
     window.print();
   };
 
   const handleDownloadSingle = (item: ShelfQrItem) => {
-    if (!item.qr_data_url) return;
-    const a = document.createElement("a");
-    a.href = item.qr_data_url;
-    a.download = `QR-ชั้นวาง-${item.warehouse_name}-${item.location_code}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (displayFormat === "barcode") {
+      const dataUrl = item.barcode_data_url || generateShelfBarcodeStickerDataUrl(item.location_code);
+      if (!dataUrl) return;
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `บาร์โค้ด-ชั้นวาง-${item.warehouse_name}-${item.location_code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      if (!item.qr_data_url) return;
+      const a = document.createElement("a");
+      a.href = item.qr_data_url;
+      a.download = `QR-ชั้นวาง-${item.warehouse_name}-${item.location_code}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   const renderItemCard = (item: ShelfQrItem, idx: number) => (
     <div
       key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
-      className="bg-white rounded-2xl p-6 text-slate-900 border border-slate-200 shadow-xl flex flex-col items-center justify-between text-center relative overflow-hidden transition-all hover:scale-[1.01] print:shadow-none print:border-slate-300 print:break-inside-avoid"
+      onClick={() => handleDownloadSingle(item)}
+      title="คลิกเพื่อดาวน์โหลดรูปภาพบาร์โค้ด"
+      className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-slate-200 shadow-md flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:scale-[1.01] hover:border-emerald-500 hover:shadow-xl cursor-pointer"
     >
-      {/* Header Badge */}
-      <div className="w-full flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-        <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
-          {item.warehouse_name}
-        </span>
-        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200">
-          {item.level_name}
-        </span>
-      </div>
+      {/* Location Code (On Top of Barcode) */}
+      <h2 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-wider font-mono select-none">
+        {item.location_code}
+      </h2>
 
-      {/* Shelf Title & Code */}
-      <div className="mb-3">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight font-mono">
-          {item.location_code}
-        </h2>
-        <p className="text-xs text-slate-600 font-medium mt-0.5">{item.shelf_name}</p>
-      </div>
-
-      {/* Printable QR Code Container */}
-      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-inner flex items-center justify-center">
-        {item.qr_data_url ? (
-          <img
-            src={item.qr_data_url}
-            alt={`QR ${item.location_code}`}
-            className="w-48 h-48 object-contain"
-          />
+      {/* Barcode Inner Box (Matching sticker mockup with clean border) */}
+      <div className="w-full flex items-center justify-center">
+        {displayFormat === "barcode" ? (
+          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-center shadow-2xs">
+            <BarcodeSvg
+              value={item.location_code}
+              width={2.8}
+              height={82}
+              showText={false}
+              className="border-0 p-0 shadow-none bg-transparent w-full"
+            />
+          </div>
+        ) : item.qr_data_url ? (
+          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 p-4 flex items-center justify-center shadow-2xs">
+            <img
+              src={item.qr_data_url}
+              alt={`QR ${item.location_code}`}
+              className="w-28 h-28 sm:w-36 sm:h-36 object-contain"
+            />
+          </div>
         ) : (
-          <div className="w-48 h-48 flex items-center justify-center text-xs text-slate-400">
-            กำลังสร้าง QR...
+          <div className="w-28 h-28 flex items-center justify-center text-xs text-slate-400">
+            กำลังสร้างรหัส...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const totalStickerPages = stickerPages.length;
+
+  return (
+    <>
+      {/* ======================================================== */}
+      {/* Screen View (Interactive Dashboard)                      */}
+      {/* ======================================================== */}
+      <div className="max-w-6xl mx-auto space-y-6 w-full max-w-full pb-12 print:hidden">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+          <div>
+            <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
+              <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              <span>บาร์โค้ดชั้นวางสินค้า (แบ่งตามระดับชั้นและโกดัง)</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              พิมพ์ป้ายบาร์โค้ดจัดลงกระดาษสติกเกอร์ A4 แนวนอน 9 ช่อง (3×3) รวมทั้งหมด {filteredItems.length} ตำแหน่ง ({totalStickerPages} หน้ากระดาษ)
+            </p>
+          </div>
+
+          <button
+            onClick={handlePrint}
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>พิมพ์ป้ายบาร์โค้ดทั้งหมด ({filteredItems.length} ตำแหน่ง • {totalStickerPages} แผ่น A4)</span>
+          </button>
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="glass-card rounded-2xl p-4 space-y-4">
+          <div className="flex flex-col gap-3">
+            {/* Row 1: Warehouse Selector Tabs & Format Selector */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+                <button
+                  onClick={() => {
+                    setSelectedWh("ALL");
+                    setSelectedLevel("ALL");
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                    selectedWh === "ALL"
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                      : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200 border border-white/[0.08]"
+                  }`}
+                >
+                  โกดังทั้งหมด ({shelfItems.length})
+                </button>
+                {WAREHOUSES.map((wh) => {
+                  const count = shelfItems.filter((i) => i.warehouse_id === wh.id).length;
+                  return (
+                    <button
+                      key={wh.id}
+                      onClick={() => {
+                        setSelectedWh(wh.id);
+                        setSelectedLevel("ALL");
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                        selectedWh === wh.id
+                          ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                          : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200 border border-white/[0.08]"
+                      }`}
+                    >
+                      {wh.name} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Display Format Toggle (Barcode vs QR) */}
+                <div className="flex items-center bg-white/[0.04] p-1 rounded-xl border border-white/[0.08] shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setDisplayFormat("barcode")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      displayFormat === "barcode"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="แสดงในรูปแบบบาร์โค้ดสินค้า (Code 128)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h2v12H4zm4 0h1v12H8zm3 0h2v12h-2zm4 0h1v12h-1zm3 0h2v12h-2z" />
+                    </svg>
+                    <span>บาร์โค้ดสินค้า</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDisplayFormat("qr")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      displayFormat === "qr"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="แสดงในรูปแบบ QR Code"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <span>QR Code</span>
+                  </button>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ค้นหารหัสชั้นวาง, ระดับชั้น..."
+                    className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.09] text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 text-xs transition-all"
+                  />
+                  <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Shelf Level / Tier Filter Pills */}
+            {availableLevels.length > 0 && (
+              <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 overflow-x-auto scrollbar-none">
+                <span className="text-xs font-medium text-amber-400/90 shrink-0 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  แบ่งตามชั้นวาง:
+                </span>
+                <button
+                  onClick={() => setSelectedLevel("ALL")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                    selectedLevel === "ALL"
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                      : "bg-white/[0.03] text-slate-400 hover:text-slate-200 border border-white/[0.06]"
+                  }`}
+                >
+                  ทุกชั้น ({whFilteredItems.length})
+                </button>
+                {availableLevels.map((lvl) => {
+                  const count = whFilteredItems.filter((i) => i.level_name === lvl).length;
+                  return (
+                    <button
+                      key={lvl}
+                      onClick={() => setSelectedLevel(lvl)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                        selectedLevel === lvl
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                          : "bg-white/[0.03] text-slate-400 hover:text-slate-200 border border-white/[0.06]"
+                      }`}
+                    >
+                      {lvl} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-16 text-slate-400 text-sm animate-pulse">
+            กำลังโหลดบาร์โค้ดชั้นวางสินค้า...
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && filteredItems.length === 0 && (
+          <div className="glass-card rounded-2xl p-12 text-center text-slate-400 text-sm">
+            ไม่พบข้อมูลชั้นวางสินค้าตามเงื่อนไขที่เลือก
+          </div>
+        )}
+
+        {/* Grouped by Level View */}
+        {!loading && filteredItems.length > 0 && (
+          <div className="space-y-8">
+            {groupedByLevel.map((group) => (
+              <div key={group.levelName} className="space-y-4">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
+                  <h3 className="text-base font-bold text-amber-300">
+                    {group.levelName} ({group.items.length} ตำแหน่ง)
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {group.items.map((item, idx) => renderItemCard(item, idx))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Scannable Indicator */}
-      <div className="mb-4">
-        <span className="text-[11px] font-mono font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-          สแกนตำแหน่ง: {item.location_code}
-        </span>
-      </div>
+      {/* ======================================================== */}
+      {/* Dedicated A4 Landscape 9-Sticker Sheet Print View (3x3)   */}
+      {/* ======================================================== */}
+      <div id="print-sticker-container" className="hidden print:block print:w-full print:m-0 print:p-0">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            @page {
+              size: A4 landscape;
+              margin: 6mm 8mm;
+            }
+            html, body {
+              height: auto !important;
+              min-height: 100% !important;
+              overflow: visible !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            /* Override Next.js layout scroll & fixed containers */
+            #__next, main, .admin-shell, .flex, .flex-col, .overflow-hidden, .overflow-y-auto {
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              overflow: visible !important;
+              display: block !important;
+              position: static !important;
+            }
+            header, nav, aside, footer, .sidebar, .navbar, .print\\:hidden {
+              display: none !important;
+            }
+            #print-sticker-container {
+              display: block !important;
+              position: static !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .a4-sticker-page {
+              width: 280mm !important;
+              height: 196mm !important;
+              max-height: 198mm !important;
+              margin: 0 auto !important;
+              display: grid !important;
+              grid-template-columns: repeat(3, 1fr) !important;
+              grid-template-rows: repeat(3, 1fr) !important;
+              gap: 4mm 4mm !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              box-sizing: border-box !important;
+              padding: 1mm !important;
+            }
+            .a4-sticker-page:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
+            }
+            .sticker-slot {
+              box-sizing: border-box !important;
+              width: 100% !important;
+              height: 100% !important;
+              max-height: 63mm !important;
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: center !important;
+              justify-content: center !important;
+              padding: 2mm 3mm !important;
+              border: 1px dashed #cbd5e1 !important;
+              border-radius: 12px !important;
+              background: #ffffff !important;
+              text-align: center !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+          }
+        `}} />
 
-      {/* Card Actions (Hidden when printing) */}
-      <div className="w-full grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 print:hidden">
-        <button
-          onClick={() => handleDownloadSingle(item)}
-          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          <span>โหลด PNG</span>
-        </button>
-        <button
-          onClick={handlePrint}
-          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          <span>พิมพ์ป้าย</span>
-        </button>
-      </div>
-    </div>
-  );
+        {stickerPages.map((pageItems, pageIdx) => (
+          <div key={`print-page-${pageIdx}`} className="a4-sticker-page">
+            {pageItems.map((item, itemIdx) => (
+              <div key={`slot-${item.warehouse_id}-${item.location_id}-${itemIdx}`} className="sticker-slot">
+                {/* Top: Location Code Title - Super Extra Large & Bold */}
+                <div
+                  className="font-mono font-black text-slate-900 tracking-wider leading-none mb-2 select-none"
+                  style={{ fontSize: "52px", fontWeight: 900 }}
+                >
+                  {item.location_code}
+                </div>
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-6 w-full max-w-full pb-12">
-      {/* Page Header (Hidden when printing) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5 print:hidden">
-        <div>
-          <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
-            <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <span>QR Code ชั้นวางสินค้า (แบ่งตามระดับชั้นและโกดัง)</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            พิมพ์ป้าย QR Code ประจำชั้นวางสินค้าแยกเป็นชั้นๆ เพื่อนำไปติดหน้าชั้นวาง (พนักงานสามารถสแกนเพื่อจัดตำแหน่งได้ทันที)
-          </p>
-        </div>
+                {/* Bottom: Barcode / QR in Inner Box */}
+                <div className="w-full flex items-center justify-center">
+                  {displayFormat === "barcode" ? (
+                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1 flex items-center justify-center">
+                      <BarcodeSvg
+                        value={item.location_code}
+                        width={2.4}
+                        height={46}
+                        showText={false}
+                        className="border-0 p-0 shadow-none bg-transparent w-full"
+                      />
+                    </div>
+                  ) : item.qr_data_url ? (
+                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 p-1 flex items-center justify-center">
+                      <img
+                        src={item.qr_data_url}
+                        alt={`QR ${item.location_code}`}
+                        className="w-12 h-12 object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 flex items-center justify-center text-[10px] text-slate-400">
+                      ...
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
 
-        <button
-          onClick={handlePrint}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          <span>พิมพ์ป้าย QR Code ทั้งหมด</span>
-        </button>
-      </div>
-
-      {/* Filter and Search Bar (Hidden when printing) */}
-      <div className="glass-card rounded-2xl p-4 space-y-4 print:hidden">
-        <div className="flex flex-col gap-3">
-          {/* Row 1: Warehouse Selector Tabs */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-              <button
-                onClick={() => {
-                  setSelectedWh("ALL");
-                  setSelectedLevel("ALL");
-                }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                  selectedWh === "ALL"
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                    : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200 border border-white/[0.08]"
-                }`}
-              >
-                โกดังทั้งหมด ({shelfItems.length})
-              </button>
-              {WAREHOUSES.map((wh) => {
-                const count = shelfItems.filter((i) => i.warehouse_id === wh.id).length;
-                return (
-                  <button
-                    key={wh.id}
-                    onClick={() => {
-                      setSelectedWh(wh.id);
-                      setSelectedLevel("ALL");
-                    }}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                      selectedWh === wh.id
-                        ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                        : "bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200 border border-white/[0.08]"
-                    }`}
-                  >
-                    {wh.name} ({count})
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search Box */}
-            <div className="relative min-w-[220px]">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหารหัสชั้นวาง, ระดับชั้น..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.09] text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 text-xs transition-all"
-              />
-              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+            {/* Empty slots to preserve 3x3 grid on the last page */}
+            {pageItems.length < 9 &&
+              Array.from({ length: 9 - pageItems.length }).map((_, emptyIdx) => (
+                <div key={`empty-slot-${emptyIdx}`} className="sticker-slot opacity-0 pointer-events-none" />
+              ))}
           </div>
-
-          {/* Row 2: Shelf Level / Tier Filter Pills (การแบ่งเป็นชั้นๆ) */}
-          {availableLevels.length > 0 && (
-            <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 overflow-x-auto scrollbar-none">
-              <span className="text-xs font-medium text-amber-400/90 shrink-0 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                แบ่งตามชั้นวาง:
-              </span>
-              <button
-                onClick={() => setSelectedLevel("ALL")}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                  selectedLevel === "ALL"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                    : "bg-white/[0.03] text-slate-400 hover:text-slate-200 border border-white/[0.06]"
-                }`}
-              >
-                ทุกชั้น ({whFilteredItems.length})
-              </button>
-              {availableLevels.map((lvl) => {
-                const count = whFilteredItems.filter((i) => i.level_name === lvl).length;
-                return (
-                  <button
-                    key={lvl}
-                    onClick={() => setSelectedLevel(lvl)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                      selectedLevel === lvl
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-white/[0.03] text-slate-400 hover:text-slate-200 border border-white/[0.06]"
-                    }`}
-                  >
-                    {lvl} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        ))}
       </div>
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-16 text-slate-400 text-sm animate-pulse">
-          กำลังโหลด QR Code ชั้นวางสินค้า...
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && filteredItems.length === 0 && (
-        <div className="glass-card rounded-2xl p-12 text-center text-slate-400 text-sm">
-          ไม่พบข้อมูลชั้นวางสินค้าตามเงื่อนไขที่เลือก
-        </div>
-      )}
-
-      {/* Grouped by Level View */}
-      {!loading && filteredItems.length > 0 && (
-        <div className="space-y-8">
-          {groupedByLevel.map((group) => (
-            <div key={group.levelName} className="space-y-4">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-2 print:border-slate-300">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
-                <h3 className="text-base font-bold text-amber-300 print:text-slate-900">
-                  {group.levelName} ({group.items.length} ตำแหน่ง)
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
-                {group.items.map((item, idx) => renderItemCard(item, idx))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
+

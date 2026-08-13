@@ -17,6 +17,6 @@ export interface IIdempotencyRepository {
   create(record: Omit<IdempotencyRecord, "created_at" | "updated_at">): Promise<IdempotencyRecord>;
   update(
     key: string,
-    updates: Partial<Pick<IdempotencyRecord, "status" | "response_payload" | "error_message">>
+    updates: Partial<Pick<IdempotencyRecord, "status" | "response_payload" | "error_message" | "payload_hash">>
   ): Promise<IdempotencyRecord | null>;
 }

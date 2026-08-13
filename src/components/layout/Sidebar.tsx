@@ -71,7 +71,7 @@ export default function Sidebar({
     };
 
     syncServerTransfers();
-    const interval = setInterval(syncServerTransfers, 20000);
+    const interval = setInterval(syncServerTransfers, 5000);
 
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);

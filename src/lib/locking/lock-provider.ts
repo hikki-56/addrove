@@ -19,15 +19,24 @@ export interface ILockProvider {
  * For horizontally-scaled multi-instance cluster deployments, provide an ILockProvider backed by Redis (e.g. Redlock)
  * or a database advisory lock without changing any service or use case code.
  */
+const globalForLocks = globalThis as unknown as {
+  inMemoryLockQueues?: Map<string, Array<() => void>>;
+};
+if (!globalForLocks.inMemoryLockQueues) {
+  globalForLocks.inMemoryLockQueues = new Map<string, Array<() => void>>();
+}
+
 export class InMemoryLockProvider implements ILockProvider {
-  private lockQueues = new Map<string, Array<() => void>>();
+  private get lockQueues(): Map<string, Array<() => void>> {
+    return globalForLocks.inMemoryLockQueues!;
+  }
 
   isLocked(key: string): boolean {
     const queue = this.lockQueues.get(key);
     return Boolean(queue && queue.length > 0);
   }
 
-  async acquire(key: string, timeoutMs = 10000): Promise<() => void> {
+  async acquire(key: string, timeoutMs = 25000): Promise<() => void> {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const acquirePromise = new Promise<() => void>((resolve, reject) => {

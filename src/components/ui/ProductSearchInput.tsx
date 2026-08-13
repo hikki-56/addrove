@@ -28,18 +28,63 @@ export default function ProductSearchInput({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Aggregate products by SKU / product_id (summing quantities for items in different locations)
+  const aggregatedProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    const map = new Map<string, Product>();
+
+    for (const p of products) {
+      const normSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+      const normId = (p.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+      const key = normSku || normId;
+      if (!key) continue;
+
+      const qty = p.quantity ?? p.total_quantity ?? 0;
+      const existing = map.get(key);
+
+      if (!existing) {
+        map.set(key, {
+          ...p,
+          quantity: qty,
+          total_quantity: qty,
+        });
+      } else {
+        const existingQty = existing.quantity ?? existing.total_quantity ?? 0;
+        const newQty = existingQty + qty;
+
+        let combinedLoc = existing.location || "";
+        if (p.location && p.location !== existing.location) {
+          if (!combinedLoc) {
+            combinedLoc = p.location;
+          } else if (!combinedLoc.split(", ").includes(p.location)) {
+            combinedLoc = `${combinedLoc}, ${p.location}`;
+          }
+        }
+
+        map.set(key, {
+          ...existing,
+          quantity: newQty,
+          total_quantity: newQty,
+          location: combinedLoc,
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [products]);
+
   // Sync display text with selected product value
   const selectedProduct = useMemo(() => {
     if (!value) return undefined;
     const cleanVal = value.trim().toLowerCase();
-    return products.find(
+    return aggregatedProducts.find(
       (p) =>
         p.product_id.toLowerCase() === cleanVal ||
         p.sku.toLowerCase() === cleanVal ||
         (p.barcode && p.barcode.trim().toLowerCase() === cleanVal) ||
         p.product_id.toLowerCase() === `prod-${cleanVal}`
     );
-  }, [value, products]);
+  }, [value, aggregatedProducts]);
 
   const defaultDisplayText = useMemo(() => {
     if (selectedProduct) {
@@ -64,14 +109,14 @@ export default function ProductSearchInput({
   }, []);
 
   const filteredProducts = useMemo(() => {
-    if (!products || products.length === 0) return [];
+    if (!aggregatedProducts || aggregatedProducts.length === 0) return [];
     const trimmedQuery = query.trim().toLowerCase();
 
     if (!trimmedQuery || (!onSelectProduct && selectedProduct && `${selectedProduct.product_name} (${selectedProduct.sku})`.toLowerCase() === trimmedQuery)) {
-      return products;
+      return aggregatedProducts;
     }
 
-    return products.filter((p) => {
+    return aggregatedProducts.filter((p) => {
       const sku = (p.sku || "").toLowerCase();
       const name = (p.product_name || "").toLowerCase();
       const barcode = (p.barcode || "").toLowerCase();
@@ -86,7 +131,7 @@ export default function ProductSearchInput({
         category.includes(trimmedQuery)
       );
     });
-  }, [products, query, selectedProduct, onSelectProduct]);
+  }, [aggregatedProducts, query, selectedProduct, onSelectProduct]);
 
   // Slice to 50 for max performance & zero UI lag
   const displayedProducts = useMemo(() => filteredProducts.slice(0, 50), [filteredProducts]);
@@ -178,6 +223,7 @@ export default function ProductSearchInput({
                     if (onSelectProduct) {
                       onSelectProduct(p);
                       setQuery("");
+                      setOpen(false);
                     } else if (onChange) {
                       onChange(p.product_id, p);
                       const sup = p.supplier ? `[${p.supplier}] ` : "";
@@ -194,7 +240,7 @@ export default function ProductSearchInput({
                       : "text-slate-900 hover:bg-slate-100"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
                       {/* บรรทัดที่ 1: [ผู้จำหน่าย] | [รหัสสินค้า SKU] | [บาร์โค้ด] */}
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-900">
@@ -204,14 +250,14 @@ export default function ProductSearchInput({
                             <span className="text-slate-300">|</span>
                           </>
                         ) : null}
-                        <span className="text-indigo-700 font-mono font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 text-xs sm:text-sm">
+                        <span className="text-black font-mono font-extrabold text-xs sm:text-sm">
                           {p.sku}
                         </span>
                         {p.barcode && p.barcode !== p.sku ? (
                           <>
                             <span className="text-slate-300">|</span>
-                            <span className="text-emerald-700 font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-xs sm:text-sm">
-                              📷 {p.barcode}
+                            <span className="text-black font-mono font-extrabold text-xs sm:text-sm">
+                              {p.barcode}
                             </span>
                           </>
                         ) : null}
@@ -223,11 +269,20 @@ export default function ProductSearchInput({
                       </div>
                     </div>
 
-                    {isSelected && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                        ✓ เลือกแล้ว
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Far Right: Stock Balance Text (Black & Frameless) */}
+                      <div className="text-right shrink-0">
+                        <span className="text-xs text-black font-bold">
+                          คงเหลือ <strong className="text-black font-mono font-extrabold text-xs sm:text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
+                        </span>
+                      </div>
+
+                      {isSelected && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                          ✓ เลือกแล้ว
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

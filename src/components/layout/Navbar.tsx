@@ -105,7 +105,7 @@ export default function Navbar({
     };
 
     fetchServerTransfers();
-    const interval = setInterval(fetchServerTransfers, 20000);
+    const interval = setInterval(fetchServerTransfers, 5000);
 
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);

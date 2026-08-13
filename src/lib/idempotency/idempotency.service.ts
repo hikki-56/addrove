@@ -40,6 +40,16 @@ export async function claimIdempotencyKey<T = unknown>(
   const existing = await repo.findByKey(key);
 
   if (existing) {
+    // If previous attempt failed => allow retry with new/updated payload
+    if (existing.status === "FAILED") {
+      await repo.update(key, {
+        status: "PROCESSING",
+        payload_hash: payloadHash,
+        error_message: "",
+      });
+      return { isReplay: false };
+    }
+
     // If payload hash differs => Conflict
     if (existing.payload_hash && existing.payload_hash !== payloadHash) {
       throw new IdempotencyConflictError(

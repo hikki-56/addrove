@@ -12,6 +12,7 @@ import {
   isTransferCompleted,
   cleanProductName,
   purgeInvalidNotifications,
+  fetchAndSyncTransferNotifications,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
 
@@ -40,79 +41,29 @@ export default function StaffDashboard() {
 
     updateNotifications();
 
-    // Fetch latest transfer documents from server to sync notifications
-    fetch("/api/movements/transfer")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
-          const allList = getTransferNotifications();
-          for (const doc of res.data) {
-            if (!doc.moved_by) continue;
-            const docId = doc.document_id || "";
-            const docNo = doc.document_no || "";
-            const serverStatus = doc.status || "";
+    const doSync = async () => {
+      try {
+        await fetchAndSyncTransferNotifications();
+        updateNotifications();
+      } catch (e) {
+        console.error("[StaffDashboard] Sync error:", e);
+      }
+    };
 
-            const existing = allList.find(
-              (item) =>
-                (item.id && docId && item.id.toLowerCase() === docId.toLowerCase()) ||
-                (item.doc_no && docNo && item.doc_no.toLowerCase() === docNo.toLowerCase())
-            );
-
-            const isCompletedOrCancelled =
-              serverStatus === "COMPLETED" ||
-              serverStatus === "CANCELLED" ||
-              isTransferCompleted(docId) ||
-              isTransferCompleted(docNo) ||
-              (existing && (existing.status === "COMPLETED" || existing.status === "CANCELLED" || existing.status === "ACKNOWLEDGED"));
-
-            if (isCompletedOrCancelled) {
-              if (existing && existing.status !== "COMPLETED" && (serverStatus === "COMPLETED" || isTransferCompleted(docId) || isTransferCompleted(docNo))) {
-                markTransferCompleted(docId || docNo);
-              }
-              continue;
-            }
-
-            if (
-              !existing ||
-              (!existing.barcode && doc.barcode) ||
-              existing.to_warehouse_name === "โกดังปลายทาง" ||
-              !existing.to_warehouse_name
-            ) {
-              const enrichedName = doc.product_name || cleanProductName("", doc.note);
-              saveTransferNotification({
-                id: doc.document_id,
-                doc_no: doc.document_no,
-                product_id: doc.product_id || "",
-                product_name: enrichedName || "รายการย้ายสินค้า",
-                sku: doc.sku || "",
-                barcode: doc.barcode || "",
-                from_warehouse_id: doc.from_warehouse_id || "",
-                from_warehouse_name: doc.from_warehouse_name || "",
-                to_warehouse_id: doc.to_warehouse_id || "",
-                to_warehouse_name: doc.to_warehouse_name || "",
-                qty: doc.qty || 1,
-                moved_by: doc.moved_by,
-                created_at: doc.created_at,
-                status: "PENDING",
-                note: doc.note || "",
-              });
-            }
-          }
-          updateNotifications();
-        }
-      })
-      .catch(() => {});
+    doSync();
+    const interval = setInterval(doSync, 5000);
 
     window.addEventListener("stockify-transfer-created", updateNotifications);
     window.addEventListener("stockify-transfer-updated", updateNotifications);
     window.addEventListener("storage", updateNotifications);
 
     return () => {
+      clearInterval(interval);
       window.removeEventListener("stockify-transfer-created", updateNotifications);
       window.removeEventListener("stockify-transfer-updated", updateNotifications);
       window.removeEventListener("storage", updateNotifications);
     };
-  }, []);
+  }, [tabUser, activeWh]);
 
   const whName = getWarehouseName(activeWh);
   const pendingCount = pendingTransfers.length;

@@ -123,7 +123,7 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
         if (stored) {
           const parsed: TabSession = JSON.parse(stored);
 
-          // Check if token is expired (8 hours expiry)
+          // Check if token is expired
           if (parsed.expires_at && Date.now() >= parsed.expires_at) {
             console.warn("[TabAuth] Employee token has expired");
             handleExpiredSession();
@@ -200,8 +200,9 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback((newUser: TabUser, newToken: string, expires_at?: number) => {
     try {
-      // Default expiration: 2 Hours (7,200,000 ms) from now
-      const sessionExpiry = expires_at || (Date.now() + 2 * 3600 * 1000);
+      // Default expiration: 24 Hours for ADMIN, 2 Hours for employee QR
+      const defaultTtl = newUser.role === "ADMIN" ? 24 * 3600 * 1000 : 2 * 3600 * 1000;
+      const sessionExpiry = expires_at || (Date.now() + defaultTtl);
       const sessionData: TabSession = { user: newUser, token: newToken, expires_at: sessionExpiry };
       const serialized = JSON.stringify(sessionData);
       sessionStorage.setItem(TAB_SESSION_KEY, serialized);

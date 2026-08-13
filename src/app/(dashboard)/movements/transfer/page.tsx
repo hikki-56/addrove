@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
-import WarehouseTabs from "@/components/warehouse/WarehouseTabs";
+
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import { useTransferMovement, defaultStaff } from "./_hooks/use-transfer-movement";
 import TransferNotificationList from "./_components/TransferNotificationList";
@@ -42,10 +42,10 @@ export default function TransferPage() {
     setStaffStep,
     staffScanProductInput,
     setStaffScanProductInput,
-    staffScanWhInput,
-    setStaffScanWhInput,
-    staffScanLocationInput,
-    setStaffScanLocationInput,
+    staffScanSourceLocationInput,
+    setStaffScanSourceLocationInput,
+    staffScanDestLocationInput,
+    setStaffScanDestLocationInput,
     staffError,
     staffSuccess,
     isStaffCameraOpen,
@@ -53,8 +53,8 @@ export default function TransferPage() {
     staffCameraTarget,
     setStaffCameraTarget,
     staffProductInputRef,
-    staffWhInputRef,
-    staffLocationInputRef,
+    staffSourceLocationInputRef,
+    staffDestLocationInputRef,
     watchProduct,
     watchFromWh,
     watchToWh,
@@ -62,8 +62,8 @@ export default function TransferPage() {
     handleCleanupHistory,
     handleCancelTransfer,
     handleVerifyProductBarcode,
-    handleVerifyWarehouseBarcode,
-    handleVerifyLocationBarcode,
+    handleVerifySourceLocationBarcode,
+    handleVerifyDestinationLocationBarcode,
     onSubmit,
     resetForm,
     error,
@@ -74,34 +74,25 @@ export default function TransferPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Warehouse Tabs Header */}
-      <div className="glass-card rounded-2xl p-5 border border-white/10 shadow-xl space-y-4">
-        <WarehouseTabs
-          activeWarehouseId={activeWhId}
-          onSelectWarehouse={(whId) => {
-            setActiveWhId(whId);
-            resetForm();
-          }}
-          warehouses={warehouses}
-        />
-
+      {/* Warehouse Header */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
-            <h2 className="font-bold text-white text-lg sm:text-xl">โอนสินค้าระหว่างโกดัง</h2>
+            <h2 className="font-bold text-slate-800 text-lg sm:text-xl">โอนสินค้าระหว่างโกดัง</h2>
           </div>
 
           {isAdmin && (
-            <div className="flex items-center gap-1.5 p-1 bg-slate-900/80 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setActiveMode("ADMIN_CREATE")}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   activeMode === "ADMIN_CREATE"
                     ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 สร้างใบย้ายสินค้า
@@ -109,10 +100,10 @@ export default function TransferPage() {
               <button
                 type="button"
                 onClick={() => setActiveMode("STAFF_EXECUTE")}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   activeMode === "STAFF_EXECUTE"
                     ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 รายการที่ต้องย้าย ({pendingTasks.length})
@@ -124,34 +115,24 @@ export default function TransferPage() {
 
       {/* Main Mode View */}
       {activeMode === "ADMIN_CREATE" && isAdmin ? (
-        <div className="space-y-6">
-          <TransferForm
-            form={form}
-            warehouses={warehouses}
-            products={products}
-            selectedProduct={selectedProduct}
-            staffList={defaultStaff}
-            watchProduct={watchProduct}
-            watchFromWh={watchFromWh}
-            watchToWh={watchToWh}
-            error={error}
-            onSubmit={onSubmit}
-            onErrorPrompt={setError}
-          />
-
-          <TransferNotificationList
-            notifications={pendingTasks}
-            isAdmin={isAdmin}
-            onSelectTask={(task) => {
-              setSelectedTask(task);
-              setStaffStep(1);
-            }}
-            onCancelTask={handleCancelTransfer}
-            onCleanupHistory={handleCleanupHistory}
-            isCleaningUp={isCleaningUp}
-            cancellingId={cancellingId}
-          />
-        </div>
+        <TransferForm
+          form={form}
+          warehouses={warehouses}
+          products={transferHook.fromWhProducts.length > 0 ? transferHook.fromWhProducts : products}
+          selectedProduct={selectedProduct}
+          staffList={transferHook.staffList}
+          watchProduct={watchProduct}
+          watchFromWh={watchFromWh}
+          watchToWh={watchToWh}
+          error={error}
+          onSubmit={onSubmit}
+          onErrorPrompt={setError}
+          selectedItems={transferHook.selectedItems}
+          addTransferItem={transferHook.addTransferItem}
+          updateItemQty={transferHook.updateItemQty}
+          removeItem={transferHook.removeItem}
+          clearItems={transferHook.clearItems}
+        />
       ) : (
         <TransferNotificationList
           notifications={pendingTasks}
@@ -167,7 +148,7 @@ export default function TransferPage() {
         />
       )}
 
-      {/* Staff Guided 3-Step Execution Modal */}
+      {/* Staff Guided 4-Step Execution Modal */}
       <TransferStaffWorkflowModal
         selectedTask={selectedTask}
         onClose={() => setSelectedTask(null)}
@@ -175,18 +156,22 @@ export default function TransferPage() {
         setStaffStep={setStaffStep}
         staffScanProductInput={staffScanProductInput}
         setStaffScanProductInput={setStaffScanProductInput}
-        staffScanWhInput={staffScanWhInput}
-        setStaffScanWhInput={setStaffScanWhInput}
-        staffScanLocationInput={staffScanLocationInput}
-        setStaffScanLocationInput={setStaffScanLocationInput}
+        staffScanSourceLocationInput={staffScanSourceLocationInput}
+        setStaffScanSourceLocationInput={setStaffScanSourceLocationInput}
+        staffScanDestLocationInput={staffScanDestLocationInput}
+        setStaffScanDestLocationInput={setStaffScanDestLocationInput}
+        sourceAllocations={transferHook.sourceAllocations}
+        onUpdateSourceAllocationQty={transferHook.handleUpdateSourceAllocationQty}
+        onRemoveSourceAllocation={transferHook.handleRemoveSourceAllocation}
+        onProceedToDestStep={transferHook.handleProceedToDestStep}
         staffError={staffError}
         staffSuccess={staffSuccess}
         staffProductInputRef={staffProductInputRef}
-        staffWhInputRef={staffWhInputRef}
-        staffLocationInputRef={staffLocationInputRef}
+        staffSourceLocationInputRef={staffSourceLocationInputRef}
+        staffDestLocationInputRef={staffDestLocationInputRef}
         onVerifyProductBarcode={handleVerifyProductBarcode}
-        onVerifyWarehouseBarcode={handleVerifyWarehouseBarcode}
-        onVerifyLocationBarcode={handleVerifyLocationBarcode}
+        onVerifySourceLocationBarcode={handleVerifySourceLocationBarcode}
+        onVerifyDestinationLocationBarcode={handleVerifyDestinationLocationBarcode}
         onOpenStaffCamera={(target) => {
           setStaffCameraTarget(target);
           setIsStaffCameraOpen(true);
@@ -200,10 +185,10 @@ export default function TransferPage() {
         onScanSuccess={(scannedText) => {
           if (staffCameraTarget === "PRODUCT") {
             handleVerifyProductBarcode(scannedText);
-          } else if (staffCameraTarget === "WAREHOUSE") {
-            handleVerifyWarehouseBarcode(scannedText);
-          } else if (staffCameraTarget === "LOCATION") {
-            handleVerifyLocationBarcode(scannedText);
+          } else if (staffCameraTarget === "SOURCE_LOCATION") {
+            handleVerifySourceLocationBarcode(scannedText);
+          } else if (staffCameraTarget === "DEST_LOCATION") {
+            handleVerifyDestinationLocationBarcode(scannedText);
           }
           setIsStaffCameraOpen(false);
         }}

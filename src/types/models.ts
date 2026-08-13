@@ -103,6 +103,9 @@ export interface Document {
   note: string;
   created_by: UserId;
   created_at: string;
+  assigned_to_user_id?: UserId;
+  assigned_to_name?: string;
+  assigned_by_user_id?: UserId;
 }
 
 // ------ StockMovement ------
