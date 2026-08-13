@@ -30,12 +30,22 @@ const ACTIONS = [
 export default function WarehouseQrPage() {
   const [selectedAction, setSelectedAction] = useState("receive");
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
-  const [baseUrl, setBaseUrl] = useState("");
+  const [baseUrl, setBaseUrl] = useState(getWarehouseQrProductionOrigin());
   const [wifiIp, setWifiIp] = useState("192.168.1.54");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setBaseUrl(resolveWarehouseQrBaseUrl(window.location.origin));
+      const origin = window.location.origin;
+      if (
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1") ||
+        origin.includes("0.0.0.0") ||
+        origin.endsWith(".vercel.app")
+      ) {
+        setBaseUrl(getWarehouseQrProductionOrigin());
+      } else {
+        setBaseUrl(resolveWarehouseQrBaseUrl(origin));
+      }
     }
     // Auto-detect server Wi-Fi IP
     fetch("/api/system/ip")
@@ -51,14 +61,11 @@ export default function WarehouseQrPage() {
   const actionObj = ACTIONS.find((a) => a.id === selectedAction) || ACTIONS[0];
   const qrBaseUrl = resolveWarehouseQrBaseUrl(baseUrl);
 
-  // Check if current URL setting is Wi-Fi IP or Localhost
+  // Check if current URL setting is a private Wi-Fi IP subnet
   const isLocalOrWifi =
     qrBaseUrl.includes("192.168.") ||
     qrBaseUrl.includes("10.") ||
-    qrBaseUrl.includes("172.") ||
-    qrBaseUrl.includes("localhost") ||
-    qrBaseUrl.includes("127.0.0.1") ||
-    qrBaseUrl.includes(":3000");
+    qrBaseUrl.includes("172.");
 
   useEffect(() => {
     if (!qrBaseUrl) return;

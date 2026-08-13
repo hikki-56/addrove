@@ -36,4 +36,16 @@ describe("warehouse QR URL resolution", () => {
       )
     ).toBe(productionUrl);
   });
+
+  test("replaces localhost and 127.0.0.1 with production URL", () => {
+    expect(resolveWarehouseQrBaseUrl("http://localhost:3000", productionUrl)).toBe(
+      productionUrl
+    );
+    expect(resolveWarehouseQrBaseUrl("http://127.0.0.1:3000", productionUrl)).toBe(
+      productionUrl
+    );
+    expect(
+      getWarehouseQrProductionOrigin("http://localhost:3000")
+    ).toBe(productionUrl);
+  });
 });

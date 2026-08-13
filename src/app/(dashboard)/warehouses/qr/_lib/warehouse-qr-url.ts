@@ -20,7 +20,12 @@ export function getWarehouseQrProductionOrigin(
 
   const hostname = new URL(origin).hostname;
   const fallbackHostname = new URL(FALLBACK_PRODUCTION_ORIGIN).hostname;
-  if (hostname.endsWith(".vercel.app") && hostname !== fallbackHostname) {
+  if (
+    (hostname.endsWith(".vercel.app") && hostname !== fallbackHostname) ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0"
+  ) {
     return FALLBACK_PRODUCTION_ORIGIN;
   }
 
@@ -35,7 +40,13 @@ export function resolveWarehouseQrBaseUrl(
   const candidateOrigin = parseHttpOrigin(candidate);
   if (!candidateOrigin) return productionOrigin;
 
-  if (new URL(candidateOrigin).hostname.endsWith(".vercel.app")) {
+  const hostname = new URL(candidateOrigin).hostname;
+  if (
+    hostname.endsWith(".vercel.app") ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0"
+  ) {
     return productionOrigin;
   }
 
