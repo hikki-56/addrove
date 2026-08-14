@@ -56,27 +56,29 @@ export default function ExpressImportModal({
 
       doc.rows?.forEach((row) => {
         const sku = String(row[0] ?? "").trim();
-        const rawBarcode = String(row[1] ?? "").trim();
-        const productName = String(row[2] ?? "").trim() || sku;
-        const category = String(row[3] ?? "").trim() || "ทั่วไป";
-        const unit = "ชิ้น";
-        const qtyVal = parseFloat(String(row[5] ?? row[4] ?? "1").replace(/,/g, "").trim());
+        const location = String(row[1] ?? "-").trim() || "-";
+        const rawBarcode = String(row[2] ?? "").trim();
+        const productName = String(row[3] ?? "").trim() || sku;
+        const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
         const quantity = !isNaN(qtyVal) && qtyVal > 0 ? qtyVal : 1;
-        const location = String(row[6] ?? "-").trim() || "-";
-        const supplier = String(row[7] ?? "-").trim() || "-";
+        const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
+        const supplier = String(row[6] ?? "-").trim() || "-";
 
-        const barcode = to8DigitBarcode(rawBarcode, sku) || rawBarcode || sku;
+        // Generate barcode using that product's exact barcode number (or fallback to SKU if none)
+        const barcode = (rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined")
+          ? rawBarcode
+          : (to8DigitBarcode(rawBarcode, sku) || sku);
 
         list.push({
           document_id: doc.document_id,
           document_no: doc.document_no,
-          target_sheet: doc.target_sheet,
+          target_sheet: targetWarehouse,
           document_date: doc.document_date || "-",
           created_by: doc.created_by || "-",
           sku,
           product_name: productName,
-          category,
-          unit,
+          category: "ทั่วไป",
+          unit: "ชิ้น",
           quantity,
           location,
           supplier,
@@ -230,16 +232,39 @@ export default function ExpressImportModal({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2 print:gap-3">
               {filteredItems.map((item, idx) => {
-                const isCopied = copiedItemSku === (item.barcode || item.sku);
+                const barcodeValue = item.barcode || item.sku;
+                const isCopied = copiedItemSku === barcodeValue;
 
                 return (
                   <div
                     key={`${item.document_id}-${item.sku}-${idx}`}
-                    className="p-4 rounded-xl border border-white/10 bg-[#16161f] shadow-sm flex items-center justify-center print:border-black print:bg-white print:break-inside-avoid"
+                    className="p-4 rounded-xl border border-white/10 bg-[#16161f] shadow-sm space-y-2.5 print:border-black print:bg-white print:break-inside-avoid"
                   >
-                    {/* Visual Code 128 Barcode Image ONLY */}
+                    {/* Item Metadata */}
+                    <div className="flex items-start justify-between gap-2 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono font-bold text-slate-100 print:text-black truncate">
+                          [{item.sku}] {item.product_name}
+                        </div>
+                        <div className="text-slate-400 print:text-gray-700 flex items-center gap-2 mt-0.5 text-[11px]">
+                          <span>📍 {item.location}</span>
+                          <span>•</span>
+                          <span className="font-mono font-bold text-emerald-400 print:text-black">{item.quantity} ชิ้น</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopySingle(barcodeValue)}
+                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-white/10 hover:bg-white/20 text-slate-200 print:hidden transition-colors shrink-0 cursor-pointer"
+                        title="คัดลอกเลขบาร์โค้ด"
+                      >
+                        {isCopied ? "✓ คัดลอกแล้ว" : "คัดลอก"}
+                      </button>
+                    </div>
+
+                    {/* Visual Code 128 Barcode Image */}
                     <div className="py-2 w-full flex flex-col items-center justify-center bg-white p-3.5 rounded-xl border border-slate-300 print:border-black">
-                      <BarcodeSvg value={item.barcode || item.sku} height={65} showText={true} />
+                      <BarcodeSvg value={barcodeValue} height={65} showText={true} />
                     </div>
                   </div>
                 );

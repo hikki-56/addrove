@@ -446,7 +446,7 @@ export default function ApprovalsPage() {
 
                           {/* บาร์โค้ด */}
                           <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
-                            {to8DigitBarcode(row[2], row[0]) || row[2] || row[1] || "-"}
+                            {row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-")}
                           </td>
 
                           {/* ชื่อสินค้า */}
