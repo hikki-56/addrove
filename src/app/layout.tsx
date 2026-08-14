@@ -5,6 +5,8 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/lib/auth";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { TabAuthProvider } from "@/context/TabAuthContext";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 const notoSansThai = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -40,6 +42,8 @@ export default async function RootLayout({
             </ThemeProvider>
           </TabAuthProvider>
         </SessionProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
