@@ -12,8 +12,28 @@ export interface ApprovedDocumentItem {
   document_date: string;
   created_by: string;
   status: string;
-  rows: Array<[string, string, string, string, number, string, string, string]>; // [sku, name, category, unit, qty, loc, note/supplier, barcode]
+  rows: Array<[string, string, string, string, number, string, string, string]>;
 }
+
+export interface DisplayFields {
+  barcode: boolean;
+  productName: boolean;
+  warehouse: boolean;
+  quantity: boolean;
+  sku: boolean;
+  location: boolean;
+  docNo: boolean;
+}
+
+const DEFAULT_DISPLAY_FIELDS: DisplayFields = {
+  barcode: true,
+  productName: true,
+  warehouse: true,
+  quantity: true,
+  sku: false,
+  location: false,
+  docNo: false,
+};
 
 interface ExpressImportModalProps {
   isOpen: boolean;
@@ -30,8 +50,17 @@ export default function ExpressImportModal({
 }: ExpressImportModalProps) {
   const [selectedDocId, setSelectedDocId] = useState<string>(initialDocId || "ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [copiedItemSku, setCopiedItemSku] = useState<string | null>(null);
+  const [displayFields, setDisplayFields] = useState<DisplayFields>(DEFAULT_DISPLAY_FIELDS);
+
+  // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
+  const toExpressWhCode = (targetSheet: string): string => {
+    if (!targetSheet) return "01";
+    const match = targetSheet.match(/\d+/);
+    if (match) return match[0].padStart(2, "0");
+    return "01";
+  };
 
   // Flatten items with document metadata
   const allItems = useMemo(() => {
@@ -111,56 +140,66 @@ export default function ExpressImportModal({
     setTimeout(() => setCopiedItemSku(null), 2000);
   };
 
-  // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
-  const toExpressWhCode = (targetSheet: string): string => {
-    if (!targetSheet) return "01";
-    const match = targetSheet.match(/\d+/);
-    if (match) return match[0].padStart(2, "0");
-    return "01";
-  };
-
-  // Copy all items matching exact Express ERP grid columns: บาร์โค้ด | รายละเอียด | คลัง | จำนวน
-  const handleCopyAllExpress = () => {
+  // Copy all items matching Express columns: บาร์โค้ด | รายละเอียด | คลัง | จำนวน
+  const handleCopyExpressData = () => {
     if (filteredItems.length === 0) return;
-    const lines = filteredItems.map(
-      (item) =>
-        `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`
-    );
+    const lines = filteredItems.map((item) => {
+      const parts: string[] = [];
+      if (displayFields.barcode) parts.push(item.barcode);
+      if (displayFields.productName) parts.push(item.product_name.replace(/\t/g, " "));
+      if (displayFields.warehouse) parts.push(toExpressWhCode(item.target_sheet));
+      if (displayFields.quantity) parts.push(String(item.quantity));
+      if (displayFields.sku) parts.push(item.sku);
+      if (displayFields.location) parts.push(item.location);
+      if (displayFields.docNo) parts.push(item.document_no);
+
+      if (parts.length === 0) {
+        return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`;
+      }
+      return parts.join("\t");
+    });
     const content = lines.join("\n");
     navigator.clipboard.writeText(content);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 3000);
+    setCopySuccess("คัดลอกข้อมูลเรียบร้อยแล้ว!");
+    setTimeout(() => setCopySuccess(null), 3000);
   };
 
-  // Copy compact 3-column Express format: บาร์โค้ด | คลัง | จำนวน
-  const handleCopyExpressCompact = () => {
-    if (filteredItems.length === 0) return;
-    const lines = filteredItems.map(
-      (item) => `${item.barcode}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`
-    );
-    const content = lines.join("\n");
-    navigator.clipboard.writeText(content);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 3000);
-  };
-
-  // Download Express batch import file (.txt) matching Express ERP columns
+  // Download Express batch import file (.txt)
   const handleDownloadExpressTxt = () => {
     if (filteredItems.length === 0) return;
-    // Header format matching Express ERP: บาร์โค้ด, รายละเอียด, คลัง, จำนวน, SKU, ตำแหน่ง, เลขที่เอกสาร
-    const header = "บาร์โค้ด\tรายละเอียด\tคลัง\tจำนวน\tSKU\tตำแหน่ง\tเลขที่เอกสาร\n";
+    const headers: string[] = [];
+    if (displayFields.barcode) headers.push("บาร์โค้ด");
+    if (displayFields.productName) headers.push("ชื่อสินค้า");
+    if (displayFields.warehouse) headers.push("โกดัง");
+    if (displayFields.quantity) headers.push("จำนวน");
+    if (displayFields.sku) headers.push("รหัสสินค้า");
+    if (displayFields.location) headers.push("ตำแหน่ง");
+    if (displayFields.docNo) headers.push("เลขที่เอกสาร");
+
+    const headerLine = (headers.length > 0 ? headers.join("\t") : "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน") + "\n";
     const body = filteredItems
-      .map(
-        (i) =>
-          `${i.barcode}\t${i.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(i.target_sheet)}\t${i.quantity}\t${i.sku}\t${i.location}\t${i.document_no}`
-      )
+      .map((item) => {
+        const parts: string[] = [];
+        if (displayFields.barcode) parts.push(item.barcode);
+        if (displayFields.productName) parts.push(item.product_name.replace(/\t/g, " "));
+        if (displayFields.warehouse) parts.push(toExpressWhCode(item.target_sheet));
+        if (displayFields.quantity) parts.push(String(item.quantity));
+        if (displayFields.sku) parts.push(item.sku);
+        if (displayFields.location) parts.push(item.location);
+        if (displayFields.docNo) parts.push(item.document_no);
+
+        if (parts.length === 0) {
+          return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`;
+        }
+        return parts.join("\t");
+      })
       .join("\n");
 
-    const blob = new Blob([header + body], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([headerLine + body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `express_import_barcodes_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `express_import_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -172,11 +211,15 @@ export default function ExpressImportModal({
     window.print();
   };
 
+  const toggleField = (field: keyof DisplayFields) => {
+    setDisplayFields((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md fade-in overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-[#111118] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
+      <div className="relative w-full max-w-5xl bg-[#111118] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
         {/* Modal Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-white/10 bg-[#16161f] print:hidden">
           <div className="flex items-center gap-3">
@@ -193,22 +236,201 @@ export default function ExpressImportModal({
                 </span>
               </h2>
               <p className="text-slate-400 text-xs mt-0.5">
-                รายการบาร์โค้ดสินค้าที่อนุมัติเข้าคลังเรียบร้อยแล้ว เพื่อสแกนหรือนำเข้าโปรแกรม Express ERP
+                เลือกข้อมูลที่ต้องการแสดงและสแกนนำเข้าโปรแกรม Express ERP
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors self-end sm:self-auto cursor-pointer"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrintBarcodes}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span>พิมพ์ใบสแกน</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
+        {/* Filter & Column Selector Controls Header */}
+        <div className="p-4 bg-[#14141c] border-b border-white/10 space-y-3 print:hidden">
+          {/* Top Row: Doc Selector & Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="🔍 ค้นหาบาร์โค้ด, ชื่อสินค้า, โกดัง..."
+                className="w-full pl-3.5 pr-4 py-2 bg-[#1b1b26] border border-white/10 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedDocId}
+                onChange={(e) => setSelectedDocId(e.target.value)}
+                className="px-3 py-2 bg-[#1b1b26] border border-white/10 rounded-xl text-xs font-mono font-bold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="ALL">เอกสารทั้งหมด ({approvedDocs.length})</option>
+                {approvedDocs.map((doc) => (
+                  <option key={doc.document_id} value={doc.document_id}>
+                    {doc.document_no} ({doc.target_sheet})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Bottom Row: Field Selection Pills */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/5 pt-3">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+                <span>เลือกข้อมูลที่แสดง:</span>
+              </span>
+
+              {/* Barcode Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("barcode")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.barcode
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.barcode ? "✓" : "+"}</span>
+                <span>บาร์โค้ด</span>
+              </button>
+
+              {/* Product Name Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("productName")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.productName
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.productName ? "✓" : "+"}</span>
+                <span>ชื่อสินค้า</span>
+              </button>
+
+              {/* Warehouse Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("warehouse")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.warehouse
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.warehouse ? "✓" : "+"}</span>
+                <span>โกดังที่รับเข้า</span>
+              </button>
+
+              {/* Quantity Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("quantity")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.quantity
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.quantity ? "✓" : "+"}</span>
+                <span>จำนวน</span>
+              </button>
+
+              {/* SKU Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("sku")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.sku
+                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.sku ? "✓" : "+"}</span>
+                <span>รหัส SKU</span>
+              </button>
+
+              {/* Location Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("location")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.location
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.location ? "✓" : "+"}</span>
+                <span>ตำแหน่ง</span>
+              </button>
+
+              {/* Doc No Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("docNo")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.docNo
+                    ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-xs"
+                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                }`}
+              >
+                <span>{displayFields.docNo ? "✓" : "+"}</span>
+                <span>เลขเอกสาร</span>
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyExpressData}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                <span>{copySuccess || "คัดลอกข้อมูล"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadExpressTxt}
+                className="px-3 py-1.5 rounded-xl bg-[#1b1b26] hover:bg-[#252536] text-slate-200 border border-white/10 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="ดาวน์โหลดไฟล์ .txt สำหรับ Express"
+              >
+                <span>.txt</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Printable Barcode Content Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 print:p-0 print:overflow-visible">
@@ -238,33 +460,71 @@ export default function ExpressImportModal({
                 return (
                   <div
                     key={`${item.document_id}-${item.sku}-${idx}`}
-                    className="p-4 rounded-xl border border-white/10 bg-[#16161f] shadow-sm space-y-2.5 print:border-black print:bg-white print:break-inside-avoid"
+                    className="p-4 rounded-2xl border border-white/10 bg-[#16161f] shadow-sm space-y-3 print:border-black print:bg-white print:break-inside-avoid"
                   >
-                    {/* Item Metadata */}
-                    <div className="flex items-start justify-between gap-2 text-xs">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-mono font-bold text-slate-100 print:text-black truncate">
-                          [{item.sku}] {item.product_name}
+                    {/* Item Info Headers based on selected fields */}
+                    <div className="space-y-1.5">
+                      {displayFields.productName && (
+                        <div className="text-sm font-bold text-slate-100 print:text-black leading-snug break-words">
+                          {displayFields.sku && <span className="font-mono text-emerald-400 print:text-black mr-1.5">[{item.sku}]</span>}
+                          {item.product_name}
                         </div>
-                        <div className="text-slate-400 print:text-gray-700 flex items-center gap-2 mt-0.5 text-[11px]">
-                          <span>📍 {item.location}</span>
-                          <span>•</span>
-                          <span className="font-mono font-bold text-emerald-400 print:text-black">{item.quantity} ชิ้น</span>
+                      )}
+
+                      {(!displayFields.productName && displayFields.sku) && (
+                        <div className="text-sm font-mono font-bold text-emerald-400 print:text-black">
+                          รหัสสินค้า: {item.sku}
                         </div>
+                      )}
+
+                      {/* Badges: Warehouse, Quantity, Location, Doc No */}
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        {displayFields.warehouse && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-500/15 text-indigo-300 font-bold border border-indigo-500/30 print:border-black print:text-black print:bg-gray-100">
+                            🏢 โกดัง: <strong className="text-white print:text-black">{item.target_sheet} ({toExpressWhCode(item.target_sheet)})</strong>
+                          </span>
+                        )}
+
+                        {displayFields.quantity && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono font-extrabold border border-emerald-500/30 print:border-black print:text-black print:bg-gray-100">
+                            📦 จำนวน: <strong className="text-emerald-400 print:text-black">{item.quantity} ชิ้น</strong>
+                          </span>
+                        )}
+
+                        {displayFields.location && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-300 font-mono font-bold border border-amber-500/30 print:border-black print:text-black print:bg-gray-100">
+                            📍 {item.location}
+                          </span>
+                        )}
+
+                        {displayFields.docNo && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-500/15 text-slate-300 font-mono text-[11px] border border-slate-500/30 print:border-black print:text-black print:bg-gray-100">
+                            📄 {item.document_no}
+                          </span>
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopySingle(barcodeValue)}
-                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-white/10 hover:bg-white/20 text-slate-200 print:hidden transition-colors shrink-0 cursor-pointer"
-                        title="คัดลอกเลขบาร์โค้ด"
-                      >
-                        {isCopied ? "✓ คัดลอกแล้ว" : "คัดลอก"}
-                      </button>
                     </div>
 
                     {/* Visual Code 128 Barcode Image */}
-                    <div className="py-2 w-full flex flex-col items-center justify-center bg-white p-3.5 rounded-xl border border-slate-300 print:border-black">
-                      <BarcodeSvg value={barcodeValue} height={65} showText={true} />
+                    {displayFields.barcode && (
+                      <div className="py-2.5 w-full flex flex-col items-center justify-center bg-white p-3.5 rounded-xl border border-slate-300 shadow-xs print:border-black">
+                        <BarcodeSvg value={barcodeValue} height={70} showText={true} />
+                      </div>
+                    )}
+
+                    {/* Footer Row */}
+                    <div className="flex items-center justify-between text-xs pt-1 print:hidden">
+                      <span className="text-slate-500 font-mono text-[11px]">
+                        บาร์โค้ด: <strong className="text-slate-300">{barcodeValue}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopySingle(barcodeValue)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 text-slate-200 transition-colors cursor-pointer"
+                        title="คัดลอกเฉพาะเลขบาร์โค้ด"
+                      >
+                        {isCopied ? "✓ คัดลอกแล้ว" : "คัดลอกบาร์โค้ด"}
+                      </button>
                     </div>
                   </div>
                 );
@@ -276,7 +536,7 @@ export default function ExpressImportModal({
         {/* Modal Footer */}
         <div className="p-4 bg-[#16161f] border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-mono print:hidden">
           <div>
-            รวมบาร์โค้ดทั้งหมด <strong className="text-slate-200">{filteredItems.length}</strong> รายการพร้อมสแกน
+            รวมบาร์โค้ดทั้งหมด <strong className="text-slate-200">{filteredItems.length}</strong> รายการ
           </div>
           <button
             onClick={onClose}
