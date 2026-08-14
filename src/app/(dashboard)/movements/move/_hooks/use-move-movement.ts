@@ -240,7 +240,13 @@ export function useMoveMovement({
         );
       });
 
-      const targetCode = matchedLoc ? (matchedLoc.location_code || matchedLoc.location_id) : code.trim().toUpperCase();
+      const targetCode = matchedLoc
+        ? (matchedLoc.shelf_code && (matchedLoc.shelf_code.trim().toLowerCase() === trimmed || cleanLocStr(matchedLoc.shelf_code) === scannedClean)
+            ? matchedLoc.shelf_code.toUpperCase()
+            : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === trimmed || cleanLocStr(matchedLoc.location_code) === scannedClean)
+                ? matchedLoc.location_code.toUpperCase()
+                : code.trim().toUpperCase()))
+        : code.trim().toUpperCase();
       setValue("to_location_id", targetCode, { shouldValidate: true });
       setScanFeedback({
         type: "success",

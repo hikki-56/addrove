@@ -66,12 +66,24 @@ export default function ReceiveLineItem({
     const cleanVal = locVal.trim().toLowerCase();
     const matched = locations.find(
       (l) =>
+        ((l as any).shelf_code || "").trim().toLowerCase() === cleanVal ||
         (l.location_code || "").trim().toLowerCase() === cleanVal ||
         (l.location_id || "").trim().toLowerCase() === cleanVal ||
-        ((l as any).shelf_code || "").trim().toLowerCase() === cleanVal
+        (l.location_name || "").trim().toLowerCase() === cleanVal
     );
     if (matched) {
-      return matched.location_code || matched.location_name || locVal.trim().toUpperCase();
+      const shelfCode = ((matched as any).shelf_code || "").trim();
+      if (shelfCode && shelfCode.toLowerCase() === cleanVal) {
+        return shelfCode.toUpperCase();
+      }
+      const locCode = (matched.location_code || "").trim();
+      if (locCode && locCode.toLowerCase() === cleanVal) {
+        return locCode.toUpperCase();
+      }
+      if (!cleanVal.startsWith("loc-") && !cleanVal.startsWith("id-") && !cleanVal.startsWith("sh-")) {
+        return locVal.trim().toUpperCase();
+      }
+      return matched.shelf_code || matched.location_code || matched.location_name || locVal.trim().toUpperCase();
     }
     return locVal.trim().toUpperCase();
   };

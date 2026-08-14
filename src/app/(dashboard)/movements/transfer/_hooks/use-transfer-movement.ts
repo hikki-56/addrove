@@ -515,13 +515,13 @@ export function useTransferMovement({
       validLocs = getDefaultLocationsForWarehouse(srcWhId);
     }
 
+    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+
     const matchedLoc = validLocs.find((loc) => {
       const locId = (loc.location_id || "").trim().toLowerCase();
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-
-      const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
       const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
 
       return (
@@ -533,7 +533,13 @@ export function useTransferMovement({
       );
     });
 
-    const targetLocId = matchedLoc ? (matchedLoc.location_code || matchedLoc.location_id) : scannedCode.trim();
+    const targetLocId = matchedLoc
+      ? (matchedLoc.shelf_code && (matchedLoc.shelf_code.trim().toLowerCase() === code || matchedLoc.shelf_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
+          ? matchedLoc.shelf_code.toUpperCase()
+          : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === code || matchedLoc.location_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
+              ? matchedLoc.location_code.toUpperCase()
+              : scannedCode.trim().toUpperCase()))
+      : scannedCode.trim().toUpperCase();
     const targetLocName = matchedLoc ? (matchedLoc.location_name || matchedLoc.location_code || targetLocId) : targetLocId;
 
     // Check picked total so far (excluding if re-picking same location)
@@ -700,13 +706,13 @@ export function useTransferMovement({
       validLocs = getDefaultLocationsForWarehouse(destWhId);
     }
 
+    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+
     const matchedLoc = validLocs.find((loc) => {
       const locId = (loc.location_id || "").trim().toLowerCase();
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-
-      const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
       const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
 
       return (
@@ -718,7 +724,13 @@ export function useTransferMovement({
       );
     });
 
-    const targetToLocId = matchedLoc ? (matchedLoc.location_code || matchedLoc.location_id) : scannedCode.trim();
+    const targetToLocId = matchedLoc
+      ? (matchedLoc.shelf_code && (matchedLoc.shelf_code.trim().toLowerCase() === code || matchedLoc.shelf_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
+          ? matchedLoc.shelf_code.toUpperCase()
+          : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === code || matchedLoc.location_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
+              ? matchedLoc.location_code.toUpperCase()
+              : scannedCode.trim().toUpperCase()))
+      : scannedCode.trim().toUpperCase();
     setScannedToLocation(targetToLocId);
 
     try {

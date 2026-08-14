@@ -93,7 +93,7 @@ export class SheetsLocationRepository implements ILocationRepository {
       }
     }
 
-    const locations = locRows.filter((r) => r[0]).map((r) => {
+    const locations: Location[] = locRows.filter((r) => r[0]).map((r) => {
       const loc = rowToLocation(r);
       const shelfData = shelfMapByLocId.get(loc.location_id) || shelfMapByLocId.get(loc.location_id.toLowerCase());
       if (shelfData) {
@@ -102,6 +102,28 @@ export class SheetsLocationRepository implements ILocationRepository {
       }
       return loc;
     });
+
+    // Also include discrete shelves from SHELVES tab as scannable locations
+    const existingCodes = new Set(locations.map((l) => (l.location_code || "").trim().toLowerCase()));
+    for (const r of allShelves) {
+      if (!r || !r[2] || !r[2].trim()) continue;
+      const shelfCode = r[2].trim();
+      if (existingCodes.has(shelfCode.toLowerCase())) continue;
+      existingCodes.add(shelfCode.toLowerCase());
+
+      const parentLoc = locations.find((l) => l.location_id === r[1]?.trim());
+      locations.push({
+        location_id: r[0]?.trim() || `sh-${shelfCode}`,
+        warehouse_id: parentLoc?.warehouse_id || "wh-01",
+        location_code: shelfCode,
+        location_name: r[3]?.trim() || shelfCode,
+        shelf_code: shelfCode,
+        shelf_name: r[3]?.trim() || shelfCode,
+        active: true,
+        created_at: "",
+        updated_at: "",
+      });
+    }
 
     if (warehouseId) {
       const targetWh = normalizeWarehouseId(warehouseId);
@@ -112,15 +134,19 @@ export class SheetsLocationRepository implements ILocationRepository {
   }
 
   async findById(id: string): Promise<Location | null> {
-    const rows = await readSheet(SHEETS.LOCATIONS, "A2:H");
-    const row = rows.find((r) => r[0] === id);
-    return row ? rowToLocation(row) : null;
+    const all = await this.findAll();
+    const clean = id.trim().toLowerCase();
+    return all.find((l) => l.location_id.toLowerCase() === clean) || null;
   }
 
   async findByCode(code: string): Promise<Location | null> {
-    const rows = await readSheet(SHEETS.LOCATIONS, "A2:H");
-    const row = rows.find((r) => r[2] === code || r[7] === code);
-    return row ? rowToLocation(row) : null;
+    const all = await this.findAll();
+    const clean = code.trim().toLowerCase();
+    return all.find((l) =>
+      (l.location_code && l.location_code.toLowerCase() === clean) ||
+      (l.shelf_code && l.shelf_code.toLowerCase() === clean) ||
+      (l.location_id && l.location_id.toLowerCase() === clean)
+    ) || null;
   }
 
   async create(input: CreateLocationInput): Promise<Location> {

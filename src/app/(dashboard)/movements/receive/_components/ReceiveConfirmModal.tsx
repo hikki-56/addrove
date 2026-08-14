@@ -62,8 +62,18 @@ export default function ReceiveConfirmModal({
                   p.product_id.toLowerCase() === line.product_id.toLowerCase() ||
                   p.sku.toLowerCase() === line.product_id.toLowerCase()
               );
-              const loc = locations.find((l) => l.location_code === line.location_id || l.location_id === line.location_id);
-              const locDisplay = loc?.location_code || line.location_id || "ตำแหน่งเริ่มต้น";
+              const loc = locations.find(
+                (l) =>
+                  ((l as any).shelf_code || "").toLowerCase() === (line.location_id || "").toLowerCase() ||
+                  (l.location_code || "").toLowerCase() === (line.location_id || "").toLowerCase() ||
+                  (l.location_id || "").toLowerCase() === (line.location_id || "").toLowerCase()
+              );
+              const locDisplay =
+                ((loc as any)?.shelf_code && (loc as any).shelf_code.toLowerCase() === (line.location_id || "").toLowerCase())
+                  ? (loc as any).shelf_code
+                  : (loc?.location_code && loc.location_code.toLowerCase() === (line.location_id || "").toLowerCase())
+                  ? loc.location_code
+                  : line.location_id || loc?.location_code || "ตำแหน่งเริ่มต้น";
 
               const extraLocs: string[] = Array.isArray((line as any).extra_locations)
                 ? (line as any).extra_locations.filter((x: string) => Boolean(x && x.trim()))

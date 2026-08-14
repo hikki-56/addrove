@@ -141,6 +141,7 @@ export function useReceiveMovement({
     const rawTrimmed = (rawCode || "").trim();
     if (!rawTrimmed) return;
     const trimmed = rawTrimmed.toLowerCase();
+    const finalLocCode = rawTrimmed.toUpperCase();
 
     let matchedLoc = locations.find((l) => {
       const shelfCode = ((l as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
@@ -180,15 +181,21 @@ export function useReceiveMovement({
       }
     }
 
-    const finalLocCode = rawTrimmed.toUpperCase();
-    const finalLocId = matchedLoc ? matchedLoc.location_id : rawTrimmed.toUpperCase();
+    const finalLocId = matchedLoc
+      ? (matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
+          ? matchedLoc.shelf_code.toUpperCase()
+          : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
+              ? matchedLoc.location_code.toUpperCase()
+              : finalLocCode))
+      : finalLocCode;
 
     if (!matchedLoc) {
       const newLocObj: Location = {
         location_id: finalLocId,
-        warehouse_id: activeWhId || "wh-1",
+        warehouse_id: activeWhId || "wh-01",
         location_code: finalLocCode,
         location_name: `ตำแหน่ง ${finalLocCode}`,
+        shelf_code: finalLocCode,
         active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -197,7 +204,7 @@ export function useReceiveMovement({
     }
 
     setValue(`lines.${lineIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
-    setLocationInputs((prev) => ({ ...prev, [lineIdx]: finalLocCode }));
+    setLocationInputs((prev) => ({ ...prev, [lineIdx]: finalLocId }));
   };
 
   const handleScanBarcode = useCallback(async (code: string) => {
@@ -325,14 +332,23 @@ export function useReceiveMovement({
     const isExplicitLocationPattern =
       Boolean(matchedLoc) ||
       /^(loc|wh[0-9]?|shelf|rack|bin|slf|sh|tier|zone)[-_]/i.test(trimmed) ||
-      (!/^\d+$/.test(trimmed) && /^[a-z]{1,3}[-_]?[0-9]{1,4}[a-z0-9]*$/i.test(trimmed));
+      /^[0-9]{1,2}[a-z]{1,4}[-_]?[0-9a-z\-_]*$/i.test(trimmed) ||
+      /^[a-z]{1,4}[-_]?[0-9]{1,4}[a-z0-9\-_]*$/i.test(trimmed) ||
+      /^[0-9a-z]{1,5}[-_][0-9a-z\-_]+$/i.test(trimmed) ||
+      /^([0-9]{1,2}[kK][0-9]{1,4}|wh[0-9]{1,2})[-_]?[0-9a-z]*$/i.test(trimmed);
 
     if (matchedLoc || isExplicitLocationPattern) {
       const currentLines = watchLines || [];
       if (currentLines.length > 0) {
         const rawTrimmed = code.trim();
         const finalLocCode = rawTrimmed.toUpperCase();
-        const finalLocId = matchedLoc ? matchedLoc.location_id : rawTrimmed.toUpperCase();
+        const finalLocId = matchedLoc
+          ? (matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
+              ? matchedLoc.shelf_code.toUpperCase()
+              : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
+                  ? matchedLoc.location_code.toUpperCase()
+                  : finalLocCode))
+          : finalLocCode;
 
         if (!matchedLoc) {
           const newLocObj: Location = {
@@ -340,6 +356,7 @@ export function useReceiveMovement({
             warehouse_id: activeWhId || "wh-01",
             location_code: finalLocCode,
             location_name: `ตำแหน่ง ${finalLocCode}`,
+            shelf_code: finalLocCode,
             active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -347,10 +364,13 @@ export function useReceiveMovement({
           if (setLocations) setLocations((prev) => [newLocObj, ...prev]);
         }
 
+        const firstEmptyLocIdx = currentLines.findIndex(
+          (l) => !l.location_id || !l.location_id.trim()
+        );
         const firstUnconfirmed = currentLines.findIndex(
           (_, idx) => !confirmedLines[idx] && (idx === 0 || confirmedLines[idx - 1])
         );
-        const targetIdx = firstUnconfirmed !== -1 ? firstUnconfirmed : 0;
+        const targetIdx = firstEmptyLocIdx !== -1 ? firstEmptyLocIdx : (firstUnconfirmed !== -1 ? firstUnconfirmed : 0);
         const targetLine = currentLines[targetIdx];
 
         const currentExtras: string[] = Array.isArray((targetLine as any).extra_locations)
@@ -360,11 +380,11 @@ export function useReceiveMovement({
         const emptyExtraIdx = currentExtras.findIndex((loc) => !loc || !loc.trim());
 
         if (emptyExtraIdx !== -1) {
-          currentExtras[emptyExtraIdx] = finalLocCode;
+          currentExtras[emptyExtraIdx] = finalLocId;
           setValue(`lines.${targetIdx}.extra_locations` as any, currentExtras, { shouldValidate: true, shouldDirty: true });
         } else {
           setValue(`lines.${targetIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
-          setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocCode }));
+          setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocId }));
         }
 
         const lineProduct = products?.find((p) => p.product_id === currentLines[targetIdx].product_id || p.sku === currentLines[targetIdx].product_id);
@@ -373,7 +393,7 @@ export function useReceiveMovement({
         setScanFeedback({
           type: "success",
           title: "ระบุตำแหน่งจัดเก็บสำเร็จ",
-          message: `📍 บันทึกตำแหน่ง [${finalLocCode}] ให้กับสินค้า ${prodName} แล้ว`,
+          message: `📍 บันทึกตำแหน่ง [${finalLocId}] ให้กับสินค้า ${prodName} แล้ว`,
         });
         setBarcodeInput("");
         isProcessingRef.current = false;
@@ -393,7 +413,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [step, locations, products, activeWhId, watchLines, setValue, append, setLocations, setProducts]);
+  }, [step, locations, products, activeWhId, watchLines, confirmedLines, setValue, append, setLocations, setProducts]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);

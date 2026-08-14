@@ -75,12 +75,22 @@ export async function receiveStock(
 
   const approvalRows = input.lines.map((l) => {
     const prod = allProducts.find((p: any) => p.product_id === l.product_id || p.sku === l.product_id);
-    const loc = allLocations.find((locItem: any) => locItem.location_id === l.location_id || locItem.location_code === l.location_id);
+    const loc = allLocations.find(
+      (locItem: any) =>
+        (locItem.shelf_code && locItem.shelf_code.toLowerCase() === (l.location_id || "").toLowerCase()) ||
+        (locItem.location_code && locItem.location_code.toLowerCase() === (l.location_id || "").toLowerCase()) ||
+        (locItem.location_id && locItem.location_id.toLowerCase() === (l.location_id || "").toLowerCase())
+    );
     const extraLocs = Array.isArray((l as any).extra_locations)
       ? (l as any).extra_locations.filter((x: string) => Boolean(x && x.trim()))
       : [];
     const rawLoc = (l.location_id || "").trim();
-    const locCode = loc?.location_code || rawLoc;
+    const locCode =
+      loc?.shelf_code && loc.shelf_code.toLowerCase() === rawLoc.toLowerCase()
+        ? loc.shelf_code
+        : loc?.location_code && loc.location_code.toLowerCase() === rawLoc.toLowerCase()
+        ? loc.location_code
+        : rawLoc || loc?.location_code || "ตำแหน่งเริ่มต้น";
     const fullLocDisplay = [locCode, ...extraLocs].filter(Boolean).join(", ");
 
     const supplierVal = prod?.supplier || (prod?.description ? prod.description.replace(/^ผู้จำหน่าย:\s*/, "") : "") || "-";
