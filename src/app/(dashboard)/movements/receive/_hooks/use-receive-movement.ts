@@ -380,15 +380,32 @@ export function useReceiveMovement({
         const currentExtras: string[] = Array.isArray((targetLine as any).extra_locations)
           ? [...(targetLine as any).extra_locations]
           : [];
+        const currentQtys: number[] = Array.isArray((targetLine as any).extra_qtys)
+          ? [...(targetLine as any).extra_qtys]
+          : [];
+        const primaryLoc = (targetLine.location_id || "").trim();
 
-        const emptyExtraIdx = currentExtras.findIndex((loc) => !loc || !loc.trim());
-
-        if (emptyExtraIdx !== -1) {
-          currentExtras[emptyExtraIdx] = finalLocId;
-          setValue(`lines.${targetIdx}.extra_locations` as any, currentExtras, { shouldValidate: true, shouldDirty: true });
-        } else {
+        if (!primaryLoc) {
           setValue(`lines.${targetIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
           setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocId }));
+        } else {
+          const emptyExtraIdx = currentExtras.findIndex((loc) => !loc || !loc.trim());
+          if (emptyExtraIdx !== -1) {
+            currentExtras[emptyExtraIdx] = finalLocId;
+            setValue(`lines.${targetIdx}.extra_locations` as any, currentExtras, { shouldValidate: true, shouldDirty: true });
+          } else if (primaryLoc.toUpperCase() !== finalLocId.toUpperCase() && !currentExtras.some((e) => e.toUpperCase() === finalLocId.toUpperCase())) {
+            const updatedExtras = [...currentExtras, finalLocId];
+            const updatedQtys = [...currentQtys, 1];
+            setValue(`lines.${targetIdx}.extra_locations` as any, updatedExtras, { shouldValidate: true, shouldDirty: true });
+            setValue(`lines.${targetIdx}.extra_qtys` as any, updatedQtys, { shouldValidate: true, shouldDirty: true });
+            const pQty = typeof (targetLine as any).primary_qty === "number" ? (targetLine as any).primary_qty : (Number(targetLine.qty) || 1);
+            setValue(`lines.${targetIdx}.primary_qty` as any, pQty, { shouldValidate: true, shouldDirty: true });
+            const sumExtras = updatedQtys.reduce((acc, curr) => acc + (Number(curr) || 1), 0);
+            setValue(`lines.${targetIdx}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
+          } else {
+            setValue(`lines.${targetIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
+            setLocationInputs((prev) => ({ ...prev, [targetIdx]: finalLocId }));
+          }
         }
 
         const lineProduct = products?.find((p) => p.product_id === currentLines[targetIdx].product_id || p.sku === currentLines[targetIdx].product_id);
