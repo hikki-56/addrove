@@ -417,6 +417,7 @@ export default function ApprovalsPage() {
                     <thead>
                       <tr className="bg-[#111118] text-slate-400 border-b border-white/10">
                         <th className="py-2.5 px-3 font-semibold">รหัสสินค้า</th>
+                        <th className="py-2.5 px-3 font-semibold">ตำแหน่ง</th>
                         <th className="py-2.5 px-3 font-semibold">ผู้จำหน่าย</th>
                         <th className="py-2.5 px-3 font-semibold">บาร์โค้ด</th>
                         <th className="py-2.5 px-3 font-semibold">ชื่อสินค้า</th>
@@ -429,6 +430,13 @@ export default function ApprovalsPage() {
                           {/* รหัสสินค้า */}
                           <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
                             {row[0] || "-"}
+                          </td>
+
+                          {/* ตำแหน่ง */}
+                          <td className="py-2.5 px-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-mono font-bold text-xs border border-emerald-500/30">
+                              📍 {row[1] || "-"}
+                            </span>
                           </td>
 
                           {/* ผู้จำหน่าย */}

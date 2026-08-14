@@ -60,6 +60,14 @@ export default function ReceiveLineItem({
   const currentQty = watch(`lines.${index}.qty`) || 1;
   const currentLocation = watch(`lines.${index}.location_id`) || "";
   const extraLocations: string[] = watch(`lines.${index}.extra_locations` as any) || [];
+  const extraQtys: number[] = watch(`lines.${index}.extra_qtys` as any) || [];
+  const rawPrimaryQty = watch(`lines.${index}.primary_qty` as any);
+
+  const currentPrimaryQty = typeof rawPrimaryQty === "number" && rawPrimaryQty > 0
+    ? rawPrimaryQty
+    : extraLocations.length > 0
+    ? Math.max(1, currentQty - extraQtys.reduce((sum, q) => sum + (Number(q) || 1), 0))
+    : currentQty;
 
   const getLocationDisplay = (locVal: string): string => {
     if (!locVal || !locVal.trim()) return "";
@@ -88,16 +96,55 @@ export default function ReceiveLineItem({
     return locVal.trim().toUpperCase();
   };
 
+  const handleUpdatePrimaryQty = (val: number) => {
+    const validVal = Math.max(1, val);
+    const sumExtras = extraQtys.reduce((acc, curr) => acc + (Number(curr) || 1), 0);
+    setValue(`lines.${index}.primary_qty` as any, validVal, { shouldValidate: true, shouldDirty: true });
+    setValue(`lines.${index}.qty`, validVal + sumExtras, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const handleUpdateExtraQty = (extraIdx: number, val: number) => {
+    const validVal = Math.max(1, val);
+    const updatedQtys = [...extraQtys];
+    while (updatedQtys.length <= extraIdx) {
+      updatedQtys.push(1);
+    }
+    updatedQtys[extraIdx] = validVal;
+    setValue(`lines.${index}.extra_qtys` as any, updatedQtys, { shouldValidate: true, shouldDirty: true });
+
+    const pQty = currentPrimaryQty;
+    setValue(`lines.${index}.primary_qty` as any, pQty, { shouldValidate: true, shouldDirty: true });
+    const sumExtras = updatedQtys.reduce((acc, curr) => acc + (Number(curr) || 1), 0);
+    setValue(`lines.${index}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
+  };
+
   const handleAddExtraSlot = () => {
-    const current: string[] = form.getValues(`lines.${index}.extra_locations` as any) || [];
-    setValue(`lines.${index}.extra_locations` as any, [...current, ""], { shouldValidate: true, shouldDirty: true });
+    const currentLocs: string[] = form.getValues(`lines.${index}.extra_locations` as any) || [];
+    const currentQtys: number[] = form.getValues(`lines.${index}.extra_qtys` as any) || [];
+    const pQty = currentPrimaryQty;
+    setValue(`lines.${index}.primary_qty` as any, pQty, { shouldValidate: true, shouldDirty: true });
+    setValue(`lines.${index}.extra_locations` as any, [...currentLocs, ""], { shouldValidate: true, shouldDirty: true });
+    setValue(`lines.${index}.extra_qtys` as any, [...currentQtys, 1], { shouldValidate: true, shouldDirty: true });
+    const sumExtras = [...currentQtys, 1].reduce((acc, curr) => acc + (Number(curr) || 1), 0);
+    setValue(`lines.${index}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
   };
 
   const handleRemoveExtraSlot = (extraIdx: number) => {
-    const current: string[] = form.getValues(`lines.${index}.extra_locations` as any) || [];
-    const updated = current.filter((_, i) => i !== extraIdx);
-    setValue(`lines.${index}.extra_locations` as any, updated, { shouldValidate: true, shouldDirty: true });
+    const currentLocs: string[] = form.getValues(`lines.${index}.extra_locations` as any) || [];
+    const currentQtys: number[] = form.getValues(`lines.${index}.extra_qtys` as any) || [];
+    const updatedLocs = currentLocs.filter((_, i) => i !== extraIdx);
+    const updatedQtys = currentQtys.filter((_, i) => i !== extraIdx);
+    setValue(`lines.${index}.extra_locations` as any, updatedLocs, { shouldValidate: true, shouldDirty: true });
+    setValue(`lines.${index}.extra_qtys` as any, updatedQtys, { shouldValidate: true, shouldDirty: true });
+    const pQty = currentPrimaryQty;
+    const sumExtras = updatedQtys.reduce((acc, curr) => acc + (Number(curr) || 1), 0);
+    setValue(`lines.${index}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
   };
+
+  const locationBreakdowns = [
+    { loc: currentLocation, qty: currentPrimaryQty },
+    ...extraLocations.map((loc, i) => ({ loc, qty: extraQtys[i] || 1 })),
+  ].filter((item) => Boolean(item.loc && item.loc.trim()));
 
   const allSelectedLocations = [currentLocation, ...extraLocations].filter((l) => Boolean(l && l.trim()));
   const hasUnscannedSlot = !currentLocation || extraLocations.some((loc) => !loc || !loc.trim());
@@ -155,13 +202,13 @@ export default function ReceiveLineItem({
           </div>
 
           {/* Show location preview pill when collapsed if location selected */}
-          {!isExpanded && allSelectedLocations.length > 0 && (
+          {!isExpanded && locationBreakdowns.length > 0 && (
             <div className="pt-1 flex items-center gap-2 text-xs sm:text-sm flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-xs sm:text-sm">
-                📍 {allSelectedLocations.map((locVal) => getLocationDisplay(locVal)).join(", ")}
+                📍 {locationBreakdowns.map((item) => `${getLocationDisplay(item.loc)}${extraLocations.length > 0 ? ` (${item.qty} ชิ้น)` : ""}`).join(", ")}
               </span>
               <span className="text-slate-600 font-mono text-xs sm:text-sm font-semibold">
-                ({currentBoxes} กล่อง / {currentQty} ชิ้น)
+                ({currentBoxes} กล่อง / รวม {currentQty} ชิ้น)
               </span>
             </div>
           )}
@@ -175,10 +222,11 @@ export default function ReceiveLineItem({
             </div>
           )}
 
-          {/* Box Count Badge (Pinned Top Right) */}
-          <div className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/90 text-slate-700 font-mono text-xs sm:text-sm font-bold flex items-center gap-1 shadow-2xs shrink-0">
-            <span className="text-xs sm:text-sm text-slate-500 font-sans font-semibold">กล่อง:</span>
-            <strong className="text-emerald-600 font-mono font-extrabold text-sm sm:text-base">{currentBoxes}</strong>
+          {/* Quantity Summary Badge (Pinned Top Right) */}
+          <div className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-800 font-mono text-xs sm:text-sm font-bold flex items-center gap-1 shadow-2xs shrink-0">
+            <span className="text-xs sm:text-sm text-slate-500 font-sans font-semibold">รวม:</span>
+            <strong className="text-emerald-700 font-mono font-extrabold text-sm sm:text-base">{currentQty}</strong>
+            <span className="text-[11px] font-sans font-medium text-slate-500">ชิ้น</span>
           </div>
 
           <button
@@ -201,134 +249,186 @@ export default function ReceiveLineItem({
       {/* Expanded Details Body */}
       {isExpanded && (
         <div className="px-4 pb-4 sm:px-5 sm:pb-5 space-y-3.5 pt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Location selection */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">ตำแหน่งจัดเก็บ *</label>
-              <div className="space-y-2">
-                {/* Slot 1: Primary Location + Add Button on same row */}
-                <div className="flex items-center gap-2">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700">
+                ตำแหน่งจัดเก็บและจำนวนสินค้าในแต่ละตำแหน่ง *
+              </label>
+              <button
+                type="button"
+                disabled={hasUnscannedSlot}
+                onClick={() => {
+                  if (hasUnscannedSlot) return;
+                  handleAddExtraSlot();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 ${
+                  hasUnscannedSlot
+                    ? "bg-slate-100 text-slate-400 border border-slate-200/80 cursor-not-allowed opacity-60"
+                    : "bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 text-emerald-700 cursor-pointer"
+                }`}
+                title={hasUnscannedSlot ? "กรุณายิงสแกนตำแหน่งช่องปัจจุบันก่อนเพิ่มตำแหน่งใหม่" : "เพิ่มตำแหน่งจัดเก็บใหม่"}
+              >
+                <svg className={`w-3.5 h-3.5 ${hasUnscannedSlot ? "text-slate-400" : "text-emerald-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>+ เพิ่มตำแหน่งจัดเก็บ</span>
+              </button>
+            </div>
+
+            {/* Slot 1: Primary Location Card with Qty */}
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-700 text-xs font-bold font-sans flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  ตำแหน่งที่ 1 {extraLocations.length > 0 ? "(หลัก)" : ""}:
+                </span>
+                {currentLocation && (
+                  <span className="text-[11px] text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full font-sans font-bold border border-emerald-200">
+                    ✓ สแกนแล้ว
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                {/* Location Box */}
+                <div className="flex-1">
                   {currentLocation ? (
-                    <div className="flex-1 px-4 py-2.5 sm:py-3 rounded-2xl bg-emerald-50 border border-emerald-300/90 text-emerald-900 text-xs sm:text-sm font-mono font-bold flex items-center justify-between shadow-xs">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-emerald-600 text-lg">📍</span>
-                        <div>
-                          <span className="text-slate-500 text-[10px] sm:text-xs font-sans font-medium block">ตำแหน่ง (1):</span>
-                          <span className="text-sm sm:text-base font-extrabold text-emerald-800">{getLocationDisplay(currentLocation)}</span>
-                        </div>
-                      </div>
-                      <span className="text-xs text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full font-sans font-bold border border-emerald-200 flex items-center gap-1">
-                        ✓ สแกนแล้ว
-                      </span>
+                    <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-mono font-bold flex items-center gap-2 shadow-2xs">
+                      <span className="text-emerald-600 text-base">📍</span>
+                      <span className="text-emerald-900 font-extrabold text-sm sm:text-base">{getLocationDisplay(currentLocation)}</span>
                     </div>
                   ) : (
-                    <div className="flex-1 px-4 py-3 sm:py-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-400 ring-2 ring-emerald-500/30 text-emerald-900 text-xs sm:text-sm font-mono font-medium flex items-center gap-2.5 shadow-xs animate-pulse">
-                      <span className="text-emerald-600 text-lg sm:text-xl">🔍</span>
-                      <span className="text-emerald-800 font-bold">ยิงสแกนตำแหน่ง...</span>
+                    <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50/70 border border-emerald-400 ring-2 ring-emerald-500/30 text-emerald-900 text-xs sm:text-sm font-mono font-medium flex items-center gap-2 shadow-2xs animate-pulse">
+                      <span className="text-emerald-600 text-base">🔍</span>
+                      <span className="text-emerald-800 font-bold">ยิงสแกนตำแหน่งที่ 1...</span>
                     </div>
                   )}
-
-                  <button
-                    type="button"
-                    disabled={hasUnscannedSlot}
-                    onClick={() => {
-                      if (hasUnscannedSlot) return;
-                      handleAddExtraSlot();
-                    }}
-                    className={`p-3 sm:px-3.5 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 ${
-                      hasUnscannedSlot
-                        ? "bg-slate-100 text-slate-400 border border-slate-200/80 cursor-not-allowed opacity-60"
-                        : "bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 text-emerald-700 cursor-pointer"
-                    }`}
-                    title={hasUnscannedSlot ? "กรุณายิงสแกนตำแหน่งช่องปัจจุบันก่อนเพิ่มตำแหน่งใหม่" : "เพิ่มตำแหน่งสแกนในการ์ดเดิม"}
-                  >
-                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${hasUnscannedSlot ? "text-slate-400" : "text-emerald-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span className="hidden sm:inline">เพิ่มตำแหน่งสแกน</span>
-                  </button>
                 </div>
 
-                {/* Additional Scan Slots inside the same card */}
-                {extraLocations.map((extraLoc, extraIdx) => (
-                  <div key={`extra-loc-${extraIdx}`} className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                    {extraLoc ? (
-                      <div className="flex-1 px-4 py-2.5 sm:py-3 rounded-2xl bg-emerald-50 border border-emerald-300/90 text-emerald-900 text-xs sm:text-sm font-mono font-bold flex items-center justify-between shadow-xs">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-emerald-600 text-lg">📍</span>
-                          <div>
-                            <span className="text-slate-500 text-[10px] sm:text-xs font-sans font-medium block">ตำแหน่ง ({extraIdx + 2}):</span>
-                            <span className="text-sm sm:text-base font-extrabold text-emerald-800">{getLocationDisplay(extraLoc)}</span>
-                          </div>
-                        </div>
-                        <span className="text-xs text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full font-sans font-bold border border-emerald-200">
-                          ✓ สแกนแล้ว
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex-1 px-4 py-3 sm:py-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-400 ring-2 ring-emerald-500/30 text-emerald-900 text-xs sm:text-sm font-mono font-medium flex items-center gap-2.5 shadow-xs animate-pulse">
-                        <span className="text-emerald-600 text-lg sm:text-xl">🔍</span>
-                        <span className="text-emerald-800 font-bold">ยิงสแกนตำแหน่ง ({extraIdx + 2})...</span>
-                      </div>
-                    )}
-
+                {/* Quantity Control for Slot 1 */}
+                <div className="flex items-center justify-between sm:justify-start gap-1.5 shrink-0 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-xs font-semibold text-slate-500 pl-2">จำนวน:</span>
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleRemoveExtraSlot(extraIdx)}
-                      className="p-3 sm:p-3.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-colors shrink-0 border border-slate-200"
-                      title="ลบช่องสแกนตำแหน่งนี้"
+                      onClick={() => handleUpdatePrimaryQty(currentPrimaryQty - 1)}
+                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm flex items-center justify-center cursor-pointer border border-slate-200"
+                      title="ลดจำนวน"
                     >
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={currentPrimaryQty}
+                      onChange={(e) => handleUpdatePrimaryQty(parseInt(e.target.value, 10) || 1)}
+                      className="w-16 text-center py-1 bg-transparent font-mono font-black text-sm text-emerald-700 focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-400 font-medium pr-1">ชิ้น</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdatePrimaryQty(currentPrimaryQty + 1)}
+                      className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-sm flex items-center justify-center cursor-pointer border border-emerald-200"
+                      title="เพิ่มจำนวน"
+                    >
+                      +
                     </button>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
 
-            {/* Quantity */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">จำนวนชิ้นรวม *</label>
-              <div className="flex items-center gap-2">
-                {/* Number Input on the Left */}
-                <div className="flex-1 relative">
-                  <input
-                    type="number"
-                    min="1"
-                    {...register(`lines.${index}.qty`, { valueAsNumber: true })}
-                    className="w-full pl-4 pr-9 py-3 sm:py-3.5 rounded-2xl bg-white border border-slate-200 text-left text-emerald-600 text-sm sm:text-base font-mono font-extrabold shadow-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-sans font-semibold text-slate-400 pointer-events-none">
-                    ชิ้น
+            {/* Extra Location Slots (Slot 2..N) */}
+            {extraLocations.map((extraLoc, extraIdx) => (
+              <div key={`extra-slot-${extraIdx}`} className="p-3 sm:p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 space-y-2.5 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-700 text-xs font-bold font-sans flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
+                    ตำแหน่งที่ {extraIdx + 2}:
                   </span>
+                  <div className="flex items-center gap-2">
+                    {extraLoc && (
+                      <span className="text-[11px] text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full font-sans font-bold border border-emerald-200">
+                        ✓ สแกนแล้ว
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExtraSlot(extraIdx)}
+                      className="text-xs text-rose-500 hover:text-rose-700 hover:underline font-bold cursor-pointer flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      ลบตำแหน่งนี้
+                    </button>
+                  </div>
                 </div>
 
-                {/* Minus and Plus buttons grouped on the Right */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setValue(`lines.${index}.qty`, Math.max(1, currentQty - 1), { shouldValidate: true })}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-lg sm:text-xl flex items-center justify-center cursor-pointer border border-slate-200 transition-colors shadow-xs"
-                    title="ลดจำนวนชิ้น"
-                  >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setValue(`lines.${index}.qty`, currentQty + 1, { shouldValidate: true })}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-lg sm:text-xl flex items-center justify-center cursor-pointer border border-emerald-200/90 transition-colors shadow-xs"
-                    title="เพิ่มจำนวนชิ้น"
-                  >
-                    +
-                  </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  {/* Location Box */}
+                  <div className="flex-1">
+                    {extraLoc ? (
+                      <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-mono font-bold flex items-center gap-2 shadow-2xs">
+                        <span className="text-emerald-600 text-base">📍</span>
+                        <span className="text-emerald-900 font-extrabold text-sm sm:text-base">{getLocationDisplay(extraLoc)}</span>
+                      </div>
+                    ) : (
+                      <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50/70 border border-emerald-400 ring-2 ring-emerald-500/30 text-emerald-900 text-xs sm:text-sm font-mono font-medium flex items-center gap-2 shadow-2xs animate-pulse">
+                        <span className="text-emerald-600 text-base">🔍</span>
+                        <span className="text-emerald-800 font-bold">ยิงสแกนตำแหน่งที่ {extraIdx + 2}...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity Control for Extra Slot */}
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 shrink-0 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-xs font-semibold text-slate-500 pl-2">จำนวน:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateExtraQty(extraIdx, (extraQtys[extraIdx] || 1) - 1)}
+                        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm flex items-center justify-center cursor-pointer border border-slate-200"
+                        title="ลดจำนวน"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={extraQtys[extraIdx] || 1}
+                        onChange={(e) => handleUpdateExtraQty(extraIdx, parseInt(e.target.value, 10) || 1)}
+                        className="w-16 text-center py-1 bg-transparent font-mono font-black text-sm text-emerald-700 focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-400 font-medium pr-1">ชิ้น</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateExtraQty(extraIdx, (extraQtys[extraIdx] || 1) + 1)}
+                        className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-sm flex items-center justify-center cursor-pointer border border-emerald-200"
+                        title="เพิ่มจำนวน"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              </div>
+            ))}
+
+            {/* Total Quantity Breakdown Bar */}
+            <div className="p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 flex items-center justify-between shadow-2xs">
+              <div className="text-xs text-slate-600 font-bold flex items-center gap-1.5">
+                <span>📦 จำนวนรวมทั้งหมดในสินค้านี้:</span>
+                <span className="text-slate-400 font-normal">({1 + extraLocations.length} ตำแหน่ง)</span>
+              </div>
+              <div className="font-mono font-extrabold text-base sm:text-lg text-emerald-700">
+                {currentQty} ชิ้น
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1 gap-2">
-            {/* Left: Cancel button (Triggers Delete Confirmation Modal) */}
+          <div className="flex items-center justify-between pt-2 gap-2">
+            {/* Left: Cancel button */}
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}

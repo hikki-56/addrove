@@ -73,49 +73,97 @@ export async function receiveStock(
     // Non-critical: approval page will still work with raw IDs
   }
 
-  const approvalRows = input.lines.map((l) => {
+  const approvalRows: any[] = [];
+  const expandedLines: any[] = [];
+
+  for (const l of input.lines) {
     const prod = allProducts.find((p: any) => p.product_id === l.product_id || p.sku === l.product_id);
-    const loc = allLocations.find(
-      (locItem: any) =>
-        (locItem.shelf_code && locItem.shelf_code.toLowerCase() === (l.location_id || "").toLowerCase()) ||
-        (locItem.location_code && locItem.location_code.toLowerCase() === (l.location_id || "").toLowerCase()) ||
-        (locItem.location_id && locItem.location_id.toLowerCase() === (l.location_id || "").toLowerCase())
-    );
-    const extraLocs = Array.isArray((l as any).extra_locations)
+    const supplierVal = prod?.supplier || (prod?.description ? prod.description.replace(/^ผู้จำหน่าย:\s*/, "") : "") || "-";
+    const barcodeVal = l.barcode || prod?.barcode || prod?.sku || "";
+    const prodName = prod?.product_name || "สินค้า";
+
+    const extraLocs: string[] = Array.isArray((l as any).extra_locations)
       ? (l as any).extra_locations.filter((x: string) => Boolean(x && x.trim()))
       : [];
-    const rawLoc = (l.location_id || "").trim();
-    const locCode =
-      loc?.shelf_code && loc.shelf_code.toLowerCase() === rawLoc.toLowerCase()
-        ? loc.shelf_code
-        : loc?.location_code && loc.location_code.toLowerCase() === rawLoc.toLowerCase()
-        ? loc.location_code
-        : rawLoc || loc?.location_code || "ตำแหน่งเริ่มต้น";
-    const fullLocDisplay = [locCode, ...extraLocs].filter(Boolean).join(", ");
+    const extraQtys: number[] = Array.isArray((l as any).extra_qtys) ? (l as any).extra_qtys : [];
 
-    const supplierVal = prod?.supplier || (prod?.description ? prod.description.replace(/^ผู้จำหน่าย:\s*/, "") : "") || "-";
+    // Resolve location allocations
+    const allocations: Array<{ location_id: string; qty: number }> = [];
 
-    return [
-      prod?.sku || l.product_id,
-      fullLocDisplay,
-      l.barcode || prod?.barcode || prod?.sku || "",
-      prod?.product_name || "สินค้า",
-      l.qty,
-      warehouseName,
-      supplierVal,
-      new Date().toISOString(),
-    ];
-  });
+    if (Array.isArray((l as any).location_allocations) && (l as any).location_allocations.length > 0) {
+      for (const alloc of (l as any).location_allocations) {
+        if (alloc.location_id && String(alloc.location_id).trim()) {
+          allocations.push({
+            location_id: String(alloc.location_id).trim(),
+            qty: Number(alloc.qty) || 1,
+          });
+        }
+      }
+    } else if (extraLocs.length > 0) {
+      const totalExtraQty = extraQtys.reduce((sum, q) => sum + (Number(q) || 1), 0);
+      const primaryQty = typeof (l as any).primary_qty === "number" && (l as any).primary_qty > 0
+        ? (l as any).primary_qty
+        : Math.max(1, Number(l.qty) - totalExtraQty > 0 ? Number(l.qty) - totalExtraQty : Number(l.qty));
+      allocations.push({ location_id: (l.location_id || "").trim(), qty: primaryQty });
+
+      for (let i = 0; i < extraLocs.length; i++) {
+        allocations.push({
+          location_id: extraLocs[i].trim(),
+          qty: Number(extraQtys[i]) || 1,
+        });
+      }
+    } else {
+      allocations.push({
+        location_id: (l.location_id || "").trim(),
+        qty: Number(l.qty) || 1,
+      });
+    }
+
+    for (const alloc of allocations) {
+      const loc = allLocations.find(
+        (locItem: any) =>
+          (locItem.shelf_code && locItem.shelf_code.toLowerCase() === alloc.location_id.toLowerCase()) ||
+          (locItem.location_code && locItem.location_code.toLowerCase() === alloc.location_id.toLowerCase()) ||
+          (locItem.location_id && locItem.location_id.toLowerCase() === alloc.location_id.toLowerCase())
+      );
+
+      const locCode =
+        loc?.shelf_code && loc.shelf_code.toLowerCase() === alloc.location_id.toLowerCase()
+          ? loc.shelf_code
+          : loc?.location_code && loc.location_code.toLowerCase() === alloc.location_id.toLowerCase()
+          ? loc.location_code
+          : alloc.location_id || loc?.location_code || "ตำแหน่งเริ่มต้น";
+
+      approvalRows.push([
+        prod?.sku || l.product_id,
+        locCode,
+        barcodeVal,
+        prodName,
+        alloc.qty,
+        warehouseName,
+        supplierVal,
+        new Date().toISOString(),
+      ]);
+
+      expandedLines.push({
+        product_id: l.product_id,
+        location_id: locCode,
+        qty: alloc.qty,
+        boxes: Number(l.boxes) || 1,
+        barcode: barcodeVal,
+      });
+    }
+  }
 
   const notePayload = JSON.stringify({
     warehouse_id: input.warehouse_id,
     target_sheet: warehouseName,
-    product_id: input.lines[0]?.product_id,
-    qty: input.lines[0]?.qty,
-    location_id: input.lines[0]?.location_id || "",
+    product_id: expandedLines[0]?.product_id || input.lines[0]?.product_id,
+    qty: expandedLines.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0),
+    location_id: expandedLines[0]?.location_id || input.lines[0]?.location_id || "",
     idempotency_key: input.idempotency_key,
     note: input.note,
-    lines: input.lines,
+    lines: expandedLines,
     rows: approvalRows,
   });
 

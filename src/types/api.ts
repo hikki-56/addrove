@@ -102,10 +102,19 @@ export const UpdateProductSchema = CreateProductSchema.partial().extend({
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 
 // ------ Movement: Receive ------
+export const LocationAllocationSchema = z.object({
+  location_id: z.string().default(""),
+  qty: z.number().default(1),
+});
+export type LocationAllocation = z.infer<typeof LocationAllocationSchema>;
+
 export const ReceiveLineSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
   location_id: z.string().default("loc-14A1"),
+  primary_qty: z.number().optional(),
   extra_locations: z.array(z.string()).optional().default([]),
+  extra_qtys: z.array(z.number()).optional().default([]),
+  location_allocations: z.array(LocationAllocationSchema).optional().default([]),
   qty: z.number().positive("จำนวนต้องมากกว่า 0"),
   boxes: z.number().default(1),
   barcode: z.string().default(""),

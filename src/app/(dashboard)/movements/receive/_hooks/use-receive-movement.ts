@@ -131,6 +131,8 @@ export function useReceiveMovement({
       product_id: currentLine.product_id,
       location_id: "",
       extra_locations: [],
+      extra_qtys: [],
+      location_allocations: [],
       boxes: 1,
       qty: 1,
       barcode: currentLine.barcode || "",
@@ -293,6 +295,8 @@ export function useReceiveMovement({
           product_id: pid,
           location_id: "",
           extra_locations: [],
+          extra_qtys: [],
+          location_allocations: [],
           boxes: 1,
           qty: 1,
           barcode: matched.barcode || matched.sku || "",
@@ -469,11 +473,29 @@ export function useReceiveMovement({
     const cleanedLines = data.lines.map((l, idx) => {
       const manualLoc = locationInputs[idx];
       const locToUse = manualLoc?.trim() ? manualLoc.trim() : (l.location_id?.trim() ? l.location_id.trim() : defaultLoc);
+      const extraLocs = Array.isArray(l.extra_locations) ? l.extra_locations.filter((x: string) => Boolean(x && x.trim())) : [];
+      const extraQtys = Array.isArray((l as any).extra_qtys) ? (l as any).extra_qtys : [];
+      const primaryQty = typeof (l as any).primary_qty === "number" && (l as any).primary_qty > 0
+        ? (l as any).primary_qty
+        : extraLocs.length > 0
+        ? Math.max(1, (Number(l.qty) || 1) - extraQtys.reduce((sum: number, q: number) => sum + (Number(q) || 1), 0))
+        : (Number(l.qty) || 1);
+
+      const allocations = [
+        { location_id: locToUse, qty: primaryQty },
+        ...extraLocs.map((loc: string, i: number) => ({ location_id: loc, qty: Number(extraQtys[i]) || 1 })),
+      ];
+
       return {
         product_id: l.product_id,
         location_id: locToUse,
+        primary_qty: primaryQty,
+        extra_locations: extraLocs,
+        extra_qtys: extraQtys,
+        location_allocations: allocations,
         boxes: Number(l.boxes) || 1,
         qty: Number(l.qty) || 1,
+        barcode: l.barcode || "",
       };
     });
 
@@ -539,13 +561,15 @@ export function useReceiveMovement({
       });
       } else {
         append({
-          product_id: pid,
-          location_id: "",
-          extra_locations: [],
-          boxes: 1,
-          qty: 1,
-          barcode: product.barcode || product.sku || "",
-        });
+        product_id: pid,
+        location_id: "",
+        extra_locations: [],
+        extra_qtys: [],
+        location_allocations: [],
+        boxes: 1,
+        qty: 1,
+        barcode: product.barcode || product.sku || "",
+      });
         setError("");
         setScanFeedback({
           type: "success",

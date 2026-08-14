@@ -78,7 +78,36 @@ export default function ReceiveConfirmModal({
               const extraLocs: string[] = Array.isArray((line as any).extra_locations)
                 ? (line as any).extra_locations.filter((x: string) => Boolean(x && x.trim()))
                 : [];
-              const allLocs = [locDisplay, ...extraLocs].join(", ");
+              const extraQtys: number[] = Array.isArray((line as any).extra_qtys) ? (line as any).extra_qtys : [];
+              const primaryQty = typeof (line as any).primary_qty === "number" && (line as any).primary_qty > 0
+                ? (line as any).primary_qty
+                : extraLocs.length > 0
+                ? Math.max(1, (Number(line.qty) || 1) - extraQtys.reduce((sum, q) => sum + (Number(q) || 1), 0))
+                : (Number(line.qty) || 1);
+
+              const locBreakdowns: string[] = [];
+              if (extraLocs.length > 0) {
+                locBreakdowns.push(`${locDisplay} (${primaryQty} ชิ้น)`);
+                for (let i = 0; i < extraLocs.length; i++) {
+                  const eloc = extraLocs[i];
+                  const eqty = extraQtys[i] || 1;
+                  const matchedExtra = locations.find(
+                    (l) =>
+                      ((l as any).shelf_code || "").toLowerCase() === eloc.toLowerCase() ||
+                      (l.location_code || "").toLowerCase() === eloc.toLowerCase()
+                  );
+                  const elocDisplay = (matchedExtra as any)?.shelf_code && (matchedExtra as any).shelf_code.toLowerCase() === eloc.toLowerCase()
+                    ? (matchedExtra as any).shelf_code
+                    : matchedExtra?.location_code && matchedExtra.location_code.toLowerCase() === eloc.toLowerCase()
+                    ? matchedExtra.location_code
+                    : eloc;
+                  locBreakdowns.push(`${elocDisplay} (${eqty} ชิ้น)`);
+                }
+              } else {
+                locBreakdowns.push(locDisplay);
+              }
+
+              const allLocs = locBreakdowns.join(" | ");
 
               return (
                 <div key={`confirm-row-${idx}`} className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 flex items-center justify-between gap-3 shadow-2xs">
