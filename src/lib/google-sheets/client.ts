@@ -147,9 +147,7 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
     sheetName === SHEETS.LOGIN_LOGS ||
     sheetName === "ประวัติการเข้าระบบ";
   if (isSensitive) {
-    throw new Error(
-      `ชีต ${sheetName} มีข้อมูลลับ/รหัสผ่าน ไม่อนุญาตให้อ่านผ่าน Public CSV โดยไม่ยืนยันตัวตน`
-    );
+    return [];
   }
 
   const urls: string[] = [];

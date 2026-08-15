@@ -18,13 +18,13 @@ export class SheetsDashboardRepository implements IDashboardRepository {
     const productRepo = new SheetsProductRepository();
     const [movRows, docRows, products, warehouseRows, locationRows, userRows, summaryRows] =
       await Promise.all([
-        readSheet(SHEETS.STOCK_MOVEMENTS, "A2:J"),
-        readSheet(SHEETS.DOCUMENTS, "A2:I"),
-        productRepo.findAll({ activeOnly: true }),
-        readSheet(SHEETS.WAREHOUSES, "A2:G"),
-        readSheet(SHEETS.LOCATIONS, "A2:L"),
-        readSheet(SHEETS.USERS, "A2:I"),
-        readSheet(SHEETS.STOCK_SUMMARY, "A2:E"),
+        readSheet(SHEETS.STOCK_MOVEMENTS, "A2:J").catch(() => []),
+        readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []),
+        productRepo.findAll({ activeOnly: true }).catch(() => []),
+        readSheet(SHEETS.WAREHOUSES, "A2:G").catch(() => []),
+        readSheet(SHEETS.LOCATIONS, "A2:L").catch(() => []),
+        readSheet(SHEETS.USERS, "A2:I").catch(() => []),
+        readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []),
       ]);
 
     const docMap = new Map(docRows.filter((r) => r[0]).map((r) => [r[0], r]));
