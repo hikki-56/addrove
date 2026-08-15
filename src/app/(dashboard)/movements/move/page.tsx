@@ -8,7 +8,6 @@ import WarehouseTabs from "@/components/warehouse/WarehouseTabs";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import AdminCreateTransferModal from "@/components/transfer/AdminCreateTransferModal";
-import StaffTaskNotificationBanner from "@/components/notifications/StaffTaskNotificationBanner";
 import { useMoveMovement } from "./_hooks/use-move-movement";
 import MoveForm from "./_components/MoveForm";
 import MoveProductCard from "./_components/MoveProductCard";
@@ -83,13 +82,6 @@ export default function MovePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Staff Assigned Task Notification Banner */}
-      <StaffTaskNotificationBanner
-        products={products}
-        warehouses={warehouses}
-        onTaskCompleted={() => refreshData()}
-      />
-
       {/* Admin Action Header Bar */}
       {isAdmin && (
         <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
