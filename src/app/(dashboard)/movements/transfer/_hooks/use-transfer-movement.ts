@@ -15,6 +15,7 @@ import {
   markTransferCompleted,
   fetchAndSyncTransferNotifications,
   clearAllTransferNotifications,
+  updateTransferTaskProgress,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
@@ -348,7 +349,7 @@ export function useTransferMovement({
     };
 
     fetchServerTransfers();
-    const interval = setInterval(fetchServerTransfers, 5000);
+    const interval = setInterval(fetchServerTransfers, 2000);
 
     window.addEventListener("stockify-transfer-created", updateTasks);
     window.addEventListener("stockify-transfer-updated", updateTasks);
@@ -480,6 +481,7 @@ export function useTransferMovement({
         });
 
       setStaffStep(2);
+      updateTransferTaskProgress(selectedTask.id, 2, "กำลังหยิบสินค้าต้นทาง");
     } else {
       const displayExpected = [targetBarcode, targetSku]
         .filter(Boolean)
@@ -673,6 +675,9 @@ export function useTransferMovement({
       });
 
     setStaffStep(3);
+    if (selectedTask?.id) {
+      updateTransferTaskProgress(selectedTask.id, 3, "กำลังนำเข้าตำแหน่งปลายทาง");
+    }
   };
 
   const handleRemoveSourceAllocation = (index: number) => {
@@ -773,6 +778,9 @@ export function useTransferMovement({
       markTransferCompleted(selectedTask.id);
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
+      if (selectedTask?.id) {
+        updateTransferTaskProgress(selectedTask.id, 4, "ย้ายสินค้าสำเร็จ");
+      }
     } catch (err: any) {
       setStaffError(`❌ เกิดข้อผิดพลาด: ${err.message || "ไม่สามารถย้ายสินค้าได้"}`);
     }

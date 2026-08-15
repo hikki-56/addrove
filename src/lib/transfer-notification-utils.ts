@@ -16,6 +16,9 @@ export interface TransferNotification {
   created_at: string;
   created_by?: string;
   status: "PENDING" | "ACKNOWLEDGED" | "COMPLETED" | "CANCELLED";
+  current_step?: number;
+  current_step_text?: string;
+  last_active_at?: string;
   location_code?: string;
   note?: string;
 }
@@ -137,6 +140,66 @@ export function markTransferCancelled(id: string) {
     window.dispatchEvent(new CustomEvent("stockify-transfer-updated"));
   } catch (e) {
     console.error("[TransferNotification] Mark cancelled error:", e);
+  }
+}
+
+export function updateTransferTaskProgress(id: string, step: number, stepText?: string) {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const existing = getTransferNotifications();
+    const targetLower = String(id).trim().toLowerCase();
+    const updated = existing.map((t) =>
+      t.id && String(t.id).trim().toLowerCase() === targetLower
+        ? {
+            ...t,
+            current_step: step,
+            current_step_text:
+              stepText ||
+              (step === 1
+                ? "กำลังสแกนบาร์โค้ดสินค้า"
+                : step === 2
+                ? "กำลังหยิบสินค้าต้นทาง"
+                : step === 3
+                ? "กำลังนำเข้าตำแหน่งปลายทาง"
+                : step === 4
+                ? "ย้ายสินค้าสำเร็จ"
+                : "รอดำเนินการ"),
+            last_active_at: new Date().toISOString(),
+          }
+        : t
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    broadcastTransferChange();
+
+    // Sync to server API in real-time
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const storedToken =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("stockify_tab_token") ||
+          localStorage.getItem("stockify_tab_token") ||
+          (function () {
+            try {
+              return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+            } catch {
+              return null;
+            }
+          })()
+        : null;
+
+    if (storedToken) {
+      headers["x-tab-token"] = storedToken;
+      headers["Authorization"] = `Bearer ${storedToken}`;
+    }
+
+    fetch(`/api/movements/transfer/${encodeURIComponent(id)}/progress`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ step, step_text: stepText }),
+    }).catch((err) => {
+      console.warn("[TransferNotification] API sync progress failed:", err);
+    });
+  } catch (e) {
+    console.error("[TransferNotification] Update progress error:", e);
   }
 }
 
@@ -288,8 +351,16 @@ export function saveTransferNotification(task: TransferNotification, options?: {
     const existingIndex = existing.findIndex(isMatchTask);
     const isNew = existingIndex === -1;
 
-    if (!isNew && (existing[existingIndex].status === "COMPLETED" || isCompleted)) {
-      cleanTask.status = "COMPLETED";
+    if (!isNew) {
+      if (existing[existingIndex].status === "COMPLETED" || isCompleted) {
+        cleanTask.status = "COMPLETED";
+      }
+      // If cleanTask does not have a current_step, or existing has a valid step and cleanTask has 0/undefined, preserve existing
+      if (cleanTask.current_step === undefined && existing[existingIndex].current_step !== undefined) {
+        cleanTask.current_step = existing[existingIndex].current_step;
+        cleanTask.current_step_text = existing[existingIndex].current_step_text;
+        cleanTask.last_active_at = existing[existingIndex].last_active_at;
+      }
     }
 
     const filtered = existing.filter((t) => !isMatchTask(t));
@@ -353,6 +424,9 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const sku = String(meta.sku || doc.sku || (prodId && !prodId.startsWith("trf") ? prodId.replace(/^prod-/, "") : ""));
       const barcode = String(meta.barcode || doc.barcode || "");
       const productName = String(meta.product_name || doc.product_name || (sku ? `สินค้า ${sku}` : ""));
+      const serverStep = typeof meta.current_step === "number" ? meta.current_step : typeof doc.current_step === "number" ? doc.current_step : undefined;
+      const serverStepText = meta.current_step_text || doc.current_step_text || undefined;
+      const serverLastActive = meta.last_active_at || doc.last_active_at || undefined;
 
       if (docId) serverActiveDocIds.add(docId);
 
@@ -400,6 +474,9 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
             assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
             created_at: String(doc.created_at || new Date().toISOString()),
             status: "PENDING",
+            current_step: serverStep,
+            current_step_text: serverStepText,
+            last_active_at: serverLastActive,
             note: String(meta.original_note || doc.note || ""),
           },
           { silent: true }

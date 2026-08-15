@@ -161,6 +161,30 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     }
   }
 
+  async updateNote(
+    id: string,
+    note: string
+  ): Promise<void> {
+    const rows = await this.getAllRows();
+    const idx = rows.findIndex((r) => r[0] === id || r[1] === id);
+    
+    // Update in-memory document note
+    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+    if (memDoc) {
+      memDoc.note = note;
+    }
+
+    if (idx !== -1) {
+      const doc = rowToDocument(rows[idx]);
+      doc.note = note;
+      try {
+        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+      } catch (err) {
+        console.warn("[SheetsDocumentRepository] updateNote Google Sheets updateRow failed, updated in-memory fallback:", err);
+      }
+    }
+  }
+
   async generateDocumentNo(type: DocumentType): Promise<string> {
     const rows = await this.getAllRows();
     const prefix = TYPE_PREFIX[type];

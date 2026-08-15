@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import type { TransferNotification } from "@/lib/transfer-notification-utils";
+import React, { useEffect } from "react";
+import { type TransferNotification, updateTransferTaskProgress } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 
 export interface TransferStaffWorkflowModalProps {
@@ -55,6 +55,12 @@ export default function TransferStaffWorkflowModal({
   onVerifyDestinationLocationBarcode,
   onOpenStaffCamera,
 }: TransferStaffWorkflowModalProps) {
+  useEffect(() => {
+    if (selectedTask?.id && staffStep) {
+      updateTransferTaskProgress(selectedTask.id, staffStep);
+    }
+  }, [selectedTask?.id, staffStep]);
+
   if (!selectedTask) return null;
 
   const totalPickedQty = sourceAllocations.reduce((sum, a) => sum + (a.qty || 0), 0);

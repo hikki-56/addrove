@@ -41,6 +41,8 @@ export default function AdminDashboard() {
     4: 0,
     5: 0,
   });
+  const [recentMovements, setRecentMovements] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,12 +53,17 @@ export default function AdminDashboard() {
           fetch("/api/approvals").then((r) => r.json()).catch(() => ({ data: [] })),
           fetch("/api/products").then((r) => r.json()).catch(() => ({ data: [] })),
           fetch("/api/stock").then((r) => r.json()).catch(() => ({ data: [] })),
-          fetch("/api/movements?limit=10").then((r) => r.json()).catch(() => ({ data: { total: 0 } })),
+          fetch("/api/movements?limit=10").then((r) => r.json()).catch(() => ({ data: { items: [], total: 0 } })),
         ]);
 
         const pending = Array.isArray(appRes.data) ? appRes.data : [];
         const products = Array.isArray(prodRes.data) ? prodRes.data : [];
         const balances = Array.isArray(stockRes.data) ? stockRes.data : [];
+        const movements = Array.isArray(movRes.data?.items)
+          ? movRes.data.items
+          : Array.isArray(movRes.data)
+          ? movRes.data
+          : [];
 
         const getWhIndex = (str?: string): number => {
           if (!str) return -1;
@@ -121,13 +128,15 @@ export default function AdminDashboard() {
 
         setWarehouseQtyMap(qtyCounts);
         setPendingDocs(pending);
+        setRecentMovements(movements);
+        setLowStockItems(balances.filter((item: any) => item.status === "LOW" || item.status === "OUT" || item.status === "NEGATIVE"));
         setStats({
           totalProducts: totalWarehouseQty > 0
             ? totalWarehouseQty
             : products.reduce((acc: number, p: any) => acc + (Number(p.quantity ?? p.qty ?? 0) || 0), 0),
           pendingApprovals: pending.length,
           activeWarehouses: 5,
-          totalMovements: movRes.data?.total || 0,
+          totalMovements: movRes.data?.total || movements.length || 0,
           lowStockCount: balances.filter((item: { status?: string }) => item.status === "LOW").length,
           outOfStockCount: balances.filter((item: { status?: string }) => item.status === "OUT" || item.status === "NEGATIVE").length,
         });
@@ -162,10 +171,11 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="admin-dashboard -m-3 min-h-full bg-[#f4f6f8] px-3 py-6 sm:-m-4 sm:px-6 md:-m-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-7 fade-in">
-        <section className="overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
-          <div className="grid grid-cols-4 gap-3 min-w-[780px] sm:min-w-0 sm:gap-4">
+    <div className="admin-dashboard min-h-full bg-[#f4f6f8] w-full max-w-full space-y-6">
+      <div className="w-full space-y-6 fade-in">
+        {/* Top 4 Stat Cards Grid (Fluid 1/2/4 Columns) */}
+        <section className="w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 w-full">
             <StatCard
               label="รายการรออนุมัติ"
               value={stats.pendingApprovals}
@@ -201,77 +211,258 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className="admin-panel p-5 sm:p-7">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_250px]">
-            <div>
-              <div className="mb-5 flex items-end justify-between">
-                <div>
-                  <p className="admin-eyebrow">สรุปตามคลังสินค้า</p>
-                  <h2 className="admin-panel-title text-lg">ปริมาณสินค้าแยกตามโกดัง 1 - 5</h2>
+        {/* 2-Column Responsive Layout: Left 65% (Chart & Warehouse Summary) | Right 35% (Recent Movements & Alerts) */}
+        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-stretch w-full">
+          {/* Left Column: Warehouse Inventory Chart & Summary Panel (65% width) */}
+          <section className="admin-panel p-5 sm:p-6 lg:p-7 w-full lg:w-[65%] shrink-0 flex flex-col justify-between">
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_190px] xl:grid-cols-[minmax(0,1fr)_220px] items-stretch">
+              <div>
+                <div className="mb-4 flex items-end justify-between">
+                  <div>
+                    <p className="admin-eyebrow">สรุปตามคลังสินค้า</p>
+                    <h2 className="admin-panel-title text-base sm:text-lg">ปริมาณสินค้าแยกตามโกดัง 1 - 5</h2>
+                  </div>
+                  <div className="hidden items-center gap-2 text-xs font-bold text-emerald-700 sm:flex">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    หน่วย: ชิ้น
+                  </div>
                 </div>
-                <div className="hidden items-center gap-2 text-xs font-bold text-emerald-700 sm:flex">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  หน่วย: ชิ้น
+
+                <div className="h-72 sm:h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 12, right: 12, left: -15, bottom: 0 }} barCategoryGap="20%">
+                      <CartesianGrid vertical={false} stroke="#cbd5e1" strokeDasharray="4 4" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#334155", fontSize: 11, fontWeight: 700 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#475569", fontSize: 11, fontWeight: 600 }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(226, 232, 240, 0.5)" }}
+                        contentStyle={{
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "12px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          padding: "8px 12px",
+                        }}
+                        formatter={(val: any) => [`${Number(val).toLocaleString()} ชิ้น`, "จำนวนสินค้าคงเหลือ"]}
+                      />
+                      <Bar
+                        dataKey="จำนวนสินค้า"
+                        radius={[8, 8, 0, 0]}
+                        maxBarSize={44}
+                      >
+                        {chartData.map((entry, index) => {
+                          const colors = ["#10b981", "#06b6d4", "#6366f1", "#f59e0b", "#8b5cf6"];
+                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 12, right: 12, left: -15, bottom: 0 }} barCategoryGap="25%">
-                    <CartesianGrid vertical={false} stroke="#cbd5e1" strokeDasharray="4 4" />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#334155", fontSize: 12, fontWeight: 700 }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#475569", fontSize: 11, fontWeight: 600 }}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(226, 232, 240, 0.5)" }}
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
-                        padding: "8px 12px",
-                      }}
-                      formatter={(val: any) => [`${Number(val).toLocaleString()} ชิ้น`, "จำนวนสินค้าคงเหลือ"]}
-                    />
-                    <Bar
-                      dataKey="จำนวนสินค้า"
-                      radius={[8, 8, 0, 0]}
-                      maxBarSize={48}
-                    >
-                      {chartData.map((entry, index) => {
-                        const colors = ["#10b981", "#06b6d4", "#6366f1", "#f59e0b", "#8b5cf6"];
-                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+
+              {/* Side Summary List */}
+              <div className="border-t border-slate-300 pt-5 md:border-l-2 md:border-slate-300 md:border-t-0 md:pl-6 md:pt-0 flex flex-col justify-between">
+                <div>
+                  <p className="mb-4 text-sm font-extrabold text-slate-900">สรุปจำนวนสินค้าแต่ละคลัง</p>
+                  <div className="space-y-3">
+                    {chartData.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between gap-3 text-sm py-2 border-b border-slate-200 last:border-0">
+                        <span className="truncate font-bold text-slate-800">{item.name}</span>
+                        <span className="font-mono text-xs font-extrabold text-emerald-700">
+                          {item["จำนวนสินค้า"].toLocaleString()} <span className="font-sans font-normal text-slate-500">ชิ้น</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="border-t border-slate-300 pt-5 lg:border-l-2 lg:border-slate-300 lg:border-t-0 lg:pl-7 lg:pt-0">
-              <p className="mb-4 text-sm font-extrabold text-slate-900">สรุปจำนวนสินค้าแต่ละคลัง</p>
-              <div className="space-y-3">
-                {chartData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between gap-3 text-sm py-2 border-b border-slate-200 last:border-0">
-                    <span className="truncate font-bold text-slate-800">{item.name}</span>
-                    <span className="font-mono text-xs font-extrabold text-emerald-700">
-                      {item["จำนวนสินค้า"].toLocaleString()} <span className="font-sans font-normal text-slate-500">ชิ้น</span>
-                    </span>
+          </section>
+
+          {/* Right Column: Recent Activity Feed & Stock Alerts (Remaining 35%) */}
+          <div className="w-full lg:flex-1 min-w-0 space-y-6 flex flex-col justify-between">
+            {/* Card 1: Recent Movements Activity Feed */}
+            <div className="admin-panel p-5 sm:p-6 bg-white rounded-2xl border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-sm border border-orange-100">
+                    ⚡
                   </div>
-                ))}
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-tight">กิจกรรมการเคลื่อนไหวล่าสุด</h3>
+                    <p className="text-[11px] text-slate-500">ความเคลื่อนไหวสินค้าเรียลไทม์</p>
+                  </div>
+                </div>
+                <Link
+                  href="/movements/history"
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                >
+                  ดูประวัติทั้งหมด →
+                </Link>
               </div>
+
+              {recentMovements.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs font-medium">
+                  ยังไม่มีประวัติการเคลื่อนไหวในระบบ
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {recentMovements.slice(0, 4).map((mov: any, idx: number) => {
+                    const isPositive = Number(mov.qty_change) > 0;
+                    const typeLabel =
+                      mov.movement_type === "RECEIVE"
+                        ? "รับเข้า"
+                        : mov.movement_type === "ISSUE" || mov.movement_type === "ISSUE_OUT"
+                        ? "เบิกออก"
+                        : mov.movement_type === "TRANSFER" || mov.movement_type === "TRANSFER_IN" || mov.movement_type === "TRANSFER_OUT"
+                        ? "ย้ายโกดัง"
+                        : "จัดตำแหน่ง";
+
+                    const badgeStyle =
+                      mov.movement_type === "RECEIVE"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : mov.movement_type === "ISSUE" || mov.movement_type === "ISSUE_OUT"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : mov.movement_type === "TRANSFER" || mov.movement_type === "TRANSFER_IN" || mov.movement_type === "TRANSFER_OUT"
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        : "bg-teal-50 text-teal-700 border-teal-200";
+
+                    return (
+                      <div key={`mov-${mov.movement_id || idx}`} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${badgeStyle}`}>
+                            {typeLabel}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 truncate">
+                              {mov.sku || mov.product_name || "สินค้า"}
+                              {mov.product_name && mov.sku ? (
+                                <span className="text-slate-500 font-normal ml-1.5 text-[11px] truncate">
+                                  {mov.product_name}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1.5 mt-0.5">
+                              <span>{mov.warehouse_name || "คลังสินค้า"}</span>
+                              {mov.location_code && <span>• ตำแหน่ง {mov.location_code}</span>}
+                              {mov.created_by_name && <span>• โดย {mov.created_by_name}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span
+                            className={`font-mono font-bold text-xs ${
+                              isPositive ? "text-emerald-600" : "text-slate-800"
+                            }`}
+                          >
+                            {isPositive ? `+${Number(mov.qty_change).toLocaleString()}` : Number(mov.qty_change).toLocaleString()}
+                          </span>
+                          <div className="text-[10px] text-slate-400">
+                            {formatRelativeTime(mov.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Low Stock Alert & Pending Approvals */}
+            <div className="admin-panel p-5 sm:p-6 bg-white rounded-2xl border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm border border-rose-100">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-tight">แจ้งเตือนสต็อก & งานสำคัญ</h3>
+                    <p className="text-[11px] text-slate-500">สินค้าใกล้หมด และ เอกสารรออนุมัติ</p>
+                  </div>
+                </div>
+                {stats.pendingApprovals > 0 ? (
+                  <Link
+                    href="/approvals"
+                    className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-colors"
+                  >
+                    รออนุมัติ {stats.pendingApprovals} รายการ
+                  </Link>
+                ) : (
+                  <Link
+                    href="/products"
+                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    ดูสินค้าทั้งหมด →
+                  </Link>
+                )}
+              </div>
+
+              {lowStockItems.length === 0 && pendingDocs.length === 0 ? (
+                <div className="py-6 flex flex-col items-center justify-center text-center space-y-1 text-slate-500">
+                  <span className="text-2xl">✅</span>
+                  <p className="text-xs font-bold text-slate-700">สินค้าและเอกสารทั้งหมดอยู่ในเกณฑ์ปกติ</p>
+                  <p className="text-[11px] text-slate-400">ไม่มีสินค้าที่สต็อกต่ำกว่าเกณฑ์ขั้นต่ำในขณะนี้</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {/* Pending Docs preview if any */}
+                  {pendingDocs.slice(0, 2).map((doc) => (
+                    <Link
+                      key={`pend-${doc.document_id || doc.document_no}`}
+                      href="/approvals"
+                      className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 flex items-center justify-between hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          เอกสารรออนุมัติ: {doc.document_no}
+                        </div>
+                        <div className="text-[10px] text-amber-700 mt-0.5 truncate">
+                          {doc.target_sheet} • {doc.rows?.length || 0} รายการ
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-amber-800 shrink-0">กดอนุมัติ →</span>
+                    </Link>
+                  ))}
+
+                  {/* Low Stock Items preview */}
+                  {lowStockItems.slice(0, 3).map((item: any, i: number) => (
+                    <div
+                      key={`low-${item.product_id || item.sku || i}`}
+                      className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold text-slate-800 truncate">
+                          <span className="font-mono text-emerald-700 mr-1.5">{item.sku}</span>
+                          {item.product_name}
+                        </div>
+                        <div className="text-[10px] text-rose-600 font-bold mt-0.5">
+                          คงเหลือ: {Number(item.total_quantity || 0).toLocaleString()} {item.base_unit || "ชิ้น"} (ขั้นต่ำ: {item.minimum_stock || 0})
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200 shrink-0">
+                        {item.status === "OUT" ? "สินค้าหมด" : "ใกล้หมด"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </section>
+        </div>
 
 
       </div>
@@ -356,3 +547,22 @@ function DocumentIcon() { return <svg className="h-5 w-5" fill="none" stroke="cu
 function ReceiveIcon() { return <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0-5 5m5-5 5 5M5 21h14" /></svg>; }
 function IssueIcon() { return <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m0 0 5-5m-5 5-5-5M5 3h14" /></svg>; }
 function MoveIcon() { return <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h13m0 0-4-4m4 4-4 4M17 17H4m0 0 4 4m-4-4 4-4" /></svg>; }
+
+function formatRelativeTime(dateStr?: string) {
+  if (!dateStr) return "-";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "เมื่อสักครู่";
+    if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} ชม. ที่แล้ว`;
+    return d.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
+  } catch {
+    return dateStr;
+  }
+}
+

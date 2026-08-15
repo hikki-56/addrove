@@ -48,10 +48,12 @@ export default function BarcodeScanInput({
 
   return (
     <div className={`relative flex items-center gap-2 ${className}`}>
-      <div className="relative flex-1">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+      <div className="relative flex-1 bg-white rounded-3xl border border-slate-200/90 shadow-sm transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 pl-4.5 flex items-center pointer-events-none text-emerald-600">
+          {/* Green QR/Barcode Viewfinder Icon */}
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7V5a2 2 0 012-2h2m12 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8v8m3-8v8m4-8v8m3-8v8" />
           </svg>
         </div>
 
@@ -63,7 +65,7 @@ export default function BarcodeScanInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || isProcessing}
-          className="w-full pl-11 pr-12 py-3.5 bg-white border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl text-slate-900 font-bold placeholder-slate-400 text-sm md:text-base outline-none transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full pl-13 pr-12 py-4 bg-transparent text-slate-900 font-bold placeholder-slate-400 text-sm sm:text-base outline-none disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         <div className="absolute inset-y-0 right-2 flex items-center pr-1 gap-1">
@@ -74,7 +76,7 @@ export default function BarcodeScanInput({
                 onChange("");
                 if (refToUse.current) refToUse.current.focus();
               }}
-              className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               title="ล้างข้อมูล"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,13 +90,13 @@ export default function BarcodeScanInput({
               type="button"
               onClick={onOpenScannerModal}
               disabled={disabled || isProcessing}
-              className="px-3 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="เปิดกล้องสแกน"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="hidden sm:inline">กล้อง</span>
             </button>
           )}
         </div>

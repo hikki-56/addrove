@@ -181,8 +181,8 @@ export default function AdminCreateTransferModal({
               required
             >
               <option value="">-- เลือกรายการสินค้า --</option>
-              {products.map((p) => (
-                <option key={p.product_id} value={p.product_id}>
+              {products.map((p, idx) => (
+                <option key={`prod-${p.product_id || p.sku || idx}-${idx}`} value={p.product_id}>
                   {p.sku} - {p.product_name} {p.barcode ? `(${p.barcode})` : ""}
                 </option>
               ))}
@@ -212,8 +212,8 @@ export default function AdminCreateTransferModal({
                 required
               >
                 <option value="">-- เลือกพนักงานผู้รับงาน --</option>
-                {staffList.map((u) => (
-                  <option key={u.user_id} value={u.user_id}>
+                {staffList.map((u, idx) => (
+                  <option key={`staff-${u.user_id || u.email || idx}-${idx}`} value={u.user_id}>
                     👤 {u.full_name || u.email} ({u.role})
                   </option>
                 ))}
@@ -230,8 +230,8 @@ export default function AdminCreateTransferModal({
                 onChange={(e) => setFromWhId(e.target.value)}
                 className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
               >
-                {warehouses.map((w) => (
-                  <option key={w.warehouse_id} value={w.warehouse_id}>
+                {warehouses.map((w, idx) => (
+                  <option key={`from-wh-${w.warehouse_id || idx}-${idx}`} value={w.warehouse_id}>
                     {w.warehouse_name}
                   </option>
                 ))}
@@ -245,8 +245,8 @@ export default function AdminCreateTransferModal({
                 className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
               >
                 <option value="">A1 (อัตโนมัติ)</option>
-                {fromLocations.map((l) => (
-                  <option key={l.location_id} value={l.location_code}>
+                {fromLocations.map((l, idx) => (
+                  <option key={`from-loc-${l.location_id || l.location_code || idx}-${idx}`} value={l.location_code}>
                     {l.location_code} {l.shelf_code ? `(${l.shelf_code})` : ""}
                   </option>
                 ))}
@@ -263,8 +263,8 @@ export default function AdminCreateTransferModal({
                 onChange={(e) => setToWhId(e.target.value)}
                 className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
               >
-                {warehouses.map((w) => (
-                  <option key={w.warehouse_id} value={w.warehouse_id}>
+                {warehouses.map((w, idx) => (
+                  <option key={`to-wh-${w.warehouse_id || idx}-${idx}`} value={w.warehouse_id}>
                     {w.warehouse_name}
                   </option>
                 ))}
@@ -278,8 +278,8 @@ export default function AdminCreateTransferModal({
                 className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
               >
                 <option value="">A1 (อัตโนมัติ)</option>
-                {toLocations.map((l) => (
-                  <option key={l.location_id} value={l.location_code}>
+                {toLocations.map((l, idx) => (
+                  <option key={`to-loc-${l.location_id || l.location_code || idx}-${idx}`} value={l.location_code}>
                     {l.location_code} {l.shelf_code ? `(${l.shelf_code})` : ""}
                   </option>
                 ))}

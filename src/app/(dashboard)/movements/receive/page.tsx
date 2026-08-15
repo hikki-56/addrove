@@ -76,33 +76,44 @@ export default function ReceivePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header Info */}
-      <div className="glass-card rounded-2xl p-5 border border-white/10 shadow-xl space-y-3">
-        {/* Title Row (Centered without Icon) */}
-        <div className="text-center">
-          <h1 className="font-extrabold text-white text-lg sm:text-xl tracking-wide">
-            รับสินค้าเข้าคลัง
-          </h1>
-        </div>
+      {/* Header Info - Clean White Card with Warehouse Illustration */}
+      <div className="relative rounded-3xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
+          {/* Left side: Title + Badges */}
+          <div className="space-y-4 flex-1 min-w-0 z-10">
+            <h1 className="font-extrabold text-slate-900 text-xl sm:text-2xl tracking-tight">
+              รับสินค้าเข้าคลัง
+            </h1>
 
-        {/* Info Row: Far Left = Warehouse, Far Right = Date (Exact Same Line) */}
-        <div className="flex items-center justify-between gap-4 pt-1">
-          {/* Far Left: Active Warehouse */}
-          <span className="text-xs sm:text-sm text-emerald-400 font-bold flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            {activeWhName}
-          </span>
+            {/* Info Row: Warehouse & Date on the Exact Same Line */}
+            <div className="flex items-center gap-2.5 sm:gap-4 flex-nowrap whitespace-nowrap">
+              {/* Active Warehouse Badge */}
+              <span className="inline-flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 shadow-2xs shrink-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                {activeWhName}
+              </span>
 
-          {/* Far Right: Date */}
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-slate-300 text-xs sm:text-sm font-medium">
-              {form.watch("document_date")
-                ? new Date(form.watch("document_date") + "T00:00:00").toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
-                : new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
-            </span>
+              {/* Date Badge */}
+              <div className="inline-flex items-center gap-1.5 text-slate-600 text-xs sm:text-sm font-medium shrink-0">
+                <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>
+                  {form.watch("document_date")
+                    ? new Date(form.watch("document_date") + "T00:00:00").toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
+                    : new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right side: Warehouse illustration */}
+          <div className="shrink-0 relative flex items-center justify-end">
+            <img
+              src="/warehouse-receive-header.jpg"
+              alt="warehouse"
+              className="w-32 h-24 sm:w-48 sm:h-32 object-contain rounded-2xl"
+            />
           </div>
         </div>
       </div>

@@ -343,8 +343,8 @@ export default function LocationsPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm font-medium"
                 >
                   <option value="" className="bg-[#111118] text-white">เลือกตำแหน่ง</option>
-                  {locations.map((l) => (
-                    <option key={l.location_id} value={l.location_id} className="bg-[#111118] text-white">
+                  {locations.map((l, idx) => (
+                    <option key={`loc-form-opt-${l.location_id || l.location_code || idx}-${idx}`} value={l.location_id} className="bg-[#111118] text-white">
                       {l.location_name || l.location_code} ({getWarehouseName(l.warehouse_id)})
                     </option>
                   ))}

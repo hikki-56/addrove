@@ -46,7 +46,7 @@ export default function ReceiveLinesTable({
   if (totalLines === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 text-center border border-slate-200/90 shadow-md shadow-slate-200/60 space-y-4">
-        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+        <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-emerald-400">
           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
@@ -63,20 +63,46 @@ export default function ReceiveLinesTable({
 
   return (
     <div className="space-y-4">
-      {/* Summary Counters Header */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-md shadow-slate-200/60 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4 text-xs">
-          <div>
-            <span className="text-slate-500 font-semibold">รายการ: </span>
-            <strong className="text-slate-900 font-mono font-bold text-sm">{totalLines}</strong>
+      {/* Summary Counters Header - 3 Grid Cards */}
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        {/* Card 1: รายการ */}
+        <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
           </div>
-          <div>
-            <span className="text-slate-500 font-semibold">กล่องรวม: </span>
-            <strong className="text-slate-900 font-mono font-bold text-sm">{totalBoxes}</strong>
+          <div className="min-w-0">
+            <div className="text-[11px] text-slate-500 font-semibold truncate">รายการ</div>
+            <div className="text-base sm:text-xl font-extrabold text-slate-900 leading-tight">{totalLines}</div>
           </div>
-          <div>
-            <span className="text-slate-500 font-semibold">จำนวนรวม: </span>
-            <strong className="text-emerald-600 font-mono font-bold text-sm">{totalQty} ชิ้น</strong>
+        </div>
+
+        {/* Card 2: กล่องรวม */}
+        <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] text-slate-500 font-semibold truncate">กล่องรวม</div>
+            <div className="text-base sm:text-xl font-extrabold text-slate-900 leading-tight">{totalBoxes}</div>
+          </div>
+        </div>
+
+        {/* Card 3: จำนวนรวม */}
+        <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] text-slate-500 font-semibold truncate">จำนวนรวม</div>
+            <div className="text-base sm:text-xl font-extrabold text-emerald-600 leading-tight">
+              {totalQty} <span className="text-xs sm:text-sm font-bold text-emerald-600">ชิ้น</span>
+            </div>
           </div>
         </div>
       </div>
@@ -104,36 +130,22 @@ export default function ReceiveLinesTable({
         ))}
       </div>
 
-      {/* Final Action Button */}
+      {/* Final Action Button - Shown only when all line items have been confirmed */}
       {(() => {
         const allConfirmed = fields.length > 0 && fields.every((_, idx) => Boolean(confirmedLines[idx]));
+        if (!allConfirmed) return null;
+
         return (
-          <div className="pt-2">
+          <div className="pt-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <button
               type="button"
-              disabled={!allConfirmed}
-              onClick={allConfirmed ? onOpenConfirmModal : undefined}
-              className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                allConfirmed
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-950/40 active:scale-95 cursor-pointer"
-                  : "bg-slate-200 text-slate-400 border border-slate-300/80 cursor-not-allowed opacity-80"
-              }`}
+              onClick={onOpenConfirmModal}
+              className="w-full py-4 rounded-3xl font-extrabold text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 active:scale-98 cursor-pointer transition-all flex items-center justify-center gap-2"
             >
-              {allConfirmed ? (
-                <>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>ตรวจสอบและบันทึกเอกสารรับสินค้า</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span>🔒 กรุณายืนยันตำแหน่งสินค้าทุกรายการก่อนบันทึก</span>
-                </>
-              )}
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>ตรวจสอบและบันทึกเอกสารรับสินค้า</span>
             </button>
           </div>
         );
