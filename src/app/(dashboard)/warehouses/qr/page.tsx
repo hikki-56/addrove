@@ -21,6 +21,7 @@ const WAREHOUSES: WarehouseItem[] = [
   { id: "wh-03", code: "WH-03", name: "โกดัง3", desc: "คลังสินค้าหลัก 3" },
   { id: "wh-04", code: "WH-04", name: "โกดัง4", desc: "คลังสินค้าหลัก 4" },
   { id: "wh-05", code: "WH-05", name: "โกดัง5", desc: "คลังสินค้าหลัก 5" },
+  { id: "wh-06", code: "WH-06", name: "สำนักงานใหญ่", desc: "สำนักงานใหญ่" },
 ];
 
 const ACTIONS = [

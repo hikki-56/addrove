@@ -24,6 +24,7 @@ const WAREHOUSES = [
   { id: "wh-03", name: "โกดัง3" },
   { id: "wh-04", name: "โกดัง4" },
   { id: "wh-05", name: "โกดัง5" },
+  { id: "wh-06", name: "สำนักงานใหญ่" },
 ];
 
 function extractShelfLevel(locationCode: string, shelfName: string): string {

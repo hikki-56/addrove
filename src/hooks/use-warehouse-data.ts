@@ -16,6 +16,7 @@ export const DEFAULT_WAREHOUSES: { warehouse_id: string; warehouse_name: string 
   { warehouse_id: "wh-03", warehouse_name: "โกดัง3" },
   { warehouse_id: "wh-04", warehouse_name: "โกดัง4" },
   { warehouse_id: "wh-05", warehouse_name: "โกดัง5" },
+  { warehouse_id: "wh-06", warehouse_name: "สำนักงานใหญ่" },
 ];
 
 export interface UseWarehouseDataOptions {

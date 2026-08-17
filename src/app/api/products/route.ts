@@ -137,6 +137,7 @@ export async function GET(req: NextRequest) {
       { id: "wh-3", sheet: "โกดัง3" },
       { id: "wh-4", sheet: "โกดัง4" },
       { id: "wh-5", sheet: "โกดัง5" },
+      { id: "wh-6", sheet: "สำนักงานใหญ่" },
     ].filter((tab) =>
       session.user.role === "ADMIN" || hasWarehouseAccess(session.user.warehouse_access, tab.id)
     );
@@ -167,7 +168,8 @@ export async function GET(req: NextRequest) {
         whId === "wh-2" ? "โกดัง 2" :
         whId === "wh-3" ? "โกดัง 3" :
         whId === "wh-4" ? "โกดัง 4" :
-        whId === "wh-5" ? "โกดัง 5" : `โกดัง ${whId.replace(/^wh-/, "")}`;
+        whId === "wh-5" ? "โกดัง 5" :
+        whId === "wh-6" ? "สำนักงานใหญ่" : `โกดัง ${whId.replace(/^wh-/, "")}`;
 
       const loc = p.location && p.location.trim() !== "" && p.location.trim() !== "-" ? p.location.trim() : "-";
 

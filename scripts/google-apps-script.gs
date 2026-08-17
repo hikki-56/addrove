@@ -30,11 +30,11 @@ var ALLOWED_SHEETS = [
   'Warehouses', 'Locations', 'Shelves', 'PRODUCTS', 'Documents',
   'StockMovements', 'StockSummary', 'StockCounts', 'Users',
   '\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e01\u0e32\u0e23\u0e40\u0e02\u0e49\u0e32\u0e23\u0e30\u0e1a\u0e1a', 'Idempotency', 'AuditLogs', 'OperationJournal',
-  '\u0e42\u0e01\u0e14\u0e31\u0e071', '\u0e42\u0e01\u0e14\u0e31\u0e072', '\u0e42\u0e01\u0e14\u0e31\u0e073', '\u0e42\u0e01\u0e14\u0e31\u0e074', '\u0e42\u0e01\u0e14\u0e31\u0e075',
-  '\u0e42\u0e01\u0e14\u0e31\u0e07 1', '\u0e42\u0e01\u0e14\u0e31\u0e07 2', '\u0e42\u0e01\u0e14\u0e31\u0e07 3', '\u0e42\u0e01\u0e14\u0e31\u0e07 4', '\u0e42\u0e01\u0e14\u0e31\u0e07 5',
-  '\u0e42\u0e01\u0e14\u0e31\u0e0701', '\u0e42\u0e01\u0e14\u0e31\u0e0702', '\u0e42\u0e01\u0e14\u0e31\u0e0703', '\u0e42\u0e01\u0e14\u0e31\u0e0704', '\u0e42\u0e01\u0e14\u0e31\u0e0705',
-  'WH-01', 'WH-02', 'WH-03', 'WH-04', 'WH-05', 'WH-1', 'WH-2', 'WH-3', 'WH-4', 'WH-5',
-  'WH01', 'WH02', 'WH03', 'WH04', 'WH05', 'WH1', 'WH2', 'WH3', 'WH4', 'WH5'
+  '\u0e42\u0e01\u0e14\u0e31\u0e071', '\u0e42\u0e01\u0e14\u0e31\u0e072', '\u0e42\u0e01\u0e14\u0e31\u0e073', '\u0e42\u0e01\u0e14\u0e31\u0e074', '\u0e42\u0e01\u0e14\u0e31\u0e075', '\u0e2a\u0e33\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19\u0e43\u0e2b\u0e0d\u0e48',
+  '\u0e42\u0e01\u0e14\u0e31\u0e07 1', '\u0e42\u0e01\u0e14\u0e31\u0e07 2', '\u0e42\u0e01\u0e14\u0e31\u0e07 3', '\u0e42\u0e01\u0e14\u0e31\u0e07 4', '\u0e42\u0e01\u0e14\u0e31\u0e07 5', '\u0e42\u0e01\u0e14\u0e31\u0e076', '\u0e42\u0e01\u0e14\u0e31\u0e07 6',
+  '\u0e42\u0e01\u0e14\u0e31\u0e0701', '\u0e42\u0e01\u0e14\u0e31\u0e0702', '\u0e42\u0e01\u0e14\u0e31\u0e0703', '\u0e42\u0e01\u0e14\u0e31\u0e0704', '\u0e42\u0e01\u0e14\u0e31\u0e0705', '\u0e42\u0e01\u0e14\u0e31\u0e0706',
+  'WH-01', 'WH-02', 'WH-03', 'WH-04', 'WH-05', 'WH-06', 'WH-1', 'WH-2', 'WH-3', 'WH-4', 'WH-5', 'WH-6',
+  'WH01', 'WH02', 'WH03', 'WH04', 'WH05', 'WH06', 'WH1', 'WH2', 'WH3', 'WH4', 'WH5', 'WH6'
 ];
 
 var MAX_PAYLOAD_BYTES = 500000; // 500 KB

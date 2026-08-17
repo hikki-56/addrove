@@ -59,11 +59,13 @@ export function getWarehouseSheetName(warehouseId: string): string {
     "wh-3": "โกดัง3",
     "wh-4": "โกดัง4",
     "wh-5": "โกดัง5",
+    "wh-6": "สำนักงานใหญ่",
     "wh-01": "โกดัง1",
     "wh-02": "โกดัง2",
     "wh-03": "โกดัง3",
     "wh-04": "โกดัง4",
     "wh-05": "โกดัง5",
+    "wh-06": "สำนักงานใหญ่",
   };
   return map[warehouseId] || warehouseId.replace(/\s+/g, "");
 }
@@ -107,6 +109,7 @@ const SHEET_GID_MAP: Record<string, string> = {
   "โกดัง3": "549341078",
   "โกดัง4": "1516974305",
   "โกดัง5": "406847030",
+  "สำนักงานใหญ่": "764863205",
   Users: "0",
   USERS: "0",
 };

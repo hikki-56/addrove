@@ -19,6 +19,7 @@ export default function NewProductPage() {
     { warehouse_id: "wh-3", warehouse_name: "โกดัง 3" },
     { warehouse_id: "wh-4", warehouse_name: "โกดัง 4" },
     { warehouse_id: "wh-5", warehouse_name: "โกดัง 5" },
+    { warehouse_id: "wh-6", warehouse_name: "สำนักงานใหญ่" },
   ];
 
   useEffect(() => {

@@ -22,14 +22,14 @@ interface PendingDoc {
   rows: Array<[string, string, string, string, number, string, string, string]>;
 }
 
-const warehouseNumbers = [1, 2, 3, 4, 5];
+const warehouseNumbers = [1, 2, 3, 4, 5, 6];
 
 export default function AdminDashboard() {
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
     pendingApprovals: 0,
-    activeWarehouses: 5,
+    activeWarehouses: 6,
     totalMovements: 0,
     lowStockCount: 0,
     outOfStockCount: 0,
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
     3: 0,
     4: 0,
     5: 0,
+    6: 0,
   });
   const [recentMovements, setRecentMovements] = useState<any[]>([]);
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
@@ -73,15 +74,16 @@ export default function AdminDashboard() {
           if (s.includes("wh-03") || s.includes("wh-3") || s.includes("wh3") || s.includes("โกดัง 3") || s.includes("โกดัง3")) return 3;
           if (s.includes("wh-04") || s.includes("wh-4") || s.includes("wh4") || s.includes("โกดัง 4") || s.includes("โกดัง4")) return 4;
           if (s.includes("wh-05") || s.includes("wh-5") || s.includes("wh5") || s.includes("โกดัง 5") || s.includes("โกดัง5")) return 5;
+          if (s.includes("wh-06") || s.includes("wh-6") || s.includes("wh6") || s.includes("สำนักงานใหญ่")) return 6;
           const numMatch = s.match(/\d+/);
           if (numMatch) {
             const n = parseInt(numMatch[0], 10);
-            if (n >= 1 && n <= 5) return n;
+            if (n >= 1 && n <= 6) return n;
           }
           return -1;
         };
 
-        const qtyCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        const qtyCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
         // 1. Process product quantities directly from /api/products (reads Google Sheets โกดัง 1 - 5)
         products.forEach((p: any) => {
@@ -92,7 +94,7 @@ export default function AdminDashboard() {
                 ? getWhIndex(loc.warehouse_id) 
                 : getWhIndex(loc.warehouse_name);
               const lq = Number(loc.quantity ?? loc.qty ?? 0) || 0;
-              if (lIdx >= 1 && lIdx <= 5 && lq > 0) {
+              if (lIdx >= 1 && lIdx <= 6 && lq > 0) {
                 qtyCounts[lIdx] += lq;
               }
             });
@@ -101,7 +103,7 @@ export default function AdminDashboard() {
               ? getWhIndex(p.warehouse_id) 
               : getWhIndex(p.warehouse_name);
             const q = Number(p.quantity ?? p.qty ?? 0) || 0;
-            if (idx >= 1 && idx <= 5 && q > 0) {
+            if (idx >= 1 && idx <= 6 && q > 0) {
               qtyCounts[idx] += q;
             }
           }
@@ -116,7 +118,7 @@ export default function AdminDashboard() {
                   ? getWhIndex(entry.warehouse_id) 
                   : getWhIndex(entry.warehouse_name);
                 const entryQ = Number(entry.quantity ?? entry.qty ?? entry.total) || 0;
-                if (idx >= 1 && idx <= 5 && entryQ > 0) {
+                if (idx >= 1 && idx <= 6 && entryQ > 0) {
                   qtyCounts[idx] += entryQ;
                 }
               });
@@ -135,7 +137,7 @@ export default function AdminDashboard() {
             ? totalWarehouseQty
             : products.reduce((acc: number, p: any) => acc + (Number(p.quantity ?? p.qty ?? 0) || 0), 0),
           pendingApprovals: pending.length,
-          activeWarehouses: 5,
+          activeWarehouses: 6,
           totalMovements: movRes.data?.total || movements.length || 0,
           lowStockCount: balances.filter((item: { status?: string }) => item.status === "LOW").length,
           outOfStockCount: balances.filter((item: { status?: string }) => item.status === "OUT" || item.status === "NEGATIVE").length,
@@ -159,6 +161,7 @@ export default function AdminDashboard() {
     { id: 3, name: "โกดัง 3" },
     { id: 4, name: "โกดัง 4" },
     { id: 5, name: "โกดัง 5" },
+    { id: 6, name: "สำนักงานใหญ่" },
   ];
 
   const chartData = warehouseList.map((wh) => {

@@ -151,6 +151,7 @@ export default function ProductsPage() {
     { id: "wh-3", name: "โกดัง 3" },
     { id: "wh-4", name: "โกดัง 4" },
     { id: "wh-5", name: "โกดัง 5" },
+    { id: "wh-6", name: "สำนักงานใหญ่" },
   ];
 
   const getWarehouseName = (whId?: string) => {

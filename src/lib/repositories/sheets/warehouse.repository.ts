@@ -48,6 +48,7 @@ const DEFAULT_OFFICIAL_WAREHOUSES: Warehouse[] = [
   { warehouse_id: "wh-03", warehouse_code: "WH-3", warehouse_name: "โกดัง3", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
   { warehouse_id: "wh-04", warehouse_code: "WH-4", warehouse_name: "โกดัง4", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
   { warehouse_id: "wh-05", warehouse_code: "WH-5", warehouse_name: "โกดัง5", address: "", active: true, created_at: "2026-07-30", updated_at: "2026-07-30" },
+  { warehouse_id: "wh-06", warehouse_code: "WH-6", warehouse_name: "สำนักงานใหญ่", address: "", active: true, created_at: "2026-08-17", updated_at: "2026-08-17" },
 ];
 
 export class SheetsWarehouseRepository implements IWarehouseRepository {
@@ -55,6 +56,12 @@ export class SheetsWarehouseRepository implements IWarehouseRepository {
     const rows = await readSheet(SHEETS.WAREHOUSES, "A2:G");
     const validRows = rows.filter((r) => r[0] && !r[2]?.startsWith("$2b$"));
     const data = validRows.map(rowToWarehouse);
+    const existingIds = new Set(data.map((w) => w.warehouse_id.toLowerCase()));
+    for (const defWh of DEFAULT_OFFICIAL_WAREHOUSES) {
+      if (!existingIds.has(defWh.warehouse_id.toLowerCase())) {
+        data.push(defWh);
+      }
+    }
     return { data: data.length > 0 ? data : DEFAULT_OFFICIAL_WAREHOUSES, rows };
   }
 

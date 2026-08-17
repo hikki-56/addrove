@@ -3,12 +3,15 @@ import type { Location } from "@/types/models";
 const ACTIVE_WH_KEY = "stockify_active_warehouse";
 
 /**
- * Normalizes any warehouse identifier into the canonical warehouse_id format (wh-01..wh-05).
- * Supports: wh-01, wh-1, wh01, wh1, โกดัง1, โกดัง 1, and plain digit 1-5.
+ * Normalizes any warehouse identifier into the canonical warehouse_id format (wh-01..wh-06).
+ * Supports: wh-01, wh-1, wh01, wh1, โกดัง1, โกดัง 1, สำนักงานใหญ่, and plain digit 1-6.
  */
 export function normalizeWarehouseId(val: string | null | undefined): string {
   if (!val) return "wh-01";
   let str = String(val).trim().toLowerCase();
+
+  // 0. Handle "สำนักงานใหญ่" explicitly
+  if (str.includes("สำนักงานใหญ่")) return "wh-06";
 
   // 1. Extract from URL query string
   if (str.includes("warehouse_id=") || str.includes("wh=")) {
@@ -22,51 +25,54 @@ export function normalizeWarehouseId(val: string | null | undefined): string {
     } catch {}
   }
 
-  // 2. Already canonical: wh-01..wh-05
-  if (/^wh-0[1-5]$/.test(str)) return str;
+  // 2. Already canonical: wh-01..wh-06
+  if (/^wh-0[1-6]$/.test(str)) return str;
 
-  // 3. Legacy wh-1..wh-5 → wh-01..wh-05
-  if (/^wh-[1-5]$/.test(str)) return `wh-0${str.slice(-1)}`;
+  // 3. Legacy wh-1..wh-6 → wh-01..wh-06
+  if (/^wh-[1-6]$/.test(str)) return `wh-0${str.slice(-1)}`;
 
-  // 4. wh01..wh05 or wh1..wh5
-  const whNum = str.match(/^wh0?([1-5])$/);
+  // 4. wh01..wh06 or wh1..wh6
+  const whNum = str.match(/^wh0?([1-6])$/);
   if (whNum) return `wh-0${whNum[1]}`;
 
-  // 5. Thai format: "โกดัง1".."โกดัง5" or "โกดัง 1".."โกดัง 5"
-  const thaiNum = str.match(/โกดัง\s*([1-5])/);
+  // 5. Thai format: "โกดัง1".."โกดัง6" or "โกดัง 1".."โกดัง 6"
+  const thaiNum = str.match(/โกดัง\s*([1-6])/);
   if (thaiNum) return `wh-0${thaiNum[1]}`;
 
-  // 6. Standalone digit 1-5
-  if (/^[1-5]$/.test(str)) return `wh-0${str}`;
+  // 6. Standalone digit 1-6
+  if (/^[1-6]$/.test(str)) return `wh-0${str}`;
 
   return "wh-01";
 }
 
 /**
- * Detects if a scanned barcode or input string represents a warehouse code (e.g. WH-01..WH-05, WH1..WH5, โกดัง1..โกดัง5).
- * Returns canonical warehouse_id (wh-01..wh-05) if matched, or null if not a warehouse barcode.
+ * Detects if a scanned barcode or input string represents a warehouse code (e.g. WH-01..WH-06, WH1..WH6, โกดัง1..โกดัง6, สำนักงานใหญ่).
+ * Returns canonical warehouse_id (wh-01..wh-06) if matched, or null if not a warehouse barcode.
  */
 export function detectWarehouseCode(code: string | null | undefined): string | null {
   if (!code) return null;
   const s = code.trim().toLowerCase();
   if (!s) return null;
 
+  // Handle "สำนักงานใหญ่" explicitly
+  if (s.includes("สำนักงานใหญ่")) return "wh-06";
+
   // Support scanned URLs containing /w/wh-01, /w/1, /wh/wh-01, warehouse_id=wh-01, wh=wh-01
   if (s.includes("http://") || s.includes("https://") || s.includes("/w/") || s.includes("/wh/")) {
     const urlMatch =
-      s.match(/(?:\/w\/|\/wh\/|warehouse_id=|wh=)(wh-0?[1-5]|wh0?[1-5]|[1-5])/i);
+      s.match(/(?:\/w\/|\/wh\/|warehouse_id=|wh=)(wh-0?[1-6]|wh0?[1-6]|[1-6])/i);
     if (urlMatch && urlMatch[1]) {
       return normalizeWarehouseId(urlMatch[1]);
     }
   }
 
-  if (/^wh-0[1-5]$/.test(s)) return s;
-  if (/^wh-[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
-  if (/^wh0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
-  if (/^warehouse-0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
-  if (/^warehouse0?[1-5]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^wh-0[1-6]$/.test(s)) return s;
+  if (/^wh-[1-6]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^wh0?[1-6]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^warehouse-0?[1-6]$/.test(s)) return `wh-0${s.slice(-1)}`;
+  if (/^warehouse0?[1-6]$/.test(s)) return `wh-0${s.slice(-1)}`;
 
-  const thaiMatch = s.match(/^โกดัง\s*([1-5])$/);
+  const thaiMatch = s.match(/^โกดัง\s*([1-6])$/);
   if (thaiMatch) return `wh-0${thaiMatch[1]}`;
 
   return null;
@@ -139,6 +145,7 @@ export function getWarehouseName(whId: string): string {
     "wh-03": "โกดัง3",
     "wh-04": "โกดัง4",
     "wh-05": "โกดัง5",
+    "wh-06": "สำนักงานใหญ่",
   };
   return names[normalized] || "โกดัง1";
 }

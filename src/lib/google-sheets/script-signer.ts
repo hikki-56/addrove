@@ -171,6 +171,8 @@ export const ALLOWED_SHEETS = [
   "โกดัง3",
   "โกดัง4",
   "โกดัง5",
+  "โกดัง6",
+  "สำนักงานใหญ่",
 ] as const;
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];
