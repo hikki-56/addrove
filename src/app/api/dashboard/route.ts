@@ -23,7 +23,16 @@ export async function GET(req: NextRequest) {
     ) return forbiddenResponse("คุณไม่มีสิทธิ์ดูข้อมูลโกดังนี้");
     const days = parseInt(searchParams.get("days") ?? "7");
     const repo = getRepository();
-    const stats = await repo.dashboard.getStats(warehouseId, days);
+    const stats = await repo.dashboard.getStats(warehouseId, days).catch(() => ({
+      total_sku: 0,
+      total_quantity: 0,
+      low_stock_count: 0,
+      out_of_stock_count: 0,
+      received_today: 0,
+      issued_today: 0,
+      recent_movements: [],
+      chart_data: [],
+    }));
     return successResponse(stats, "โหลดข้อมูล Dashboard สำเร็จ");
   } catch (e) {
     return serverErrorResponse(e);

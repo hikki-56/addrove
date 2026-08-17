@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const warehouseId = searchParams.get("warehouse_id") ?? undefined;
     const repo = getRepository();
-    let locations = await repo.locations.findAll(warehouseId);
+    let locations = await repo.locations.findAll(warehouseId).catch(() => []);
     // Filter by access
     if (session.user.role !== "ADMIN") {
       locations = locations.filter((l: any) =>

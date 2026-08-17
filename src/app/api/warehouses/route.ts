@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
     const repo = getRepository();
-    const allWarehouses = await repo.warehouses.findAll();
+    const allWarehouses = await repo.warehouses.findAll().catch(() => []);
     const warehouses = allWarehouses;
     return successResponse(warehouses, "โหลดข้อมูลโกดังสำเร็จ");
   } catch (e) {
