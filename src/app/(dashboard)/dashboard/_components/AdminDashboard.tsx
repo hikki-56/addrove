@@ -223,7 +223,7 @@ export default function AdminDashboard() {
                 <div className="mb-4 flex items-end justify-between">
                   <div>
                     <p className="admin-eyebrow">สรุปตามคลังสินค้า</p>
-                    <h2 className="admin-panel-title text-base sm:text-lg">ปริมาณสินค้าแยกตามโกดัง 1 - 5</h2>
+                    <h2 className="admin-panel-title text-base sm:text-lg">ปริมาณสินค้าแยกตามคลังสินค้า</h2>
                   </div>
                   <div className="hidden items-center gap-2 text-xs font-bold text-emerald-700 sm:flex">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
                         maxBarSize={44}
                       >
                         {chartData.map((entry, index) => {
-                          const colors = ["#10b981", "#06b6d4", "#6366f1", "#f59e0b", "#8b5cf6"];
+                          const colors = ["#10b981", "#06b6d4", "#6366f1", "#f59e0b", "#8b5cf6", "#ec4899"];
                           return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
                         })}
                       </Bar>
