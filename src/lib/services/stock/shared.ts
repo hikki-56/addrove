@@ -77,55 +77,62 @@ export async function getStockBalances(
   deps: StockUseCaseDeps,
   warehouseId?: string
 ): Promise<ProductStockBalance[]> {
-  const [products, summaries, warehouses, locations] = await Promise.all([
-    deps.repo.products.findAll(),
-    deps.repo.stockSummary.findAll(warehouseId),
-    deps.repo.warehouses.findAll(),
-    deps.repo.locations.findAll(warehouseId),
+  const [rawProducts, rawSummaries, rawWarehouses, rawLocations] = await Promise.all([
+    deps.repo.products.findAll().catch(() => []),
+    deps.repo.stockSummary.findAll(warehouseId).catch(() => []),
+    deps.repo.warehouses.findAll().catch(() => []),
+    deps.repo.locations.findAll(warehouseId).catch(() => []),
   ]);
+
+  const products = Array.isArray(rawProducts) ? rawProducts : [];
+  const summaries = Array.isArray(rawSummaries) ? rawSummaries : [];
+  const warehouses = Array.isArray(rawWarehouses) ? rawWarehouses : [];
+  const locations = Array.isArray(rawLocations) ? rawLocations : [];
 
   const whMap = new Map<string, string>();
   for (const w of warehouses) {
-    whMap.set(w.warehouse_id, w.warehouse_name);
+    if (w && w.warehouse_id) whMap.set(w.warehouse_id, w.warehouse_name || w.warehouse_id);
   }
 
   const locMap = new Map<string, string>();
   for (const l of locations) {
-    locMap.set(l.location_id, l.location_name || l.location_code || l.location_id);
+    if (l && l.location_id) locMap.set(l.location_id, l.location_name || l.location_code || l.location_id);
   }
 
   const balances: ProductStockBalance[] = [];
 
   for (const product of products) {
-    const productSummaries = summaries.filter((s: StockSummary) => s.product_id === product.product_id);
+    if (!product || !product.product_id) continue;
+    const productSummaries = summaries.filter((s: StockSummary) => s && s.product_id === product.product_id);
 
     const by_warehouse: StockBalanceEntry[] = productSummaries.map((s: StockSummary) => ({
-      warehouse_id: s.warehouse_id,
-      warehouse_name: whMap.get(s.warehouse_id) || s.warehouse_id,
-      location_id: s.location_id,
-      location_name: locMap.get(s.location_id) || s.location_id,
-      quantity: s.quantity,
+      warehouse_id: s.warehouse_id || "",
+      warehouse_name: whMap.get(s.warehouse_id) || s.warehouse_id || "",
+      location_id: s.location_id || "",
+      location_name: locMap.get(s.location_id) || s.location_id || "",
+      quantity: Number(s.quantity) || 0,
     }));
 
-    const total_quantity = by_warehouse.reduce((sum: number, entry: StockBalanceEntry) => sum + entry.quantity, 0);
+    const total_quantity = by_warehouse.reduce((sum: number, entry: StockBalanceEntry) => sum + (Number(entry.quantity) || 0), 0);
+    const minStock = Number(product.minimum_stock) || 0;
 
     let status: "NORMAL" | "LOW" | "OUT" | "NEGATIVE" = "NORMAL";
     if (total_quantity < 0) {
       status = "NEGATIVE";
     } else if (total_quantity === 0) {
       status = "OUT";
-    } else if (total_quantity <= product.minimum_stock) {
+    } else if (total_quantity <= minStock) {
       status = "LOW";
     }
 
     balances.push({
       product_id: product.product_id,
-      sku: product.sku,
-      barcode: product.barcode,
-      product_name: product.product_name,
-      category: product.category,
-      base_unit: product.base_unit,
-      minimum_stock: product.minimum_stock,
+      sku: product.sku || "",
+      barcode: product.barcode || product.sku || "",
+      product_name: product.product_name || product.sku || "",
+      category: product.category || "ทั่วไป",
+      base_unit: product.base_unit || "ชิ้น",
+      minimum_stock: minStock,
       total_quantity,
       status,
       by_warehouse,
