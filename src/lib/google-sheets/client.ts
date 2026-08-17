@@ -35,7 +35,7 @@ export function getSheetsClient(): sheets_v4.Sheets {
   return sheetsInstance;
 }
 
-export const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || "";
+export const SPREADSHEET_ID = (process.env.GOOGLE_SHEET_ID || "").replace(/^["']|["']$/g, "").trim();
 
 // Sheet tab names
 export const SHEETS = {
@@ -105,11 +105,23 @@ const SHEET_GID_MAP: Record<string, string> = {
   Products: "389621789",
   "สินค้า": "389621789",
   "โกดัง1": "1895414134",
+  "โกดัง 1": "1895414134",
   "โกดัง2": "1114507677",
+  "โกดัง 2": "1114507677",
   "โกดัง3": "549341078",
+  "โกดัง 3": "549341078",
   "โกดัง4": "1516974305",
+  "โกดัง 4": "1516974305",
   "โกดัง5": "406847030",
+  "โกดัง 5": "406847030",
   "สำนักงานใหญ่": "764863205",
+  "Warehouses": "490213788",
+  "Locations": "1002",
+  "LOCATIONS": "1002",
+  "Shelves": "845017691",
+  "StockMovements": "1883873034",
+  "StockSummary": "1226420589",
+  "Documents": "178771498",
   Users: "0",
   USERS: "0",
 };
@@ -158,8 +170,8 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
   if (knownGid) {
     urls.push(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${knownGid}`);
   }
-  urls.push(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&sheet=${encodeURIComponent(sheetName)}`);
   urls.push(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`);
+  urls.push(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&sheet=${encodeURIComponent(sheetName)}`);
 
   let lastError: unknown = new Error(`ไม่สามารถอ่านชีต ${sheetName}`);
   for (const url of urls) {
@@ -170,10 +182,10 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
         continue;
       }
       const text = await res.text();
-      if (!text || text.trim().length <= 10) return [];
+      if (!text || text.trim().length <= 10 || text.includes("<!DOCTYPE html>")) continue;
 
       const lines = text.split(/\r?\n/).filter(Boolean);
-      if (lines.length <= 1) return [];
+      if (lines.length <= 1) continue;
 
       const rows = lines.slice(1).map((line) =>
         line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map((cell) => cell.replace(/^\"|\"$/g, "").trim())
@@ -182,8 +194,8 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
         const isUsersTab = sheetName.toLowerCase() === "users";
         const hasBcryptHash = rows.some((r) => r[2]?.startsWith("$2b$"));
         if (!isUsersTab && hasBcryptHash) {
-          console.warn(`[GoogleSheets Public CSV] ${sheetName} tab not found (redirected to USERS), returning empty`);
-          return [];
+          console.warn(`[GoogleSheets Public CSV] ${sheetName} tab not found (redirected to USERS), trying next candidate`);
+          continue;
         }
         return rows;
       }
