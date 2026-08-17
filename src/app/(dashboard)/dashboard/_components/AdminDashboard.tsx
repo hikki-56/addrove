@@ -58,7 +58,11 @@ export default function AdminDashboard() {
         ]);
 
         const pending = Array.isArray(appRes.data) ? appRes.data : [];
-        const products = Array.isArray(prodRes.data) ? prodRes.data : [];
+        const products = Array.isArray(prodRes.data)
+          ? prodRes.data
+          : Array.isArray(prodRes.data?.items)
+          ? prodRes.data.items
+          : [];
         const balances = Array.isArray(stockRes.data) ? stockRes.data : [];
         const movements = Array.isArray(movRes.data?.items)
           ? movRes.data.items
