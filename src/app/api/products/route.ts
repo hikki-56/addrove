@@ -53,8 +53,7 @@ export async function GET(req: NextRequest) {
     const readWarehouseProducts = async (whId: string, sheetName: string) => {
       const rows = await readSheet(sheetName, "A2:Z").catch(() => []);
       if (!rows || rows.length === 0) return [];
-      const list: any[] = [];
-      const seen = new Set<string>();
+      const listMap = new Map<string, any>();
 
       rows.forEach((r) => {
         if (!r || r.length === 0 || !r[0] || !r[0].trim()) return;
@@ -104,28 +103,31 @@ export async function GET(req: NextRequest) {
         const supplierVal = is9Col ? (r[7]?.trim() || master?.supplier || "") : (master?.supplier || "");
 
         const rowKey = `${whId}_${sku}_${locationVal}`.toLowerCase();
-        if (seen.has(rowKey)) return;
-        seen.add(rowKey);
-
-        list.push({
-          product_id: master?.product_id || `prod-${sku}`,
-          sku: master?.sku || sku,
-          barcode: barcodeVal,
-          product_name: nameVal,
-          category: categoryVal,
-          base_unit: unitVal,
-          minimum_stock: minStockVal,
-          quantity: qtyVal,
-          location: locationVal,
-          warehouse_id: whId,
-          supplier: supplierVal,
-          description: supplierVal ? `ผู้จำหน่าย: ${supplierVal}` : "",
-          active: true,
-          created_at: master?.created_at || new Date().toISOString(),
-          updated_at: master?.updated_at || new Date().toISOString(),
-        });
+        const existing = listMap.get(rowKey);
+        if (existing) {
+          existing.minimum_stock = (existing.minimum_stock || 0) + minStockVal;
+          existing.quantity = (existing.quantity || 0) + minStockVal;
+        } else {
+          listMap.set(rowKey, {
+            product_id: master?.product_id || `prod-${sku}`,
+            sku: master?.sku || sku,
+            barcode: barcodeVal,
+            product_name: nameVal,
+            category: categoryVal,
+            base_unit: unitVal,
+            minimum_stock: minStockVal,
+            quantity: minStockVal,
+            location: locationVal,
+            warehouse_id: whId,
+            supplier: supplierVal,
+            description: supplierVal ? `ผู้จำหน่าย: ${supplierVal}` : "",
+            active: true,
+            created_at: master?.created_at || new Date().toISOString(),
+            updated_at: master?.updated_at || new Date().toISOString(),
+          });
+        }
       });
-      return list;
+      return Array.from(listMap.values());
     };
 
     // Read all 5 warehouse tabs in parallel to compute total stock across all warehouses per SKU
@@ -172,12 +174,19 @@ export async function GET(req: NextRequest) {
       if (!locationBreakdownMap.has(skuKey)) {
         locationBreakdownMap.set(skuKey, []);
       }
-      locationBreakdownMap.get(skuKey)!.push({
-        warehouse_id: whId,
-        warehouse_name: whName,
-        location: loc,
-        quantity: qty,
-      });
+      const existingEntry = locationBreakdownMap.get(skuKey)!.find(
+        (e) => e.warehouse_id === whId && e.location === loc
+      );
+      if (existingEntry) {
+        existingEntry.quantity += qty;
+      } else {
+        locationBreakdownMap.get(skuKey)!.push({
+          warehouse_id: whId,
+          warehouse_name: whName,
+          location: loc,
+          quantity: qty,
+        });
+      }
     });
 
     const deduplicateBySku = (rawList: any[]) => {
