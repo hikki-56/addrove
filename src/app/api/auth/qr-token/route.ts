@@ -34,9 +34,6 @@ export async function GET(req: NextRequest) {
 
     const token = generateEmployeeQrToken(userId);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
-    if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_APP_URL) {
-      throw new Error("NEXT_PUBLIC_APP_URL is required in production");
-    }
     const loginUrl = `${baseUrl}/employee-login?token=${token}`;
 
     return NextResponse.json({

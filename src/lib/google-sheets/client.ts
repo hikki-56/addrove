@@ -347,7 +347,8 @@ export async function readSheet(
       console.warn(`[GoogleSheets readSheet] Using fallback memory cached rows for ${sheetName} (${cached.data.length} rows)`);
       return cached.data;
     }
-    throw new Error(`ไม่สามารถอ่านข้อมูลจากชีต ${sheetName}`, { cause: error });
+    console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
+    return [];
   }
 }
 
