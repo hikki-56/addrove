@@ -21,18 +21,24 @@ export interface SignedEnvelope {
 }
 
 /**
- * Compatibility mode for the legacy Apps Script deployment used by local
- * development. Production always uses signed envelopes, even if the flag is
- * accidentally configured there.
+ * Compatibility mode for the legacy Apps Script deployment.
+ * When GOOGLE_SCRIPT_LEGACY_MODE=true is explicitly set, legacy mode is
+ * used even in production. This allows production to work with Apps Script
+ * deployments that do not yet support HMAC signed envelopes.
  */
 export function isLegacyAppsScriptMode(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
-
   const explicitlyEnabled =
     process.env.GOOGLE_SCRIPT_LEGACY_MODE?.trim().toLowerCase() === "true";
-  const localAppUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
 
-  return explicitlyEnabled || /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(localAppUrl);
+  // If explicitly enabled, respect it even in production
+  if (explicitlyEnabled) return true;
+
+  // In production, default to signed envelopes
+  if (process.env.NODE_ENV === "production") return false;
+
+  // In development, also check if running on localhost
+  const localAppUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(localAppUrl);
 }
 
 // ---- Signing Secret ----

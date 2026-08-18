@@ -238,7 +238,7 @@ function hasServiceAccountCredentials(): boolean {
 async function assertAppsScriptSuccess(response: Response, operation: string): Promise<void> {
   const responseText = await response.text();
   if (!response.ok) {
-    throw new Error(`${operation} failed with HTTP ${response.status}`);
+    throw new Error(`${operation} failed with HTTP ${response.status}: ${responseText}`);
   }
 
   let payload: {
@@ -250,14 +250,18 @@ async function assertAppsScriptSuccess(response: Response, operation: string): P
   try {
     payload = JSON.parse(responseText) as typeof payload;
   } catch {
-    throw new Error(`${operation} returned an invalid Apps Script response`);
+    throw new Error(`${operation} returned an invalid Apps Script response: ${responseText.slice(0, 200)}`);
   }
 
-  const legacySuccess =
-    isLegacyAppsScriptMode() && payload.status?.toLowerCase() === "success";
+  // Accept both response formats for resilience:
+  // - Signed envelope response: { success: true }
+  // - Legacy response: { status: "success" }
+  const isSuccess =
+    payload.success === true ||
+    payload.status?.toLowerCase() === "success";
 
-  if (payload.success !== true && !legacySuccess) {
-    throw new Error(payload.error || payload.message || `${operation} was rejected`);
+  if (!isSuccess) {
+    throw new Error(payload.error || payload.message || `${operation} was rejected: ${responseText.slice(0, 200)}`);
   }
 }
 
