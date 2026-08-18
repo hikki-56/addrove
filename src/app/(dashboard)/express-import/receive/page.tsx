@@ -54,13 +54,13 @@ type TagFilterType = "ALL" | "TAGGED_ONLY" | "PENDING" | "IMPORTED" | "UNTAGGED"
 
 export default function ExpressReceivePage() {
   const router = useRouter();
-  const { user, isLoaded } = useTabAuth();
+  const { user, status } = useTabAuth();
 
   useEffect(() => {
-    if (isLoaded && user && user.role !== "ADMIN") {
+    if (status !== "loading" && user && user.role !== "ADMIN") {
       router.replace("/dashboard");
     }
-  }, [isLoaded, user, router]);
+  }, [status, user, router]);
 
   const [docs, setDocs] = useState<ApprovalDoc[]>([]);
   const [loading, setLoading] = useState(true);

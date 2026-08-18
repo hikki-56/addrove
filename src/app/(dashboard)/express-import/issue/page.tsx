@@ -43,13 +43,13 @@ type TagFilterType = "ALL" | "TAGGED_ONLY" | "PENDING" | "IMPORTED" | "UNTAGGED"
 
 export default function ExpressIssuePage() {
   const router = useRouter();
-  const { user, isLoaded } = useTabAuth();
+  const { user, status } = useTabAuth();
 
   useEffect(() => {
-    if (isLoaded && user && user.role !== "ADMIN") {
+    if (status !== "loading" && user && user.role !== "ADMIN") {
       router.replace("/dashboard");
     }
-  }, [isLoaded, user, router]);
+  }, [status, user, router]);
 
   const [movements, setMovements] = useState<MovementWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
