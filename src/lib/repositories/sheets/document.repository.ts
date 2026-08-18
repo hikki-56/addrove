@@ -63,17 +63,30 @@ if (!globalForDocs.inMemoryDocs) {
 const inMemoryDocs = globalForDocs.inMemoryDocs;
 
 export class SheetsDocumentRepository implements IDocumentRepository {
+  /**
+   * Read raw sheet rows WITHOUT mixing in-memory docs.
+   * Returns the actual rows from Google Sheets, preserving real row indices.
+   */
+  private async getSheetRows(): Promise<string[][]> {
+    return await readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []);
+  }
+
+  /**
+   * Get all documents (sheet + in-memory), used for queries (findAll, findById, etc.)
+   * NOTE: Do NOT use the returned array indices for updateRow — use getSheetRows() instead.
+   */
   private async getAllRows(): Promise<string[][]> {
-    const rows: string[][] = await readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []);
+    const rows = await this.getSheetRows();
     const existingIds = new Set<string>(rows.map((r) => r[0]));
 
+    const combined = [...rows];
     for (const memDoc of inMemoryDocs) {
       if (!existingIds.has(memDoc.document_id)) {
-        rows.unshift(documentToRow(memDoc));
+        combined.push(documentToRow(memDoc));
       }
     }
 
-    return rows;
+    return combined;
   }
 
   async findAll(
@@ -141,23 +154,23 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     id: string,
     status: Document["status"]
   ): Promise<void> {
-    const rows = await this.getAllRows();
-    const idx = rows.findIndex((r) => r[0] === id || r[1] === id);
-    
     // Update in-memory document status
     const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
     if (memDoc) {
       memDoc.status = status;
     }
 
+    // Use raw sheet rows to get correct row index for Google Sheets
+    const sheetRows = await this.getSheetRows();
+    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+
     if (idx !== -1) {
-      const doc = rowToDocument(rows[idx]);
+      const doc = rowToDocument(sheetRows[idx]);
       doc.status = status;
-      try {
-        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
-      } catch (err) {
-        console.warn("[SheetsDocumentRepository] updateStatus Google Sheets updateRow failed, updated in-memory fallback:", err);
-      }
+      // idx is 0-based from row 2 in sheets, so actual row = idx + 2
+      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+    } else {
+      console.warn(`[SheetsDocumentRepository] updateStatus: document "${id}" not found in Google Sheets rows`);
     }
   }
 
@@ -165,23 +178,23 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     id: string,
     note: string
   ): Promise<void> {
-    const rows = await this.getAllRows();
-    const idx = rows.findIndex((r) => r[0] === id || r[1] === id);
-    
     // Update in-memory document note
     const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
     if (memDoc) {
       memDoc.note = note;
     }
 
+    // Use raw sheet rows to get correct row index for Google Sheets
+    const sheetRows = await this.getSheetRows();
+    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+
     if (idx !== -1) {
-      const doc = rowToDocument(rows[idx]);
+      const doc = rowToDocument(sheetRows[idx]);
       doc.note = note;
-      try {
-        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
-      } catch (err) {
-        console.warn("[SheetsDocumentRepository] updateNote Google Sheets updateRow failed, updated in-memory fallback:", err);
-      }
+      // idx is 0-based from row 2 in sheets, so actual row = idx + 2
+      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+    } else {
+      console.warn(`[SheetsDocumentRepository] updateNote: document "${id}" not found in Google Sheets rows`);
     }
   }
 
