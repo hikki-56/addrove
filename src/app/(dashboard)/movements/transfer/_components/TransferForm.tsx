@@ -1,4 +1,4 @@
-import React from "react";
+import { useTabAuth } from "@/context/TabAuthContext";
 import type { UseFormReturn } from "react-hook-form";
 import type { TransferFormInput, SelectedTransferItem } from "../_hooks/use-transfer-movement";
 import type { Warehouse, Product } from "@/types/models";
@@ -42,6 +42,8 @@ export default function TransferForm({
   clearItems,
 }: TransferFormProps) {
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = form;
+  const { user: tabUser } = useTabAuth();
+  const currentUserName = tabUser?.name || "พนักงานคลังสินค้า";
 
   const totalItemsCount = selectedItems.length;
   const totalUnits = selectedItems.reduce((acc, curr) => acc + curr.qty, 0);
@@ -60,53 +62,71 @@ export default function TransferForm({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-lg space-y-4 sm:space-y-5">
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <h3 className="font-extrabold text-slate-800 text-base sm:text-lg">สร้างรายการโอนสินค้าใหม่</h3>
-          <div className="flex items-center gap-2 text-slate-600 text-xs sm:text-sm font-bold bg-slate-100/80 px-3.5 py-1.5 rounded-xl border border-slate-200/80">
-            <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-1.5 text-slate-600 text-xs font-bold bg-slate-100/90 px-3 py-1.5 rounded-xl border border-slate-200/80 shrink-0">
+            <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
             </svg>
             <span>
-              {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
+              {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}
             </span>
             <input type="hidden" {...register("document_date")} />
           </div>
         </div>
 
         {/* Warehouse From & To */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">โกดังต้นทาง *</label>
-            <select
-              {...register("from_warehouse_id")}
-              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {warehouses.map((w) => (
-                <option key={`from-wh-${w.warehouse_id}`} value={w.warehouse_id}>
-                  {w.warehouse_name}
-                </option>
-              ))}
-            </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
+          <div className="space-y-1">
+            <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+              โกดังต้นทาง <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                {...register("from_warehouse_id")}
+                className="w-full px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 text-base sm:text-lg font-bold focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 shadow-sm transition-all cursor-pointer appearance-none pr-10"
+              >
+                {warehouses.map((w) => (
+                  <option key={`from-wh-${w.warehouse_id}`} value={w.warehouse_id} className="text-base font-bold py-2">
+                    {w.warehouse_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
             {errors.from_warehouse_id && (
               <p className="mt-1 text-xs text-rose-500 font-medium">{errors.from_warehouse_id.message}</p>
             )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">โกดังปลายทาง *</label>
-            <select
-              {...register("to_warehouse_id")}
-              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {warehouses
-                .filter((w) => w.warehouse_id !== watchFromWh)
-                .map((w) => (
-                  <option key={`to-wh-${w.warehouse_id}`} value={w.warehouse_id}>
-                    {w.warehouse_name}
-                  </option>
-                ))}
-            </select>
+          <div className="space-y-1">
+            <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+              โกดังปลายทาง <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                {...register("to_warehouse_id")}
+                className="w-full px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 text-base sm:text-lg font-bold focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 shadow-sm transition-all cursor-pointer appearance-none pr-10"
+              >
+                {warehouses
+                  .filter((w) => w.warehouse_id !== watchFromWh)
+                  .map((w) => (
+                    <option key={`to-wh-${w.warehouse_id}`} value={w.warehouse_id} className="text-base font-bold py-2">
+                      {w.warehouse_name}
+                    </option>
+                  ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
             {errors.to_warehouse_id && (
               <p className="mt-1 text-xs text-rose-500 font-medium">{errors.to_warehouse_id.message}</p>
             )}
@@ -114,9 +134,12 @@ export default function TransferForm({
         </div>
 
         {/* Product Selection */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">เลือกสินค้าที่จะโอน *</label>
+        <div className="space-y-1.5">
+          <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+            เลือกสินค้าที่จะโอน <span className="text-rose-500">*</span>
+          </label>
           <ProductSearchInput
+            size="lg"
             products={products}
             value={watchProduct}
             onChange={(val) => setValue("product_id", val, { shouldValidate: true })}
@@ -126,12 +149,12 @@ export default function TransferForm({
                 setValue("product_id", "");
               }
             }}
-            placeholder="ค้นหาชื่อสินค้า SKU หรือ บาร์โค้ด แล้วคลิกเพื่อเพิ่มรายการ..."
+            placeholder="ค้นหาชื่อสินค้า SKU หรือ บาร์โค้ด แล้วคลิกเพื่อเพิ่ม..."
           />
         </div>
 
         {/* Selected Items List */}
-        <div className="space-y-3 pt-1">
+        <div className="space-y-2.5 pt-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
               รายการสินค้าที่จะโอน {totalItemsCount > 0 && `(${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`}
@@ -148,80 +171,107 @@ export default function TransferForm({
           </div>
 
           {totalItemsCount === 0 ? (
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-slate-500 text-xs font-medium space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-slate-500 text-xs font-medium space-y-1">
               <div>📦 ยังไม่ได้เลือกสินค้า</div>
               <div className="text-slate-400">ค้นหาและคลิกเลือกสินค้าในช่องด้านบน สามารถเลือกได้หลายรายการ</div>
             </div>
           ) : (
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[340px] overflow-y-auto pr-0.5">
               {selectedItems.map((item, idx) => (
                 <div
                   key={`sel-item-${item.product_id}-${idx}`}
-                  className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs hover:border-indigo-300 transition-all"
+                  className="p-5 sm:p-6 rounded-3xl bg-slate-50/95 border-2 border-slate-300 shadow-md flex flex-col gap-4 hover:border-indigo-400 transition-all"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-extrabold text-slate-900 text-sm sm:text-base">{item.product_name}</div>
-                    <div className="text-xs text-slate-500 font-mono flex flex-wrap items-center gap-3 pt-0.5">
-                      <span>SKU: <strong className="text-slate-900 font-bold">{item.sku}</strong></span>
-                      {item.barcode && (
-                        <span>บาร์โค้ด: <strong className="text-slate-900 font-bold">{item.barcode}</strong></span>
-                      )}
-                    </div>
-                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {/* อันแรก: บาร์โค้ดขนาดใหญ่เด่นชัด */}
+                      <div className="text-slate-950 font-mono font-black text-lg sm:text-xl tracking-wide flex items-center gap-2">
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                          บาร์โค้ด
+                        </span>
+                        <span className="truncate">{item.barcode || item.sku}</span>
+                      </div>
 
-                  <div className="flex items-center gap-3.5 shrink-0">
-                    <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => updateItemQty && updateItemQty(idx, item.qty - 1)}
-                        disabled={item.qty <= 1}
-                        className="w-9 h-9 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-extrabold text-base cursor-pointer select-none transition-colors"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        max={item.stock_qty !== undefined && item.stock_qty !== null ? item.stock_qty : undefined}
-                        value={item.qty}
-                        onChange={(e) => {
-                          const parsed = parseInt(e.target.value) || 1;
-                          const maxQty = item.stock_qty !== undefined && item.stock_qty !== null ? item.stock_qty : Infinity;
-                          const val = Math.min(Math.max(1, parsed), maxQty);
-                          updateItemQty && updateItemQty(idx, val);
-                        }}
-                        className="w-14 text-center text-sm font-extrabold font-mono text-slate-900 focus:outline-none border-x border-slate-200 py-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateItemQty && updateItemQty(idx, item.qty + 1)}
-                        disabled={item.stock_qty !== undefined && item.stock_qty !== null && item.qty >= item.stock_qty}
-                        className="w-9 h-9 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-extrabold text-base cursor-pointer select-none transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
+                      {/* อันที่สอง: SKU */}
+                      <div className="text-xs sm:text-sm text-slate-600 font-mono flex items-center gap-1.5">
+                        <span className="text-slate-500 font-medium">SKU:</span>
+                        <strong className="text-slate-900 font-bold">{item.sku}</strong>
+                      </div>
 
-                    {/* Right Side: Warehouse Stock Balance Text */}
-                    <div className="flex flex-col items-end shrink-0 text-right min-w-[65px]">
-                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">คงเหลือ</span>
-                      <span className="text-xs sm:text-sm font-extrabold font-mono text-slate-900">
-                        {(item.stock_qty ?? 0).toLocaleString()} ชิ้น
-                      </span>
+                      {/* อันที่สาม: ชื่อสินค้า */}
+                      <div className="text-xs sm:text-sm text-slate-700 font-medium leading-snug line-clamp-2">
+                        {item.product_name}
+                      </div>
                     </div>
 
                     {removeItem && (
                       <button
                         type="button"
                         onClick={() => removeItem(idx)}
-                        className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 cursor-pointer transition-all"
+                        className="p-2.5 text-slate-400 hover:text-rose-600 rounded-2xl hover:bg-rose-100/70 cursor-pointer transition-all shrink-0 active:scale-90"
                         title="ลบรายการนี้"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t-2 border-slate-200">
+                    <div className="flex items-center border-2 border-slate-300 rounded-2xl bg-white overflow-hidden shadow-xs">
+                      <button
+                        type="button"
+                        onClick={() => updateItemQty && updateItemQty(idx, Math.max(1, item.qty - 1))}
+                        disabled={item.qty <= 1}
+                        className="w-12 sm:w-14 h-12 sm:h-14 flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-black text-2xl cursor-pointer select-none transition-colors"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={item.qty === 0 ? "" : item.qty}
+                        onFocus={(e) => e.target.select()}
+                        onClick={(e) => e.currentTarget.select()}
+                        onChange={(e) => {
+                          const rawVal = e.target.value.replace(/[^0-9]/g, "");
+                          if (rawVal === "") {
+                            updateItemQty && updateItemQty(idx, 0);
+                            return;
+                          }
+                          const parsed = parseInt(rawVal, 10);
+                          if (!isNaN(parsed)) {
+                            const maxQty = item.stock_qty !== undefined && item.stock_qty !== null ? item.stock_qty : Infinity;
+                            updateItemQty && updateItemQty(idx, Math.min(parsed, maxQty));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const rawVal = e.target.value.replace(/[^0-9]/g, "");
+                          const parsed = parseInt(rawVal, 10);
+                          if (isNaN(parsed) || parsed < 1) {
+                            updateItemQty && updateItemQty(idx, 1);
+                          }
+                        }}
+                        className="w-16 sm:w-20 text-center text-lg sm:text-xl font-black font-mono text-slate-900 focus:outline-none border-x-2 border-slate-200 py-2 selection:bg-indigo-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItemQty && updateItemQty(idx, (item.qty || 0) + 1)}
+                        disabled={item.stock_qty !== undefined && item.stock_qty !== null && item.qty >= item.stock_qty}
+                        className="w-12 sm:w-14 h-12 sm:h-14 flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-black text-2xl cursor-pointer select-none transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-slate-500 mr-2">คงเหลือ:</span>
+                      <span className="text-base sm:text-lg font-black font-mono text-slate-950">
+                        {(item.stock_qty ?? 0).toLocaleString()} ชิ้น
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -229,31 +279,39 @@ export default function TransferForm({
           )}
         </div>
 
-        {/* Assigned Staff */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">ผู้ได้รับมอบหมาย (คนไปย้าย) *</label>
-          <select
-            {...register("moved_by")}
-            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="">เลือกพนักงานคลังสินค้า</option>
-            {staffList.map((s) => (
-              <option key={`staff-${s.id}`} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-          </select>
+        {/* Assigned Staff - Locked to Current User */}
+        <div className="space-y-1.5">
+          <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+            ผู้ทำรายการ / พนักงานที่ไปย้าย
+          </label>
+          <div className="flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl bg-slate-100/90 border-2 border-slate-200 text-slate-900 text-base sm:text-lg font-bold shadow-2xs select-none">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-extrabold text-sm shrink-0">
+                👤
+              </div>
+              <span className="truncate text-slate-900 font-extrabold">
+                {currentUserName}
+              </span>
+            </div>
+            <span className="text-xs font-bold text-slate-600 bg-white px-2.5 py-1 rounded-xl border border-slate-300/80 shadow-2xs shrink-0 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>ผู้ใช้งานปัจจุบัน</span>
+            </span>
+          </div>
+          <input type="hidden" {...register("moved_by")} value={currentUserName} />
           {errors.moved_by && <p className="mt-1 text-xs text-rose-500 font-medium">{errors.moved_by.message}</p>}
         </div>
 
-        <div className="pt-2">
+        <div className="pt-3">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+            className="w-full py-4 sm:py-4.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-base sm:text-lg shadow-lg shadow-emerald-600/25 cursor-pointer transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isSubmitting
-              ? "กำลังบันทึก..."
+              ? "กำลังสร้างใบย้ายสินค้า..."
               : totalItemsCount > 0
               ? `สร้างรายการโอนสินค้า (${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`
               : "สร้างรายการโอนสินค้า"}

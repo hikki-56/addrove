@@ -15,11 +15,14 @@ export interface TransferNotification {
   assigned_to_name?: string;
   created_at: string;
   created_by?: string;
-  status: "PENDING" | "ACKNOWLEDGED" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "ACKNOWLEDGED" | "WAITING_APPROVAL" | "COMPLETED" | "CANCELLED" | "REJECTED";
   current_step?: number;
   current_step_text?: string;
   last_active_at?: string;
   location_code?: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  source_allocations?: Array<{ location_id: string; location_name?: string; qty: number }>;
   note?: string;
 }
 
@@ -140,6 +143,39 @@ export function markTransferCancelled(id: string) {
     window.dispatchEvent(new CustomEvent("stockify-transfer-updated"));
   } catch (e) {
     console.error("[TransferNotification] Mark cancelled error:", e);
+  }
+}
+
+export function markTransferWaitingApproval(
+  id: string,
+  details?: {
+    from_location_id?: string;
+    to_location_id?: string;
+    source_allocations?: Array<{ location_id: string; location_name?: string; qty: number }>;
+  }
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getTransferNotifications();
+    const targetLower = String(id).trim().toLowerCase();
+    const updated = existing.map((t) =>
+      t.id && String(t.id).trim().toLowerCase() === targetLower
+        ? {
+            ...t,
+            status: "WAITING_APPROVAL" as const,
+            current_step: 3,
+            current_step_text: "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)",
+            from_location_id: details?.from_location_id || t.from_location_id,
+            to_location_id: details?.to_location_id || t.to_location_id,
+            source_allocations: details?.source_allocations || t.source_allocations,
+            last_active_at: new Date().toISOString(),
+          }
+        : t
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    broadcastTransferChange();
+  } catch (e) {
+    console.error("[TransferNotification] Mark waiting approval error:", e);
   }
 }
 
@@ -456,6 +492,11 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
             ? "โกดัง 2"
             : toWhId;
 
+        const notifStatus =
+          status === "WAITING_APPROVAL"
+            ? ("WAITING_APPROVAL" as const)
+            : ("PENDING" as const);
+
         saveTransferNotification(
           {
             id: docId || String(`trf-${Date.now()}`),
@@ -473,10 +514,13 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
             assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
             assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
             created_at: String(doc.created_at || new Date().toISOString()),
-            status: "PENDING",
-            current_step: serverStep,
-            current_step_text: serverStepText,
+            status: notifStatus,
+            current_step: serverStep || (notifStatus === "WAITING_APPROVAL" ? 3 : undefined),
+            current_step_text: serverStepText || (notifStatus === "WAITING_APPROVAL" ? "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)" : undefined),
             last_active_at: serverLastActive,
+            from_location_id: meta.from_location_id,
+            to_location_id: meta.to_location_id,
+            source_allocations: meta.source_allocations,
             note: String(meta.original_note || doc.note || ""),
           },
           { silent: true }

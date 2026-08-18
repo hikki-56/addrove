@@ -10,8 +10,10 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import {
   saveTransferNotification,
   getPendingTransferNotifications,
+  getTransferNotifications,
   markTransferNotificationAcknowledged,
   markTransferCancelled,
+  markTransferWaitingApproval,
   markTransferCompleted,
   fetchAndSyncTransferNotifications,
   clearAllTransferNotifications,
@@ -104,11 +106,13 @@ export function useTransferMovement({
   refreshData,
 }: UseTransferMovementOptions) {
   const { user: tabUser } = useTabAuth();
-  const [activeMode, setActiveMode] = useState<"ADMIN_CREATE" | "STAFF_EXECUTE">("ADMIN_CREATE");
+  const [activeMode, setActiveMode] = useState<"ADMIN_CREATE" | "STAFF_EXECUTE" | "WAITING_APPROVAL">("ADMIN_CREATE");
   const [submitted, setSubmitted] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState("");
   const [error, setError] = useState("");
   const [pendingTasks, setPendingTasks] = useState<TransferNotification[]>([]);
+  const [waitingApprovalTasks, setWaitingApprovalTasks] = useState<TransferNotification[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TransferNotification | null>(null);
@@ -288,9 +292,9 @@ export function useTransferMovement({
       const copy = [...prev];
       if (copy[index]) {
         const stockQty = copy[index].stock_qty;
-        let qty = Math.max(1, newQty);
-        if (stockQty !== undefined && stockQty !== null) {
-          qty = Math.min(qty, Math.max(1, stockQty));
+        let qty = Math.max(0, newQty);
+        if (stockQty !== undefined && stockQty !== null && stockQty > 0) {
+          qty = Math.min(qty, stockQty);
         }
         copy[index] = { ...copy[index], qty };
       }
@@ -339,8 +343,20 @@ export function useTransferMovement({
   // Notification sync
   useEffect(() => {
     const updateTasks = () => {
-      const staffFilter = tabUser?.role !== "ADMIN" ? tabUser?.name : undefined;
-      setPendingTasks(getPendingTransferNotifications(staffFilter));
+      const all = getTransferNotifications();
+      const staffName = tabUser?.role !== "ADMIN" ? tabUser?.name : undefined;
+      
+      const pending = getPendingTransferNotifications(staffName);
+      setPendingTasks(pending);
+
+      const waiting = all.filter((t) => {
+        if (!t || t.status !== "WAITING_APPROVAL") return false;
+        if (tabUser?.role === "ADMIN") return true;
+        if (staffName && t.moved_by && (t.moved_by.includes(staffName) || staffName.includes(t.moved_by))) return true;
+        if (staffName && t.assigned_to_name && (t.assigned_to_name.includes(staffName) || staffName.includes(t.assigned_to_name))) return true;
+        return false;
+      });
+      setWaitingApprovalTasks(waiting);
     };
     updateTasks();
 
@@ -366,12 +382,6 @@ export function useTransferMovement({
     setSourceAllocations([]);
   }, [selectedTask]);
 
-  useEffect(() => {
-    if (tabUser?.role === "WAREHOUSE_STAFF") {
-      setActiveMode("STAFF_EXECUTE");
-    }
-  }, [tabUser]);
-
   const handleCleanupHistory = async () => {
     if (!confirm("คุณต้องการเคลียร์รายการที่ทำเสร็จแล้วออกจากหน้าจอใช่หรือไม่?")) return;
     setIsCleaningUp(true);
@@ -379,6 +389,7 @@ export function useTransferMovement({
       clearAllTransferNotifications();
       localStorage.removeItem("stockify_completed_transfers");
       setPendingTasks((prev) => prev.filter((t) => t.status === "PENDING"));
+      setWaitingApprovalTasks((prev) => prev.filter((t) => t.status === "WAITING_APPROVAL"));
       window.dispatchEvent(new Event("stockify-transfer-updated"));
     } catch (e) {
       console.error("[CleanupHistory] Client cleanup error:", e);
@@ -401,9 +412,98 @@ export function useTransferMovement({
       if (json.success) {
         markTransferCancelled(t.id);
         setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
+        setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
         window.dispatchEvent(new Event("stockify-transfer-updated"));
       } else {
         alert(json.message || "ยกเลิกไม่สำเร็จ");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleApproveTransfer = async (t: TransferNotification) => {
+    if (!confirm(`ยืนยันอนุมัติการย้ายสินค้า ${t.doc_no} และบันทึกยอดเข้าสต็อกจริงใช่หรือไม่?`)) return;
+    setApprovingId(t.id);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const storedToken =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("stockify_tab_token") ||
+            localStorage.getItem("stockify_tab_token") ||
+            (function () {
+              try {
+                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+              } catch {
+                return null;
+              }
+            })()
+          : null;
+
+      if (storedToken) {
+        headers["x-tab-token"] = storedToken;
+        headers["Authorization"] = `Bearer ${storedToken}`;
+      }
+
+      const res = await fetch(`/api/movements/transfer/${t.id}/approve`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          from_location_id: t.from_location_id,
+          to_location_id: t.to_location_id,
+          source_allocations: t.source_allocations,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        markTransferCompleted(t.id);
+        setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
+        setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
+        window.dispatchEvent(new Event("stockify-transfer-updated"));
+        refreshData();
+        alert("✅ อนุมัติและบันทึกข้อมูลเข้าสต็อกเรียบร้อยแล้ว!");
+      } else {
+        alert(json.message || "อนุมัติไม่สำเร็จ");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleRejectTransfer = async (e: React.MouseEvent, t: TransferNotification) => {
+    e.stopPropagation();
+    if (!confirm(`ยืนยันปฏิเสธใบย้ายสินค้า ${t.doc_no}?`)) return;
+    setCancellingId(t.id);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const storedToken =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("stockify_tab_token") ||
+            localStorage.getItem("stockify_tab_token")
+          : null;
+
+      if (storedToken) {
+        headers["x-tab-token"] = storedToken;
+        headers["Authorization"] = `Bearer ${storedToken}`;
+      }
+
+      const res = await fetch(`/api/movements/transfer/${t.id}/reject`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ note: "ปฏิเสธโดย Admin" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        markTransferCancelled(t.id);
+        setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
+        setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
+        window.dispatchEvent(new Event("stockify-transfer-updated"));
+      } else {
+        alert(json.message || "ปฏิเสธรายการไม่สำเร็จ");
       }
     } catch {
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -758,7 +858,7 @@ export function useTransferMovement({
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
-      const res = await fetch(`/api/movements/transfer/${selectedTask.id}/complete`, {
+      const res = await fetch(`/api/movements/transfer/${selectedTask.id}/submit`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -770,16 +870,19 @@ export function useTransferMovement({
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || json.message || "ดำเนินการปิดงานย้ายสินค้าไม่สำเร็จ");
+        throw new Error(json.error || json.message || "ส่งข้อมูลการย้ายสินค้าไม่สำเร็จ");
       }
 
-      // Mark completed ONLY after server API returns success: true
       setStaffError("");
-      markTransferCompleted(selectedTask.id);
+      markTransferWaitingApproval(selectedTask.id, {
+        from_location_id: sourceAllocations[0]?.location_id || scannedFromLocation,
+        to_location_id: targetToLocId,
+        source_allocations: sourceAllocations.length > 0 ? sourceAllocations.map(a => ({ location_id: a.location_id, qty: a.qty })) : undefined,
+      });
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
       if (selectedTask?.id) {
-        updateTransferTaskProgress(selectedTask.id, 4, "ย้ายสินค้าสำเร็จ");
+        updateTransferTaskProgress(selectedTask.id, 3, "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)");
       }
     } catch (err: any) {
       setStaffError(`❌ เกิดข้อผิดพลาด: ${err.message || "ไม่สามารถย้ายสินค้าได้"}`);
@@ -827,6 +930,7 @@ export function useTransferMovement({
       const toWhName = warehouses.find((w) => w.warehouse_id === data.to_warehouse_id)?.warehouse_name || data.to_warehouse_id;
 
       const createdDocs: any[] = [];
+      const createdNotifs: TransferNotification[] = [];
       const errors: string[] = [];
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -849,12 +953,12 @@ export function useTransferMovement({
       }
 
       const baseIdemKey = data.idempotency_key && data.idempotency_key.trim() ? data.idempotency_key.trim() : uuidv4();
-      const rawMovedBy = data.moved_by && data.moved_by.trim() ? data.moved_by.trim() : "พนักงาน";
+      const rawMovedBy = data.moved_by && data.moved_by.trim() ? data.moved_by.trim() : (tabUser?.name || "พนักงาน");
       const matchedStaff =
         staffList.find((s) => s.id === rawMovedBy || s.full_name === rawMovedBy) ||
         defaultStaff.find((s) => s.id === rawMovedBy || s.full_name === rawMovedBy);
-      const assignedUserId = matchedStaff ? matchedStaff.id : (rawMovedBy.startsWith("usr-") || rawMovedBy.startsWith("user-") ? rawMovedBy : "");
-      const assignedName = matchedStaff ? matchedStaff.full_name : (rawMovedBy || "พนักงาน");
+      const assignedUserId = matchedStaff ? matchedStaff.id : (rawMovedBy.startsWith("usr-") || rawMovedBy.startsWith("user-") ? rawMovedBy : (tabUser?.id || ""));
+      const assignedName = matchedStaff ? matchedStaff.full_name : (rawMovedBy || tabUser?.name || "พนักงาน");
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
 
       for (let i = 0; i < itemsToProcess.length; i++) {
@@ -865,7 +969,7 @@ export function useTransferMovement({
           body: JSON.stringify({
             ...data,
             product_id: item.product_id,
-            qty: item.qty,
+            qty: Math.max(1, item.qty || 1),
             moved_by: assignedName,
             assigned_to_user_id: assignedUserId,
             assigned_to_name: assignedName,
@@ -907,6 +1011,7 @@ export function useTransferMovement({
         };
 
         saveTransferNotification(notif);
+        createdNotifs.push(notif);
       }
 
       if (errors.length > 0) {
@@ -920,6 +1025,12 @@ export function useTransferMovement({
       refreshData();
       setSelectedItems([]);
       setSubmitted(true);
+
+      // Auto-open scanner modal for the created transfer item
+      if (createdNotifs.length > 0) {
+        setSelectedTask(createdNotifs[0]);
+        setStaffStep(1);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง";
       setError(msg);
@@ -957,6 +1068,8 @@ export function useTransferMovement({
     error,
     setError,
     pendingTasks,
+    waitingApprovalTasks,
+    approvingId,
     cancellingId,
     isCleaningUp,
     selectedTask,
@@ -995,6 +1108,8 @@ export function useTransferMovement({
     selectedProduct,
     handleCleanupHistory,
     handleCancelTransfer,
+    handleApproveTransfer,
+    handleRejectTransfer,
     sourceAllocations,
     handleUpdateSourceAllocationQty,
     handleProceedToDestStep,

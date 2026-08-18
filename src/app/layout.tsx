@@ -33,8 +33,8 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   return (
-    <html lang="th" className={`${notoSansThai.variable} ${inter.variable} light`} data-theme="light">
-      <body className="font-thai antialiased">
+    <html lang="th" className={`${notoSansThai.variable} ${inter.variable} light`} data-theme="light" suppressHydrationWarning>
+      <body className="font-thai antialiased" suppressHydrationWarning>
         <SessionProvider session={session}>
           <TabAuthProvider>
             <ThemeProvider>

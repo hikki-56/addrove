@@ -163,7 +163,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-5 pt-1">
+            <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-5 pt-1" suppressHydrationWarning>
               
               {/* Username / Email Pill Input */}
               <div>
@@ -174,6 +174,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     {...register("email")}
                     placeholder="Username / Email"
+                    suppressHydrationWarning
                     className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full px-5 py-3 text-slate-800 text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
                   />
                 </div>
@@ -189,11 +190,13 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     {...register("password")}
                     placeholder="Password"
+                    suppressHydrationWarning
                     className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full pl-5 pr-12 py-3 text-slate-800 text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    suppressHydrationWarning
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
                     title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
                   >
@@ -218,6 +221,7 @@ export default function LoginPage() {
                   id="login-submit"
                   type="submit"
                   disabled={loading}
+                  suppressHydrationWarning
                   className="w-4/5 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#65a30d] via-[#4d7c0f] to-[#3f6212] hover:from-[#84cc16] hover:to-[#4d7c0f] text-white font-bold text-xs sm:text-sm shadow-md shadow-lime-950/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   {loading ? (

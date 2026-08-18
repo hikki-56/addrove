@@ -70,163 +70,175 @@ export default function TransferStaffWorkflowModal({
   const barcode = rawBarcode || selectedTask.sku || "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-lg bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[94vh] overflow-y-auto">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-xs border border-indigo-200/80">
-              {selectedTask.doc_no}
-            </span>
-            <span className="text-xs text-slate-500 font-medium truncate max-w-[150px] sm:max-w-[220px]">
-              {selectedTask.moved_by || "พนักงาน"}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer transition-all"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Circular Green Step Indicator */}
-        <div className="relative flex items-center justify-between px-6 sm:px-10 py-1.5">
-          {/* Connector Line */}
-          <div className="absolute left-12 right-12 top-[18px] h-0.5 bg-slate-200 -z-0">
-            <div
-              className="h-full bg-emerald-500 transition-all duration-300"
-              style={{
-                width: staffStep === 1 ? "0%" : staffStep === 2 ? "50%" : "100%",
-              }}
-            />
-          </div>
-
-          {/* Step 1 */}
-          <div className="flex flex-col items-center gap-1 z-10">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
-                staffStep === 1
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-105"
-                  : staffStep > 1
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white text-slate-400 border-2 border-slate-200"
-              }`}
-            >
-              {staffStep > 1 ? "✓" : "1"}
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in fade-in duration-150 flex flex-col">
+      <div className="w-full max-w-lg mx-auto min-h-screen flex flex-col justify-between p-4 sm:p-6 space-y-4">
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-mono font-black text-xs sm:text-sm border border-indigo-200">
+                {selectedTask.doc_no}
+              </span>
+              <span className="text-xs sm:text-sm text-slate-600 font-bold truncate max-w-[160px] sm:max-w-[240px]">
+                👤 {selectedTask.moved_by || "พนักงาน"}
+              </span>
             </div>
-            <span
-              className={`text-xs transition-colors ${
-                staffStep === 1
-                  ? "text-emerald-700 font-extrabold"
-                  : staffStep > 1
-                  ? "text-emerald-600 font-bold"
-                  : "text-slate-400 font-medium"
-              }`}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer font-black text-lg transition-all active:scale-90"
+              title="ปิดหน้าต่าง"
             >
-              สแกนสินค้า
-            </span>
+              ✕
+            </button>
           </div>
 
-          {/* Step 2 */}
-          <div className="flex flex-col items-center gap-1 z-10">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
-                staffStep === 2
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-105"
-                  : staffStep > 2
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white text-slate-400 border-2 border-slate-200"
-              }`}
-            >
-              {staffStep > 2 ? "✓" : "2"}
+          {/* Circular Green Step Indicator */}
+          <div className="relative flex items-center justify-between px-6 sm:px-10 py-2">
+            {/* Connector Line */}
+            <div className="absolute left-12 right-12 top-[22px] h-1 bg-slate-200 -z-0">
+              <div
+                className="h-full bg-emerald-500 transition-all duration-300"
+                style={{
+                  width: staffStep === 1 ? "0%" : staffStep === 2 ? "50%" : "100%",
+                }}
+              />
             </div>
-            <span
-              className={`text-xs transition-colors ${
-                staffStep === 2
-                  ? "text-emerald-700 font-extrabold"
-                  : staffStep > 2
-                  ? "text-emerald-600 font-bold"
-                  : "text-slate-400 font-medium"
-              }`}
-            >
-              ต้นทาง
-            </span>
-          </div>
 
-          {/* Step 3 */}
-          <div className="flex flex-col items-center gap-1 z-10">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
-                staffStep === 3
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-105"
-                  : staffStep > 3
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white text-slate-400 border-2 border-slate-200"
-              }`}
-            >
-              {staffStep > 3 ? "✓" : "3"}
+            {/* Step 1 */}
+            <div className="flex flex-col items-center gap-1.5 z-10">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
+                  staffStep === 1
+                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
+                    : staffStep > 1
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-slate-400 border-2 border-slate-200"
+                }`}
+              >
+                {staffStep > 1 ? "✓" : "1"}
+              </div>
+              <span
+                className={`text-xs sm:text-sm transition-colors ${
+                  staffStep === 1
+                    ? "text-emerald-700 font-black"
+                    : staffStep > 1
+                    ? "text-emerald-600 font-bold"
+                    : "text-slate-400 font-medium"
+                }`}
+              >
+                สแกนสินค้า
+              </span>
             </div>
-            <span
-              className={`text-xs transition-colors ${
-                staffStep === 3
-                  ? "text-emerald-700 font-extrabold"
-                  : staffStep > 3
-                  ? "text-emerald-600 font-bold"
-                  : "text-slate-400 font-medium"
-              }`}
-            >
-              ปลายทาง
-            </span>
-          </div>
-        </div>
 
-        {/* Compact Product & Route Summary */}
-        <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 space-y-1.5">
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">
-              {selectedTask.product_name}
-            </h4>
-            <span className="shrink-0 px-2.5 py-0.5 rounded-lg bg-indigo-100/70 text-indigo-800 font-mono font-extrabold text-xs">
-              {selectedTask.qty.toLocaleString()} ชิ้น
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-500 font-medium">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-              <span>SKU: <strong className="font-mono text-slate-800">{selectedTask.sku}</strong></span>
-              {barcode && (
-                <span>บาร์โค้ด: <strong className="font-mono text-slate-800">{barcode}</strong></span>
-              )}
+            {/* Step 2 */}
+            <div className="flex flex-col items-center gap-1.5 z-10">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
+                  staffStep === 2
+                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
+                    : staffStep > 2
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-slate-400 border-2 border-slate-200"
+                }`}
+              >
+                {staffStep > 2 ? "✓" : "2"}
+              </div>
+              <span
+                className={`text-xs sm:text-sm transition-colors ${
+                  staffStep === 2
+                    ? "text-emerald-700 font-black"
+                    : staffStep > 2
+                    ? "text-emerald-600 font-bold"
+                    : "text-slate-400 font-medium"
+                }`}
+              >
+                ต้นทาง
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 font-bold">
-              <span className="text-slate-600">{selectedTask.from_warehouse_name}</span>
-              <span className="text-slate-400">➔</span>
-              <span className="text-emerald-700">{selectedTask.to_warehouse_name}</span>
+
+            {/* Step 3 */}
+            <div className="flex flex-col items-center gap-1.5 z-10">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
+                  staffStep === 3
+                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
+                    : staffStep > 3
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-slate-400 border-2 border-slate-200"
+                }`}
+              >
+                {staffStep > 3 ? "✓" : "3"}
+              </div>
+              <span
+                className={`text-xs sm:text-sm transition-colors ${
+                  staffStep === 3
+                    ? "text-emerald-700 font-black"
+                    : staffStep > 3
+                    ? "text-emerald-600 font-bold"
+                    : "text-slate-400 font-medium"
+                }`}
+              >
+                ปลายทาง
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Error Banner */}
-        {staffStep !== 4 && staffError && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold leading-relaxed animate-in fade-in">
-            {staffError}
+          {/* Product & Route Summary Card */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50/95 border-2 border-slate-200/90 shadow-sm space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 flex-1 min-w-0">
+                {/* อันแรก: บาร์โค้ดขนาดใหญ่พิเศษ */}
+                <div className="text-slate-950 font-mono font-black text-lg sm:text-xl tracking-wide flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-indigo-800 bg-indigo-100 border border-indigo-200 px-2.5 py-0.5 rounded-lg shrink-0">
+                    บาร์โค้ด
+                  </span>
+                  <span className="truncate">{barcode || selectedTask.sku}</span>
+                </div>
+                {/* อันที่สอง: SKU */}
+                <div className="text-xs sm:text-sm text-slate-700 font-mono flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">SKU:</span>
+                  <strong className="text-slate-950 font-bold">{selectedTask.sku}</strong>
+                </div>
+                {/* อันที่สาม: ชื่อสินค้า */}
+                <div className="text-xs sm:text-sm text-slate-800 font-medium leading-snug line-clamp-2">
+                  {selectedTask.product_name}
+                </div>
+              </div>
+
+              <div className="shrink-0 text-right">
+                <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 text-emerald-950 border-2 border-emerald-200/90 font-mono font-black text-sm sm:text-base inline-block">
+                  {selectedTask.qty.toLocaleString()} ชิ้น
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2 text-xs font-bold">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  🏭 {selectedTask.from_warehouse_name}
+                </span>
+                <span className="text-emerald-600 font-black">➔</span>
+                <span className="text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 font-black">
+                  🎯 {selectedTask.to_warehouse_name}
+                </span>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Error Banner */}
+          {staffStep !== 4 && staffError && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs sm:text-sm font-bold leading-relaxed animate-in fade-in">
+              {staffError}
+            </div>
+          )}
 
         {/* Step 1: Scan Product Barcode */}
         {staffStep === 1 && (
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
               <span className="font-bold text-slate-700">สแกนบาร์โค้ดสินค้าบนตัวสินค้า:</span>
-              {barcode && (
-                <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/80">
-                  บาร์โค้ด: {barcode}
-                </span>
-              )}
             </div>
 
             <BarcodeScanInput
@@ -371,26 +383,26 @@ export default function TransferStaffWorkflowModal({
           </div>
         )}
 
-        {/* Step 4: Completion */}
+        {/* Step 4: Submission to Admin Completion */}
         {staffStep === 4 && (
-          <div className="p-6 text-center space-y-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl animate-in zoom-in-95">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl">
+          <div className="p-6 text-center space-y-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
               ✓
             </div>
-            <h4 className="text-base font-extrabold text-slate-900">ย้ายสินค้าสำเร็จ!</h4>
-            <p className="text-xs text-slate-600">
-              ตัดยอดต้นทางและเพิ่มเข้าปลายทางเรียบร้อยแล้ว
+            <h4 className="text-base font-extrabold text-slate-900">ย้ายสินค้าและส่งข้อมูลเรียบร้อยแล้ว!</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              การย้ายสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
             >
-              เสร็จสิ้น
+              ปิดหน้าต่าง / กลับสู่รายการ
             </button>
           </div>
         )}
-
+        </div>
       </div>
     </div>
   );

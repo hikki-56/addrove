@@ -34,6 +34,8 @@ export default function TransferPage() {
     tabUser,
     form,
     pendingTasks,
+    waitingApprovalTasks,
+    approvingId,
     cancellingId,
     isCleaningUp,
     selectedTask,
@@ -61,6 +63,8 @@ export default function TransferPage() {
     selectedProduct,
     handleCleanupHistory,
     handleCancelTransfer,
+    handleApproveTransfer,
+    handleRejectTransfer,
     handleVerifyProductBarcode,
     handleVerifySourceLocationBarcode,
     handleVerifyDestinationLocationBarcode,
@@ -72,53 +76,68 @@ export default function TransferPage() {
 
   const isAdmin = tabUser?.role === "ADMIN";
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Warehouse Header */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            <h2 className="font-bold text-slate-800 text-lg sm:text-xl">โอนสินค้าระหว่างโกดัง</h2>
-          </div>
+  const containerWidth =
+    activeMode === "WAITING_APPROVAL" && isAdmin
+      ? "max-w-4xl"
+      : activeMode === "STAFF_EXECUTE"
+      ? "max-w-2xl"
+      : "max-w-md";
 
-          {isAdmin && (
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setActiveMode("ADMIN_CREATE")}
-                className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                  activeMode === "ADMIN_CREATE"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                สร้างใบย้ายสินค้า
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMode("STAFF_EXECUTE")}
-                className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeMode === "STAFF_EXECUTE"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span>ติดตามขั้นตอนพนักงาน ({pendingTasks.length})</span>
-              </button>
-            </div>
+  return (
+    <div className={`${containerWidth} mx-auto w-full px-2 sm:px-4 space-y-4`}>
+      {/* Segmented Switch Bar: สลับไปทำรายการ / สร้างใบย้าย / รออนุมัติ */}
+      <div className="flex items-center p-1 bg-slate-100/90 border border-slate-200/80 rounded-2xl gap-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveMode("ADMIN_CREATE")}
+          className={`flex-1 py-2.5 px-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeMode === "ADMIN_CREATE"
+              ? "bg-white text-emerald-800 shadow-xs border border-slate-200/60"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <span>➕ สร้างใบย้าย</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveMode("STAFF_EXECUTE")}
+          className={`flex-1 py-2.5 px-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeMode === "STAFF_EXECUTE"
+              ? "bg-white text-indigo-700 shadow-xs border border-slate-200/60"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <span>📦 รายการที่ต้องไปย้าย</span>
+          {pendingTasks.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500 text-white animate-pulse">
+              {pendingTasks.length}
+            </span>
           )}
-        </div>
+        </button>
+
+        {(isAdmin || waitingApprovalTasks.length > 0) && (
+          <button
+            type="button"
+            onClick={() => setActiveMode("WAITING_APPROVAL")}
+            className={`flex-1 py-2.5 px-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeMode === "WAITING_APPROVAL"
+                ? "bg-white text-indigo-900 shadow-xs border border-slate-200/60"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span>🛡️ รออนุมัติ</span>
+            {waitingApprovalTasks.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500 text-white">
+                {waitingApprovalTasks.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Main Mode View */}
-      {activeMode === "ADMIN_CREATE" && isAdmin ? (
+      {/* Main View based on activeMode */}
+      {activeMode === "ADMIN_CREATE" ? (
         <TransferForm
           form={form}
           warehouses={warehouses}
@@ -137,20 +156,40 @@ export default function TransferPage() {
           removeItem={transferHook.removeItem}
           clearItems={transferHook.clearItems}
         />
-      ) : (
+      ) : activeMode === "WAITING_APPROVAL" ? (
         <TransferNotificationList
-          notifications={pendingTasks}
+          notifications={waitingApprovalTasks}
           isAdmin={isAdmin}
           onSelectTask={(task) => {
-            if (!isAdmin) {
+            if (!isAdmin && task.status !== "WAITING_APPROVAL") {
               setSelectedTask(task);
               setStaffStep(1);
             }
           }}
           onCancelTask={handleCancelTransfer}
+          onApproveTask={handleApproveTransfer}
+          onRejectTask={handleRejectTransfer}
           onCleanupHistory={handleCleanupHistory}
           isCleaningUp={isCleaningUp}
           cancellingId={cancellingId}
+          approvingId={approvingId}
+        />
+      ) : (
+        /* activeMode === "STAFF_EXECUTE" */
+        <TransferNotificationList
+          notifications={pendingTasks}
+          isAdmin={false}
+          onSelectTask={(task) => {
+            setSelectedTask(task);
+            setStaffStep(1);
+          }}
+          onCancelTask={handleCancelTransfer}
+          onApproveTask={handleApproveTransfer}
+          onRejectTask={handleRejectTransfer}
+          onCleanupHistory={handleCleanupHistory}
+          isCleaningUp={isCleaningUp}
+          cancellingId={cancellingId}
+          approvingId={approvingId}
         />
       )}
 

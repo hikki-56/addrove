@@ -91,7 +91,7 @@ export type DocumentType =
   | "ADJUST"
   | "REVERSAL";
 
-export type DocumentStatus = "DRAFT" | "PENDING" | "PROCESSING" | "POSTED" | "COMPLETED" | "REJECTED" | "CANCELLED";
+export type DocumentStatus = "DRAFT" | "PENDING" | "PROCESSING" | "WAITING_APPROVAL" | "POSTED" | "COMPLETED" | "REJECTED" | "CANCELLED";
 
 export interface Document {
   document_id: DocumentId;

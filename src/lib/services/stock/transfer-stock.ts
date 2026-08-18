@@ -9,9 +9,13 @@ import {
 import { logAudit } from "@/lib/audit";
 import {
   CreateTransferSchema,
+  SubmitTransferSchema,
+  ApproveTransferSchema,
   CompleteTransferSchema,
   CancelTransferSchema,
   type CreateTransferInput,
+  type SubmitTransferInput,
+  type ApproveTransferInput,
   type CompleteTransferInput,
   type CancelTransferInput,
 } from "@/types/api";
@@ -29,9 +33,13 @@ import { hasWarehouseAccess } from "@/lib/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
 export {
   CreateTransferSchema,
+  SubmitTransferSchema,
+  ApproveTransferSchema,
   CompleteTransferSchema,
   CancelTransferSchema,
   type CreateTransferInput,
+  type SubmitTransferInput,
+  type ApproveTransferInput,
   type CompleteTransferInput,
   type CancelTransferInput,
 };
@@ -142,6 +150,69 @@ export async function createTransfer(
   });
 }
 
+export async function submitTransferMove(
+  deps: StockUseCaseDeps,
+  docId: string,
+  input: {
+    fromLocationId?: string;
+    toLocationId?: string;
+    sourceAllocations?: Array<{ location_id: string; qty: number }>;
+    userId?: string;
+    userName?: string;
+    userRole?: string;
+  }
+): Promise<Document> {
+  const doc =
+    (await deps.repo.documents.findById(docId)) ||
+    (await deps.repo.documents.findByNo(docId));
+  if (!doc) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
+  if (doc.document_type !== "TRANSFER") {
+    throw new InvalidTransferStateError("เอกสารนี้ไม่ใช่ใบย้ายสินค้า");
+  }
+
+  if (doc.status === "COMPLETED") {
+    return doc;
+  }
+  if (doc.status === "CANCELLED" || doc.status === "REJECTED") {
+    throw new InvalidTransferStateError("ไม่สามารถส่งย้ายสินค้าที่ยกเลิกหรือถูกปฏิเสธแล้วได้");
+  }
+
+  let meta: any = {};
+  try {
+    meta = JSON.parse(doc.note || "{}");
+  } catch {
+    meta = {};
+  }
+
+  const rawAllocations = Array.isArray(input.sourceAllocations) && input.sourceAllocations.length > 0
+    ? input.sourceAllocations
+    : meta.source_allocations || [];
+
+  const finalFromLoc = (input.fromLocationId || meta.from_location_id || (rawAllocations.length > 0 ? rawAllocations[0].location_id : "A1")).trim();
+  const finalToLoc = (input.toLocationId || meta.to_location_id || "A1").trim();
+
+  meta.from_location_id = finalFromLoc;
+  meta.to_location_id = finalToLoc;
+  meta.source_allocations = rawAllocations;
+  meta.current_step = 3;
+  meta.current_step_text = "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)";
+  meta.moved_at = new Date().toISOString();
+  if (input.userName || input.userId) {
+    meta.moved_by = input.userName || input.userId;
+    meta.mover_user_id = input.userId || "";
+  }
+
+  const updatedNote = JSON.stringify(meta);
+  await deps.repo.documents.updateNote(doc.document_id, updatedNote);
+  await deps.repo.documents.updateStatus(doc.document_id, "WAITING_APPROVAL");
+
+  return {
+    ...doc,
+    status: "WAITING_APPROVAL",
+    note: updatedNote,
+  };
+}
+
 export async function completeTransfer(
   deps: StockUseCaseDeps,
   docId: string,
@@ -169,7 +240,7 @@ export async function completeTransfer(
     return doc;
   }
 
-  if (doc.status === "CANCELLED") {
+  if (doc.status === "CANCELLED" || doc.status === "REJECTED") {
     throw new InvalidTransferStateError("ไม่สามารถเปลี่ยนใบย้ายที่ยกเลิกแล้วเป็น COMPLETED");
   }
 
@@ -183,6 +254,7 @@ export async function completeTransfer(
     to_warehouse_id: string;
     from_location_id?: string;
     to_location_id?: string;
+    source_allocations?: Array<{ location_id: string; qty: number }>;
     product_id: string;
     qty: number;
     moved_by?: string;
@@ -241,7 +313,7 @@ export async function completeTransfer(
       .replace(/^user-/, "");
 
   // Assignee authorization check: non-ADMIN user MUST be the assigned staff member
-  if (realUserRole && realUserRole !== "ADMIN") {
+  if (realUserRole && realUserRole !== "ADMIN" && realUserRole !== "MANAGER") {
     const assignedUserId = String(doc.assigned_to_user_id || meta.assigned_to_user_id || "").trim();
     const assignedName = String(doc.assigned_to_name || meta.assigned_to_name || meta.moved_by || "").trim();
     const actorId = String(realUserId || "").trim();
@@ -314,13 +386,20 @@ export async function completeTransfer(
       }
     }
   }
-  const finalFromLocId = rawFromLoc.trim();
+
+  const effectiveAllocations = (Array.isArray(sourceAllocations) && sourceAllocations.length > 0)
+    ? sourceAllocations
+    : (Array.isArray(meta.source_allocations) && meta.source_allocations.length > 0)
+    ? meta.source_allocations
+    : [];
+
+  const finalFromLocId = (rawFromLoc || meta.from_location_id || (effectiveAllocations.length > 0 ? effectiveAllocations[0].location_id : "A1")).trim();
   if (!finalFromLocId) {
     throw new InvalidTransferStateError("กรุณาระบุ/สแกนตำแหน่งต้นทางในการย้ายสินค้า");
   }
 
   const rawToLoc = toLocationId || meta.to_location_id || "";
-  const finalToLocId = rawToLoc.trim();
+  const finalToLocId = (rawToLoc || "A1").trim();
   if (!finalToLocId) {
     throw new InvalidTransferStateError("กรุณาระบุ/สแกนตำแหน่งปลายทางในการย้ายสินค้า");
   }
@@ -415,8 +494,10 @@ export async function completeTransfer(
       }
 
       // Check if multi-source location picking allocations are provided
-      const allocations = Array.isArray(sourceAllocations) && sourceAllocations.length > 0
+      const allocations = (Array.isArray(sourceAllocations) && sourceAllocations.length > 0)
         ? sourceAllocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
+        : (Array.isArray(meta.source_allocations) && meta.source_allocations.length > 0)
+        ? meta.source_allocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
         : [];
 
       if (allocations.length > 0) {

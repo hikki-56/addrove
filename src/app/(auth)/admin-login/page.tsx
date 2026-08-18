@@ -129,7 +129,7 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-4" suppressHydrationWarning>
             {/* Email Field */}
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
@@ -152,6 +152,7 @@ export default function AdminLoginPage() {
                   autoComplete="email"
                   {...register("email")}
                   placeholder="admin@stockify.com"
+                  suppressHydrationWarning
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.06] transition-all text-sm"
                 />
               </div>
@@ -182,11 +183,13 @@ export default function AdminLoginPage() {
                   autoComplete="current-password"
                   {...register("password")}
                   placeholder="••••••••"
+                  suppressHydrationWarning
                   className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.06] transition-all text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  suppressHydrationWarning
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
                 >
                   {showPassword ? (
@@ -211,6 +214,7 @@ export default function AdminLoginPage() {
               id="admin-login-submit"
               type="submit"
               disabled={loading}
+              suppressHydrationWarning
               className="w-full py-2.5 mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {loading ? (

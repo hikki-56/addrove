@@ -20,23 +20,27 @@ export class SheetsAuditRepository implements IAuditRepository {
     };
 
     const metaString = fullEntry.metadata ? JSON.stringify(fullEntry.metadata) : "";
-    await appendRows(SHEET_NAME, [
-      [
-        fullEntry.audit_id,
-        fullEntry.correlation_id,
-        fullEntry.idempotency_key || "",
-        fullEntry.actor_id,
-        fullEntry.actor_role,
-        fullEntry.action,
-        fullEntry.resource_type,
-        fullEntry.resource_id || "",
-        fullEntry.warehouse_id || "",
-        fullEntry.timestamp,
-        fullEntry.outcome,
-        fullEntry.error_code || "",
-        metaString,
-      ],
-    ]);
+    try {
+      await appendRows(SHEET_NAME, [
+        [
+          fullEntry.audit_id,
+          fullEntry.correlation_id,
+          fullEntry.idempotency_key || "",
+          fullEntry.actor_id,
+          fullEntry.actor_role,
+          fullEntry.action,
+          fullEntry.resource_type,
+          fullEntry.resource_id || "",
+          fullEntry.warehouse_id || "",
+          fullEntry.timestamp,
+          fullEntry.outcome,
+          fullEntry.error_code || "",
+          metaString,
+        ],
+      ]);
+    } catch (e) {
+      console.warn(`[SheetsAuditRepository] Sheet "${SHEET_NAME}" not available in spreadsheet:`, e);
+    }
 
     return fullEntry;
   }

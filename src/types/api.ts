@@ -203,6 +203,22 @@ export const TransferAllocationSchema = z.object({
 });
 export type TransferAllocation = z.infer<typeof TransferAllocationSchema>;
 
+export const SubmitTransferSchema = z.object({
+  from_location_id: z.string().optional(),
+  to_location_id: z.string().optional(),
+  completed_location_id: z.string().optional(),
+  source_allocations: z.array(TransferAllocationSchema).optional(),
+});
+export type SubmitTransferInput = z.infer<typeof SubmitTransferSchema>;
+
+export const ApproveTransferSchema = z.object({
+  from_location_id: z.string().optional(),
+  to_location_id: z.string().optional(),
+  source_allocations: z.array(TransferAllocationSchema).optional(),
+  note: z.string().optional(),
+});
+export type ApproveTransferInput = z.infer<typeof ApproveTransferSchema>;
+
 export const CompleteTransferSchema = z.object({
   from_location_id: z.string().optional(),
   to_location_id: z.string().optional(),

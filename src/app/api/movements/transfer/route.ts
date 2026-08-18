@@ -30,10 +30,17 @@ export async function POST(req: NextRequest) {
     }
 
     const repo = getRepository();
+    const defaultMovedBy = parsed.data.moved_by || session?.user?.name || "พนักงาน";
+    const defaultAssignedUserId = parsed.data.assigned_to_user_id || actor.id;
+    const defaultAssignedName = parsed.data.assigned_to_name || session?.user?.name || defaultMovedBy;
+
     const doc = await createTransfer(
       { repo },
       {
         ...parsed.data,
+        moved_by: defaultMovedBy,
+        assigned_to_user_id: defaultAssignedUserId,
+        assigned_to_name: defaultAssignedName,
         user_id: actor.id,
         role: actor.role,
         correlation_id: actor.correlationId,
@@ -64,6 +71,11 @@ export async function GET(req: NextRequest) {
       const userName = String(session?.user?.name || "").trim().toLowerCase();
 
       documents = documents.filter((doc) => {
+        // Creator match
+        if (doc.created_by && userId && (doc.created_by === userId || doc.created_by.replace(/^usr-/, "") === userId.replace(/^usr-/, ""))) {
+          return true;
+        }
+
         let meta: Record<string, any> = {};
         try {
           meta = JSON.parse(doc.note || "{}");

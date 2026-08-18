@@ -12,6 +12,8 @@ interface ProductSearchInputProps {
   onQuickAdd?: () => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
+  size?: "default" | "lg";
 }
 
 export default function ProductSearchInput({
@@ -23,6 +25,8 @@ export default function ProductSearchInput({
   onQuickAdd,
   placeholder = "พิมพ์รหัส SKU, ชื่อสินค้า หรือ บาร์โค้ด...",
   className = "",
+  inputClassName = "",
+  size = "default",
 }: ProductSearchInputProps) {
   const [internalQuery, setInternalQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -136,6 +140,8 @@ export default function ProductSearchInput({
   // Slice to 50 for max performance & zero UI lag
   const displayedProducts = useMemo(() => filteredProducts.slice(0, 50), [filteredProducts]);
 
+  const isLg = size === "lg";
+
   return (
     <div ref={containerRef} className={`relative w-full min-w-0 max-w-full ${className}`}>
       <div className="relative">
@@ -151,7 +157,14 @@ export default function ProductSearchInput({
             }
           }}
           placeholder={placeholder}
-          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 text-sm font-semibold pr-8 transition-all shadow-sm"
+          className={
+            inputClassName ||
+            `w-full ${
+              isLg
+                ? "px-5 py-4 rounded-2xl text-base sm:text-lg font-bold border-2 pr-12"
+                : "px-3.5 py-2.5 rounded-xl text-sm font-semibold border pr-8"
+            } bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-sm`
+          }
         />
 
         {query ? (
@@ -162,15 +175,15 @@ export default function ProductSearchInput({
               if (onChange) onChange("", undefined);
               setOpen(true);
             }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 p-1"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 p-1 cursor-pointer`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={isLg ? "w-5 h-5" : "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         ) : (
           <svg
-            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            className={`${isLg ? "w-5 h-5 right-4" : "w-4 h-4 right-3"} text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -240,32 +253,22 @@ export default function ProductSearchInput({
                       : "text-slate-900 hover:bg-slate-100"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex flex-col gap-1 flex-1 min-w-0">
-                      {/* บรรทัดที่ 1: [ผู้จำหน่าย] | [รหัสสินค้า SKU] | [บาร์โค้ด] */}
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-900">
-                        {p.supplier ? (
-                          <>
-                            <span className="text-black font-extrabold text-sm sm:text-base">{p.supplier}</span>
-                            <span className="text-slate-300">|</span>
-                          </>
-                        ) : null}
-                        <span className="text-black font-mono font-extrabold text-xs sm:text-sm">
-                          {p.sku}
-                        </span>
-                        {p.barcode && p.barcode !== p.sku ? (
-                          <>
-                            <span className="text-slate-300">|</span>
-                            <span className="text-black font-mono font-extrabold text-xs sm:text-sm">
-                              {p.barcode}
-                            </span>
-                          </>
-                        ) : null}
+                  <div className="flex items-center justify-between gap-3 py-1.5">
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                      {/* บรรทัดที่ 1: เลขบาร์โค้ดขนาดใหญ่ */}
+                      <div className="text-slate-950 font-mono font-black text-base sm:text-lg tracking-wide truncate">
+                        {p.barcode || p.sku}
                       </div>
 
-                      {/* บรรทัดที่ 2: ชื่อสินค้า */}
-                      <div className="text-xs sm:text-sm text-slate-900 font-medium truncate">
-                        {p.product_name && p.product_name !== p.sku ? p.product_name : `สินค้า ${p.sku}`}
+                      {/* บรรทัดที่ 2: [ผู้จำหน่าย] | [SKU] */}
+                      <div className="flex items-center gap-x-2 text-xs sm:text-sm text-slate-500 font-medium truncate">
+                        {p.supplier ? (
+                          <>
+                            <span className="text-slate-800 font-bold">{p.supplier}</span>
+                            <span className="text-slate-300">|</span>
+                          </>
+                        ) : null}
+                        <span className="font-mono text-slate-700">{p.sku}</span>
                       </div>
                     </div>
 
