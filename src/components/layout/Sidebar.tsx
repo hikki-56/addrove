@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { navItems, type NavItem } from "@/lib/nav-items";
+import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
   getPendingTransferNotifications,
@@ -45,6 +46,7 @@ export default function Sidebar({
     management: true,
     movements: true,
     system: true,
+    express: true,
   });
 
   const toggleSection = (sectionKey: string) => {
@@ -57,12 +59,23 @@ export default function Sidebar({
     return getPendingTransferNotifications(staffFilter).length;
   });
 
+  const [expressTagCounts, setExpressTagCounts] = useState<{ receive: number; issue: number; transfer: number }>(() => {
+    const rec = getExpressTagCounts("RECEIVE").pending;
+    const iss = getExpressTagCounts("ISSUE").pending;
+    const trf = getExpressTagCounts("TRANSFER").pending;
+    return { receive: rec, issue: iss, transfer: trf };
+  });
+
   const role = tabUser?.role || initialRole;
   const userName = tabUser?.name || initialName;
 
   const updateCount = useCallback(() => {
     const staffFilter = role !== "ADMIN" ? userName : undefined;
     setPendingTransferCount(getPendingTransferNotifications(staffFilter).length);
+    const rec = getExpressTagCounts("RECEIVE").pending;
+    const iss = getExpressTagCounts("ISSUE").pending;
+    const trf = getExpressTagCounts("TRANSFER").pending;
+    setExpressTagCounts({ receive: rec, issue: iss, transfer: trf });
   }, [role, userName]);
 
   useEffect(() => {
@@ -75,11 +88,13 @@ export default function Sidebar({
 
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);
+    window.addEventListener("stockify-express-tags-updated", updateCount);
     window.addEventListener("storage", updateCount);
     return () => {
       clearInterval(interval);
       window.removeEventListener("stockify-transfer-created", updateCount);
       window.removeEventListener("stockify-transfer-updated", updateCount);
+      window.removeEventListener("stockify-express-tags-updated", updateCount);
       window.removeEventListener("storage", updateCount);
     };
   }, [updateCount]);
@@ -96,6 +111,9 @@ export default function Sidebar({
     ["/movements/receive", "/movements/transfer", "/movements/move", "/stock-counts", "/movements/history"].includes(i.href)
   );
   const systemNav = visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href));
+  const expressNav = visibleItems.filter((i) =>
+    ["/express-import/receive", "/express-import/transfer", "/express-import/issue", "/express-import"].includes(i.href)
+  );
 
   return (
     <aside
@@ -218,9 +236,41 @@ export default function Sidebar({
             )}
           </div>
         )}
+
+        {/* Express (นำเข้า Express) Section */}
+        {role === "ADMIN" && expressNav.length > 0 && (
+          <div>
+            <SectionHeader
+              title="EXPRESS · นำเข้า Express"
+              isOpen={openSections.express}
+              onToggle={() => toggleSection("express")}
+            />
+            {openSections.express && (
+              <div className="space-y-1 mt-1">
+                {expressNav.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  const badge =
+                    item.href === "/express-import/receive" && expressTagCounts.receive > 0
+                      ? expressTagCounts.receive
+                      : item.href === "/express-import/transfer" && expressTagCounts.transfer > 0
+                      ? expressTagCounts.transfer
+                      : item.href === "/express-import/issue" && expressTagCounts.issue > 0
+                      ? expressTagCounts.issue
+                      : undefined;
+                  return (
+                    <MinimalNavItem
+                      key={item.href}
+                      item={item}
+                      isActive={isActive}
+                      badge={badge}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </nav>
-
-
     </aside>
   );
 }

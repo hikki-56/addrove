@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import ExpressImportModal, { ApprovedDocumentItem } from "@/components/ui/ExpressImportModal";
+import Link from "next/link";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
+import { batchTagExpressItems } from "@/lib/express-tag-utils";
 
 interface ApprovalDoc {
   document_id: string;
@@ -47,6 +48,14 @@ function formatQuantity(val: any): string {
   return num.toLocaleString();
 }
 
+// Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
+function toExpressWhCode(targetSheet: string): string {
+  if (!targetSheet) return "01";
+  const match = targetSheet.match(/\d+/);
+  if (match) return match[0].padStart(2, "0");
+  return "01";
+}
+
 export default function ApprovalsPage() {
   const [activeTab, setActiveTab] = useState<"PENDING" | "POSTED">("PENDING");
   const [pendingDocs, setPendingDocs] = useState<ApprovalDoc[]>([]);
@@ -55,10 +64,7 @@ export default function ApprovalsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState("ALL");
-
-  // Express Modal state
-  const [isExpressModalOpen, setIsExpressModalOpen] = useState(false);
-  const [expressModalDocId, setExpressModalDocId] = useState<string | null>(null);
+  const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
   const fetchApprovals = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -120,11 +126,44 @@ export default function ApprovalsPage() {
           } catch {}
         }
 
-        // Prompt to view Express Barcodes
-        if (confirm("อนุมัติและบันทึกเข้าโกดังสำเร็จ! คุณต้องการเปิดบาร์โค้ดเพื่อสแกนเข้า Express ทันทีหรือไม่?")) {
-          setExpressModalDocId(doc.document_id);
-          setIsExpressModalOpen(true);
-        }
+        // Automatically tag all approved items under "นำเข้าสินค้าเข้าExpress"
+        const itemsToTag = (doc.rows || []).map((row, idx) => {
+          const sku = String(row[0] ?? "").trim();
+          const location = String(row[1] ?? "-").trim() || "-";
+          const rawBarcode = String(row[2] ?? "").trim();
+          const productName = String(row[3] ?? "").trim() || sku;
+          const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
+          const quantity = !isNaN(qtyVal) && qtyVal > 0 ? qtyVal : 1;
+          const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
+          const supplier = String(row[6] ?? "-").trim() || "-";
+
+          const barcode =
+            rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined"
+              ? rawBarcode
+              : to8DigitBarcode(rawBarcode, sku) || sku;
+
+          return {
+            id: `rec_${doc.document_id}_${sku}_${idx}`,
+            type: "RECEIVE" as const,
+            tag: "นำเข้าสินค้าเข้าExpress",
+            status: "PENDING" as const,
+            sku,
+            barcode,
+            product_name: productName,
+            quantity,
+            location,
+            warehouse: targetWarehouse,
+            warehouse_code: toExpressWhCode(targetWarehouse),
+            document_no: doc.document_no,
+            document_date: doc.document_date || doc.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+            supplier,
+          };
+        });
+
+        batchTagExpressItems(itemsToTag);
+
+        setNotificationMsg(`อนุมัติเอกสาร ${doc.document_no} สำเร็จ และบันทึกเข้าแท็ก "นำเข้าสินค้าเข้าExpress" เรียบร้อยแล้ว`);
+        setTimeout(() => setNotificationMsg(null), 5000);
       } else {
         alert(json.message || "เกิดข้อผิดพลาดในการอนุมัติ");
       }
@@ -162,11 +201,6 @@ export default function ApprovalsPage() {
     }
   };
 
-  const openExpressModal = (docId: string | null = null) => {
-    setExpressModalDocId(docId);
-    setIsExpressModalOpen(true);
-  };
-
   const currentDocs = activeTab === "PENDING" ? pendingDocs : approvedDocs;
 
   // Filtered docs
@@ -197,38 +231,29 @@ export default function ApprovalsPage() {
     });
   }, [currentDocs, selectedWarehouse, searchQuery]);
 
-  const totalItemsCount = useMemo(() => {
-    return currentDocs.reduce((acc, doc) => acc + (doc.rows?.length || 0), 0);
-  }, [currentDocs]);
-
   const availableWarehouses = useMemo(() => {
     const set = new Set<string>();
     currentDocs.forEach((d) => set.add(d.target_sheet));
     return Array.from(set);
   }, [currentDocs]);
 
-  // Transform approvedDocs to type ApprovedDocumentItem (Deduplicated by document_id)
-  const approvedDocsForModal: ApprovedDocumentItem[] = useMemo(() => {
-    const docMap = new Map<string, ApprovedDocumentItem>();
-    [...approvedDocs, ...pendingDocs].forEach((d) => {
-      if (!docMap.has(d.document_id)) {
-        docMap.set(d.document_id, {
-          document_id: d.document_id,
-          document_no: d.document_no,
-          warehouse_id: d.warehouse_id,
-          target_sheet: d.target_sheet,
-          document_date: d.document_date,
-          created_by: d.created_by,
-          status: d.status,
-          rows: d.rows || [],
-        });
-      }
-    });
-    return Array.from(docMap.values());
-  }, [approvedDocs, pendingDocs]);
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Toast Notification Banner */}
+      {notificationMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-sm font-bold flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">🏷️</span>
+            <span>{notificationMsg}</span>
+          </div>
+          <Link
+            href="/express-import/receive"
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+          >
+            เปิดดูในหน้านำเข้า Express →
+          </Link>
+        </div>
+      )}
 
       {/* Status View Tabs */}
       <div className="flex items-center gap-2 border-b border-white/10 pb-3">
@@ -260,8 +285,6 @@ export default function ApprovalsPage() {
           <span>อนุมัติแล้ว ({approvedDocs.length})</span>
         </button>
       </div>
-
-
 
       {/* Filter & Search Bar */}
       {currentDocs.length > 0 && (
@@ -473,16 +496,6 @@ export default function ApprovalsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Express Import Button per document */}
-                    <button
-                      onClick={() => openExpressModal(doc.document_id)}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                      </svg>
-                      <span>นำเข้า Express (สแกนบาร์โค้ด)</span>
-                    </button>
 
                     {!isApprovedDoc && !isProcessingDoc && (
                       <>
@@ -514,7 +527,7 @@ export default function ApprovalsPage() {
                               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                               </svg>
-                              <span>อนุมัติ (บันทึกเข้าโกดัง)</span>
+                              <span>อนุมัติ (บันทึกเข้าโกดัง & เก็บแท็ก Express)</span>
                             </>
                           )}
                         </button>
@@ -527,14 +540,6 @@ export default function ApprovalsPage() {
           })}
         </div>
       )}
-
-      {/* Express Import Barcode Modal */}
-      <ExpressImportModal
-        isOpen={isExpressModalOpen}
-        onClose={() => setIsExpressModalOpen(false)}
-        approvedDocs={approvedDocsForModal}
-        initialDocId={expressModalDocId}
-      />
     </div>
   );
 }
