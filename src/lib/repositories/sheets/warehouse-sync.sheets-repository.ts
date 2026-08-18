@@ -77,7 +77,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
           matchSku(r[1], productId);
 
         if (isSkuMatch) {
-          const rowLoc = cleanLocCode(r[6] || r[5] || "");
+          const rowLoc = cleanLocCode(r[6] || "");
           const isLocMatch =
             !normTargetLoc ||
             !rowLoc ||
@@ -86,6 +86,36 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
             normTargetLoc.includes(rowLoc);
 
           if (isLocMatch) {
+            const rawQty = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
+            const parsedQty = isNaN(rawQty) ? 0 : rawQty;
+
+            matchingRowIndices.push(i);
+            totalQty += parsedQty;
+
+            if (primaryRowIndex === -1 && parsedQty > 0) {
+              primaryRowIndex = i;
+              primaryRow = [...r];
+            }
+          }
+        }
+      }
+
+      // Fallback: If specific location didn't match, search by SKU regardless of location
+      if (matchingRowIndices.length === 0 && normTargetLoc) {
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[0] || !r[0].trim()) continue;
+
+          const rSku = cleanSkuCode(r[0]);
+          const rBarcode = cleanSkuCode(r[1]);
+
+          const isSkuMatch =
+            rSku === normTargetSku ||
+            rBarcode === normTargetSku ||
+            matchSku(r[0], productId) ||
+            matchSku(r[1], productId);
+
+          if (isSkuMatch) {
             const rawQty = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
             const parsedQty = isNaN(rawQty) ? 0 : rawQty;
 
@@ -121,17 +151,20 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       const remainingQty = totalQty - qty;
 
       if (remainingQty <= 0) {
+        // Zero-out or blank the primary row first so client immediately sees 0
+        const rowNumber = primaryRowIndex + 2;
+        while (primaryRow.length < 9) primaryRow.push("");
+        primaryRow[5] = "0";
+        primaryRow[8] = new Date().toISOString();
+        await updateRow(sheetName, rowNumber, primaryRow).catch(() => {});
+
         try {
           await deleteRows(
             sheetName,
             matchingRowIndices.map((index) => index + 1)
           );
-          for (const idx of matchingRowIndices) {
-            const rowNumber = idx + 2;
-            await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]).catch(() => {});
-          }
         } catch (delErr) {
-          console.error(`[SheetsWarehouseSync] Failed to delete empty rows in ${sheetName}:`, delErr);
+          console.warn(`[SheetsWarehouseSync] deleteRows in ${sheetName} fallback to zero qty:`, delErr);
         }
       } else {
         const rowNumber = primaryRowIndex + 2;
@@ -143,6 +176,12 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
 
         const secondaryIndices = matchingRowIndices.filter((idx) => idx !== primaryRowIndex);
         if (secondaryIndices.length > 0) {
+          for (const sIdx of secondaryIndices) {
+            const sRow = rows[sIdx] ? [...rows[sIdx]] : [];
+            while (sRow.length < 9) sRow.push("");
+            sRow[5] = "0";
+            await updateRow(sheetName, sIdx + 2, sRow).catch(() => {});
+          }
           try {
             await deleteRows(
               sheetName,
@@ -196,7 +235,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
             matchSku(r[1], product.barcode);
 
           if (isSkuMatch) {
-            const rLoc = cleanLocCode(r[6] || r[5] || "");
+            const rLoc = cleanLocCode(r[6] || "");
             if (!targetLoc || !rLoc || rLoc === targetLoc) {
               foundIndex = i;
               existingRow = [...r];
@@ -223,7 +262,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       } else {
         const newRow = [
           product.sku,
-          product.barcode && product.barcode !== product.sku ? product.barcode : "",
+          product.barcode && product.barcode !== product.sku ? product.barcode : (product.barcode || ""),
           product.product_name,
           product.category || "ทั่วไป",
           product.base_unit || "ชิ้น",
@@ -283,7 +322,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
           matchSku(r[1], productId);
 
         if (skuMatch) {
-          const rLoc = cleanLocCode(r[6] || r[5] || "");
+          const rLoc = cleanLocCode(r[6] || "");
           const locMatch =
             !normFromLoc ||
             !rLoc ||
@@ -328,17 +367,19 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       const newSourceQty = totalSourceQty - actualMoveQty;
 
       if (newSourceQty <= 0) {
+        const rowNumber = primaryIndex + 2;
+        while (primaryRow.length < 9) primaryRow.push("");
+        primaryRow[5] = "0";
+        primaryRow[8] = new Date().toISOString();
+        await updateRow(sheetName, rowNumber, primaryRow).catch(() => {});
+
         try {
           await deleteRows(
             sheetName,
             matchingIndices.map((index) => index + 1)
           );
-          for (const idx of matchingIndices) {
-            const rowNumber = idx + 2;
-            await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]).catch(() => {});
-          }
         } catch (delErr) {
-          console.error(`[SheetsWarehouseSync] Failed to delete empty rows:`, delErr);
+          console.warn(`[SheetsWarehouseSync] Failed to delete empty rows:`, delErr);
         }
       } else {
         const rowNumber = primaryIndex + 2;
@@ -350,6 +391,12 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
 
         const secondaryIndices = matchingIndices.filter((idx) => idx !== primaryIndex);
         if (secondaryIndices.length > 0) {
+          for (const sIdx of secondaryIndices) {
+            const sRow = rows[sIdx] ? [...rows[sIdx]] : [];
+            while (sRow.length < 9) sRow.push("");
+            sRow[5] = "0";
+            await updateRow(sheetName, sIdx + 2, sRow).catch(() => {});
+          }
           try {
             await deleteRows(
               sheetName,
@@ -366,3 +413,4 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
     }
   }
 }
+

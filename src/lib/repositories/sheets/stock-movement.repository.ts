@@ -276,6 +276,7 @@ export class SheetsStockMovementRepository
         const normTargetSku = cleanSkuCode(productId);
 
         let sheetLocBal = 0;
+        let sheetSkuTotal = 0;
         for (const r of whRows) {
           if (!r || !r[0] || !r[0].trim()) continue;
           const rSku = cleanSkuCode(r[0]);
@@ -289,7 +290,15 @@ export class SheetsStockMovementRepository
 
           if (!isSkuMatch) continue;
 
-          const rowLoc = cleanLocCode(r[6] || r[5] || "");
+          let qty = 0;
+          if (r.length >= 6) {
+            qty = parseFloat((r[5] ?? "").replace(/,/g, "").trim()) || 0;
+          } else {
+            qty = parseFloat((r[3] ?? "").replace(/,/g, "").trim()) || 0;
+          }
+          sheetSkuTotal += qty;
+
+          const rowLoc = cleanLocCode(r[6] || "");
           const isLocMatch =
             !normTargetLoc ||
             !rowLoc ||
@@ -298,16 +307,11 @@ export class SheetsStockMovementRepository
             normTargetLoc.includes(rowLoc);
 
           if (isLocMatch) {
-            let qty = 0;
-            if (r.length >= 6) {
-              qty = parseFloat((r[5] ?? "").replace(/,/g, "").trim()) || 0;
-            } else {
-              qty = parseFloat((r[3] ?? "").replace(/,/g, "").trim()) || 0;
-            }
             sheetLocBal += qty;
           }
         }
         if (sheetLocBal > 0) return sheetLocBal;
+        if (sheetSkuTotal > 0) return sheetSkuTotal;
       }
     } catch {}
 

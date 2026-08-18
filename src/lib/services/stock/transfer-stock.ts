@@ -256,6 +256,12 @@ export async function completeTransfer(
     to_location_id?: string;
     source_allocations?: Array<{ location_id: string; qty: number }>;
     product_id: string;
+    sku?: string;
+    barcode?: string;
+    product_name?: string;
+    category?: string;
+    base_unit?: string;
+    supplier?: string;
     qty: number;
     moved_by?: string;
     assigned_to_user_id?: string;
@@ -443,17 +449,23 @@ export async function completeTransfer(
     const rawSku = meta.product_id.replace(/^prod-/, "");
     product = await deps.repo.products.findBySku(rawSku);
   }
+  if (!product && meta.sku) {
+    product = await deps.repo.products.findBySku(meta.sku);
+  }
+  if (!product && meta.barcode) {
+    product = await deps.repo.products.findByBarcode(meta.barcode);
+  }
 
-  const skuVal = product?.sku || meta.product_id.replace(/^prod-/, "");
+  const skuVal = (product && product.sku) || meta.sku || meta.product_id.replace(/^prod-/, "");
   const prodObj: Product = product || {
     product_id: meta.product_id,
     sku: skuVal,
-    barcode: skuVal,
-    product_name: skuVal,
-    category: "ทั่วไป",
-    base_unit: "ชิ้น",
+    barcode: meta.barcode || skuVal,
+    product_name: meta.product_name || skuVal,
+    category: meta.category || "ทั่วไป",
+    base_unit: meta.base_unit || "ชิ้น",
     minimum_stock: 0,
-    supplier: "",
+    supplier: meta.supplier || "",
     description: "",
     active: true,
     created_at: new Date().toISOString(),
@@ -512,11 +524,17 @@ export async function completeTransfer(
         for (const alloc of allocations) {
           const locId = alloc.location_id.trim();
           const allocQty = Number(alloc.qty);
-          const bal = await repo.movements.getBalance(
+          let bal = await repo.movements.getBalance(
             meta.product_id,
             meta.from_warehouse_id,
             locId
           );
+          if (bal < allocQty && typeof repo.movements.getWarehouseBalance === "function") {
+            const whBal = await repo.movements.getWarehouseBalance(meta.product_id, meta.from_warehouse_id);
+            if (whBal >= allocQty) {
+              bal = whBal;
+            }
+          }
           if (bal < allocQty) {
             throw new InsufficientStockError(
               `ยอดสินค้าในตำแหน่ง "${locId}" มีเพียง ${bal.toLocaleString()} ชิ้น ไม่เพียงพอสำหรับจำนวนที่เลือกหยิบ ${allocQty.toLocaleString()} ชิ้น`
@@ -525,15 +543,21 @@ export async function completeTransfer(
         }
       } else {
         // Single location fallback
-        const currentSourceBalance = await repo.movements.getBalance(
+        let currentSourceBalance = await repo.movements.getBalance(
           meta.product_id,
           meta.from_warehouse_id,
           finalFromLocId
         );
+        if (currentSourceBalance < meta.qty && typeof repo.movements.getWarehouseBalance === "function") {
+          const whBal = await repo.movements.getWarehouseBalance(meta.product_id, meta.from_warehouse_id);
+          if (whBal >= meta.qty) {
+            currentSourceBalance = whBal;
+          }
+        }
 
         if (currentSourceBalance < meta.qty) {
           throw new InsufficientStockError(
-            `ยอดสินค้าในตำแหน่ง "${finalFromLocId}" มีเพียง ${currentSourceBalance.toLocaleString()} ชิ้น ซึ่งไม่พอย้ายจำนวน ${meta.qty.toLocaleString()} ชิ้น (หากสินค้ากระจายอยู่หลายตำแหน่ง กรุณาเลือกหยิบจากหลายตำแหน่งให้ครบตามจำนวน)`
+            `ยอดสินค้าในโกดังต้นทางมีเพียง ${currentSourceBalance.toLocaleString()} ชิ้น ซึ่งไม่พอย้ายจำนวน ${meta.qty.toLocaleString()} ชิ้น`
           );
         }
       }

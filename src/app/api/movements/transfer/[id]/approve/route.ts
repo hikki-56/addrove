@@ -27,7 +27,16 @@ export async function POST(
     const body = await req.json().catch(() => ({}));
 
     const repo = getRepository();
-    const existingDoc = (await repo.documents.findById(docId)) || (await repo.documents.findByNo(docId));
+    let existingDoc = (await repo.documents.findById(docId)) || (await repo.documents.findByNo(docId));
+    if (!existingDoc) {
+      const allDocs = await repo.documents.findAll({ page: 1, limit: 9999, document_type: "TRANSFER" as any });
+      const cleanTargetId = docId.trim().toLowerCase();
+      existingDoc = allDocs.data.find(
+        (d) =>
+          d.document_id.trim().toLowerCase() === cleanTargetId ||
+          d.document_no.trim().toLowerCase() === cleanTargetId
+      ) || null;
+    }
     if (!existingDoc) {
       return mapStockErrorToResponse(new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า"));
     }
