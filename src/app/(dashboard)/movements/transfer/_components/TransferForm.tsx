@@ -52,7 +52,7 @@ export default function TransferForm({
     <form
       onSubmit={handleSubmit(onSubmit, (formErrors) => {
         const firstMsg = Object.values(formErrors)[0]?.message;
-        onErrorPrompt(typeof firstMsg === "string" ? firstMsg : "กรุณากรอกข้อมูลให้ครบถ้วนก่อนสร้างรายการโอน");
+        onErrorPrompt(typeof firstMsg === "string" ? firstMsg : "กรุณากรอกข้อมูลให้ครบถ้วนก่อนสร้างรายการเบิก");
       })}
       className="space-y-4"
     >
@@ -64,7 +64,7 @@ export default function TransferForm({
 
       <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-lg space-y-4 sm:space-y-5">
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-base sm:text-lg">สร้างรายการโอนสินค้าใหม่</h3>
+          <h3 className="font-extrabold text-slate-800 text-base sm:text-lg">สร้างรายการเบิกสินค้าใหม่</h3>
           <div className="flex items-center gap-1.5 text-slate-600 text-xs font-bold bg-slate-100/90 px-3 py-1.5 rounded-xl border border-slate-200/80 shrink-0">
             <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
@@ -136,7 +136,7 @@ export default function TransferForm({
         {/* Product Selection */}
         <div className="space-y-1.5">
           <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
-            เลือกสินค้าที่จะโอน <span className="text-rose-500">*</span>
+            เลือกสินค้าที่จะเบิก <span className="text-rose-500">*</span>
           </label>
           <ProductSearchInput
             size="lg"
@@ -157,7 +157,7 @@ export default function TransferForm({
         <div className="space-y-2.5 pt-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-              รายการสินค้าที่จะโอน {totalItemsCount > 0 && `(${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`}
+              รายการสินค้าที่จะเบิก {totalItemsCount > 0 && `(${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`}
             </span>
             {totalItemsCount > 0 && clearItems && (
               <button
@@ -282,7 +282,7 @@ export default function TransferForm({
         {/* Assigned Staff - Locked to Current User */}
         <div className="space-y-1.5">
           <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
-            ผู้ทำรายการ / พนักงานที่ไปย้าย
+            ผู้ทำรายการ / พนักงานที่ไปเบิก
           </label>
           <div className="flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl bg-slate-100/90 border-2 border-slate-200 text-slate-900 text-base sm:text-lg font-bold shadow-2xs select-none">
             <div className="flex items-center gap-3 min-w-0">
@@ -311,10 +311,10 @@ export default function TransferForm({
             className="w-full py-4 sm:py-4.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-base sm:text-lg shadow-lg shadow-emerald-600/25 cursor-pointer transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isSubmitting
-              ? "กำลังสร้างใบย้ายสินค้า..."
+              ? "กำลังสร้างใบเบิกสินค้า..."
               : totalItemsCount > 0
-              ? `สร้างรายการโอนสินค้า (${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`
-              : "สร้างรายการโอนสินค้า"}
+              ? `สร้างรายการเบิกสินค้า (${totalItemsCount} รายการ / ${totalUnits} ชิ้น)`
+              : "สร้างรายการเบิกสินค้า"}
           </button>
         </div>
       </div>

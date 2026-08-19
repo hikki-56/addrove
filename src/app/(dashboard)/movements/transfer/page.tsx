@@ -96,7 +96,7 @@ export default function TransferPage() {
               : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <span>➕ สร้างใบย้าย</span>
+          <span>➕ สร้างใบเบิกสินค้า</span>
         </button>
 
         <button
@@ -108,7 +108,7 @@ export default function TransferPage() {
               : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <span>📦 รายการที่ต้องไปย้าย</span>
+          <span>📦 รายการที่ต้องไปเบิก</span>
           {pendingTasks.length > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500 text-white animate-pulse">
               {pendingTasks.length}
@@ -178,7 +178,7 @@ export default function TransferPage() {
         /* activeMode === "STAFF_EXECUTE" */
         <TransferNotificationList
           notifications={pendingTasks}
-          isAdmin={false}
+          isAdmin={isAdmin}
           onSelectTask={(task) => {
             setSelectedTask(task);
             setStaffStep(1);

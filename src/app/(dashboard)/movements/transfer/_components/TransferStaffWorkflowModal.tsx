@@ -389,9 +389,9 @@ export default function TransferStaffWorkflowModal({
             <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
               ✓
             </div>
-            <h4 className="text-base font-extrabold text-slate-900">ย้ายสินค้าและส่งข้อมูลเรียบร้อยแล้ว!</h4>
+            <h4 className="text-base font-extrabold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว!</h4>
             <p className="text-xs text-slate-600 leading-relaxed">
-              การย้ายสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
+              การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
             </p>
             <button
               type="button"

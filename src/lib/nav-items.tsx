@@ -64,7 +64,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/movements/transfer",
-    label: "ย้ายสินค้า",
+    label: "เบิกสินค้า",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -169,7 +169,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/express-import/receive",
-    label: "รับสินค้า",
+    label: "รับสินค้า เข้า Express",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -186,7 +186,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/express-import/transfer",
-    label: "ย้ายสินค้า",
+    label: "ย้ายสินค้า เข้า Express",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -203,7 +203,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/express-import/issue",
-    label: "เบิกสินค้า",
+    label: "เบิกสินค้า เข้า Express",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

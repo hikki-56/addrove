@@ -400,7 +400,7 @@ export function useTransferMovement({
 
   const handleCancelTransfer = async (e: React.MouseEvent, t: TransferNotification) => {
     e.stopPropagation();
-    if (!confirm(`ยืนยันยกเลิกใบย้ายสินค้า ${t.doc_no}?`)) return;
+    if (!confirm(`ยืนยันยกเลิกใบเบิกสินค้า ${t.doc_no}?`)) return;
     setCancellingId(t.id);
     try {
       const res = await fetch(`/api/movements/transfer/${t.id}/cancel`, {
@@ -425,7 +425,7 @@ export function useTransferMovement({
   };
 
   const handleApproveTransfer = async (t: TransferNotification) => {
-    if (!confirm(`ยืนยันอนุมัติการย้ายสินค้า ${t.doc_no} และบันทึกยอดเข้าสต็อกจริงใช่หรือไม่?`)) return;
+    if (!confirm(`ยืนยันอนุมัติการเบิกสินค้า ${t.doc_no} และบันทึกยอดเข้าสต็อกจริงใช่หรือไม่?`)) return;
     setApprovingId(t.id);
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };

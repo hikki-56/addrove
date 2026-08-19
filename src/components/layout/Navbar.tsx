@@ -31,14 +31,14 @@ const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
   "/products/new": { parent: "สินค้าทั้งหมด", title: "เพิ่มสินค้าใหม่" },
   "/approvals": { parent: "การจัดการ", title: "อนุมัติรายการรับเข้า" },
   "/express-import": { parent: "นำเข้า Express", title: "ภาพรวม" },
-  "/express-import/receive": { parent: "นำเข้า Express", title: "รับสินค้า" },
-  "/express-import/transfer": { parent: "นำเข้า Express", title: "ย้ายสินค้า" },
-  "/express-import/issue": { parent: "นำเข้า Express", title: "เบิกสินค้า" },
+  "/express-import/receive": { parent: "นำเข้า Express", title: "รับสินค้า เข้า Express" },
+  "/express-import/transfer": { parent: "นำเข้า Express", title: "ย้ายสินค้า เข้า Express" },
+  "/express-import/issue": { parent: "นำเข้า Express", title: "เบิกสินค้า เข้า Express" },
   "/stock": { parent: "คลังสินค้า", title: "ตรวจสอบสต็อก" },
   "/stock-counts": { parent: "การตรวจนับ", title: "ผลการตรวจนับสต็อก" },
   "/locations": { parent: "คลังสินค้า", title: "จัดการตำแหน่งจัดเก็บ" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า" },
-  "/movements/transfer": { parent: "การเคลื่อนไหว", title: "ย้ายสินค้า" },
+  "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า" },
   "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า" },
   "/movements/history": { parent: "การเคลื่อนไหว", title: "ประวัติการเคลื่อนไหว" },
   "/users": { parent: "การตั้งค่า", title: "จัดการพนักงาน" },
@@ -196,8 +196,8 @@ export default function Navbar({
                     ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shadow-xs"
                     : "bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-950 border-slate-200"
                 }`}
-                title="การแจ้งเตือนงานย้ายสินค้า"
-                aria-label="การแจ้งเตือนงานย้ายสินค้า"
+                title="การแจ้งเตือนงานเบิกสินค้า"
+                aria-label="การแจ้งเตือนงานเบิกสินค้า"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -215,7 +215,7 @@ export default function Navbar({
                 <div className="absolute -right-4 sm:right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-900">🔔 การแจ้งเตือนงานย้ายสินค้า</span>
+                      <span className="text-xs font-black text-slate-900">🔔 การแจ้งเตือนงานเบิกสินค้า</span>
                       {pendingTransferCount > 0 && (
                         <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
                           {pendingTransferCount}

@@ -52,7 +52,7 @@ export default function TransferNotificationList({
         <div>
           <div className="text-base font-bold text-slate-800">ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้</div>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            เมื่อมีการสร้างใบย้ายสินค้า ระบบจะติดตามสถานะและขั้นตอนของพนักงานแบบ Real-time ที่นี่ทันที
+            เมื่อมีการสร้างใบเบิกสินค้า ระบบจะติดตามสถานะและขั้นตอนของพนักงานแบบ Real-time ที่นี่ทันที
           </p>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function TransferNotificationList({
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  ดูขั้นตอนที่พนักงานกำลังทำอยู่จริง ทุกการสแกนบาร์โค้ดและย้ายคลัง
+                  ดูขั้นตอนที่พนักงานกำลังทำอยู่จริง ทุกการสแกนบาร์โค้ดและเบิกของ
                 </p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function TransferNotificationList({
               }`}
             >
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>กำลังย้ายของ</span>
+              <span>กำลังเบิกของ</span>
               <span className="px-1.5 py-0.2 rounded-md bg-black/15 text-[11px]">
                 {inProgressList.length}
               </span>
@@ -153,7 +153,7 @@ export default function TransferNotificationList({
                   : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80"
               }`}
             >
-              <span>ยังไม่เริ่มย้าย</span>
+              <span>ยังไม่เริ่มเบิก</span>
               <span className="px-1.5 py-0.2 rounded-md bg-black/15 text-[11px]">
                 {waitingList.length}
               </span>
@@ -174,8 +174,8 @@ export default function TransferNotificationList({
           // Step badge config
           const stepConfig = isWaitingApproval
             ? {
-                title: "ย้ายแล้ว (รอ Admin อนุมัติ)",
-                detail: "พนักงานย้ายและสแกนของแล้ว รอ Admin กดอนุมัติบันทึกข้อมูลเข้าระบบ",
+                title: "เบิกแล้ว (รอ Admin อนุมัติ)",
+                detail: "พนักงานเบิกและสแกนของแล้ว รอ Admin กดอนุมัติบันทึกข้อมูลเข้าระบบ",
                 color: "bg-amber-500 text-slate-950 border-amber-600",
                 badge: "bg-amber-50 text-amber-900 border-amber-300 font-extrabold",
                 dot: "bg-amber-500",
@@ -198,8 +198,8 @@ export default function TransferNotificationList({
               }
             : step >= 4
             ? {
-                title: "ย้ายสินค้าสำเร็จ",
-                detail: "ตัดสต็อกต้นทางและเพิ่มเข้าปลายทางแล้ว",
+                title: "เบิกสินค้าสำเร็จ",
+                detail: "ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว",
                 color: "bg-emerald-600 text-white border-emerald-700",
                 badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
                 dot: "bg-emerald-500",
@@ -329,12 +329,12 @@ export default function TransferNotificationList({
 
               {/* Action Buttons Row */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-                {isAdmin ? (
-                  isWaitingApproval && onApproveTask ? (
+                {isWaitingApproval ? (
+                  isAdmin && onApproveTask ? (
                     <div className="w-full flex flex-wrap items-center justify-between gap-3">
                       <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
                         <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span>พนักงานย้ายสินค้าเสร็จแล้ว รอ Admin อนุมัติ</span>
+                        <span>พนักงานเบิกสินค้าเสร็จแล้ว รอ Admin อนุมัติ</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -358,48 +358,78 @@ export default function TransferNotificationList({
                             </>
                           ) : (
                             <>
-                              <span>✓ อนุมัติการย้าย (บันทึกเข้าระบบ)</span>
+                              <span>✓ อนุมัติการเบิก (บันทึกเข้าระบบ)</span>
                             </>
                           )}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span>พนักงานกำลังดำเนินการ</span>
+                    <div className="w-full flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span>เบิกสินค้าแล้ว (ส่งให้ Admin อนุมัติเรียบร้อยแล้ว)</span>
                       </div>
+                      {onCancelTask && (
+                        <button
+                          type="button"
+                          disabled={isCancelling}
+                          onClick={(e) => onCancelTask(e, t)}
+                          className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
+                        >
+                          {isCancelling ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                              <span>กำลังยกเลิก...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              <span>ยกเลิกรายการ</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <div className="w-full flex items-center justify-between gap-2">
+                    {onCancelTask ? (
                       <button
                         type="button"
                         disabled={isCancelling}
                         onClick={(e) => onCancelTask(e, t)}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                        className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
                       >
-                        {isCancelling ? "กำลังยกเลิก..." : "ยกเลิกใบงาน"}
+                        {isCancelling ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                            <span>กำลังยกเลิก...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>ยกเลิกรายการ</span>
+                          </>
+                        )}
                       </button>
-                    </>
-                  )
-                ) : (
-                  isWaitingApproval ? (
-                    <div className="w-full flex items-center justify-between">
-                      <div className="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-xl border border-amber-200 flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span>ย้ายสินค้าแล้ว (ส่งให้ Admin อนุมัติเรียบร้อยแล้ว)</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => onSelectTask(t)}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs shadow-emerald-600/20 cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
-                      >
-                        <span>{step === 0 ? "เริ่มย้ายสินค้า / สแกน" : "สแกนต่อ"}</span>
-                        <span>➔</span>
-                      </button>
-                    </div>
-                  )
+                    ) : (
+                      <div />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => onSelectTask(t)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs shadow-emerald-600/20 cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span>{step === 0 ? "เริ่มเบิกสินค้า / สแกน" : "สแกนต่อ"}</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
