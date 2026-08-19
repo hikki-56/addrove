@@ -102,7 +102,61 @@ export default function ApprovalsPage() {
   }, []);
 
   const handleApprove = async (doc: ApprovalDoc) => {
-    setActionLoading(doc.document_id);
+    // --- OPTIMISTIC UI: Instant response in 0.05s ---
+    const approvedItem: ApprovalDoc = {
+      ...doc,
+      status: "POSTED",
+    };
+    setPendingDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
+    setApprovedDocs((prev) => [approvedItem, ...prev]);
+
+    if (typeof window !== "undefined") {
+      try {
+        const localPending = JSON.parse(localStorage.getItem("stockify_pending_receives") || "[]");
+        const updated = localPending.filter((ld: any) => ld.document_id !== doc.document_id);
+        localStorage.setItem("stockify_pending_receives", JSON.stringify(updated));
+      } catch {}
+    }
+
+    // Automatically tag all approved items under "นำเข้าสินค้าเข้าExpress"
+    const itemsToTag = (doc.rows || []).map((row, idx) => {
+      const sku = String(row[0] ?? "").trim();
+      const location = String(row[1] ?? "-").trim() || "-";
+      const rawBarcode = String(row[2] ?? "").trim();
+      const productName = String(row[3] ?? "").trim() || sku;
+      const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
+      const quantity = !isNaN(qtyVal) && qtyVal > 0 ? qtyVal : 1;
+      const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
+      const supplier = String(row[6] ?? "-").trim() || "-";
+
+      const barcode =
+        rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined"
+          ? rawBarcode
+          : to8DigitBarcode(rawBarcode, sku) || sku;
+
+      return {
+        id: `rec_${doc.document_id}_${sku}_${idx}`,
+        type: "RECEIVE" as const,
+        tag: "นำเข้าสินค้าเข้าExpress",
+        status: "PENDING" as const,
+        sku,
+        barcode,
+        product_name: productName,
+        quantity,
+        location,
+        warehouse: targetWarehouse,
+        warehouse_code: toExpressWhCode(targetWarehouse),
+        document_no: doc.document_no,
+        document_date: doc.document_date || doc.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+        supplier,
+      };
+    });
+
+    batchTagExpressItems(itemsToTag);
+    setNotificationMsg(`อนุมัติเอกสาร ${doc.document_no} สำเร็จ และบันทึกเข้าแท็ก "นำเข้าสินค้าเข้าExpress" เรียบร้อยแล้ว`);
+    setTimeout(() => setNotificationMsg(null), 5000);
+
+    // Background server call
     try {
       const res = await fetch(`/api/approvals/${encodeURIComponent(doc.document_id)}/approve`, {
         method: "POST",
@@ -110,88 +164,41 @@ export default function ApprovalsPage() {
         body: JSON.stringify(doc),
       });
       const json = await res.json();
-      if (json.success) {
-        const approvedItem: ApprovalDoc = {
-          ...doc,
-          status: "POSTED",
-        };
-        setPendingDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
-        setApprovedDocs((prev) => [approvedItem, ...prev]);
-
-        if (typeof window !== "undefined") {
-          try {
-            const localPending = JSON.parse(localStorage.getItem("stockify_pending_receives") || "[]");
-            const updated = localPending.filter((ld: any) => ld.document_id !== doc.document_id);
-            localStorage.setItem("stockify_pending_receives", JSON.stringify(updated));
-          } catch {}
-        }
-
-        // Automatically tag all approved items under "นำเข้าสินค้าเข้าExpress"
-        const itemsToTag = (doc.rows || []).map((row, idx) => {
-          const sku = String(row[0] ?? "").trim();
-          const location = String(row[1] ?? "-").trim() || "-";
-          const rawBarcode = String(row[2] ?? "").trim();
-          const productName = String(row[3] ?? "").trim() || sku;
-          const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
-          const quantity = !isNaN(qtyVal) && qtyVal > 0 ? qtyVal : 1;
-          const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
-          const supplier = String(row[6] ?? "-").trim() || "-";
-
-          const barcode =
-            rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined"
-              ? rawBarcode
-              : to8DigitBarcode(rawBarcode, sku) || sku;
-
-          return {
-            id: `rec_${doc.document_id}_${sku}_${idx}`,
-            type: "RECEIVE" as const,
-            tag: "นำเข้าสินค้าเข้าExpress",
-            status: "PENDING" as const,
-            sku,
-            barcode,
-            product_name: productName,
-            quantity,
-            location,
-            warehouse: targetWarehouse,
-            warehouse_code: toExpressWhCode(targetWarehouse),
-            document_no: doc.document_no,
-            document_date: doc.document_date || doc.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-            supplier,
-          };
-        });
-
-        batchTagExpressItems(itemsToTag);
-
-        setNotificationMsg(`อนุมัติเอกสาร ${doc.document_no} สำเร็จ และบันทึกเข้าแท็ก "นำเข้าสินค้าเข้าExpress" เรียบร้อยแล้ว`);
-        setTimeout(() => setNotificationMsg(null), 5000);
-      } else {
-        alert(json.message || "เกิดข้อผิดพลาดในการอนุมัติ");
+      if (!json.success) {
+        // Rollback
+        setPendingDocs((prev) => [doc, ...prev.filter((d) => d.document_id !== doc.document_id)]);
+        setApprovedDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
+        alert(json.message || "เกิดข้อผิดพลาดในการอนุมัติจากเซิร์ฟเวอร์");
       }
     } catch {
-      alert("เกิดข้อผิดพลาดในการอนุมัติ");
-    } finally {
-      setActionLoading(null);
+      // Rollback
+      setPendingDocs((prev) => [doc, ...prev.filter((d) => d.document_id !== doc.document_id)]);
+      setApprovedDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     }
   };
 
   const handleReject = async (docId: string) => {
     if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการปฏิเสธรายการรับสินค้านี้?")) return;
-    setActionLoading(docId);
+    const targetDoc = pendingDocs.find((d) => d.document_id === docId);
+    
+    // --- OPTIMISTIC UI ---
+    setPendingDocs((prev) => prev.filter((d) => d.document_id !== docId));
+    if (typeof window !== "undefined") {
+      try {
+        const localPending = JSON.parse(localStorage.getItem("stockify_pending_receives") || "[]");
+        const updated = localPending.filter((ld: any) => ld.document_id !== docId);
+        localStorage.setItem("stockify_pending_receives", JSON.stringify(updated));
+      } catch {}
+    }
+
     try {
       const res = await fetch(`/api/approvals/${docId}/reject`, {
         method: "POST",
       });
       const json = await res.json();
-      if (json.success) {
-        setPendingDocs((prev) => prev.filter((d) => d.document_id !== docId));
-        if (typeof window !== "undefined") {
-          try {
-            const localPending = JSON.parse(localStorage.getItem("stockify_pending_receives") || "[]");
-            const updated = localPending.filter((ld: any) => ld.document_id !== docId);
-            localStorage.setItem("stockify_pending_receives", JSON.stringify(updated));
-          } catch {}
-        }
-      } else {
+      if (!json.success) {
+        if (targetDoc) setPendingDocs((prev) => [targetDoc, ...prev.filter((d) => d.document_id !== docId)]);
         alert(json.message || "เกิดข้อผิดพลาดในการปฏิเสธรายการ");
       }
     } catch {

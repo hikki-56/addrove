@@ -395,10 +395,23 @@ export function useTransferMovement({
     }
   };
 
-  const handleCancelTransfer = async (e: React.MouseEvent, t: TransferNotification) => {
-    e.stopPropagation();
+  const handleCancelTransfer = async (
+    eOrTask: React.MouseEvent | TransferNotification,
+    taskParam?: TransferNotification
+  ) => {
+    if ("stopPropagation" in eOrTask && typeof eOrTask.stopPropagation === "function") {
+      eOrTask.stopPropagation();
+    }
+    const t = taskParam || (eOrTask as TransferNotification);
+    if (!t || !t.id) return;
     if (!confirm(`ยืนยันยกเลิกใบเบิกสินค้า ${t.doc_no}?`)) return;
-    setCancellingId(t.id);
+
+    // --- OPTIMISTIC UI: Instant response in 0.05s ---
+    markTransferCancelled(t.id);
+    setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
+    setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
+    window.dispatchEvent(new Event("stockify-transfer-updated"));
+
     try {
       const res = await fetch(`/api/movements/transfer/${t.id}/cancel`, {
         method: "PATCH",
@@ -406,24 +419,49 @@ export function useTransferMovement({
         body: JSON.stringify({ note: "ยกเลิกโดย Admin" }),
       });
       const json = await res.json();
-      if (json.success) {
-        markTransferCancelled(t.id);
-        setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
-        setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
+      if (!json.success) {
+        // Rollback
+        setPendingTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-      } else {
-        alert(json.message || "ยกเลิกไม่สำเร็จ");
+        alert(`❌ ยกเลิกไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
       }
     } catch {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    } finally {
-      setCancellingId(null);
+      setPendingTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
+      window.dispatchEvent(new Event("stockify-transfer-updated"));
+      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     }
   };
 
   const handleApproveTransfer = async (t: TransferNotification) => {
     if (!confirm(`ยืนยันอนุมัติการเบิกสินค้า ${t.doc_no} และบันทึกยอดเข้าสต็อกจริงใช่หรือไม่?`)) return;
-    setApprovingId(t.id);
+
+    // --- OPTIMISTIC UI: Instant response in 0.05s ---
+    markTransferCompleted(t.id);
+    setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
+    setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
+
+    try {
+      tagExpressItem({
+        id: `iss_trf-mov-${t.id}_${t.sku}_0`,
+        type: "ISSUE",
+        tag: "เบิกสินค้าเข้า Express",
+        status: "PENDING",
+        sku: t.sku,
+        barcode: t.barcode || t.sku || "",
+        product_name: t.product_name || t.sku || "สินค้า",
+        quantity: t.qty,
+        location: t.from_location_id || "-",
+        warehouse: t.from_warehouse_name || "โกดัง",
+        warehouse_code: t.from_warehouse_id || "01",
+        document_no: t.doc_no || "TRF",
+        document_date: new Date().toISOString().slice(0, 10),
+      });
+    } catch {}
+
+    window.dispatchEvent(new Event("stockify-transfer-updated"));
+    window.dispatchEvent(new Event("stockify-express-tags-updated"));
+
+    // Background server sync
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const storedToken =
@@ -454,48 +492,32 @@ export function useTransferMovement({
         }),
       });
       const json = await res.json();
-      if (json.success) {
-        markTransferCompleted(t.id);
-        setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
-        setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
-
-        // Tag approved item for Express Issue (local state only — sheet write done server-side in transfer-stock.ts)
-        try {
-          tagExpressItem({
-            id: `iss_trf-mov-${t.id}_${t.sku}_0`,
-            type: "ISSUE",
-            tag: "เบิกสินค้าเข้า Express",
-            status: "PENDING",
-            sku: t.sku,
-            barcode: t.barcode || t.sku || "",
-            product_name: t.product_name || t.sku || "สินค้า",
-            quantity: t.qty,
-            location: t.from_location_id || "-",
-            warehouse: t.from_warehouse_name || "โกดัง",
-            warehouse_code: t.from_warehouse_id || "01",
-            document_no: t.doc_no || "TRF",
-            document_date: new Date().toISOString().slice(0, 10),
-          });
-        } catch {}
-
+      if (!json.success) {
+        // Rollback optimistic state if server failed
+        console.error("[Optimistic Transfer Approval] Server error:", json.message);
+        setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-        window.dispatchEvent(new Event("stockify-express-tags-updated"));
-        refreshData();
-        alert("✅ อนุมัติและบันทึกข้อมูลเข้าสต็อกเรียบร้อยแล้ว!");
+        alert(`❌ อนุมัติไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์"}`);
       } else {
-        alert(json.message || "อนุมัติไม่สำเร็จ");
+        refreshData();
       }
-    } catch {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    } finally {
-      setApprovingId(null);
+    } catch (err: any) {
+      console.error("[Optimistic Transfer Approval] Network error:", err);
+      setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
+      window.dispatchEvent(new Event("stockify-transfer-updated"));
+      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     }
   };
 
   const handleRejectTransfer = async (e: React.MouseEvent, t: TransferNotification) => {
     e.stopPropagation();
     if (!confirm(`ยืนยันปฏิเสธใบย้ายสินค้า ${t.doc_no}?`)) return;
-    setCancellingId(t.id);
+
+    // --- OPTIMISTIC UI ---
+    markTransferCancelled(t.id);
+    setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
+    window.dispatchEvent(new Event("stockify-transfer-updated"));
+
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const storedToken =
@@ -515,16 +537,15 @@ export function useTransferMovement({
         body: JSON.stringify({ note: "ปฏิเสธโดย Admin" }),
       });
       const json = await res.json();
-      if (json.success) {
-        markTransferCancelled(t.id);
-        setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
-        setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
+      if (!json.success) {
+        setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-      } else {
-        alert(json.message || "ปฏิเสธรายการไม่สำเร็จ");
+        alert(`❌ ปฏิเสธไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
       }
     } catch {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
+      window.dispatchEvent(new Event("stockify-transfer-updated"));
+      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
       setCancellingId(null);
     }
@@ -980,57 +1001,70 @@ export function useTransferMovement({
       const assignedName = matchedStaff ? matchedStaff.full_name : (rawMovedBy || tabUser?.name || "พนักงาน");
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
 
-      for (let i = 0; i < itemsToProcess.length; i++) {
-        const item = itemsToProcess[i];
-        const res = await fetch("/api/movements/transfer", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            ...data,
-            product_id: item.product_id,
-            qty: Math.max(1, item.qty || 1),
-            moved_by: assignedName,
-            assigned_to_user_id: assignedUserId,
-            assigned_to_name: assignedName,
-            document_date: docDateVal,
-            idempotency_key: `${baseIdemKey}-${i}`,
-          }),
-        });
+      // Process all items in parallel concurrently for maximum speed
+      const createResults = await Promise.all(
+        itemsToProcess.map(async (item, i) => {
+          try {
+            const res = await fetch("/api/movements/transfer", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                ...data,
+                product_id: item.product_id,
+                qty: Math.max(1, item.qty || 1),
+                moved_by: assignedName,
+                assigned_to_user_id: assignedUserId,
+                assigned_to_name: assignedName,
+                document_date: docDateVal,
+                idempotency_key: `${baseIdemKey}-${i}`,
+              }),
+            });
 
-        const json = await res.json();
+            const json = await res.json();
+            if (!res.ok || !json.success || !json.data) {
+              const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
+              return { error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null };
+            }
 
-        if (!res.ok || !json.success || !json.data) {
-          const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
-          errors.push(`"${item.product_name}": ${errMsg}`);
-          continue;
+            const realDoc = json.data;
+            const notif: TransferNotification = {
+              id: realDoc.document_id,
+              doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
+              product_id: item.product_id,
+              sku: item.sku || item.product_id,
+              product_name: item.product_name || `สินค้า ${item.product_id}`,
+              barcode: item.barcode || "",
+              qty: item.qty,
+              from_warehouse_id: data.from_warehouse_id,
+              from_warehouse_name: fromWhName,
+              to_warehouse_id: data.to_warehouse_id,
+              to_warehouse_name: toWhName,
+              created_by: tabUser?.name || "Admin",
+              created_at: realDoc.created_at || new Date().toISOString(),
+              status: "PENDING",
+              moved_by: assignedName,
+              assigned_to_user_id: assignedUserId,
+              assigned_to_name: assignedName,
+            };
+
+            saveTransferNotification(notif);
+            return { error: null, doc: realDoc, notif };
+          } catch {
+            return { error: `"${item.product_name}": เกิดข้อผิดพลาดในการเชื่อมต่อ`, doc: null, notif: null };
+          }
+        })
+      );
+
+      for (const res of createResults) {
+        if (res.error) {
+          errors.push(res.error);
         }
-
-        const realDoc = json.data;
-        createdDocs.push(realDoc);
-
-        // Save notification strictly using server document_id and document_no
-        const notif: TransferNotification = {
-          id: realDoc.document_id,
-          doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
-          product_id: item.product_id,
-          sku: item.sku || item.product_id,
-          product_name: item.product_name || `สินค้า ${item.product_id}`,
-          barcode: item.barcode || "",
-          qty: item.qty,
-          from_warehouse_id: data.from_warehouse_id,
-          from_warehouse_name: fromWhName,
-          to_warehouse_id: data.to_warehouse_id,
-          to_warehouse_name: toWhName,
-          created_by: tabUser?.name || "Admin",
-          created_at: realDoc.created_at || new Date().toISOString(),
-          status: "PENDING",
-          moved_by: assignedName,
-          assigned_to_user_id: assignedUserId,
-          assigned_to_name: assignedName,
-        };
-
-        saveTransferNotification(notif);
-        createdNotifs.push(notif);
+        if (res.doc) {
+          createdDocs.push(res.doc);
+        }
+        if (res.notif) {
+          createdNotifs.push(res.notif);
+        }
       }
 
       if (errors.length > 0) {
