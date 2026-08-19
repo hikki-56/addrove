@@ -177,10 +177,10 @@ export async function POST(
       await repo.documents.updateStatus(doc.document_id, "POSTED");
 
       // Synchronize via repository adapter
+      // Synchronize via repository adapter concurrently in parallel
       if (repo.warehouseSync) {
         const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
-        for (let idx = 0; idx < createdMovements.length; idx++) {
-          const mov = createdMovements[idx];
+        const syncTasks = createdMovements.map(async (mov, idx) => {
           try {
             const prod =
               (await repo.products.findById(mov.product_id)) ||
@@ -194,7 +194,7 @@ export async function POST(
             const supplierVal = prod?.supplier || (rowData ? String(rowData[6] ?? "") : "รับสินค้าเข้าคลัง");
             const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "");
 
-            await repo.warehouseSync.syncAdd(
+            await repo.warehouseSync!.syncAdd(
               targetWh,
               {
                 sku: skuVal,
@@ -210,7 +210,9 @@ export async function POST(
           } catch (syncErr) {
             console.error("[Approve Route] warehouseSync.syncAdd error:", syncErr);
           }
-        }
+        });
+
+        await Promise.all(syncTasks);
       }
 
       await logAudit(repo.audit, {

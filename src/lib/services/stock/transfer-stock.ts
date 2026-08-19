@@ -627,42 +627,49 @@ export async function completeTransfer(
         );
 
         if (repo.warehouseSync) {
-          let sourceInfo: any = null;
-          if (allocations.length > 0) {
-            for (const alloc of allocations) {
-              const info = await repo.warehouseSync.syncDeduct(
-                meta.from_warehouse_id,
-                prodObj.sku,
-                alloc.qty,
-                alloc.location_id
-              );
-              if (info) sourceInfo = info;
-            }
-          } else {
-            sourceInfo = await repo.warehouseSync.syncDeduct(
-              meta.from_warehouse_id,
-              prodObj.sku,
-              meta.qty,
-              finalFromLocId
-            );
-          }
-
           const finalProductSync = {
-            sku: sourceInfo?.sku || prodObj.sku,
-            barcode: sourceInfo?.barcode || prodObj.barcode || prodObj.sku,
-            product_name: sourceInfo?.product_name || prodObj.product_name,
-            category: sourceInfo?.category || prodObj.category || "ทั่วไป",
-            base_unit: sourceInfo?.base_unit || prodObj.base_unit || "ชิ้น",
-            supplier: sourceInfo?.supplier || prodObj.supplier || "ย้ายสินค้าเข้า",
+            sku: prodObj.sku,
+            barcode: prodObj.barcode || prodObj.sku,
+            product_name: prodObj.product_name,
+            category: prodObj.category || "ทั่วไป",
+            base_unit: prodObj.base_unit || "ชิ้น",
+            supplier: prodObj.supplier || "ย้ายสินค้าเข้า",
           };
 
-          await repo.warehouseSync.syncAdd(
+          // Parallelize Google Sheets Deduct + Add + Document status update
+          const deductTasks = allocations.length > 0
+            ? allocations.map((alloc) =>
+                repo.warehouseSync!.syncDeduct(
+                  meta.from_warehouse_id,
+                  prodObj.sku,
+                  alloc.qty,
+                  alloc.location_id
+                )
+              )
+            : [
+                repo.warehouseSync.syncDeduct(
+                  meta.from_warehouse_id,
+                  prodObj.sku,
+                  meta.qty,
+                  finalFromLocId
+                ),
+              ];
+
+          const addTask = repo.warehouseSync.syncAdd(
             meta.to_warehouse_id,
             finalProductSync,
             meta.qty,
             finalToLocId
           );
+
+          const statusUpdateTask = repo.documents.updateStatus(doc.document_id, "COMPLETED");
+
+          await Promise.all([...deductTasks, addTask, statusUpdateTask]);
+        } else {
+          await repo.documents.updateStatus(doc.document_id, "COMPLETED");
         }
+      } else {
+        await repo.documents.updateStatus(doc.document_id, "COMPLETED");
       }
 
       meta.from_location_id = finalFromLocId;
@@ -671,9 +678,6 @@ export async function completeTransfer(
       meta.completed_by = executorId;
       meta.express_tag = "เบิกสินค้าเข้า Express";
       meta.express_status = "PENDING";
-
-      // Mark completed only after all operations succeed
-      await repo.documents.updateStatus(doc.document_id, "COMPLETED");
 
       // Automatically record into Google Sheets Tab: "เบิกสินค้าเข้าExpress" (fire-and-forget)
       try {
