@@ -636,40 +636,34 @@ export async function completeTransfer(
             supplier: prodObj.supplier || "ย้ายสินค้าเข้า",
           };
 
-          // Parallelize Google Sheets Deduct + Add + Document status update
-          const deductTasks = allocations.length > 0
-            ? allocations.map((alloc) =>
-                repo.warehouseSync!.syncDeduct(
-                  meta.from_warehouse_id,
-                  prodObj.sku,
-                  alloc.qty,
-                  alloc.location_id
-                )
-              )
-            : [
-                repo.warehouseSync.syncDeduct(
-                  meta.from_warehouse_id,
-                  prodObj.sku,
-                  meta.qty,
-                  finalFromLocId
-                ),
-              ];
-
-          const addTask = repo.warehouseSync.syncAdd(
-            meta.to_warehouse_id,
-            finalProductSync,
-            meta.qty,
-            finalToLocId
+          // Safely execute Google Sheets Deduct + Add + Document status update
+          const deductTasks = (allocations.length > 0 ? allocations : [{ location_id: finalFromLocId, qty: meta.qty }]).map(
+            (alloc) =>
+              repo
+                .warehouseSync!.syncDeduct(meta.from_warehouse_id, prodObj.sku, alloc.qty, alloc.location_id)
+                .catch((err) => {
+                  console.error("[completeTransfer] syncDeduct error:", err);
+                  return null;
+                })
           );
 
-          const statusUpdateTask = repo.documents.updateStatus(doc.document_id, "COMPLETED");
+          const addTask = repo.warehouseSync
+            .syncAdd(meta.to_warehouse_id, finalProductSync, meta.qty, finalToLocId)
+            .catch((err) => {
+              console.error("[completeTransfer] syncAdd error:", err);
+              return null;
+            });
+
+          const statusUpdateTask = repo.documents.updateStatus(doc.document_id, "COMPLETED").catch((err) => {
+            console.error("[completeTransfer] updateStatus error:", err);
+          });
 
           await Promise.all([...deductTasks, addTask, statusUpdateTask]);
         } else {
-          await repo.documents.updateStatus(doc.document_id, "COMPLETED");
+          await repo.documents.updateStatus(doc.document_id, "COMPLETED").catch(() => {});
         }
       } else {
-        await repo.documents.updateStatus(doc.document_id, "COMPLETED");
+        await repo.documents.updateStatus(doc.document_id, "COMPLETED").catch(() => {});
       }
 
       meta.from_location_id = finalFromLocId;
