@@ -49,6 +49,9 @@ export const SHEETS = {
   STOCK_COUNTS: "StockCounts",
   USERS: "Users",
   LOGIN_LOGS: "ประวัติการเข้าระบบ",
+  EXPRESS_ISSUE: "เบิกสินค้าเข้าExpress",
+  EXPRESS_RECEIVE: "รับสินค้าเข้าExpress",
+  EXPRESS_TRANSFER: "ย้ายสินค้าเข้าExpress",
 } as const;
 
 // Helper to map warehouse ID to Google Sheets tab name (e.g. wh-5 -> โกดัง5)
@@ -78,6 +81,25 @@ export function getPossibleSheetNames(sheetName: string): string[] {
   names.add(sheetName.toLowerCase());
   names.add(`${sheetName}Table`);
   names.add(sheetName.replace(/\s+/g, ""));
+
+  // Express sheet variations: เบิกสินค้าเข้าExpress <-> เบิกสินค้าเข้า Express <-> เบิกสินค้า Express
+  if (sheetName.includes("เบิกสินค้า") || sheetName.toLowerCase().includes("express")) {
+    names.add("เบิกสินค้าเข้าExpress");
+    names.add("เบิกสินค้าเข้า Express");
+    names.add("เบิกสินค้า เข้า Express");
+    names.add("เบิกสินค้า Express");
+    names.add("นำเข้าExpress_เบิกสินค้า");
+  }
+  if (sheetName.includes("รับสินค้า")) {
+    names.add("รับสินค้าเข้าExpress");
+    names.add("รับสินค้าเข้า Express");
+    names.add("รับสินค้า เข้า Express");
+  }
+  if (sheetName.includes("ย้ายสินค้า")) {
+    names.add("ย้ายสินค้าเข้าExpress");
+    names.add("ย้ายสินค้าเข้า Express");
+    names.add("ย้ายสินค้า เข้า Express");
+  }
 
   // Thai warehouse tab variations: โกดัง4 <-> โกดัง 4 <-> WH-04 <-> WH4 <-> WH-4
   const whMatch = sheetName.match(/(?:โกดัง|WH|Warehouse)\s*-?\s*0*([0-9]+)/i);

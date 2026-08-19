@@ -31,6 +31,7 @@ import {
 } from "./stock-errors";
 import { hasWarehouseAccess } from "@/lib/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
+import { appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 export {
   CreateTransferSchema,
   SubmitTransferSchema,
@@ -666,6 +667,28 @@ export async function completeTransfer(
 
       // Mark completed only after all operations succeed
       await repo.documents.updateStatus(doc.document_id, "COMPLETED");
+
+      // Automatically record into Google Sheets Tab: "เบิกสินค้าเข้าExpress"
+      try {
+        const expressRow = [
+          new Date().toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }),
+          doc.document_no || doc.document_id,
+          prodObj.barcode || prodObj.sku || "",
+          prodObj.sku || "",
+          prodObj.product_name || "",
+          getWarehouseSheetName(meta.from_warehouse_id) || meta.from_warehouse_id || "โกดัง1",
+          finalFromLocId || "A1",
+          meta.qty,
+          meta.moved_by || meta.assigned_to_name || "พนักงาน",
+          executorId || "Admin",
+          "รอนำเข้า Express",
+        ];
+        await appendRows(SHEETS.EXPRESS_ISSUE, [expressRow]).catch((err) => {
+          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE fallback:", err);
+        });
+      } catch (sheetErr) {
+        console.warn("[completeTransfer] Auto-append to เบิกสินค้าเข้าExpress sheet warning:", sheetErr);
+      }
 
       return { ...doc, status: "COMPLETED", note: JSON.stringify(meta) };
     },

@@ -103,19 +103,50 @@ export default function ExpressIssuePage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
 
-      const [movRes, trfRes] = await Promise.all([
+      const [movRes, trfRes, sheetRes] = await Promise.all([
         fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/issue?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const json = await movRes.json();
       const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
+      const sheetJson = sheetRes ? await sheetRes.json().catch(() => null) : null;
 
       const combinedMovements: MovementWithDetails[] = [];
       const seenKeys = new Set<string>();
 
+      // 1. Items directly from Google Sheets "เบิกสินค้าเข้าExpress"
+      if (sheetJson && sheetJson.success && Array.isArray(sheetJson.data)) {
+        sheetJson.data.forEach((item: any) => {
+          const key = `sheet_${item.document_no || item.document_id}_${item.sku || ""}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            combinedMovements.push({
+              movement_id: item.movement_id || `mov-${item.document_no}`,
+              document_id: item.document_id,
+              document_no: item.document_no,
+              product_id: item.sku,
+              warehouse_id: item.warehouse_id,
+              warehouse_name: item.warehouse_name,
+              location_id: item.location,
+              location_code: item.location,
+              qty_change: -Math.abs(Number(item.quantity) || 1),
+              movement_type: "TRANSFER_OUT",
+              idempotency_key: `sheet-${item.id}`,
+              created_by: item.created_by_name,
+              created_by_name: item.created_by_name,
+              created_at: item.created_at,
+              sku: item.sku,
+              barcode: item.barcode,
+              product_name: item.product_name,
+            } as any);
+          }
+        });
+      }
+
+      // 2. Outbound movements
       if (json.success && Array.isArray(json.data?.data)) {
-        // Filter for outbound/issue/transfer-out movements
         const issueMovements = json.data.data.filter(
           (m: MovementWithDetails) =>
             m.movement_type === "ISSUE" ||
@@ -125,14 +156,15 @@ export default function ExpressIssuePage() {
         );
         issueMovements.forEach((m: MovementWithDetails) => {
           const key = `${m.movement_id || m.document_id || ""}_${m.sku || ""}_${m.location_id || ""}`;
-          if (!seenKeys.has(key)) {
+          const altKey = `sheet_${m.document_no || ""}_${m.sku || ""}`;
+          if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
             seenKeys.add(key);
             combinedMovements.push(m);
           }
         });
       }
 
-      // Include approved transfer documents
+      // 3. Approved transfer documents
       if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
         const completedTransfers = trfJson.data.filter(
           (t: any) =>
@@ -144,7 +176,8 @@ export default function ExpressIssuePage() {
 
         completedTransfers.forEach((t: any) => {
           const key = `trf_doc_${t.id}_${t.sku || ""}`;
-          if (!seenKeys.has(key)) {
+          const altKey = `sheet_${t.doc_no || ""}_${t.sku || ""}`;
+          if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
             seenKeys.add(key);
             combinedMovements.push({
               movement_id: `trf-mov-${t.id}`,
