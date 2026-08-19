@@ -65,54 +65,7 @@ export async function GET(req: NextRequest) {
 
     let documents = result.data || [];
 
-    if (actor.role !== "ADMIN") {
-      const userId = String(actor.id || session?.user?.id || "").trim();
-      const userEmail = String(session?.user?.email || "").trim().toLowerCase();
-      const userName = String(session?.user?.name || "").trim().toLowerCase();
-
-      documents = documents.filter((doc) => {
-        // Creator match
-        if (doc.created_by && userId && (doc.created_by === userId || doc.created_by.replace(/^usr-/, "") === userId.replace(/^usr-/, ""))) {
-          return true;
-        }
-
-        let meta: Record<string, any> = {};
-        try {
-          meta = JSON.parse(doc.note || "{}");
-        } catch {}
-
-        const assignedUserId = String(doc.assigned_to_user_id || meta.assigned_to_user_id || "").trim();
-        const assignedName = String(doc.assigned_to_name || meta.assigned_to_name || meta.moved_by || "").trim();
-        const assignedEmail = String(meta.assigned_to_email || "").trim().toLowerCase();
-        const fromWh = meta.from_warehouse_id;
-        const toWh = meta.to_warehouse_id;
-
-        // Direct user ID / clean ID match
-        const cleanAssignedId = assignedUserId.toLowerCase().replace(/^usr-/, "").replace(/^user-/, "");
-        const cleanUserId = userId.toLowerCase().replace(/^usr-/, "").replace(/^user-/, "");
-
-        if (assignedUserId && userId && (assignedUserId === userId || cleanAssignedId === cleanUserId)) return true;
-        if (assignedEmail && userEmail && assignedEmail === userEmail) return true;
-        if (assignedName && userName && (assignedName.toLowerCase().includes(userName) || userName.includes(assignedName.toLowerCase()))) return true;
-
-        // Generic staff assignment with warehouse access check
-        if (!assignedUserId && !assignedEmail) {
-          const isGenericStaff =
-            !assignedName ||
-            assignedName.toLowerCase().includes("พนักงาน") ||
-            assignedName.toLowerCase().includes("staff") ||
-            assignedName === "ผู้ใช้งานระบบ";
-
-          if (isGenericStaff && actor.warehouseAccess && Array.isArray(actor.warehouseAccess)) {
-            if (actor.warehouseAccess.includes("*") || (fromWh && actor.warehouseAccess.includes(fromWh)) || (toWh && actor.warehouseAccess.includes(toWh))) {
-              return true;
-            }
-          }
-        }
-        return false;
-      });
-    }
-
+    // All users can see all transfer documents (shared visibility for team coordination)
     return successResponse(documents, "โหลดรายการโอนสินค้าสำเร็จ");
   } catch (e) {
     return serverErrorResponse(e);

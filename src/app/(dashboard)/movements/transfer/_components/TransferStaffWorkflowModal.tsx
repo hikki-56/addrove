@@ -101,7 +101,7 @@ export default function TransferStaffWorkflowModal({
               <div
                 className="h-full bg-emerald-500 transition-all duration-300"
                 style={{
-                  width: staffStep === 1 ? "0%" : staffStep === 2 ? "50%" : "100%",
+                  width: staffStep === 1 ? "0%" : "100%",
                 }}
               />
             </div>
@@ -132,7 +132,7 @@ export default function TransferStaffWorkflowModal({
               </span>
             </div>
 
-            {/* Step 2 */}
+            {/* Step 2: ต้นทาง (คอมเมนต์ไว้ชั่วคราว)
             <div className="flex flex-col items-center gap-1.5 z-10">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
@@ -157,26 +157,23 @@ export default function TransferStaffWorkflowModal({
                 ต้นทาง
               </span>
             </div>
+            */}
 
-            {/* Step 3 */}
+            {/* Step 3 (แสดงเป็นขั้นตอนปลายทาง) */}
             <div className="flex flex-col items-center gap-1.5 z-10">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
-                  staffStep === 3
+                  staffStep >= 3
                     ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
-                    : staffStep > 3
-                    ? "bg-emerald-600 text-white"
                     : "bg-white text-slate-400 border-2 border-slate-200"
                 }`}
               >
-                {staffStep > 3 ? "✓" : "3"}
+                {staffStep > 3 ? "✓" : "2"}
               </div>
               <span
                 className={`text-xs sm:text-sm transition-colors ${
-                  staffStep === 3
+                  staffStep >= 3
                     ? "text-emerald-700 font-black"
-                    : staffStep > 3
-                    ? "text-emerald-600 font-bold"
                     : "text-slate-400 font-medium"
                 }`}
               >
@@ -251,11 +248,11 @@ export default function TransferStaffWorkflowModal({
           </div>
         )}
 
-        {/* Step 2: Source Locations & Quantities */}
+        {/* Step 2: Source Locations & Quantities (คอมเมนต์ไว้ชั่วคราว) */}
+        {/*
         {staffStep === 2 && (
           <div className="space-y-3.5 pt-1">
             
-            {/* Simple Progress Bar */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-slate-700">ตำแหน่งต้นทาง ({selectedTask.from_warehouse_name})</span>
@@ -271,7 +268,6 @@ export default function TransferStaffWorkflowModal({
               </div>
             </div>
 
-            {/* Picked Location Cards */}
             {sourceAllocations.length > 0 && (
               <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-0.5">
                 {sourceAllocations.map((alloc, idx) => (
@@ -302,7 +298,6 @@ export default function TransferStaffWorkflowModal({
                       )}
                     </div>
 
-                    {/* Numeric Quantity Stepper */}
                     <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                       <span className="text-xs text-slate-500 font-medium">จำนวนที่หยิบ:</span>
                       <div className="flex items-center gap-1">
@@ -336,7 +331,6 @@ export default function TransferStaffWorkflowModal({
               </div>
             )}
 
-            {/* Scan Next Slot when still needing more items */}
             {remainingNeeded > 0 && (
               <div className="space-y-1.5 pt-1">
                 <label className="block text-xs font-bold text-slate-700">
@@ -354,7 +348,6 @@ export default function TransferStaffWorkflowModal({
               </div>
             )}
 
-            {/* Proceed Button when ready */}
             {isCompleteAlloc && (
               <button
                 type="button"
@@ -366,6 +359,7 @@ export default function TransferStaffWorkflowModal({
             )}
           </div>
         )}
+        */}
 
         {/* Step 3: Scan Destination Location Barcode */}
         {staffStep === 3 && (

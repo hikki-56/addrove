@@ -113,22 +113,48 @@ export default function ExpressIssuePage() {
       const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
       const sheetJson = sheetRes ? await sheetRes.json().catch(() => null) : null;
 
-      const combinedMovements: MovementWithDetails[] = [];
+      // Build transfer docs map for fast from/to warehouse resolution
+      const trfDocMap = new Map<string, { from_warehouse_name: string; to_warehouse_name: string }>();
+      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
+        trfJson.data.forEach((t: any) => {
+          let meta: Record<string, any> = {};
+          try {
+            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
+              meta = JSON.parse(t.note);
+            }
+          } catch {}
+          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
+          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
+          const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
+          const docId = (t.document_id || t.id || "").trim().toLowerCase();
+          if (docNo) trfDocMap.set(docNo, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
+          if (docId) trfDocMap.set(docId, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
+        });
+      }
+
+      const combinedMovements: any[] = [];
       const seenKeys = new Set<string>();
 
       // 1. Items directly from Google Sheets "เบิกสินค้าเข้าExpress"
       if (sheetJson && sheetJson.success && Array.isArray(sheetJson.data)) {
         sheetJson.data.forEach((item: any) => {
-          const key = `sheet_${item.document_no || item.document_id}_${item.sku || ""}`;
+          const docNo = item.document_no || item.document_id || "";
+          const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
+          const fromWh = item.from_warehouse_name || trfInfo?.from_warehouse_name || item.warehouse_name || "โกดัง 1";
+          const toWh = item.to_warehouse_name || trfInfo?.to_warehouse_name || "";
+
+          const key = `sheet_${docNo}_${item.sku || ""}`;
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
             combinedMovements.push({
-              movement_id: item.movement_id || `mov-${item.document_no}`,
+              movement_id: item.movement_id || `mov-${docNo}`,
               document_id: item.document_id,
-              document_no: item.document_no,
+              document_no: docNo,
               product_id: item.sku,
               warehouse_id: item.warehouse_id,
-              warehouse_name: item.warehouse_name,
+              warehouse_name: fromWh,
+              from_warehouse_name: fromWh,
+              to_warehouse_name: toWh,
               location_id: item.location,
               location_code: item.location,
               qty_change: -Math.abs(Number(item.quantity) || 1),
@@ -140,7 +166,7 @@ export default function ExpressIssuePage() {
               sku: item.sku,
               barcode: item.barcode,
               product_name: item.product_name,
-            } as any);
+            });
           }
         });
       }
@@ -155,11 +181,20 @@ export default function ExpressIssuePage() {
             m.qty_change < 0
         );
         issueMovements.forEach((m: MovementWithDetails) => {
+          const docNo = m.document_no || m.document_id || "";
+          const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
+          const fromWh = (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1";
+          const toWh = (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "";
+
           const key = `${m.movement_id || m.document_id || ""}_${m.sku || ""}_${m.location_id || ""}`;
-          const altKey = `sheet_${m.document_no || ""}_${m.sku || ""}`;
+          const altKey = `sheet_${docNo}_${m.sku || ""}`;
           if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
             seenKeys.add(key);
-            combinedMovements.push(m);
+            combinedMovements.push({
+              ...m,
+              from_warehouse_name: fromWh,
+              to_warehouse_name: toWh,
+            });
           }
         });
       }
@@ -175,29 +210,47 @@ export default function ExpressIssuePage() {
         );
 
         completedTransfers.forEach((t: any) => {
-          const key = `trf_doc_${t.id}_${t.sku || ""}`;
-          const altKey = `sheet_${t.doc_no || ""}_${t.sku || ""}`;
+          let meta: Record<string, any> = {};
+          try {
+            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
+              meta = JSON.parse(t.note);
+            }
+          } catch {}
+
+          const docNo = t.document_no || t.doc_no || meta.doc_no || "TRF";
+          const sku = meta.sku || t.sku || meta.product_id?.replace(/^prod-/, "") || "";
+          const barcode = meta.barcode || t.barcode || to8DigitBarcode(meta.barcode, sku) || sku;
+          const productName = meta.product_name || t.product_name || sku || "สินค้า";
+          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
+          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
+          const fromLoc = meta.from_location_id || t.from_location_id || "A1";
+          const qty = Math.abs(Number(meta.qty || t.qty) || 1);
+
+          const key = `trf_doc_${t.document_id || t.id}_${sku}`;
+          const altKey = `sheet_${docNo}_${sku}`;
           if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
             seenKeys.add(key);
             combinedMovements.push({
-              movement_id: `trf-mov-${t.id}`,
-              document_id: t.id,
-              document_no: t.doc_no || "TRF",
-              product_id: t.product_id || t.sku || "",
-              warehouse_id: t.from_warehouse_id || "wh-1",
-              warehouse_name: t.from_warehouse_name || "โกดัง 1",
-              location_id: t.from_location_id || "A1",
-              location_code: t.from_location_id || "A1",
-              qty_change: -Math.abs(Number(t.qty) || 1),
+              movement_id: `trf-mov-${t.document_id || t.id}`,
+              document_id: t.document_id || t.id,
+              document_no: docNo,
+              product_id: sku,
+              warehouse_id: meta.from_warehouse_id || "wh-1",
+              warehouse_name: fromWh,
+              from_warehouse_name: fromWh,
+              to_warehouse_name: toWh,
+              location_id: fromLoc,
+              location_code: fromLoc,
+              qty_change: -qty,
               movement_type: "TRANSFER_OUT",
-              idempotency_key: `trf-${t.id}`,
-              created_by: t.created_by || t.moved_by || "ผู้ใช้งาน",
-              created_by_name: t.moved_by || "ผู้ใช้งาน",
-              created_at: t.completed_at || t.created_at || new Date().toISOString(),
-              sku: t.sku || "",
-              barcode: t.barcode || t.sku || "",
-              product_name: t.product_name || t.sku || "สินค้า",
-            } as any);
+              idempotency_key: `trf-${t.document_id || t.id}`,
+              created_by: meta.moved_by || t.moved_by || "ผู้ใช้งาน",
+              created_by_name: meta.moved_by || t.moved_by || "ผู้ใช้งาน",
+              created_at: (meta.completed_at || t.completed_at || t.created_at || new Date().toISOString()).slice(0, 10),
+              sku,
+              barcode,
+              product_name: productName,
+            });
           }
         });
       }
@@ -223,6 +276,8 @@ export default function ExpressIssuePage() {
       document_no: string;
       warehouse_name: string;
       warehouse_id: string;
+      from_warehouse_name?: string;
+      to_warehouse_name?: string;
       created_at: string;
       created_by_name: string;
       sku: string;
@@ -233,17 +288,19 @@ export default function ExpressIssuePage() {
       movement_type: string;
     }> = [];
 
-    movements.forEach((m, idx) => {
+    movements.forEach((m: any, idx) => {
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
       if (
         selectedWarehouse !== "ALL" &&
         m.warehouse_name !== selectedWarehouse &&
-        m.warehouse_id !== selectedWarehouse
+        m.warehouse_id !== selectedWarehouse &&
+        m.from_warehouse_name !== selectedWarehouse &&
+        m.to_warehouse_name !== selectedWarehouse
       ) {
         return;
       }
 
-      const rawBarcode = (m as any).barcode || "";
+      const rawBarcode = m.barcode || "";
       const sku = m.sku || "";
       const barcode =
         rawBarcode && rawBarcode !== "-" && rawBarcode !== "null"
@@ -260,8 +317,10 @@ export default function ExpressIssuePage() {
         movement_id: m.movement_id,
         document_id: m.document_id,
         document_no: m.document_no || "ISS",
-        warehouse_name: m.warehouse_name || m.warehouse_id || "คลังสินค้า",
+        warehouse_name: m.from_warehouse_name || m.warehouse_name || m.warehouse_id || "คลังสินค้า",
         warehouse_id: m.warehouse_id || "",
+        from_warehouse_name: m.from_warehouse_name || m.warehouse_name || "คลังสินค้า",
+        to_warehouse_name: m.to_warehouse_name || "",
         created_at: m.created_at ? m.created_at.slice(0, 10) : "-",
         created_by_name: m.created_by_name || "ผู้ใช้งาน",
         sku,
@@ -299,6 +358,8 @@ export default function ExpressIssuePage() {
         item.barcode.toLowerCase().includes(q) ||
         item.document_no.toLowerCase().includes(q) ||
         item.warehouse_name.toLowerCase().includes(q) ||
+        (item.from_warehouse_name && item.from_warehouse_name.toLowerCase().includes(q)) ||
+        (item.to_warehouse_name && item.to_warehouse_name.toLowerCase().includes(q)) ||
         item.location.toLowerCase().includes(q) ||
         currentTag.toLowerCase().includes(q)
       );
@@ -1003,9 +1064,29 @@ export default function ExpressIssuePage() {
                     {/* Badges: Warehouse, Quantity, Location, Doc No */}
                     <div className="flex items-center gap-2 flex-wrap text-xs">
                       {displayFields.warehouse && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                          🏢 โกดัง: <strong className="text-indigo-950">{item.warehouse_name} ({toExpressWhCode(item.warehouse_name)})</strong>
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.to_warehouse_name ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50/90 text-indigo-900 font-bold border border-indigo-200/90 text-xs flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <span className="text-slate-500 font-semibold text-[11px]">🏢 จาก:</span>
+                                <strong className="text-indigo-950 font-black">
+                                  {item.from_warehouse_name || item.warehouse_name} ({toExpressWhCode(item.from_warehouse_name || item.warehouse_name)})
+                                </strong>
+                              </span>
+                              <span className="text-emerald-600 font-black">➔</span>
+                              <span className="flex items-center gap-1">
+                                <span className="text-emerald-700 font-semibold text-[11px]">🎯 ไป:</span>
+                                <strong className="text-emerald-950 bg-emerald-100/90 px-1.5 py-0.5 rounded-lg border border-emerald-300 font-black">
+                                  {item.to_warehouse_name} ({toExpressWhCode(item.to_warehouse_name)})
+                                </strong>
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50/90 text-indigo-900 font-bold border border-indigo-200/90 text-xs">
+                              🏢 โกดัง: <strong className="text-indigo-950 font-black">{item.warehouse_name} ({toExpressWhCode(item.warehouse_name)})</strong>
+                            </span>
+                          )}
+                        </div>
                       )}
 
                       {displayFields.quantity && (

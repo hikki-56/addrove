@@ -60,9 +60,12 @@ export async function executeAtomicOperation(config: AtomicOperationConfig): Pro
           })
         : await config.execute({ repo: config.repo });
 
-      await completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result);
+      // Fire-and-forget idempotency completion (caches result for replays, not critical path)
+      completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result)
+        .catch((e) => console.warn('[AtomicOperation] idempotency complete error (non-fatal):', e));
 
-      await logAudit(config.repo.audit, {
+      // Fire-and-forget audit log — do not block response waiting for Sheets write
+      logAudit(config.repo.audit, {
         correlationId: config.correlationId,
         idempotencyKey: config.idempotencyKey,
         actorId: config.actorId,
@@ -72,7 +75,7 @@ export async function executeAtomicOperation(config: AtomicOperationConfig): Pro
         resourceId: result.document_id,
         warehouseId: config.warehouseId,
         outcome: 'SUCCESS',
-      });
+      }).catch((e) => console.warn('[AtomicOperation] audit log error (non-fatal):', e));
 
       return result;
     } catch (err) {

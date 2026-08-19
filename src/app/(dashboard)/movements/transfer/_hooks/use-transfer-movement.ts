@@ -347,16 +347,12 @@ export function useTransferMovement({
       const all = getTransferNotifications();
       const staffName = tabUser?.role !== "ADMIN" ? tabUser?.name : undefined;
       
-      const pending = getPendingTransferNotifications(staffName);
+      // All users see all pending tasks (shared team visibility)
+      const pending = getPendingTransferNotifications();
       setPendingTasks(pending);
 
-      const waiting = all.filter((t) => {
-        if (!t || t.status !== "WAITING_APPROVAL") return false;
-        if (tabUser?.role === "ADMIN") return true;
-        if (staffName && t.moved_by && (t.moved_by.includes(staffName) || staffName.includes(t.moved_by))) return true;
-        if (staffName && t.assigned_to_name && (t.assigned_to_name.includes(staffName) || staffName.includes(t.assigned_to_name))) return true;
-        return false;
-      });
+      // All users see all waiting approval tasks (shared team visibility)
+      const waiting = all.filter((t) => t && (t.status === "WAITING_APPROVAL" || t.current_step === 3));
       setWaitingApprovalTasks(waiting);
     };
     updateTasks();
@@ -463,7 +459,7 @@ export function useTransferMovement({
         setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
         setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
 
-        // Automatically tag approved item for Express Issue
+        // Tag approved item for Express Issue (local state only — sheet write done server-side in transfer-stock.ts)
         try {
           tagExpressItem({
             id: `iss_trf-mov-${t.id}_${t.sku}_0`,
@@ -579,31 +575,32 @@ export function useTransferMovement({
     }
 
     if (isMatch) {
-      setStaffSuccess(`✅ บาร์โค้ดสินค้าถูกต้องเรียบร้อย! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งต้นทางใน ${selectedTask.from_warehouse_name}`);
+      // ขั้นตอนที่ 2 (สแกนต้นทาง) ถูกคอมเมนต์ไว้ชั่วคราว -> ข้ามไปขั้นตอนปลายทางทันที
+      setStaffSuccess(`✅ บาร์โค้ดสินค้าถูกต้องเรียบร้อย! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งปลายทางใน ${selectedTask.to_warehouse_name}`);
       setStaffScanProductInput("");
-      setStaffScanSourceLocationInput("");
+      setStaffScanDestLocationInput("");
 
       isStepTransitioningRef.current = true;
       setTimeout(() => {
         isStepTransitioningRef.current = false;
       }, 500);
 
-      const srcWhId = normalizeWarehouseId(selectedTask.from_warehouse_id || "");
-      fetch(`/api/locations?warehouse_id=${srcWhId}`)
+      const destWhId = normalizeWarehouseId(selectedTask.to_warehouse_id || "");
+      fetch(`/api/locations?warehouse_id=${destWhId}`)
         .then((r) => r.json())
         .then((d) => {
           if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-            setSourceLocations(d.data.filter((l: Location) => l && l.active !== false));
+            setDestLocations(d.data.filter((l: Location) => l && l.active !== false));
           } else {
-            setSourceLocations(getDefaultLocationsForWarehouse(srcWhId));
+            setDestLocations(getDefaultLocationsForWarehouse(destWhId));
           }
         })
         .catch(() => {
-          setSourceLocations(getDefaultLocationsForWarehouse(srcWhId));
+          setDestLocations(getDefaultLocationsForWarehouse(destWhId));
         });
 
-      setStaffStep(2);
-      updateTransferTaskProgress(selectedTask.id, 2, "กำลังหยิบสินค้าต้นทาง");
+      setStaffStep(3);
+      updateTransferTaskProgress(selectedTask.id, 2, "กำลังนำเข้าตำแหน่งปลายทาง");
     } else {
       const displayExpected = [targetBarcode, targetSku]
         .filter(Boolean)

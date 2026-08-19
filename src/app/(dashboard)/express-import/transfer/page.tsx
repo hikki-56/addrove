@@ -103,22 +103,54 @@ export default function ExpressTransferPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
 
-      const res = await fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
+      const [movRes, trfRes] = await Promise.all([
+        fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+      ]);
+
+      const json = await movRes.json();
+      const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
+
+      // Build transfer docs map for fast from/to warehouse resolution
+      const trfDocMap = new Map<string, { from_warehouse_name: string; to_warehouse_name: string }>();
+      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
+        trfJson.data.forEach((t: any) => {
+          let meta: Record<string, any> = {};
+          try {
+            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
+              meta = JSON.parse(t.note);
+            }
+          } catch {}
+          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
+          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
+          const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
+          const docId = (t.document_id || t.id || "").trim().toLowerCase();
+          if (docNo) trfDocMap.set(docNo, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
+          if (docId) trfDocMap.set(docId, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
+        });
+      }
 
       if (json.success && Array.isArray(json.data?.data)) {
         // Filter for transfer movements
-        const transferMovements = json.data.data.filter(
-          (m: MovementWithDetails) =>
-            m.movement_type === "TRANSFER_OUT" ||
-            m.movement_type === "TRANSFER_IN" ||
-            m.movement_type === "MOVE_OUT" ||
-            m.movement_type === "MOVE_IN" ||
-            (m.document_type as any) === "TRANSFER" ||
-            (m.document_type as any) === "MOVE"
-        );
+        const transferMovements = json.data.data
+          .filter(
+            (m: MovementWithDetails) =>
+              m.movement_type === "TRANSFER_OUT" ||
+              m.movement_type === "TRANSFER_IN" ||
+              m.movement_type === "MOVE_OUT" ||
+              m.movement_type === "MOVE_IN" ||
+              (m.document_type as any) === "TRANSFER" ||
+              (m.document_type as any) === "MOVE"
+          )
+          .map((m: MovementWithDetails) => {
+            const docNo = m.document_no || m.document_id || "";
+            const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
+            return {
+              ...m,
+              from_warehouse_name: (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1",
+              to_warehouse_name: (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "",
+            };
+          });
         setMovements(transferMovements);
       }
     } catch (e) {
@@ -141,6 +173,8 @@ export default function ExpressTransferPage() {
       document_no: string;
       warehouse_name: string;
       warehouse_id: string;
+      from_warehouse_name?: string;
+      to_warehouse_name?: string;
       created_at: string;
       created_by_name: string;
       sku: string;
@@ -151,17 +185,19 @@ export default function ExpressTransferPage() {
       movement_type: string;
     }> = [];
 
-    movements.forEach((m, idx) => {
+    movements.forEach((m: any, idx) => {
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
       if (
         selectedWarehouse !== "ALL" &&
         m.warehouse_name !== selectedWarehouse &&
-        m.warehouse_id !== selectedWarehouse
+        m.warehouse_id !== selectedWarehouse &&
+        m.from_warehouse_name !== selectedWarehouse &&
+        m.to_warehouse_name !== selectedWarehouse
       ) {
         return;
       }
 
-      const rawBarcode = (m as any).barcode || "";
+      const rawBarcode = m.barcode || "";
       const sku = m.sku || "";
       const barcode =
         rawBarcode && rawBarcode !== "-" && rawBarcode !== "null"
@@ -176,8 +212,10 @@ export default function ExpressTransferPage() {
         movement_id: m.movement_id,
         document_id: m.document_id,
         document_no: m.document_no || "TRF",
-        warehouse_name: m.warehouse_name || m.warehouse_id || "คลังสินค้า",
+        warehouse_name: m.from_warehouse_name || m.warehouse_name || m.warehouse_id || "คลังสินค้า",
         warehouse_id: m.warehouse_id || "",
+        from_warehouse_name: m.from_warehouse_name || m.warehouse_name || "คลังสินค้า",
+        to_warehouse_name: m.to_warehouse_name || "",
         created_at: m.created_at ? m.created_at.slice(0, 10) : "-",
         created_by_name: m.created_by_name || "ผู้ใช้งาน",
         sku,
@@ -211,6 +249,8 @@ export default function ExpressTransferPage() {
         item.barcode.toLowerCase().includes(q) ||
         item.document_no.toLowerCase().includes(q) ||
         item.warehouse_name.toLowerCase().includes(q) ||
+        (item.from_warehouse_name && item.from_warehouse_name.toLowerCase().includes(q)) ||
+        (item.to_warehouse_name && item.to_warehouse_name.toLowerCase().includes(q)) ||
         item.location.toLowerCase().includes(q) ||
         (tagged && tagged.tag.toLowerCase().includes(q))
       );
@@ -916,9 +956,29 @@ export default function ExpressTransferPage() {
                     {/* Badges: Warehouse, Quantity, Location, Doc No */}
                     <div className="flex items-center gap-2 flex-wrap text-xs">
                       {displayFields.warehouse && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                          🏢 โกดัง: <strong className="text-indigo-950">{item.warehouse_name} ({toExpressWhCode(item.warehouse_name)})</strong>
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.to_warehouse_name ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50/90 text-indigo-900 font-bold border border-indigo-200/90 text-xs flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <span className="text-slate-500 font-semibold text-[11px]">🏢 จาก:</span>
+                                <strong className="text-indigo-950 font-black">
+                                  {item.from_warehouse_name || item.warehouse_name} ({toExpressWhCode(item.from_warehouse_name || item.warehouse_name)})
+                                </strong>
+                              </span>
+                              <span className="text-emerald-600 font-black">➔</span>
+                              <span className="flex items-center gap-1">
+                                <span className="text-emerald-700 font-semibold text-[11px]">🎯 ไป:</span>
+                                <strong className="text-emerald-950 bg-emerald-100/90 px-1.5 py-0.5 rounded-lg border border-emerald-300 font-black">
+                                  {item.to_warehouse_name} ({toExpressWhCode(item.to_warehouse_name)})
+                                </strong>
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50/90 text-indigo-900 font-bold border border-indigo-200/90 text-xs">
+                              🏢 โกดัง: <strong className="text-indigo-950 font-black">{item.warehouse_name} ({toExpressWhCode(item.warehouse_name)})</strong>
+                            </span>
+                          )}
+                        </div>
                       )}
 
                       {displayFields.quantity && (

@@ -204,8 +204,15 @@ export async function submitTransferMove(
   }
 
   const updatedNote = JSON.stringify(meta);
-  await deps.repo.documents.updateNote(doc.document_id, updatedNote);
-  await deps.repo.documents.updateStatus(doc.document_id, "WAITING_APPROVAL");
+  if (typeof deps.repo.documents.updateDoc === "function") {
+    await deps.repo.documents.updateDoc(doc.document_id, {
+      status: "WAITING_APPROVAL",
+      note: updatedNote,
+    });
+  } else {
+    await deps.repo.documents.updateNote(doc.document_id, updatedNote);
+    await deps.repo.documents.updateStatus(doc.document_id, "WAITING_APPROVAL");
+  }
 
   return {
     ...doc,
@@ -668,23 +675,22 @@ export async function completeTransfer(
       // Mark completed only after all operations succeed
       await repo.documents.updateStatus(doc.document_id, "COMPLETED");
 
-      // Automatically record into Google Sheets Tab: "เบิกสินค้าเข้าExpress"
+      // Automatically record into Google Sheets Tab: "เบิกสินค้าเข้าExpress" (fire-and-forget)
       try {
         const expressRow = [
-          new Date().toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }),
-          doc.document_no || doc.document_id,
-          prodObj.barcode || prodObj.sku || "",
           prodObj.sku || "",
-          prodObj.product_name || "",
-          getWarehouseSheetName(meta.from_warehouse_id) || meta.from_warehouse_id || "โกดัง1",
           finalFromLocId || "A1",
-          meta.qty,
-          meta.moved_by || meta.assigned_to_name || "พนักงาน",
-          executorId || "Admin",
+          doc.document_no || doc.document_id,
+          getWarehouseSheetName(meta.from_warehouse_id) || meta.from_warehouse_id || "โกดัง1",
+          new Date().toISOString().slice(0, 10),
+          prodObj.product_name || prodObj.sku || "",
           "รอนำเข้า Express",
+          meta.qty,
+          prodObj.barcode || prodObj.sku || "",
         ];
-        await appendRows(SHEETS.EXPRESS_ISSUE, [expressRow]).catch((err) => {
-          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE fallback:", err);
+        // Do NOT await — fire-and-forget so approval doesn't block waiting for Sheets API
+        appendRows(SHEETS.EXPRESS_ISSUE, [expressRow]).catch((err) => {
+          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE failed:", err);
         });
       } catch (sheetErr) {
         console.warn("[completeTransfer] Auto-append to เบิกสินค้าเข้าExpress sheet warning:", sheetErr);

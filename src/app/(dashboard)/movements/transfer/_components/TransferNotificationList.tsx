@@ -332,9 +332,27 @@ export default function TransferNotificationList({
                 {isWaitingApproval ? (
                   isAdmin && onApproveTask ? (
                     <div className="w-full flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span>พนักงานเบิกสินค้าเสร็จแล้ว รอ Admin อนุมัติ</span>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                          <span>พนักงานเบิกสินค้าเสร็จแล้ว รอ Admin อนุมัติ</span>
+                        </div>
+                        {/* Creator & Performer info */}
+                        <div className="flex flex-wrap gap-2 text-[11px]">
+                          {(t.moved_by || t.assigned_to_name) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
+                              👤 ผู้เบิก: <strong>{t.moved_by || t.assigned_to_name}</strong>
+                            </span>
+                          )}
+                          {t.created_by && t.created_by !== t.assigned_to_user_id && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
+                              📝 ผู้สร้างใบ: <strong>{t.created_by}</strong>
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 font-mono">
+                            🕐 {new Date(t.last_active_at || t.created_at).toLocaleString("th-TH", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} น.
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button

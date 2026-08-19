@@ -59,10 +59,11 @@ export async function executeWithJournal<T>(options: {
         data: typeof result === "object" && result !== null ? (result as Record<string, unknown>) : { result },
       };
 
-      await journalRepo.update(operation.operation_id, {
+      // Fire-and-forget journal step update — do not block on Sheets write
+      journalRepo.update(operation.operation_id, {
         steps: journalSteps,
         completed_steps: completedStepNames,
-      });
+      }).catch((e) => console.warn('[Recovery] journal step update error (non-fatal):', e));
     } catch (stepErr) {
       const errorMessage = stepErr instanceof Error ? stepErr.message : String(stepErr);
       journalSteps[i] = {
@@ -125,9 +126,10 @@ export async function executeWithJournal<T>(options: {
     }
   }
 
-  await journalRepo.update(operation.operation_id, {
+  // Fire-and-forget final journal completion — do not block response
+  journalRepo.update(operation.operation_id, {
     status: "COMPLETED",
-  });
+  }).catch((e) => console.warn('[Recovery] journal final update error (non-fatal):', e));
 
   return stepResults[steps[steps.length - 1].name] as T;
 }

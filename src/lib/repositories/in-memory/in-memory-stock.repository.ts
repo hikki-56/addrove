@@ -309,6 +309,11 @@ export class InMemoryDocumentRepository implements IDocumentRepository {
     if (d) d.note = note;
   }
 
+  async updateDoc(id: string, updates: Partial<Document>): Promise<void> {
+    const d = await this.findById(id);
+    if (d) Object.assign(d, updates);
+  }
+
   async generateDocumentNo(type: Document["document_type"]): Promise<string> {
     return `${type}-${Date.now()}`;
   }

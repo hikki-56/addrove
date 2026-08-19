@@ -251,6 +251,8 @@ export function getPendingTransferNotifications(staffName?: string, warehouseId?
   const notifications = getTransferNotifications();
   return notifications.filter((t) => {
     if (!t) return false;
+    // Exclude tasks that are waiting approval, completed, or cancelled
+    if (t.status === "WAITING_APPROVAL" || t.current_step === 3) return false;
     if (t.status && t.status !== "PENDING") return false;
     if (isTransferCompleted(t.id)) return false;
 
@@ -390,6 +392,15 @@ export function saveTransferNotification(task: TransferNotification, options?: {
     if (!isNew) {
       if (existing[existingIndex].status === "COMPLETED" || isCompleted) {
         cleanTask.status = "COMPLETED";
+      } else if (
+        existing[existingIndex].status === "WAITING_APPROVAL" ||
+        existing[existingIndex].current_step === 3
+      ) {
+        if (cleanTask.status !== "COMPLETED" && cleanTask.status !== "CANCELLED" && cleanTask.status !== "REJECTED") {
+          cleanTask.status = "WAITING_APPROVAL";
+          cleanTask.current_step = 3;
+          cleanTask.current_step_text = "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)";
+        }
       }
       // If cleanTask does not have a current_step, or existing has a valid step and cleanTask has 0/undefined, preserve existing
       if (cleanTask.current_step === undefined && existing[existingIndex].current_step !== undefined) {
@@ -493,7 +504,10 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
             : toWhId;
 
         const notifStatus =
-          status === "WAITING_APPROVAL"
+          status === "WAITING_APPROVAL" ||
+          meta.status === "WAITING_APPROVAL" ||
+          serverStep === 3 ||
+          meta.current_step === 3
             ? ("WAITING_APPROVAL" as const)
             : ("PENDING" as const);
 

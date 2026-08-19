@@ -179,6 +179,9 @@ export const ALLOWED_SHEETS = [
   "โกดัง5",
   "โกดัง6",
   "สำนักงานใหญ่",
+  "เบิกสินค้าเข้าExpress",
+  "รับสินค้าเข้าExpress",
+  "ย้ายสินค้าเข้าExpress",
 ] as const;
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];
