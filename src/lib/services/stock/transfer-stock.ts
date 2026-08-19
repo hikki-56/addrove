@@ -269,6 +269,8 @@ export async function completeTransfer(
     idempotency_key?: string;
     completed_at?: string;
     completed_by?: string;
+    express_tag?: string;
+    express_status?: string;
   };
 
   try {
@@ -659,6 +661,8 @@ export async function completeTransfer(
       meta.to_location_id = finalToLocId;
       meta.completed_at = new Date().toISOString();
       meta.completed_by = executorId;
+      meta.express_tag = "เบิกสินค้าเข้า Express";
+      meta.express_status = "PENDING";
 
       // Mark completed only after all operations succeed
       await repo.documents.updateStatus(doc.document_id, "COMPLETED");

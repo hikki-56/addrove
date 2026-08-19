@@ -67,7 +67,7 @@ export default function ExpressIssuePage() {
   // Tagging State
   const [taggedItemsMap, setTaggedItemsMap] = useState<Map<string, TaggedExpressItem>>(new Map());
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  const [customTagInput, setCustomTagInput] = useState<string>("รอนำเข้า Express");
+  const [customTagInput, setCustomTagInput] = useState<string>("เบิกสินค้าเข้า Express");
   const [showTagModal, setShowTagModal] = useState<boolean>(false);
 
   // Sync tagged items from localStorage
@@ -103,10 +103,16 @@ export default function ExpressIssuePage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
 
-      const res = await fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
+      const [movRes, trfRes] = await Promise.all([
+        fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+      ]);
+
+      const json = await movRes.json();
+      const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
+
+      const combinedMovements: MovementWithDetails[] = [];
+      const seenKeys = new Set<string>();
 
       if (json.success && Array.isArray(json.data?.data)) {
         // Filter for outbound/issue/transfer-out movements
@@ -117,8 +123,53 @@ export default function ExpressIssuePage() {
             m.movement_type === "TRANSFER_OUT" ||
             m.qty_change < 0
         );
-        setMovements(issueMovements);
+        issueMovements.forEach((m: MovementWithDetails) => {
+          const key = `${m.movement_id || m.document_id || ""}_${m.sku || ""}_${m.location_id || ""}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            combinedMovements.push(m);
+          }
+        });
       }
+
+      // Include approved transfer documents
+      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
+        const completedTransfers = trfJson.data.filter(
+          (t: any) =>
+            t.status === "COMPLETED" ||
+            t.status === "POSTED" ||
+            t.status === "APPROVED" ||
+            t.current_step >= 3
+        );
+
+        completedTransfers.forEach((t: any) => {
+          const key = `trf_doc_${t.id}_${t.sku || ""}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            combinedMovements.push({
+              movement_id: `trf-mov-${t.id}`,
+              document_id: t.id,
+              document_no: t.doc_no || "TRF",
+              product_id: t.product_id || t.sku || "",
+              warehouse_id: t.from_warehouse_id || "wh-1",
+              warehouse_name: t.from_warehouse_name || "โกดัง 1",
+              location_id: t.from_location_id || "A1",
+              location_code: t.from_location_id || "A1",
+              qty_change: -Math.abs(Number(t.qty) || 1),
+              movement_type: "TRANSFER_OUT",
+              idempotency_key: `trf-${t.id}`,
+              created_by: t.created_by || t.moved_by || "ผู้ใช้งาน",
+              created_by_name: t.moved_by || "ผู้ใช้งาน",
+              created_at: t.completed_at || t.created_at || new Date().toISOString(),
+              sku: t.sku || "",
+              barcode: t.barcode || t.sku || "",
+              product_name: t.product_name || t.sku || "สินค้า",
+            } as any);
+          }
+        });
+      }
+
+      setMovements(combinedMovements);
     } catch (e) {
       console.error("Failed to fetch issue movements for Express:", e);
     } finally {
@@ -167,7 +218,9 @@ export default function ExpressIssuePage() {
           : to8DigitBarcode(rawBarcode, sku) || sku;
 
       const qty = Math.abs(Number(m.qty_change) || 1);
-      const uniqueId = `iss_${m.movement_id || m.document_id || idx}_${sku}_${idx}`;
+      const uniqueId = m.movement_id?.startsWith("trf-mov-")
+        ? `iss_${m.movement_id}_${sku}_0`
+        : `iss_${m.movement_id || m.document_id || idx}_${sku}_${idx}`;
 
       list.push({
         id: uniqueId,
@@ -195,14 +248,18 @@ export default function ExpressIssuePage() {
     return allItems.filter((item) => {
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
-      if (tagFilter === "TAGGED_ONLY" && !tagged) return false;
-      if (tagFilter === "PENDING" && (!tagged || tagged.status !== "PENDING")) return false;
-      if (tagFilter === "IMPORTED" && (!tagged || tagged.status !== "IMPORTED")) return false;
-      if (tagFilter === "UNTAGGED" && tagged) return false;
+      const effectiveStatus = tagged?.status || "PENDING";
+      const isTagged = true; // Approved items default to tagged for Express Issue
+
+      if (tagFilter === "TAGGED_ONLY" && !isTagged) return false;
+      if (tagFilter === "PENDING" && effectiveStatus !== "PENDING") return false;
+      if (tagFilter === "IMPORTED" && effectiveStatus !== "IMPORTED") return false;
+      if (tagFilter === "UNTAGGED" && (tagged || isTagged)) return false;
 
       // Search query check
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
+      const currentTag = tagged?.tag || "เบิกสินค้าเข้า Express";
       return (
         item.sku.toLowerCase().includes(q) ||
         item.product_name.toLowerCase().includes(q) ||
@@ -210,7 +267,7 @@ export default function ExpressIssuePage() {
         item.document_no.toLowerCase().includes(q) ||
         item.warehouse_name.toLowerCase().includes(q) ||
         item.location.toLowerCase().includes(q) ||
-        (tagged && tagged.tag.toLowerCase().includes(q))
+        currentTag.toLowerCase().includes(q)
       );
     });
   }, [allItems, searchQuery, tagFilter, taggedItemsMap]);
@@ -240,11 +297,10 @@ export default function ExpressIssuePage() {
 
     allItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
-      if (t) {
-        taggedCount++;
-        if (t.status === "PENDING") pendingCount++;
-        if (t.status === "IMPORTED") importedCount++;
-      }
+      const effectiveStatus = t?.status || "PENDING";
+      taggedCount++;
+      if (effectiveStatus === "PENDING") pendingCount++;
+      if (effectiveStatus === "IMPORTED") importedCount++;
     });
 
     return { total: allItems.length, taggedCount, pendingCount, importedCount };

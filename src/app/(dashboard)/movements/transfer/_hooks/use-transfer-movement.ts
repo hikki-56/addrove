@@ -22,6 +22,7 @@ import {
 } from "@/lib/transfer-notification-utils";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
+import { tagExpressItem } from "@/lib/express-tag-utils";
 
 export const TransferFormSchema = z.object({
   product_id: z.string(),
@@ -461,7 +462,28 @@ export function useTransferMovement({
         markTransferCompleted(t.id);
         setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
         setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
+
+        // Automatically tag approved item for Express Issue
+        try {
+          tagExpressItem({
+            id: `iss_trf-mov-${t.id}_${t.sku}_0`,
+            type: "ISSUE",
+            tag: "เบิกสินค้าเข้า Express",
+            status: "PENDING",
+            sku: t.sku,
+            barcode: t.barcode || t.sku || "",
+            product_name: t.product_name || t.sku || "สินค้า",
+            quantity: t.qty,
+            location: t.from_location_id || "-",
+            warehouse: t.from_warehouse_name || "โกดัง",
+            warehouse_code: t.from_warehouse_id || "01",
+            document_no: t.doc_no || "TRF",
+            document_date: new Date().toISOString().slice(0, 10),
+          });
+        } catch {}
+
         window.dispatchEvent(new Event("stockify-transfer-updated"));
+        window.dispatchEvent(new Event("stockify-express-tags-updated"));
         refreshData();
         alert("✅ อนุมัติและบันทึกข้อมูลเข้าสต็อกเรียบร้อยแล้ว!");
       } else {
