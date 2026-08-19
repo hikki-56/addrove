@@ -992,7 +992,8 @@ export function useTransferMovement({
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
-      const baseIdemKey = data.idempotency_key && data.idempotency_key.trim() ? data.idempotency_key.trim() : uuidv4();
+      // Always generate a fresh unique idempotency base key on every submission attempt to prevent key conflict
+      const baseIdemKey = uuidv4();
       const rawMovedBy = data.moved_by && data.moved_by.trim() ? data.moved_by.trim() : (tabUser?.name || "พนักงาน");
       const matchedStaff =
         staffList.find((s) => s.id === rawMovedBy || s.full_name === rawMovedBy) ||
@@ -1005,6 +1006,7 @@ export function useTransferMovement({
       const createResults = await Promise.all(
         itemsToProcess.map(async (item, i) => {
           try {
+            const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
             const res = await fetch("/api/movements/transfer", {
               method: "POST",
               headers,
@@ -1016,7 +1018,7 @@ export function useTransferMovement({
                 assigned_to_user_id: assignedUserId,
                 assigned_to_name: assignedName,
                 document_date: docDateVal,
-                idempotency_key: `${baseIdemKey}-${i}`,
+                idempotency_key: itemKey,
               }),
             });
 
