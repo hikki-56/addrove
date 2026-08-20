@@ -19,8 +19,8 @@ export async function POST(
     const actor = await createActorFromSession(req, session);
     if (!actor) return unauthorizedResponse();
 
-    if (actor.role !== "ADMIN" && actor.role !== "MANAGER") {
-      return forbiddenResponse("เฉพาะ Admin หรือ Manager เท่านั้นที่สามารถปฏิเสธรายการได้");
+    if (actor.role !== "ADMIN" && actor.role !== "MANAGER" && actor.role !== "APPROVER") {
+      return forbiddenResponse("เฉพาะ Admin, Manager หรือผู้อนุมัติ เท่านั้นที่สามารถปฏิเสธรายการได้");
     }
 
     try {

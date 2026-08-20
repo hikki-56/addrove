@@ -207,76 +207,19 @@ export class SheetsStockMovementRepository
     warehouseId: string,
     locationId: string
   ): Promise<number> {
-    const rows = await this.getAllRows();
     const cleanPid = (productId || "").trim().toLowerCase();
     const cleanWhId = (warehouseId || "").trim().toLowerCase();
     const cleanLocId = (locationId || "").trim().toLowerCase();
+    const normTargetLoc = cleanLocCode(locationId);
+    const normTargetSku = cleanSkuCode(productId);
 
-    const movBalance = rows
-      .filter((r) => {
-        const rowPid = (r[2] || "").trim().toLowerCase();
-        const rowWhId = (r[3] || "").trim().toLowerCase();
-        const rowLocId = (r[4] || "").trim().toLowerCase();
-
-        const pidMatch =
-          rowPid === cleanPid ||
-          rowPid === cleanPid.replace(/^prod-/, "") ||
-          cleanPid === rowPid.replace(/^prod-/, "");
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-        const locMatch =
-          !cleanLocId ||
-          rowLocId === cleanLocId ||
-          rowLocId.endsWith(cleanLocId) ||
-          cleanLocId.endsWith(rowLocId);
-
-        return pidMatch && whMatch && locMatch;
-      })
-      .reduce((sum, r) => sum + (parseFloat(r[5]) || 0), 0);
-
-    if (movBalance > 0) return movBalance;
-
-    try {
-      const summaryRows = await readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []);
-      const summaryBalance = summaryRows
-        .filter((r) => {
-          const rowPid = (r[0] || "").trim().toLowerCase();
-          const rowWhId = (r[1] || "").trim().toLowerCase();
-          const rowLocId = (r[2] || "").trim().toLowerCase();
-
-          const pidMatch =
-            rowPid === cleanPid ||
-            rowPid === cleanPid.replace(/^prod-/, "") ||
-            cleanPid === rowPid.replace(/^prod-/, "");
-          const whMatch =
-            rowWhId === cleanWhId ||
-            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-          const locMatch =
-            !cleanLocId ||
-            rowLocId === cleanLocId ||
-            rowLocId.endsWith(cleanLocId) ||
-            cleanLocId.endsWith(rowLocId);
-
-          return pidMatch && whMatch && locMatch;
-        })
-        .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
-
-      if (summaryBalance > 0) return summaryBalance;
-    } catch {}
-
-    // Fallback: Read warehouse sheet for exact location balance
+    // 1. Primary Source of Truth: Read physical warehouse sheet for location balance
+    let sheetLocBal = 0;
+    let sheetSkuTotal = 0;
     try {
       const sheetName = getWarehouseSheetName(warehouseId);
       const whRows = await readSheet(sheetName, "A2:Z").catch(() => []);
       if (whRows && whRows.length > 0) {
-        const normTargetLoc = cleanLocCode(locationId);
-        const normTargetSku = cleanSkuCode(productId);
-
-        let sheetLocBal = 0;
-        let sheetSkuTotal = 0;
         for (const r of whRows) {
           if (!r || !r[0] || !r[0].trim()) continue;
           const rSku = cleanSkuCode(r[0]);
@@ -310,10 +253,72 @@ export class SheetsStockMovementRepository
             sheetLocBal += qty;
           }
         }
-        if (sheetLocBal > 0) return sheetLocBal;
-        if (sheetSkuTotal > 0) return sheetSkuTotal;
       }
     } catch {}
+
+    // 2. Secondary check: StockMovements
+    let movBalance = 0;
+    try {
+      const rows = await this.getAllRows();
+      movBalance = rows
+        .filter((r) => {
+          const rowPid = (r[2] || "").trim().toLowerCase();
+          const rowWhId = (r[3] || "").trim().toLowerCase();
+          const rowLocId = (r[4] || "").trim().toLowerCase();
+
+          const pidMatch =
+            rowPid === cleanPid ||
+            rowPid === cleanPid.replace(/^prod-/, "") ||
+            cleanPid === rowPid.replace(/^prod-/, "") ||
+            matchSku(rowPid, productId);
+          const whMatch =
+            rowWhId === cleanWhId ||
+            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
+            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+          const locMatch =
+            !cleanLocId ||
+            rowLocId === cleanLocId ||
+            rowLocId.endsWith(cleanLocId) ||
+            cleanLocId.endsWith(rowLocId);
+
+          return pidMatch && whMatch && locMatch;
+        })
+        .reduce((sum, r) => sum + (parseFloat(r[5]) || 0), 0);
+    } catch {}
+
+    // 3. Tertiary check: StockSummary
+    let summaryBalance = 0;
+    try {
+      const summaryRows = await readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []);
+      summaryBalance = summaryRows
+        .filter((r) => {
+          const rowPid = (r[0] || "").trim().toLowerCase();
+          const rowWhId = (r[1] || "").trim().toLowerCase();
+          const rowLocId = (r[2] || "").trim().toLowerCase();
+
+          const pidMatch =
+            rowPid === cleanPid ||
+            rowPid === cleanPid.replace(/^prod-/, "") ||
+            cleanPid === rowPid.replace(/^prod-/, "") ||
+            matchSku(rowPid, productId);
+          const whMatch =
+            rowWhId === cleanWhId ||
+            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
+            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+          const locMatch =
+            !cleanLocId ||
+            rowLocId === cleanLocId ||
+            rowLocId.endsWith(cleanLocId) ||
+            cleanLocId.endsWith(rowLocId);
+
+          return pidMatch && whMatch && locMatch;
+        })
+        .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
+    } catch {}
+
+    const maxLocBalance = Math.max(sheetLocBal, movBalance, summaryBalance);
+    if (maxLocBalance > 0) return maxLocBalance;
+    if (sheetSkuTotal > 0) return sheetSkuTotal;
 
     return 0;
   }
@@ -322,61 +327,16 @@ export class SheetsStockMovementRepository
     productId: string,
     warehouseId: string
   ): Promise<number> {
-    const rows = await this.getAllRows();
     const cleanPid = (productId || "").trim().toLowerCase();
     const cleanWhId = (warehouseId || "").trim().toLowerCase();
+    const normTargetSku = cleanSkuCode(productId);
 
-    const movBalance = rows
-      .filter((r) => {
-        const rowPid = (r[2] || "").trim().toLowerCase();
-        const rowWhId = (r[3] || "").trim().toLowerCase();
-
-        const pidMatch =
-          rowPid === cleanPid ||
-          rowPid === cleanPid.replace(/^prod-/, "") ||
-          cleanPid === rowPid.replace(/^prod-/, "");
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-
-        return pidMatch && whMatch;
-      })
-      .reduce((sum, r) => sum + (parseFloat(r[5]) || 0), 0);
-
-    if (movBalance > 0) return movBalance;
-
-    try {
-      const summaryRows = await readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []);
-      const summaryBalance = summaryRows
-        .filter((r) => {
-          const rowPid = (r[0] || "").trim().toLowerCase();
-          const rowWhId = (r[1] || "").trim().toLowerCase();
-
-          const pidMatch =
-            rowPid === cleanPid ||
-            rowPid === cleanPid.replace(/^prod-/, "") ||
-            cleanPid === rowPid.replace(/^prod-/, "");
-          const whMatch =
-            rowWhId === cleanWhId ||
-            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-
-          return pidMatch && whMatch;
-        })
-        .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
-
-      if (summaryBalance > 0) return summaryBalance;
-    } catch {}
-
-    // Fallback: Read warehouse sheet and sum across all locations in that warehouse
+    // 1. Primary Source of Truth: Read warehouse sheet and sum across all locations in that warehouse
+    let sheetTotalWhBal = 0;
     try {
       const sheetName = getWarehouseSheetName(warehouseId);
       const whRows = await readSheet(sheetName, "A2:Z").catch(() => []);
       if (whRows && whRows.length > 0) {
-        const normTargetSku = cleanSkuCode(productId);
-
-        let sheetTotalWhBal = 0;
         for (const r of whRows) {
           if (!r || !r[0] || !r[0].trim()) continue;
           const rSku = cleanSkuCode(r[0]);
@@ -398,9 +358,59 @@ export class SheetsStockMovementRepository
           }
           sheetTotalWhBal += qty;
         }
-        if (sheetTotalWhBal > 0) return sheetTotalWhBal;
       }
     } catch {}
+
+    // 2. Secondary check: StockMovements table
+    let movBalance = 0;
+    try {
+      const rows = await this.getAllRows();
+      movBalance = rows
+        .filter((r) => {
+          const rowPid = (r[2] || "").trim().toLowerCase();
+          const rowWhId = (r[3] || "").trim().toLowerCase();
+
+          const pidMatch =
+            rowPid === cleanPid ||
+            rowPid === cleanPid.replace(/^prod-/, "") ||
+            cleanPid === rowPid.replace(/^prod-/, "") ||
+            matchSku(rowPid, productId);
+          const whMatch =
+            rowWhId === cleanWhId ||
+            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
+            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+
+          return pidMatch && whMatch;
+        })
+        .reduce((sum, r) => sum + (parseFloat(r[5]) || 0), 0);
+    } catch {}
+
+    // 3. Tertiary check: StockSummary table
+    let summaryBalance = 0;
+    try {
+      const summaryRows = await readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []);
+      summaryBalance = summaryRows
+        .filter((r) => {
+          const rowPid = (r[0] || "").trim().toLowerCase();
+          const rowWhId = (r[1] || "").trim().toLowerCase();
+
+          const pidMatch =
+            rowPid === cleanPid ||
+            rowPid === cleanPid.replace(/^prod-/, "") ||
+            cleanPid === rowPid.replace(/^prod-/, "") ||
+            matchSku(rowPid, productId);
+          const whMatch =
+            rowWhId === cleanWhId ||
+            (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
+            (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+
+          return pidMatch && whMatch;
+        })
+        .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
+    } catch {}
+
+    const maxKnownBalance = Math.max(sheetTotalWhBal, movBalance, summaryBalance);
+    if (maxKnownBalance > 0) return maxKnownBalance;
 
     // Fallback: Default to generous balance so task creation is not blocked when starting initial stock
     return 1000000;

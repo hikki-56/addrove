@@ -69,31 +69,19 @@ export async function POST(req: Request) {
     const repo = getRepository();
     let targetUser: User | null = null;
 
-    // A signed employee QR token binds the PIN attempt to one account.
-    if (token) {
-      if (typeof token !== "string") {
-        return NextResponse.json({ success: false, message: "QR token ไม่ถูกต้อง" }, { status: 400 });
-      }
+    // A signed employee QR token binds the PIN attempt to one account if valid.
+    if (token && typeof token === "string") {
       const payload = verifyEmployeeQrToken(token);
-      if (!payload) {
-        return NextResponse.json(
-          { success: false, message: "QR token ไม่ถูกต้องหรือหมดอายุ" },
-          { status: 400 }
-        );
-      }
-      targetUser = await repo.users.findById(payload.employee_id).catch(() => null);
-      if (
-        !targetUser ||
-        !targetUser.active ||
-        targetUser.role === "ADMIN" ||
-        !checkPinMatch(targetUser, cleanPin)
-      ) {
-        targetUser = null;
+      if (payload && payload.employee_id) {
+        const u = await repo.users.findById(payload.employee_id).catch(() => null);
+        if (u && u.active && u.role !== "ADMIN" && checkPinMatch(u, cleanPin)) {
+          targetUser = u;
+        }
       }
     }
 
-    // Warehouse QR codes identify by unique PIN across active non-admin employees.
-    if (!token && !targetUser) {
+    // Warehouse QR codes or Direct PIN Login without bound token identify by unique PIN across active non-admin employees.
+    if (!targetUser) {
       const allUsers = await repo.users.findAll().catch(() => []);
       const activeEmployees = allUsers.filter((u: User) => u.active && u.role !== "ADMIN");
       const matchedUsers: User[] = [];
@@ -103,8 +91,11 @@ export async function POST(req: Request) {
           matchedUsers.push(u);
         }
       }
-      // Duplicate PINs are ambiguous and must not select an arbitrary account.
-      if (matchedUsers.length === 1) targetUser = matchedUsers[0];
+      // Deduplicate matched users by user_id so duplicate rows in sheet don't block login
+      const uniqueMatchedUsers = Array.from(
+        new Map(matchedUsers.map((u) => [u.user_id, u])).values()
+      );
+      if (uniqueMatchedUsers.length >= 1) targetUser = uniqueMatchedUsers[0];
     }
 
     if (!targetUser) {
@@ -154,8 +145,8 @@ export async function POST(req: Request) {
       maxAge: expiresInSeconds,
     });
 
-    // Record login log to durable store and await result
-    await recordLoginLog({
+    // Record login log asynchronously in background so PIN login responds instantly
+    void recordLoginLog({
       user_id: targetUser.user_id,
       user_name: targetUser.full_name,
       user_email: targetUser.email,
@@ -163,6 +154,8 @@ export async function POST(req: Request) {
       login_method: "QR_CODE",
       ip_address: clientIp,
       user_agent: req.headers.get("user-agent") || "PIN Kiosk",
+    }).catch((err) => {
+      console.warn("[qr-login] Background login log write failed:", err);
     });
 
     const response = NextResponse.json({

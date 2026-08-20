@@ -5,13 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { navItems } from "@/lib/nav-items";
+import { navItems, getNavItems } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName, syncServerTransferNotifications, fetchAndSyncTransferNotifications } from "@/lib/transfer-notification-utils";
 import { getActiveWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
   MANAGER: "ผู้จัดการคลัง",
+  APPROVER: "ผู้อนุมัติ",
   WAREHOUSE_STAFF: "พนักงานคลัง",
   STAFF: "เจ้าหน้าที่",
   VIEWER: "ผู้ดูข้อมูล",
@@ -20,6 +21,7 @@ const roleLabel: Record<UserRole, string> = {
 const roleColor: Record<UserRole, string> = {
   ADMIN: "bg-emerald-100 text-emerald-950 border-emerald-300 font-extrabold",
   MANAGER: "bg-purple-100 text-purple-950 border-purple-300 font-bold",
+  APPROVER: "bg-amber-100 text-amber-950 border-amber-300 font-extrabold",
   WAREHOUSE_STAFF: "bg-indigo-100 text-indigo-950 border-indigo-300 font-bold",
   STAFF: "bg-blue-100 text-blue-950 border-blue-300 font-bold",
   VIEWER: "bg-slate-100 text-slate-800 border-slate-300 font-semibold",
@@ -32,14 +34,16 @@ const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
   "/approvals": { parent: "การจัดการ", title: "อนุมัติรายการรับเข้า" },
   "/express-import": { parent: "นำเข้า Express", title: "ภาพรวม" },
   "/express-import/receive": { parent: "นำเข้า Express", title: "รับสินค้า เข้า Express" },
-  "/express-import/transfer": { parent: "นำเข้า Express", title: "ย้ายสินค้า เข้า Express" },
   "/express-import/issue": { parent: "นำเข้า Express", title: "เบิกสินค้า เข้า Express" },
   "/stock": { parent: "คลังสินค้า", title: "ตรวจสอบสต็อก" },
   "/stock-counts": { parent: "การตรวจนับ", title: "ผลการตรวจนับสต็อก" },
   "/locations": { parent: "คลังสินค้า", title: "จัดการตำแหน่งจัดเก็บ" },
-  "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า" },
-  "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า" },
-  "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า" },
+  "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
+  "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า (Admin)" },
+  "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า (Admin)" },
+  "/staff/receive": { parent: "พนักงาน", title: "สแกนรับสินค้าเข้าคลัง" },
+  "/staff/transfer": { parent: "พนักงาน", title: "รายการที่ต้องไปเบิกสินค้า" },
+  "/staff/move": { parent: "พนักงาน", title: "สแกนจัดตำแหน่งสินค้า" },
   "/movements/history": { parent: "การเคลื่อนไหว", title: "ประวัติการเคลื่อนไหว" },
   "/users": { parent: "การตั้งค่า", title: "จัดการพนักงาน" },
   "/login-logs": { parent: "การแจ้งเตือน", title: "ประวัติการเข้าระบบ" },
@@ -124,7 +128,8 @@ export default function Navbar({
 
   const breadcrumb = pathBreadcrumbs[pathname] || { parent: "หน้าหลัก", title: "Stockify" };
 
-  const visibleItems = navItems.filter(
+  const itemsForRole = getNavItems(user.role);
+  const visibleItems = itemsForRole.filter(
     (item) => !item.roles || item.roles.includes(user.role)
   );
 

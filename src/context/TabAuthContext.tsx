@@ -38,108 +38,75 @@ const TabAuthContext = createContext<TabAuthContextType>({
   syncTabCookie: () => {},
 });
 
+function isSessionExpired(expires_at?: number): boolean {
+  if (!expires_at) return false;
+  const expMs = expires_at < 10000000000 ? expires_at * 1000 : expires_at;
+  return Date.now() >= expMs;
+}
+
+function getStoredSession(): TabSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = sessionStorage.getItem(TAB_SESSION_KEY) || localStorage.getItem(TAB_SESSION_KEY);
+    if (stored) {
+      const parsed: TabSession = JSON.parse(stored);
+      if (parsed && parsed.user && !isSessionExpired(parsed.expires_at)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export function TabAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<TabUser | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = sessionStorage.getItem(TAB_SESSION_KEY);
-      if (stored) {
-        const parsed: TabSession = JSON.parse(stored);
-        if (parsed.expires_at && Date.now() < parsed.expires_at && parsed.user) {
-          return parsed.user;
-        }
-      }
-    } catch {}
-    return null;
-  });
-
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = sessionStorage.getItem(TAB_SESSION_KEY);
-      if (stored) {
-        const parsed: TabSession = JSON.parse(stored);
-        if (parsed.expires_at && Date.now() < parsed.expires_at && parsed.token) {
-          return parsed.token;
-        }
-      }
-    } catch {}
-    return null;
-  });
-
+  const [user, setUser] = useState<TabUser | null>(() => getStoredSession()?.user || null);
+  const [token, setToken] = useState<string | null>(() => getStoredSession()?.token || null);
   const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">(() => {
     if (typeof window === "undefined") return "loading";
-    try {
-      const stored = sessionStorage.getItem(TAB_SESSION_KEY);
-      if (stored) {
-        const parsed: TabSession = JSON.parse(stored);
-        if (parsed.expires_at && Date.now() < parsed.expires_at && parsed.user) {
-          return "authenticated";
-        }
-      }
-    } catch {}
-    return "unauthenticated";
+    return getStoredSession() ? "authenticated" : "unauthenticated";
   });
   const router = useRouter();
 
   const handleExpiredSession = useCallback(() => {
     try {
       sessionStorage.removeItem(TAB_SESSION_KEY);
-      // Remove sessions written by older versions. New sessions are tab-scoped only.
       localStorage.removeItem(TAB_SESSION_KEY);
     } catch {}
     setUser(null);
     setToken(null);
     setStatus("unauthenticated");
     if (typeof window !== "undefined") {
-      window.location.href = "/employee-login?expired=true";
+      const pathname = window.location.pathname;
+      if (pathname !== "/employee-login" && pathname !== "/login" && pathname !== "/admin-login") {
+        window.location.href = "/employee-login?expired=true";
+      }
     }
   }, []);
 
   const syncTabCookie = useCallback(() => {
     if (typeof window === "undefined") return;
-    try {
-      const stored = sessionStorage.getItem(TAB_SESSION_KEY);
-      if (stored) {
+    const stored = sessionStorage.getItem(TAB_SESSION_KEY) || localStorage.getItem(TAB_SESSION_KEY);
+    if (stored) {
+      try {
         const parsed: TabSession = JSON.parse(stored);
-        if (parsed.expires_at && Date.now() >= parsed.expires_at) {
+        if (isSessionExpired(parsed.expires_at)) {
           handleExpiredSession();
-          return;
         }
-      }
-    } catch (e) {
-      console.error("[TabAuth] Sync cookie failed", e);
+      } catch {}
     }
   }, [handleExpiredSession]);
 
-  // Load the employee session only from this browser tab.
+  // Load the employee session on mount and tab focus
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const loadSession = () => {
-      try {
-        localStorage.removeItem(TAB_SESSION_KEY);
-        const stored = sessionStorage.getItem(TAB_SESSION_KEY);
-        if (stored) {
-          const parsed: TabSession = JSON.parse(stored);
-
-          // Check if token is expired
-          if (parsed.expires_at && Date.now() >= parsed.expires_at) {
-            console.warn("[TabAuth] Employee token has expired");
-            handleExpiredSession();
-            return;
-          }
-
-          if (parsed.user && parsed.token) {
-            try { sessionStorage.setItem(TAB_SESSION_KEY, stored); } catch {}
-            setUser(parsed.user);
-            setToken(parsed.token);
-            setStatus("authenticated");
-            return;
-          }
-        }
-      } catch (e) {
-        console.error("[TabAuth] Failed to load tab session", e);
+      const s = getStoredSession();
+      if (s) {
+        setUser(s.user);
+        setToken(s.token);
+        setStatus("authenticated");
+        return;
       }
       setUser(null);
       setToken(null);
@@ -148,7 +115,6 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
 
     loadSession();
 
-    // Re-sync cookie whenever user switches focus to this tab
     const handleFocus = () => {
       syncTabCookie();
     };
@@ -157,7 +123,7 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener("focus", handleFocus);
     };
-  }, [syncTabCookie, handleExpiredSession]);
+  }, [syncTabCookie]);
 
   // Patch window.fetch to automatically include tab token header and check token expiry
   useEffect(() => {
@@ -171,7 +137,7 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
           const parsed: TabSession = JSON.parse(stored);
 
           // If session expired, intercept fetch and redirect to login
-          if (parsed.expires_at && Date.now() >= parsed.expires_at) {
+          if (isSessionExpired(parsed.expires_at)) {
             handleExpiredSession();
             return new Response(JSON.stringify({ success: false, message: "โทเคนหมดอายุ" }), { status: 401 });
           }
@@ -202,11 +168,14 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Default expiration: 24 Hours for ADMIN, 2 Hours for employee QR
       const defaultTtl = newUser.role === "ADMIN" ? 24 * 3600 * 1000 : 2 * 3600 * 1000;
-      const sessionExpiry = expires_at || (Date.now() + defaultTtl);
+      let sessionExpiry = expires_at || (Date.now() + defaultTtl);
+      if (sessionExpiry < 10000000000) {
+        sessionExpiry = sessionExpiry * 1000;
+      }
       const sessionData: TabSession = { user: newUser, token: newToken, expires_at: sessionExpiry };
       const serialized = JSON.stringify(sessionData);
       sessionStorage.setItem(TAB_SESSION_KEY, serialized);
-      localStorage.removeItem(TAB_SESSION_KEY);
+      localStorage.setItem(TAB_SESSION_KEY, serialized);
       setUser(newUser);
       setToken(newToken);
       setStatus("authenticated");

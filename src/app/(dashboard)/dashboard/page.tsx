@@ -17,6 +17,17 @@ export default function DashboardPage() {
 
   const role = user?.role;
 
+  if (role === "APPROVER") {
+    if (typeof window !== "undefined") {
+      window.location.replace("/movements/transfer");
+    }
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (role === "WAREHOUSE_STAFF") {
     return <StaffDashboard />;
   }

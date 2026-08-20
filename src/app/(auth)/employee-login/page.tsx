@@ -68,13 +68,13 @@ function PinScreen() {
           tabLogin(json.user, json.token, json.expires_at);
         }
         const targetWh = getActiveWarehouse(whParam);
-        let finalUrl = "/dashboard";
-        if (targetWh) {
-          finalUrl = `/dashboard?warehouse_id=${targetWh}`;
+        let finalUrl = "/movements/transfer";
+        if (json.user?.role !== "APPROVER") {
+          finalUrl = targetWh ? `/dashboard?warehouse_id=${targetWh}` : "/dashboard";
         }
         setTimeout(() => {
           window.location.href = finalUrl;
-        }, 400);
+        }, 300);
       } else {
         const next = attempts + 1;
         setAttempts(next);
@@ -86,11 +86,11 @@ function PinScreen() {
         } else {
           setError(json.message || `รหัส PIN ไม่ถูกต้อง (${next}/5 ครั้ง)`);
         }
+        setSubmitting(false);
       }
     } catch {
       setError("เกิดข้อผิดพลาดในการเชื่อมต่อ");
       setPin("");
-    } finally {
       setSubmitting(false);
     }
   }, [pin, submitting, tokenParam, tabLogin, whParam, attempts]);
@@ -123,7 +123,7 @@ function PinScreen() {
     if (pin.length === 4) {
       const t = setTimeout(() => {
         void submitPin();
-      }, 150);
+      }, 100);
       return () => clearTimeout(t);
     }
   }, [pin, submitPin]);
@@ -133,18 +133,19 @@ function PinScreen() {
     const handler = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") handleNumClick(e.key);
       if (e.key === "Backspace") handleNumClick("del");
+      if (e.key === "Enter") void submitPin();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleNumClick]);
+  }, [handleNumClick, submitPin]);
 
-  const isExpiredParam = searchParams?.get("expired") === "true";
-
+  // Clean URL if expired=true was present
   useEffect(() => {
-    if (isExpiredParam) {
-      setError("⏰ โทเคนการเข้าใช้งานหมดอายุ กรุณากรอกรหัส PIN เพื่อเข้าสู่ระบบใหม่");
+    if (typeof window !== "undefined" && window.location.search.includes("expired=true")) {
+      const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]expired=true/, "").replace(/^\?$/, "");
+      window.history.replaceState({}, "", cleanUrl || "/employee-login");
     }
-  }, [isExpiredParam]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
@@ -195,7 +196,12 @@ function PinScreen() {
 
           {/* Error / Success / lock message */}
           <div className="min-h-[32px] flex items-center justify-center mb-3">
-            {successMessage ? (
+            {submitting ? (
+              <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
+                <span className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin inline-block" />
+                กำลังเข้าสู่ระบบ...
+              </p>
+            ) : successMessage ? (
               <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

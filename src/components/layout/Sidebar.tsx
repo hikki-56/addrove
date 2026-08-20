@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { navItems, type NavItem } from "@/lib/nav-items";
+import { navItems, getNavItems, type NavItem } from "@/lib/nav-items";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -22,6 +22,7 @@ import {
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
   MANAGER: "ผู้จัดการคลัง",
+  APPROVER: "ผู้อนุมัติ",
   WAREHOUSE_STAFF: "พนักงานคลัง",
   STAFF: "เจ้าหน้าที่",
   VIEWER: "ผู้ดูข้อมูล",
@@ -99,7 +100,8 @@ export default function Sidebar({
     };
   }, [updateCount]);
 
-  const visibleItems = navItems.filter(
+  const itemsForRole = getNavItems(role);
+  const visibleItems = itemsForRole.filter(
     (item) => !item.roles || item.roles.includes(role)
   );
 
@@ -108,11 +110,20 @@ export default function Sidebar({
     ["/products", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr"].includes(i.href)
   );
   const movementNav = visibleItems.filter((i) =>
-    ["/movements/receive", "/movements/transfer", "/movements/move", "/stock-counts", "/movements/history"].includes(i.href)
+    [
+      "/movements/receive",
+      "/movements/transfer",
+      "/movements/move",
+      "/staff/receive",
+      "/staff/transfer",
+      "/staff/move",
+      "/stock-counts",
+      "/movements/history",
+    ].includes(i.href)
   );
   const systemNav = visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href));
   const expressNav = visibleItems.filter((i) =>
-    ["/express-import/receive", "/express-import/transfer", "/express-import/issue", "/express-import"].includes(i.href)
+    ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
   );
 
   return (

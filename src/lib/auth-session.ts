@@ -4,15 +4,28 @@ import type { NextRequest } from "next/server";
 import { getAuthSecret } from "@/lib/server-secrets";
 import type { UserRole } from "@/types/models";
 
-const USER_ROLES = new Set<UserRole>(["ADMIN", "WAREHOUSE_STAFF", "VIEWER"]);
+const USER_ROLES = new Set<UserRole>([
+  "ADMIN",
+  "MANAGER",
+  "APPROVER",
+  "WAREHOUSE_STAFF",
+  "STAFF",
+  "VIEWER",
+]);
 
 async function decodeSessionToken(token: string) {
   for (const salt of ["authjs.session-token", "next-auth.session-token"]) {
-    const decoded = await decode({
-      token,
-      secret: getAuthSecret(),
-      salt,
-    }).catch(() => null);
+    let decoded: any = null;
+    try {
+      decoded = await decode({
+        token,
+        secret: getAuthSecret(),
+        salt,
+      });
+    } catch (err) {
+      console.warn("[decodeSessionToken catch error]", salt, err);
+      decoded = null;
+    }
 
     const id = decoded?.id || decoded?.sub;
     const role = decoded?.role;

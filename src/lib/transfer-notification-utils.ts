@@ -15,6 +15,7 @@ export interface TransferNotification {
   assigned_to_name?: string;
   created_at: string;
   created_by?: string;
+  created_by_name?: string;
   status: "PENDING" | "ACKNOWLEDGED" | "WAITING_APPROVAL" | "COMPLETED" | "CANCELLED" | "REJECTED";
   current_step?: number;
   current_step_text?: string;
@@ -408,6 +409,12 @@ export function saveTransferNotification(task: TransferNotification, options?: {
         cleanTask.current_step_text = existing[existingIndex].current_step_text;
         cleanTask.last_active_at = existing[existingIndex].last_active_at;
       }
+      if (!cleanTask.created_by_name && existing[existingIndex].created_by_name) {
+        cleanTask.created_by_name = existing[existingIndex].created_by_name;
+      }
+      if (!cleanTask.created_by && existing[existingIndex].created_by) {
+        cleanTask.created_by = existing[existingIndex].created_by;
+      }
     }
 
     const filtered = existing.filter((t) => !isMatchTask(t));
@@ -475,6 +482,16 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const serverStepText = meta.current_step_text || doc.current_step_text || undefined;
       const serverLastActive = meta.last_active_at || doc.last_active_at || undefined;
 
+      const createdBy = String(meta.created_by || doc.created_by || "").trim();
+      const createdByName = String(
+        meta.created_by_name ||
+        (createdBy.toLowerCase().includes("admin") || doc.created_by?.toLowerCase().includes("admin")
+          ? "ผู้ดูแลระบบ (Admin)"
+          : "") ||
+        createdBy ||
+        "ผู้ดูแลระบบ (Admin)"
+      ).trim();
+
       if (docId) serverActiveDocIds.add(docId);
 
       // Fix: A transfer document is only done if status is COMPLETED, CANCELLED, or REJECTED
@@ -527,6 +544,8 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
             moved_by: movedBy,
             assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
             assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
+            created_by: createdBy || "admin",
+            created_by_name: createdByName || "ผู้ดูแลระบบ (Admin)",
             created_at: String(doc.created_at || new Date().toISOString()),
             status: notifStatus,
             current_step: serverStep || (notifStatus === "WAITING_APPROVAL" ? 3 : undefined),

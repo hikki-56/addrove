@@ -12,7 +12,8 @@ async function isValidSessionToken(token: string): Promise<boolean> {
     const expiresAt = Number(decoded?.exp || 0);
     if (
       typeof id === "string" &&
-      ["ADMIN", "WAREHOUSE_STAFF", "VIEWER"].includes(String(role)) &&
+      ["ADMIN", "MANAGER", "APPROVER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"].includes(String(role)) &&
+
       Number.isFinite(expiresAt) &&
       expiresAt > Date.now() / 1000
     ) return true;

@@ -15,7 +15,7 @@ export const CreateUserSchema = z.object({
   password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"),
   pin: z.string().regex(/^\d{4}$/, "PIN ต้องเป็นตัวเลข 4 หลัก").optional().or(z.literal("")),
   full_name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล").max(100),
-  role: z.enum(["ADMIN", "MANAGER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"]).default("STAFF"),
+  role: z.enum(["ADMIN", "MANAGER", "APPROVER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"]).default("STAFF"),
   warehouse_access: z.string().optional().default(""),
 });
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
@@ -26,7 +26,7 @@ export const UpdateUserSchema = z.object({
   password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร").optional(),
   pin: z.string().regex(/^\d{4}$/, "PIN ต้องเป็นตัวเลข 4 หลัก").optional().or(z.literal("")),
   full_name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล").max(100).optional(),
-  role: z.enum(["ADMIN", "MANAGER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"]).optional(),
+  role: z.enum(["ADMIN", "MANAGER", "APPROVER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"]).optional(),
   warehouse_access: z.string().optional(),
   active: z.boolean().optional(),
 });

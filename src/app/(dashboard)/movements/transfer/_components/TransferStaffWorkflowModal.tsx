@@ -76,28 +76,28 @@ export default function TransferStaffWorkflowModal({
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
             <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-mono font-black text-xs sm:text-sm border border-indigo-200">
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-mono font-bold text-xs sm:text-sm border border-indigo-200">
                 {selectedTask.doc_no}
               </span>
-              <span className="text-xs sm:text-sm text-slate-600 font-bold truncate max-w-[160px] sm:max-w-[240px]">
-                👤 {selectedTask.moved_by || "พนักงาน"}
+              <span className="text-xs sm:text-sm text-slate-600 font-medium truncate max-w-[200px] sm:max-w-[280px]">
+                ผู้สร้าง: <strong className="text-slate-900 font-semibold">{selectedTask.created_by_name || selectedTask.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
               </span>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer font-black text-lg transition-all active:scale-90"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-base transition-all active:scale-95"
               title="ปิดหน้าต่าง"
             >
               ✕
             </button>
           </div>
 
-          {/* Circular Green Step Indicator */}
+          {/* Step Indicator */}
           <div className="relative flex items-center justify-between px-6 sm:px-10 py-2">
             {/* Connector Line */}
-            <div className="absolute left-12 right-12 top-[22px] h-1 bg-slate-200 -z-0">
+            <div className="absolute left-12 right-12 top-[20px] h-0.5 bg-slate-200 -z-0">
               <div
                 className="h-full bg-emerald-500 transition-all duration-300"
                 style={{
@@ -107,74 +107,47 @@ export default function TransferStaffWorkflowModal({
             </div>
 
             {/* Step 1 */}
-            <div className="flex flex-col items-center gap-1.5 z-10">
+            <div className="flex flex-col items-center gap-1 z-10">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                   staffStep === 1
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
+                    ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100"
                     : staffStep > 1
                     ? "bg-emerald-600 text-white"
-                    : "bg-white text-slate-400 border-2 border-slate-200"
+                    : "bg-white text-slate-400 border border-slate-200"
                 }`}
               >
                 {staffStep > 1 ? "✓" : "1"}
               </div>
               <span
-                className={`text-xs sm:text-sm transition-colors ${
+                className={`text-xs transition-colors ${
                   staffStep === 1
-                    ? "text-emerald-700 font-black"
+                    ? "text-emerald-700 font-bold"
                     : staffStep > 1
-                    ? "text-emerald-600 font-bold"
-                    : "text-slate-400 font-medium"
+                    ? "text-emerald-600 font-medium"
+                    : "text-slate-400 font-normal"
                 }`}
               >
                 สแกนสินค้า
               </span>
             </div>
 
-            {/* Step 2: ต้นทาง (คอมเมนต์ไว้ชั่วคราว)
-            <div className="flex flex-col items-center gap-1.5 z-10">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
-                  staffStep === 2
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
-                    : staffStep > 2
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white text-slate-400 border-2 border-slate-200"
-                }`}
-              >
-                {staffStep > 2 ? "✓" : "2"}
-              </div>
-              <span
-                className={`text-xs sm:text-sm transition-colors ${
-                  staffStep === 2
-                    ? "text-emerald-700 font-black"
-                    : staffStep > 2
-                    ? "text-emerald-600 font-bold"
-                    : "text-slate-400 font-medium"
-                }`}
-              >
-                ต้นทาง
-              </span>
-            </div>
-            */}
-
             {/* Step 3 (แสดงเป็นขั้นตอนปลายทาง) */}
-            <div className="flex flex-col items-center gap-1.5 z-10">
+            <div className="flex flex-col items-center gap-1 z-10">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-200 ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                   staffStep >= 3
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 ring-4 ring-emerald-100 scale-110"
-                    : "bg-white text-slate-400 border-2 border-slate-200"
+                    ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100"
+                    : "bg-white text-slate-400 border border-slate-200"
                 }`}
               >
                 {staffStep > 3 ? "✓" : "2"}
               </div>
               <span
-                className={`text-xs sm:text-sm transition-colors ${
+                className={`text-xs transition-colors ${
                   staffStep >= 3
-                    ? "text-emerald-700 font-black"
-                    : "text-slate-400 font-medium"
+                    ? "text-emerald-700 font-bold"
+                    : "text-slate-400 font-normal"
                 }`}
               >
                 ปลายทาง
@@ -183,42 +156,46 @@ export default function TransferStaffWorkflowModal({
           </div>
 
           {/* Product & Route Summary Card */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50/95 border-2 border-slate-200/90 shadow-sm space-y-2.5">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-xs space-y-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1 flex-1 min-w-0">
-                {/* อันแรก: บาร์โค้ดขนาดใหญ่พิเศษ */}
-                <div className="text-slate-950 font-mono font-black text-lg sm:text-xl tracking-wide flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black text-indigo-800 bg-indigo-100 border border-indigo-200 px-2.5 py-0.5 rounded-lg shrink-0">
+                {/* Barcode */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shrink-0">
                     บาร์โค้ด
                   </span>
-                  <span className="truncate">{barcode || selectedTask.sku}</span>
+                  <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
+                    {barcode || selectedTask.sku}
+                  </span>
                 </div>
-                {/* อันที่สอง: SKU */}
-                <div className="text-xs sm:text-sm text-slate-700 font-mono flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">SKU:</span>
-                  <strong className="text-slate-950 font-bold">{selectedTask.sku}</strong>
+                {/* SKU */}
+                <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                  <span>SKU:</span>
+                  <strong className="text-slate-700 font-semibold">{selectedTask.sku}</strong>
                 </div>
-                {/* อันที่สาม: ชื่อสินค้า */}
-                <div className="text-xs sm:text-sm text-slate-800 font-medium leading-snug line-clamp-2">
+                {/* Product Name */}
+                <div className="text-xs sm:text-sm text-slate-800 font-medium leading-normal line-clamp-2">
                   {selectedTask.product_name}
                 </div>
               </div>
 
               <div className="shrink-0 text-right">
-                <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 text-emerald-950 border-2 border-emerald-200/90 font-mono font-black text-sm sm:text-base inline-block">
-                  {selectedTask.qty.toLocaleString()} ชิ้น
+                <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-bold text-sm sm:text-base inline-block">
+                  {selectedTask.qty.toLocaleString()} <span className="font-sans font-normal text-xs text-emerald-600">ชิ้น</span>
                 </span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2 text-xs font-bold">
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2 text-xs font-semibold">
               <div className="flex items-center gap-2">
-                <span className="text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                  🏭 {selectedTask.from_warehouse_name}
+                <span className="text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  {selectedTask.from_warehouse_name}
                 </span>
-                <span className="text-emerald-600 font-black">➔</span>
-                <span className="text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 font-black">
-                  🎯 {selectedTask.to_warehouse_name}
+                <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <span className="text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
+                  {selectedTask.to_warehouse_name}
                 </span>
               </div>
             </div>
@@ -226,7 +203,7 @@ export default function TransferStaffWorkflowModal({
 
           {/* Error Banner */}
           {staffStep !== 4 && staffError && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs sm:text-sm font-bold leading-relaxed animate-in fade-in">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs sm:text-sm font-semibold leading-relaxed animate-in fade-in">
               {staffError}
             </div>
           )}
@@ -380,17 +357,19 @@ export default function TransferStaffWorkflowModal({
         {/* Step 4: Submission to Admin Completion */}
         {staffStep === 4 && (
           <div className="p-6 text-center space-y-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl animate-in zoom-in-95">
-            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
-              ✓
+            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-            <h4 className="text-base font-extrabold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว!</h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <h4 className="text-sm sm:text-base font-bold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว</h4>
+            <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
               การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+              className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer shadow-xs active:scale-95 transition-all"
             >
               ปิดหน้าต่าง / กลับสู่รายการ
             </button>

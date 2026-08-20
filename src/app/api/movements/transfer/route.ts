@@ -42,10 +42,11 @@ export async function POST(req: NextRequest) {
         assigned_to_user_id: defaultAssignedUserId,
         assigned_to_name: defaultAssignedName,
         user_id: actor.id,
+        created_by_name: session?.user?.name || (actor.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "ผู้สร้างใบเบิก"),
         role: actor.role,
         correlation_id: actor.correlationId,
         warehouse_access: actor.warehouseAccess,
-      }
+      } as any
     );
 
     return successResponse(doc, "บันทึกการโอนสินค้าระหว่างโกดังสำเร็จ", 201);

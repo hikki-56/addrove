@@ -19,8 +19,8 @@ export async function POST(
     const actor = await createActorFromSession(req, session);
     if (!actor) return unauthorizedResponse();
 
-    if (actor.role !== "ADMIN" && actor.role !== "MANAGER") {
-      return forbiddenResponse("เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถอนุมัติการย้ายสินค้าได้");
+    if (actor.role !== "ADMIN" && actor.role !== "MANAGER" && actor.role !== "APPROVER") {
+      return forbiddenResponse("เฉพาะผู้ดูแลระบบ หรือผู้อนุมัติ เท่านั้นที่สามารถอนุมัติการย้ายสินค้าได้");
     }
 
     const { id: docId } = await params;

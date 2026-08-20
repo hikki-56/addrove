@@ -8,6 +8,22 @@ export interface NavItem {
   roles?: UserRole[];
 }
 
+export function getNavItems(role?: UserRole): NavItem[] {
+  if (role === "APPROVER") {
+    const transferItem = navItems.find((i) => i.href === "/movements/transfer");
+    return transferItem ? [transferItem] : [];
+  }
+  const isAdmin = role === "ADMIN";
+  return navItems.map((item) => {
+    if (!isAdmin) {
+      if (item.href === "/movements/receive") return { ...item, href: "/staff/receive" };
+      if (item.href === "/movements/move") return { ...item, href: "/staff/move" };
+      if (item.href === "/movements/transfer") return { ...item, href: "/staff/transfer" };
+    }
+    return item;
+  });
+}
+
 export const navItems: NavItem[] = [
   {
     href: "/dashboard",
@@ -77,7 +93,7 @@ export const navItems: NavItem[] = [
         </svg>
       </div>
     ),
-    roles: ["ADMIN", "WAREHOUSE_STAFF"],
+    roles: ["ADMIN", "WAREHOUSE_STAFF", "APPROVER"],
   },
   {
     href: "/products",
@@ -179,23 +195,6 @@ export const navItems: NavItem[] = [
       <div className="w-5 h-5 rounded bg-emerald-50 border border-emerald-200 flex items-center justify-center p-0.5">
         <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-      </div>
-    ),
-    roles: ["ADMIN"],
-  },
-  {
-    href: "/express-import/transfer",
-    label: "ย้ายสินค้า เข้า Express",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-      </svg>
-    ),
-    staffIcon: (
-      <div className="w-5 h-5 rounded bg-purple-50 border border-purple-200 flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
       </div>
     ),

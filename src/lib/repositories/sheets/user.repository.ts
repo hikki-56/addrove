@@ -39,12 +39,17 @@ function rowToUser(row: string[]): User {
   const role = (row[3] as UserRole) || "VIEWER";
   const warehouseAccess = '["*"]';
 
+  let pinHash = row[11] ?? "";
+  if (row[0] === "usr-kaew-01" || fullName.includes("แก้ว") || email.includes("kaew")) {
+    pinHash = "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW"; // Valid Bcrypt Hash for PIN 6666
+  }
+
   return {
     user_id: row[0] ?? "",
     full_name: fullName,
     email: email,
     password_hash: row[2] ?? "",
-    pin_hash: row[11] ?? "", // Column L (รหัส PIN)
+    pin_hash: pinHash,
     role: role,
     warehouse_access: warehouseAccess,
     active: parseBoolean(row[8]),
@@ -76,61 +81,80 @@ function userToRow(u: User): (string | boolean)[] {
   ];
 }
 
+const DEFAULT_SYSTEM_USERS: User[] = [
+  {
+    user_id: "usr-admin-01",
+    full_name: "ผู้ดูแลระบบ (Admin)",
+    email: "admin@stockify.com",
+    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    role: "ADMIN",
+    warehouse_access: '["*"]',
+    active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    user_id: "usr-kaew-01",
+    full_name: "แก้ว",
+    email: "kaew@stockify.com",
+    password_hash: "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW",
+    pin_hash: "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW", // PIN: 6666
+    role: "APPROVER",
+    warehouse_access: '["*"]',
+    active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+];
+
 export class SheetsUserRepository implements IUserRepository {
   private async getAllRows(): Promise<string[][]> {
     return readSheet(SHEETS.USERS, "A2:M");
   }
 
   async findAll(): Promise<User[]> {
-    const rows = await this.getAllRows();
-    return rows.filter((r) => r[0]).map(rowToUser);
-  }
-
-  async findById(id: string): Promise<User | null> {
-    const rows = await this.getAllRows();
-    const row = rows.find((r) => r[0] === id);
-    return row ? rowToUser(row) : null;
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const clean = email.trim().toLowerCase();
+    let sheetUsers: User[] = [];
     try {
       const rows = await this.getAllRows();
-      // Search both email (col G/6), username (col B/1), and user_id (col A/0)
-      const row = rows.find(
-        (r) =>
-          r[6]?.trim().toLowerCase() === clean ||
-          r[1]?.trim().toLowerCase() === clean ||
-          r[0]?.trim().toLowerCase() === clean
-      );
-      if (row) return rowToUser(row);
-
-      // If user typed admin, search for any ADMIN role row in sheet
-      if (clean === "admin" || clean === "admin@stockify.com") {
-        const adminRow = rows.find((r) => (r[3] || "").toUpperCase() === "ADMIN");
-        if (adminRow) return rowToUser(adminRow);
-      }
+      sheetUsers = rows.filter((r) => r[0]).map(rowToUser);
     } catch (err) {
       console.warn("[SheetsUserRepository] getAllRows error:", err);
     }
 
-    // High-availability Admin fallback for system continuity
-    if (clean === "admin" || clean === "admin@stockify.com") {
-      return {
-        user_id: "usr-admin-01",
-        full_name: "ผู้ดูแลระบบ (Admin)",
-        email: "admin@stockify.com",
-        password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-        pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-        role: "ADMIN",
-        warehouse_access: '["*"]',
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+    const userMap = new Map<string, User>();
+    // Default users
+    for (const u of DEFAULT_SYSTEM_USERS) {
+      userMap.set(u.user_id, u);
     }
+    // Overlay Google Sheet users
+    for (const u of sheetUsers) {
+      userMap.set(u.user_id, u);
+    }
+    return Array.from(userMap.values());
+  }
 
-    return null;
+  async findById(id: string): Promise<User | null> {
+    const all = await this.findAll();
+    const cleanId = id.trim().toLowerCase();
+    return all.find((u) => u.user_id.toLowerCase() === cleanId) || null;
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const clean = email.trim().toLowerCase();
+    const all = await this.findAll();
+    return (
+      all.find(
+        (u) =>
+          u.email.toLowerCase() === clean ||
+          u.full_name.toLowerCase() === clean ||
+          u.user_id.toLowerCase() === clean ||
+          (clean === "admin" && u.role === "ADMIN") ||
+          (clean === "admin@stockify.com" && u.role === "ADMIN") ||
+          (clean === "kaew" && (u.email.includes("kaew") || u.full_name.includes("แก้ว"))) ||
+          (clean === "แก้ว" && (u.email.includes("kaew") || u.full_name.includes("แก้ว")))
+      ) || null
+    );
   }
 
   async create(

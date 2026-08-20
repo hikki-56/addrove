@@ -108,9 +108,12 @@ export async function createTransfer(
         ? await repo.movements.getWarehouseBalance(prod.product_id, fromWh.warehouse_id)
         : await repo.movements.getBalance(prod.product_id, fromWh.warehouse_id, rawFromLoc);
 
-      if (currentWarehouseBalance < input.qty) {
+      const prodSnapshotQty = Number(prod.quantity ?? prod.total_quantity ?? 0);
+      const effectiveBalance = Math.max(currentWarehouseBalance, prodSnapshotQty);
+
+      if (effectiveBalance < input.qty) {
         throw new InsufficientStockError(
-          `ยอดคงเหลือรวมสินค้าในโกดังต้นทาง (${currentWarehouseBalance}) ไม่เพียงพอสำหรับจำนวนที่ต้องการย้าย (${input.qty})`
+          `ยอดคงเหลือรวมสินค้าในโกดังต้นทาง (${effectiveBalance}) ไม่เพียงพอสำหรับจำนวนที่ต้องการย้าย (${input.qty})`
         );
       }
 
@@ -129,6 +132,8 @@ export async function createTransfer(
         assigned_to_user_id: input.assigned_to_user_id || "",
         assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
         assigned_by_user_id: input.user_id,
+        created_by: input.user_id,
+        created_by_name: (input as any).created_by_name || (input.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
         original_note: input.note,
         idempotency_key: input.idempotency_key,
       });
@@ -565,9 +570,12 @@ export async function completeTransfer(
           }
         }
 
-        if (currentSourceBalance < meta.qty) {
+        const prodSnapshotQty = Number(prodObj.quantity ?? (prodObj as any).total_quantity ?? 0);
+        const effectiveSourceBal = Math.max(currentSourceBalance, prodSnapshotQty);
+
+        if (effectiveSourceBal < meta.qty) {
           throw new InsufficientStockError(
-            `ยอดสินค้าในโกดังต้นทางมีเพียง ${currentSourceBalance.toLocaleString()} ชิ้น ซึ่งไม่พอย้ายจำนวน ${meta.qty.toLocaleString()} ชิ้น`
+            `ยอดสินค้าในโกดังต้นทางมีเพียง ${effectiveSourceBal.toLocaleString()} ชิ้น ซึ่งไม่พอย้ายจำนวน ${meta.qty.toLocaleString()} ชิ้น`
           );
         }
       }

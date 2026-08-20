@@ -171,35 +171,37 @@ export default function TransferForm({
           </div>
 
           {totalItemsCount === 0 ? (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-slate-500 text-xs font-medium space-y-1">
-              <div>📦 ยังไม่ได้เลือกสินค้า</div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs font-normal space-y-1">
+              <div className="font-semibold text-slate-700">ยังไม่ได้เลือกสินค้า</div>
               <div className="text-slate-400">ค้นหาและคลิกเลือกสินค้าในช่องด้านบน สามารถเลือกได้หลายรายการ</div>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[340px] overflow-y-auto pr-0.5">
+            <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-0.5">
               {selectedItems.map((item, idx) => (
                 <div
                   key={`sel-item-${item.product_id}-${idx}`}
-                  className="p-5 sm:p-6 rounded-3xl bg-slate-50/95 border-2 border-slate-300 shadow-md flex flex-col gap-4 hover:border-indigo-400 transition-all"
+                  className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col gap-3 hover:border-slate-300 transition-all"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-1">
-                      {/* อันแรก: บาร์โค้ดขนาดใหญ่เด่นชัด */}
-                      <div className="text-slate-950 font-mono font-black text-lg sm:text-xl tracking-wide flex items-center gap-2">
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                      {/* Barcode */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shrink-0">
                           บาร์โค้ด
                         </span>
-                        <span className="truncate">{item.barcode || item.sku}</span>
+                        <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
+                          {item.barcode || item.sku}
+                        </span>
                       </div>
 
-                      {/* อันที่สอง: SKU */}
-                      <div className="text-xs sm:text-sm text-slate-600 font-mono flex items-center gap-1.5">
-                        <span className="text-slate-500 font-medium">SKU:</span>
-                        <strong className="text-slate-900 font-bold">{item.sku}</strong>
+                      {/* SKU */}
+                      <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                        <span>SKU:</span>
+                        <strong className="text-slate-700 font-semibold">{item.sku}</strong>
                       </div>
 
-                      {/* อันที่สาม: ชื่อสินค้า */}
-                      <div className="text-xs sm:text-sm text-slate-700 font-medium leading-snug line-clamp-2">
+                      {/* Product Name */}
+                      <div className="text-xs sm:text-sm text-slate-800 font-medium leading-normal line-clamp-2">
                         {item.product_name}
                       </div>
                     </div>
@@ -208,18 +210,18 @@ export default function TransferForm({
                       <button
                         type="button"
                         onClick={() => removeItem(idx)}
-                        className="p-2.5 text-slate-400 hover:text-rose-600 rounded-2xl hover:bg-rose-100/70 cursor-pointer transition-all shrink-0 active:scale-90"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-all shrink-0 active:scale-95"
                         title="ลบรายการนี้"
                       >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 pt-3 border-t-2 border-slate-200">
-                    <div className="flex items-center border-2 border-slate-300 rounded-2xl bg-white overflow-hidden shadow-xs">
+                  <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-100">
+                    <div className="flex items-center border border-slate-200 rounded-xl bg-white overflow-hidden shadow-xs">
                       <button
                         type="button"
                         onClick={() => updateItemQty && updateItemQty(idx, Math.max(1, item.qty - 1))}

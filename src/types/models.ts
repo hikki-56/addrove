@@ -167,7 +167,7 @@ export interface StockCount {
 }
 
 // ------ User ------
-export type UserRole = "ADMIN" | "MANAGER" | "WAREHOUSE_STAFF" | "STAFF" | "VIEWER";
+export type UserRole = "ADMIN" | "MANAGER" | "APPROVER" | "WAREHOUSE_STAFF" | "STAFF" | "VIEWER";
 
 export interface User {
   user_id: UserId;

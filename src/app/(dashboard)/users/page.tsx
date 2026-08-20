@@ -260,6 +260,7 @@ export default function UsersPage() {
           >
             <option value="" className="bg-[#111118] text-white">ทุกบทบาท</option>
             <option value="ADMIN" className="bg-[#111118] text-white">ผู้ดูแลระบบ (Admin)</option>
+            <option value="APPROVER" className="bg-[#111118] text-white">ผู้อนุมัติ (Approver)</option>
             <option value="WAREHOUSE_STAFF" className="bg-[#111118] text-white">พนักงานคลัง (Staff)</option>
             <option value="VIEWER" className="bg-[#111118] text-white">ผู้ชม (Viewer)</option>
           </select>
@@ -306,6 +307,11 @@ export default function UsersPage() {
                       {u.role === "ADMIN" && (
                         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
                           ผู้ดูแลระบบ
+                        </span>
+                      )}
+                      {u.role === "APPROVER" && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          ผู้อนุมัติ
                         </span>
                       )}
                       {u.role === "WAREHOUSE_STAFF" && (
@@ -421,6 +427,7 @@ export default function UsersPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm"
                 >
                   <option value="WAREHOUSE_STAFF" className="bg-[#111118]">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
+                  <option value="APPROVER" className="bg-[#111118]">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
                   <option value="ADMIN" className="bg-[#111118]">ผู้ดูแลระบบ (สิทธิ์จัดการเต็มรูปแบบ)</option>
                   <option value="VIEWER" className="bg-[#111118]">ผู้ชม (ดูข้อมูลได้อย่างเดียว)</option>
                 </select>
@@ -532,6 +539,7 @@ export default function UsersPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm"
                 >
                   <option value="WAREHOUSE_STAFF" className="bg-[#111118]">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
+                  <option value="APPROVER" className="bg-[#111118]">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
                   <option value="ADMIN" className="bg-[#111118]">ผู้ดูแลระบบ (สิทธิ์จัดการเต็มรูปแบบ)</option>
                   <option value="VIEWER" className="bg-[#111118]">ผู้ชม (ดูข้อมูลได้อย่างเดียว)</option>
                 </select>

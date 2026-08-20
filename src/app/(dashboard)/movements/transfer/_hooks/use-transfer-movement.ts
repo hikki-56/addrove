@@ -107,7 +107,15 @@ export function useTransferMovement({
   refreshData,
 }: UseTransferMovementOptions) {
   const { user: tabUser } = useTabAuth();
-  const [activeMode, setActiveMode] = useState<"ADMIN_CREATE" | "STAFF_EXECUTE" | "WAITING_APPROVAL">("ADMIN_CREATE");
+  const [activeMode, setActiveMode] = useState<"ADMIN_CREATE" | "STAFF_EXECUTE" | "WAITING_APPROVAL">(
+    () => (tabUser?.role === "APPROVER" ? "WAITING_APPROVAL" : "ADMIN_CREATE")
+  );
+
+  useEffect(() => {
+    if (tabUser?.role === "APPROVER") {
+      setActiveMode("WAITING_APPROVAL");
+    }
+  }, [tabUser?.role]);
   const [submitted, setSubmitted] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState("");
   const [error, setError] = useState("");
@@ -1041,7 +1049,8 @@ export function useTransferMovement({
               from_warehouse_name: fromWhName,
               to_warehouse_id: data.to_warehouse_id,
               to_warehouse_name: toWhName,
-              created_by: tabUser?.name || "Admin",
+              created_by: tabUser?.id || "admin",
+              created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
               created_at: realDoc.created_at || new Date().toISOString(),
               status: "PENDING",
               moved_by: assignedName,
