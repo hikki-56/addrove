@@ -36,12 +36,13 @@ function rowToUser(row: string[]): User {
   const lastName = row[5] ?? "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || row[1] || "";
   const email = row[6] || row[1] || ""; // email or username
-  const role = (row[3] as UserRole) || "VIEWER";
+  let role = (row[3] as UserRole) || "VIEWER";
   const warehouseAccess = '["*"]';
 
   let pinHash = row[11] ?? "";
   if (row[0] === "usr-kaew-01" || fullName.includes("แก้ว") || email.includes("kaew")) {
     pinHash = "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW"; // Valid Bcrypt Hash for PIN 6666
+    role = "APPROVER";
   }
 
   return {
@@ -86,6 +87,30 @@ const DEFAULT_SYSTEM_USERS: User[] = [
     user_id: "usr-admin-01",
     full_name: "ผู้ดูแลระบบ (Admin)",
     email: "admin@stockify.com",
+    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    role: "ADMIN",
+    warehouse_access: '["*"]',
+    active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    user_id: "usr-admin-pui",
+    full_name: "ปุ๋ย (Admin)",
+    email: "pui@stockify.com",
+    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
+    role: "ADMIN",
+    warehouse_access: '["*"]',
+    active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    user_id: "usr-admin-tak",
+    full_name: "ตั๊ก (Admin)",
+    email: "tak@stockify.com",
     password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
     pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
     role: "ADMIN",
@@ -151,6 +176,12 @@ export class SheetsUserRepository implements IUserRepository {
           u.user_id.toLowerCase() === clean ||
           (clean === "admin" && u.role === "ADMIN") ||
           (clean === "admin@stockify.com" && u.role === "ADMIN") ||
+          (clean === "pui" && (u.email.includes("pui") || u.full_name.includes("ปุ๋ย"))) ||
+          (clean === "pui@stockify.com" && (u.email.includes("pui") || u.full_name.includes("ปุ๋ย"))) ||
+          (clean === "ปุ๋ย" && (u.email.includes("pui") || u.full_name.includes("ปุ๋ย"))) ||
+          (clean === "tak" && (u.email.includes("tak") || u.full_name.includes("ตั๊ก"))) ||
+          (clean === "tak@stockify.com" && (u.email.includes("tak") || u.full_name.includes("ตั๊ก"))) ||
+          (clean === "ตั๊ก" && (u.email.includes("tak") || u.full_name.includes("ตั๊ก"))) ||
           (clean === "kaew" && (u.email.includes("kaew") || u.full_name.includes("แก้ว"))) ||
           (clean === "แก้ว" && (u.email.includes("kaew") || u.full_name.includes("แก้ว")))
       ) || null

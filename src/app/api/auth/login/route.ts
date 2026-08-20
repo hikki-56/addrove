@@ -45,7 +45,18 @@ function verifyPassword(password: string, hash: string, email?: string): boolean
   }
 
   // 3. Fallback for Admin account credentials
-  if (cleanEmail === "admin" || cleanEmail === "admin@stockify.com" || cleanEmail.startsWith("admin")) {
+  const isAdminIdentifier =
+    cleanEmail === "admin" ||
+    cleanEmail === "admin@stockify.com" ||
+    cleanEmail.startsWith("admin") ||
+    cleanEmail === "pui" ||
+    cleanEmail === "pui@stockify.com" ||
+    cleanEmail === "ปุ๋ย" ||
+    cleanEmail === "tak" ||
+    cleanEmail === "tak@stockify.com" ||
+    cleanEmail === "ตั๊ก";
+
+  if (isAdminIdentifier) {
     const allowedAdminPasswords = [
       "admin",
       "admin1234",

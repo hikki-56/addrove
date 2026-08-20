@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
     const defaultAssignedUserId = parsed.data.assigned_to_user_id || actor.id;
     const defaultAssignedName = parsed.data.assigned_to_name || session?.user?.name || defaultMovedBy;
 
+    const defaultCreatedByName =
+      parsed.data.created_by_name ||
+      session?.user?.name ||
+      (actor as any).name ||
+      (actor.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "ผู้สร้างใบเบิก");
+
     const doc = await createTransfer(
       { repo },
       {
@@ -41,8 +47,9 @@ export async function POST(req: NextRequest) {
         moved_by: defaultMovedBy,
         assigned_to_user_id: defaultAssignedUserId,
         assigned_to_name: defaultAssignedName,
-        user_id: actor.id,
-        created_by_name: session?.user?.name || (actor.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "ผู้สร้างใบเบิก"),
+        user_id: parsed.data.created_by || actor.id,
+        created_by: parsed.data.created_by || actor.id,
+        created_by_name: defaultCreatedByName,
         role: actor.role,
         correlation_id: actor.correlationId,
         warehouse_access: actor.warehouseAccess,

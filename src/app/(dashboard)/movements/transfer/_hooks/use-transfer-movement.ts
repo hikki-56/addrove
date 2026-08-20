@@ -1025,6 +1025,8 @@ export function useTransferMovement({
                 moved_by: assignedName,
                 assigned_to_user_id: assignedUserId,
                 assigned_to_name: assignedName,
+                created_by: tabUser?.id || "admin",
+                created_by_name: tabUser?.name || "Admin",
                 document_date: docDateVal,
                 idempotency_key: itemKey,
               }),

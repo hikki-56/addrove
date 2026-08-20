@@ -221,18 +221,18 @@ export default function TransferNotificationList({
                     <div className="w-full flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-1 flex-1 min-w-[200px]">
                         <div className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                           <span>พนักงานเบิกสินค้าเรียบร้อยแล้ว รอ Admin อนุมัติ</span>
                         </div>
                         {/* Creator & Performer info */}
                         <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/70 font-medium">
-                            <span>📝 ผู้สร้างใบเบิก:</span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/70 font-medium">
+                            <span className="text-slate-500">ผู้สร้างใบเบิก:</span>
                             <strong className="text-slate-900 font-semibold">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                           </span>
                           {(t.moved_by || t.assigned_to_name) && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200/70 font-medium">
-                              <span>📦 ผู้เบิกสินค้า:</span>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200/70 font-medium">
+                              <span className="text-indigo-600">ผู้เบิกสินค้า:</span>
                               <strong className="text-indigo-950 font-semibold">{t.moved_by || t.assigned_to_name}</strong>
                             </span>
                           )}
@@ -315,12 +315,6 @@ export default function TransferNotificationList({
                         <span>📝 ผู้สร้าง:</span>
                         <strong className="text-slate-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                       </span>
-                      {(t.moved_by || t.assigned_to_name) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-medium text-[11px]">
-                          <span>👤 มอบหมาย:</span>
-                          <strong className="text-indigo-900">{t.moved_by || t.assigned_to_name}</strong>
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex items-center gap-2">

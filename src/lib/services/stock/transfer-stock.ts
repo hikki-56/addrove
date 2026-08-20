@@ -132,7 +132,7 @@ export async function createTransfer(
         assigned_to_user_id: input.assigned_to_user_id || "",
         assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
         assigned_by_user_id: input.user_id,
-        created_by: input.user_id,
+        created_by: (input as any).created_by || input.user_id,
         created_by_name: (input as any).created_by_name || (input.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
         original_note: input.note,
         idempotency_key: input.idempotency_key,
@@ -145,7 +145,7 @@ export async function createTransfer(
         document_date: input.document_date,
         status: "PENDING",
         note: notePayload,
-        created_by: input.user_id,
+        created_by: (input as any).created_by || input.user_id,
         assigned_to_user_id: input.assigned_to_user_id || "",
         assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
         assigned_by_user_id: input.user_id,
@@ -318,8 +318,8 @@ export async function completeTransfer(
     rawFromLoc = meta.from_location_id || "A1";
   }
 
-  // Warehouse authorization check: receiver MUST have destination warehouse access (unless ADMIN)
-  if (realUserRole && realUserRole !== "ADMIN" && realWarehouseAccess !== undefined) {
+  // Warehouse authorization check: receiver MUST have destination warehouse access (unless ADMIN or APPROVER)
+  if (realUserRole && realUserRole !== "ADMIN" && realUserRole !== "APPROVER" && realWarehouseAccess !== undefined) {
     const hasTo = hasWarehouseAccess(realWarehouseAccess, meta.to_warehouse_id);
     if (!hasTo) {
       throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในโกดังปลายทางสำหรับเอกสารใบย้ายสินค้านี้");
@@ -333,8 +333,8 @@ export async function completeTransfer(
       .replace(/^usr-/, "")
       .replace(/^user-/, "");
 
-  // Assignee authorization check: non-ADMIN user MUST be the assigned staff member
-  if (realUserRole && realUserRole !== "ADMIN" && realUserRole !== "MANAGER") {
+  // Assignee authorization check: non-ADMIN/MANAGER/APPROVER user MUST be the assigned staff member
+  if (realUserRole && realUserRole !== "ADMIN" && realUserRole !== "MANAGER" && realUserRole !== "APPROVER") {
     const assignedUserId = String(doc.assigned_to_user_id || meta.assigned_to_user_id || "").trim();
     const assignedName = String(doc.assigned_to_name || meta.assigned_to_name || meta.moved_by || "").trim();
     const actorId = String(realUserId || "").trim();
@@ -761,8 +761,8 @@ export async function cancelTransfer(
     throw new InvalidTransferStateError("ข้อมูลเอกสารใบย้ายสินค้าไม่สมบูรณ์หรือไม่ถูกต้อง");
   }
 
-  // Warehouse authorization check: canceler MUST have source warehouse access (unless ADMIN)
-  if (userRole && userRole !== "ADMIN" && warehouseAccess !== undefined) {
+  // Warehouse authorization check: canceler MUST have source warehouse access (unless ADMIN or APPROVER)
+  if (userRole && userRole !== "ADMIN" && userRole !== "APPROVER" && warehouseAccess !== undefined) {
     const hasFrom = hasWarehouseAccess(warehouseAccess, meta.from_warehouse_id);
     if (!hasFrom) {
       throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในโกดังต้นทางสำหรับเอกสารใบย้ายสินค้านี้");

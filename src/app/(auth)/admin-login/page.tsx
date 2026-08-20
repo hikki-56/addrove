@@ -8,7 +8,7 @@ import { z } from "zod";
 import { useTabAuth } from "@/context/TabAuthContext";
 
 const adminLoginSchema = z.object({
-  email: z.string().min(1, "กรุณากรอกอีเมล").email("รูปแบบอีเมลไม่ถูกต้อง"),
+  email: z.string().min(1, "กรุณากรอกอีเมลหรือชื่อผู้ใช้"),
   password: z.string().min(1, "กรุณากรอกรหัสผ่าน"),
 });
 

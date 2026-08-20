@@ -409,9 +409,28 @@ export function saveTransferNotification(task: TransferNotification, options?: {
         cleanTask.current_step_text = existing[existingIndex].current_step_text;
         cleanTask.last_active_at = existing[existingIndex].last_active_at;
       }
-      if (!cleanTask.created_by_name && existing[existingIndex].created_by_name) {
+      const isGenericName = (name?: string) => {
+        if (!name) return true;
+        const lower = name.trim().toLowerCase();
+        return (
+          lower === "ผู้ดูแลระบบ (admin)" ||
+          lower === "ผู้ดูแลระบบ" ||
+          lower === "admin" ||
+          lower === "ผู้สร้างใบเบิก" ||
+          lower === "ผู้ใช้งาน"
+        );
+      };
+
+      if (
+        existing[existingIndex].created_by_name &&
+        !isGenericName(existing[existingIndex].created_by_name) &&
+        isGenericName(cleanTask.created_by_name)
+      ) {
+        cleanTask.created_by_name = existing[existingIndex].created_by_name;
+      } else if (!cleanTask.created_by_name && existing[existingIndex].created_by_name) {
         cleanTask.created_by_name = existing[existingIndex].created_by_name;
       }
+
       if (!cleanTask.created_by && existing[existingIndex].created_by) {
         cleanTask.created_by = existing[existingIndex].created_by;
       }
@@ -485,11 +504,9 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const createdBy = String(meta.created_by || doc.created_by || "").trim();
       const createdByName = String(
         meta.created_by_name ||
-        (createdBy.toLowerCase().includes("admin") || doc.created_by?.toLowerCase().includes("admin")
-          ? "ผู้ดูแลระบบ (Admin)"
-          : "") ||
-        createdBy ||
-        "ผู้ดูแลระบบ (Admin)"
+        doc.created_by_name ||
+        (createdBy && !createdBy.toLowerCase().includes("admin") && !createdBy.startsWith("usr-") ? createdBy : "") ||
+        ""
       ).trim();
 
       if (docId) serverActiveDocIds.add(docId);

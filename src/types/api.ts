@@ -186,6 +186,8 @@ export const TransferDocumentSchema = z.object({
   moved_by: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : "พนักงาน")),
   assigned_to_user_id: z.string().optional(),
   assigned_to_name: z.string().optional(),
+  created_by: z.string().optional(),
+  created_by_name: z.string().optional(),
   reference_no: z.string().max(100).optional().default(""),
   document_date: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : new Date().toISOString().slice(0, 10))),
   note: z.string().max(500).optional().default(""),
