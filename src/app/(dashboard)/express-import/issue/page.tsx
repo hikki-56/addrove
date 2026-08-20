@@ -321,7 +321,7 @@ export default function ExpressIssuePage() {
             document_id: m.document_id,
             product_id: m.product_id,
             sku: m.sku,
-            barcode: m.barcode,
+            barcode: (m as unknown as Record<string, unknown>).barcode as string | undefined,
             product_name: m.product_name,
           });
 
@@ -332,7 +332,7 @@ export default function ExpressIssuePage() {
             combinedMovements.push({
               ...m,
               sku: resolved.sku || m.sku,
-              barcode: resolved.barcode || m.barcode,
+              barcode: resolved.barcode || ((m as unknown as Record<string, unknown>).barcode as string | undefined),
               product_name: resolved.product_name || m.product_name,
               from_warehouse_name: fromWh,
               to_warehouse_name: toWh,
@@ -1263,7 +1263,7 @@ export default function ExpressIssuePage() {
                   {/* Visual Code 128 Barcode Image (Crisp Box) */}
                   {displayFields.barcode && (
                     <div className="py-2.5 w-full max-w-full overflow-x-auto min-w-0 flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-slate-200 shadow-xs print:border-black">
-                      <BarcodeSvg value={barcodeValue} height={65} showText={true} />
+                      <BarcodeSvg value={barcodeValue} height={75} showText={true} />
                     </div>
                   )}
 

@@ -932,7 +932,7 @@ export default function ExpressReceivePage() {
                   {/* Visual Code 128 Barcode Image (Crisp Box) */}
                   {displayFields.barcode && (
                     <div className="py-2.5 w-full max-w-full overflow-x-auto min-w-0 flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-slate-200 shadow-xs print:border-black">
-                      <BarcodeSvg value={barcodeValue} height={65} showText={true} />
+                      <BarcodeSvg value={barcodeValue} height={75} showText={true} />
                     </div>
                   )}
 

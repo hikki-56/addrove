@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { to8DigitBarcode, encodeCode128Modules } from "@/lib/barcode-utils";
+import React, { useEffect, useRef, useState } from "react";
+import JsBarcode from "jsbarcode";
+import { to8DigitBarcode } from "@/lib/barcode-utils";
 
 interface BarcodeSvgProps {
   value: string;
@@ -16,91 +17,152 @@ interface BarcodeSvgProps {
 export default function BarcodeSvg({
   value,
   width = 2,
-  height = 55,
+  height = 75,
   showText = true,
   className = "",
-  fontSize = 13,
+  fontSize = 14,
   textPosition = "bottom",
 }: BarcodeSvgProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const zoomCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
   const cleanValue = (to8DigitBarcode(value) || value || "").trim();
+
+  useEffect(() => {
+    if (!canvasRef.current || !cleanValue) return;
+    try {
+      JsBarcode(canvasRef.current, cleanValue, {
+        format: "CODE128",
+        width: Math.max(1.8, width),
+        height: Math.max(60, height),
+        displayValue: showText,
+        textPosition: textPosition,
+        font: "monospace",
+        fontOptions: "bold",
+        fontSize: fontSize,
+        textMargin: 4,
+        margin: 12,
+        background: "#FFFFFF",
+        lineColor: "#000000",
+      });
+    } catch (err) {
+      console.error("Barcode rendering error:", err);
+    }
+  }, [cleanValue, width, height, showText, fontSize, textPosition]);
+
+  useEffect(() => {
+    if (!isZoomed || !zoomCanvasRef.current || !cleanValue) return;
+    try {
+      JsBarcode(zoomCanvasRef.current, cleanValue, {
+        format: "CODE128",
+        width: 3.5,
+        height: 125,
+        displayValue: true,
+        textPosition: "bottom",
+        font: "monospace",
+        fontOptions: "bold",
+        fontSize: 22,
+        textMargin: 8,
+        margin: 20,
+        background: "#FFFFFF",
+        lineColor: "#000000",
+      });
+    } catch (err) {
+      console.error("Zoom barcode rendering error:", err);
+    }
+  }, [isZoomed, cleanValue]);
+
   if (!cleanValue) {
     return (
-      <div className={`inline-flex flex-col items-center justify-center p-3 rounded-lg border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none ${className}`}>
+      <div className={`inline-flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none ${className}`}>
         <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
       </div>
     );
   }
 
-  const modules = encodeCode128Modules(cleanValue);
-
-  // Calculate total barcode width
-  let totalUnits = 0;
-  modules.forEach((m) => {
-    totalUnits += m.width;
-  });
-
-  // Include quiet zone (10 units on left & right)
-  const quietZone = 10;
-  const fullUnits = totalUnits + quietZone * 2;
-  const svgWidth = fullUnits * width;
-  const textHeight = showText ? Math.max(22, fontSize + 8) : 0;
-  const svgHeight = height + textHeight;
-
-  const barStartY = showText && textPosition === "top" ? textHeight : 0;
-
-  let currentX = quietZone * width;
-  const rects: React.JSX.Element[] = [];
-
-  modules.forEach((m, idx) => {
-    const barW = m.width * width;
-    if (m.isBar) {
-      rects.push(
-        <rect
-          key={idx}
-          x={currentX}
-          y={barStartY}
-          width={barW}
-          height={height}
-          fill="#000000"
-        />
-      );
-    }
-    currentX += barW;
-  });
-
-  const textY = textPosition === "top" ? fontSize + 2 : height + fontSize + 2;
-
   return (
-    <div className={`inline-flex flex-col items-center bg-white p-2.5 rounded-lg border border-slate-300 shadow-xs select-none ${className}`}>
-      <svg
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        width={svgWidth}
-        height={svgHeight}
-        style={{ maxWidth: "100%", height: "auto" }}
-        xmlns="http://www.w3.org/2000/svg"
-        shapeRendering="crispEdges"
+    <>
+      <div
+        onClick={() => setIsZoomed(true)}
+        title="🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"
+        className={`group relative inline-flex flex-col items-center justify-center bg-white p-2 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none ${className}`}
       >
-        {/* Background White for 100% barcode scanner contrast */}
-        <rect width={svgWidth} height={svgHeight} fill="#FFFFFF" />
-        <g fill="#000000">
-          {rects}
-          {showText && (
-            <text
-              x={svgWidth / 2}
-              y={textY}
-              textAnchor="middle"
-              fontSize={fontSize}
-              fontWeight="bold"
-              fontFamily="monospace, Courier, sans-serif"
-              fill="#000000"
-              letterSpacing="1"
+        <canvas
+          ref={canvasRef}
+          style={{
+            maxWidth: "100%",
+            height: "auto",
+            display: "block",
+          }}
+        />
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[9px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
+          <span>🔍</span> ขยาย
+        </div>
+      </div>
+
+      {/* Giant Fullscreen Barcode Modal */}
+      {isZoomed && (
+        <div
+          onClick={() => setIsZoomed(false)}
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-slate-200 flex flex-col items-center gap-6 relative cursor-default"
+          >
+            <button
+              type="button"
+              onClick={() => setIsZoomed(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full text-xl transition-all cursor-pointer"
             >
-              {cleanValue}
-            </text>
-          )}
-        </g>
-      </svg>
-    </div>
+              ✕
+            </button>
+
+            <div className="text-center space-y-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
+                🎯 ขนาดใหญ่พิเศษสำหรับเครื่องยิงบาร์โค้ด
+              </span>
+              <h3 className="text-lg font-black text-slate-800">
+                บาร์โค้ด: <span className="font-mono text-indigo-700">{cleanValue}</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                สามารถใช้เครื่องยิงบาร์โค้ดยิงที่กรอบสีขาวด้านล่างได้ทันที (ระยะยิง 10 - 50 ซม.)
+              </p>
+            </div>
+
+            {/* Giant White Box Canvas */}
+            <div className="bg-white p-6 rounded-2xl border-2 border-slate-300 shadow-inner flex flex-col items-center justify-center w-full overflow-x-auto">
+              <canvas
+                ref={zoomCanvasRef}
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  display: "block",
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(cleanValue);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm border border-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>📋 คัดลอกเลขบาร์โค้ด</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsZoomed(false)}
+                className="py-3 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition-all cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
