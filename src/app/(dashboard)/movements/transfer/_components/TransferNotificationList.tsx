@@ -54,7 +54,7 @@ export default function TransferNotificationList({
           const barcode = t.barcode && t.barcode.trim() !== "-" ? t.barcode.trim() : "";
           const isCancelling = cancellingId === t.id;
           const isApproving = approvingId === t.id;
-          const isWaitingApproval = t.status === "WAITING_APPROVAL" || t.current_step === 3;
+          const isWaitingApproval = t.status === "WAITING_APPROVAL";
           const step = t.current_step || 0; // 0 = Pending, 1 = Scan Prod, 2 = Source Pick, 3 = Dest Putaway, 4 = Done
 
           // Step badge config
@@ -79,6 +79,13 @@ export default function TransferNotificationList({
                 badge: "bg-amber-50 text-amber-700 border-amber-200",
                 dot: "bg-amber-500",
               }
+            : step === 3
+            ? {
+                title: "กำลังสแกนตำแหน่งปลายทาง",
+                detail: `พนักงานกำลังนำสินค้าเข้าตำแหน่งปลายทางใน ${t.to_warehouse_name}`,
+                badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
+                dot: "bg-indigo-500",
+              }
             : step >= 4
             ? {
                 title: "เบิกสินค้าสำเร็จ",
@@ -97,7 +104,7 @@ export default function TransferNotificationList({
             <div
               key={t.id}
               onClick={!isAdmin && !isWaitingApproval ? () => onSelectTask(t) : undefined}
-              className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs transition-all duration-150 space-y-3.5 relative ${
+              className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs transition-all duration-150 space-y-3.5 relative min-w-0 max-w-full overflow-hidden ${
                 !isAdmin && !isWaitingApproval
                   ? "cursor-pointer hover:border-emerald-400 hover:shadow-md group"
                   : "cursor-default"
@@ -125,7 +132,7 @@ export default function TransferNotificationList({
 
                 {/* Live Current Step Badge */}
                 <div className={`px-2.5 py-1 rounded-full border flex items-center gap-1.5 font-medium text-xs ${stepConfig.badge}`}>
-                  <span className={`h-2 w-2 rounded-full ${stepConfig.dot} ${isWaitingApproval || step > 0 ? "animate-pulse" : ""}`} />
+                  <span className={`h-2 w-2 rounded-full ${stepConfig.dot}`} />
                   <span>{stepConfig.title}</span>
                   {step > 0 && step < 3 && (
                     <span className="font-mono text-[11px] opacity-75">({step}/3)</span>
@@ -276,7 +283,7 @@ export default function TransferNotificationList({
                     <div className="w-full flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="text-xs text-amber-800 font-medium bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                           <span>เบิกสินค้าแล้ว (ส่งให้ Admin อนุมัติเรียบร้อยแล้ว)</span>
                         </div>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/70 text-[11px] font-medium">

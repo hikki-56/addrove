@@ -97,33 +97,10 @@ export class SheetsLocationRepository implements ILocationRepository {
       const loc = rowToLocation(r);
       const shelfData = shelfMapByLocId.get(loc.location_id) || shelfMapByLocId.get(loc.location_id.toLowerCase());
       if (shelfData) {
-        if (shelfData.shelf_code) loc.shelf_code = shelfData.shelf_code;
         if (shelfData.shelf_name) loc.shelf_name = shelfData.shelf_name;
       }
       return loc;
     });
-
-    // Also include discrete shelves from SHELVES tab as scannable locations
-    const existingCodes = new Set(locations.map((l) => (l.location_code || "").trim().toLowerCase()));
-    for (const r of allShelves) {
-      if (!r || !r[2] || !r[2].trim()) continue;
-      const shelfCode = r[2].trim();
-      if (existingCodes.has(shelfCode.toLowerCase())) continue;
-      existingCodes.add(shelfCode.toLowerCase());
-
-      const parentLoc = locations.find((l) => l.location_id === r[1]?.trim());
-      locations.push({
-        location_id: r[0]?.trim() || `sh-${shelfCode}`,
-        warehouse_id: parentLoc?.warehouse_id || "wh-01",
-        location_code: shelfCode,
-        location_name: r[3]?.trim() || shelfCode,
-        shelf_code: shelfCode,
-        shelf_name: r[3]?.trim() || shelfCode,
-        active: true,
-        created_at: "",
-        updated_at: "",
-      });
-    }
 
     if (warehouseId) {
       const targetWh = normalizeWarehouseId(warehouseId);

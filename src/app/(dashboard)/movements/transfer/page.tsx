@@ -163,6 +163,7 @@ export default function TransferPage() {
           watchFromWh={watchFromWh}
           watchToWh={watchToWh}
           error={error}
+          successMessage={transferHook.successMessage}
           onSubmit={onSubmit}
           onErrorPrompt={setError}
           selectedItems={transferHook.selectedItems}
@@ -178,7 +179,7 @@ export default function TransferPage() {
           onSelectTask={(task) => {
             if (!canApprove && task.status !== "WAITING_APPROVAL") {
               setSelectedTask(task);
-              setStaffStep(1);
+              setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
             }
           }}
           onCancelTask={handleCancelTransfer}
@@ -196,7 +197,7 @@ export default function TransferPage() {
           isAdmin={isAdmin}
           onSelectTask={(task) => {
             setSelectedTask(task);
-            setStaffStep(1);
+            setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
           }}
           onCancelTask={handleCancelTransfer}
           onApproveTask={handleApproveTransfer}
@@ -220,6 +221,10 @@ export default function TransferPage() {
         setStaffScanSourceLocationInput={setStaffScanSourceLocationInput}
         staffScanDestLocationInput={staffScanDestLocationInput}
         setStaffScanDestLocationInput={setStaffScanDestLocationInput}
+        scannedToLocation={transferHook.scannedToLocation}
+        setScannedToLocation={transferHook.setScannedToLocation}
+        isSubmittingTransfer={transferHook.isSubmittingTransfer}
+        onSubmitTransfer={transferHook.handleSubmitTransfer}
         sourceAllocations={transferHook.sourceAllocations}
         onUpdateSourceAllocationQty={transferHook.handleUpdateSourceAllocationQty}
         onRemoveSourceAllocation={transferHook.handleRemoveSourceAllocation}

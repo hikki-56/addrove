@@ -84,6 +84,32 @@ export function findMatchingProduct(t: Partial<TransferNotification> | null | un
   });
 }
 
+export function areTasksEqual(a: TransferNotification[], b: TransferNotification[]): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const t1 = a[i];
+    const t2 = b[i];
+    if (
+      t1.id !== t2.id ||
+      t1.status !== t2.status ||
+      t1.current_step !== t2.current_step ||
+      t1.current_step_text !== t2.current_step_text ||
+      t1.qty !== t2.qty ||
+      t1.product_id !== t2.product_id ||
+      t1.sku !== t2.sku ||
+      t1.barcode !== t2.barcode ||
+      t1.from_warehouse_id !== t2.from_warehouse_id ||
+      t1.to_warehouse_id !== t2.to_warehouse_id ||
+      t1.from_location_id !== t2.from_location_id ||
+      t1.to_location_id !== t2.to_location_id
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export const defaultStaff = [
   { id: "usr-staff-01", full_name: "สมชาย ใจดี", role: "WAREHOUSE_STAFF" },
   { id: "usr-staff-02", full_name: "สมศักดิ์ ขยันยิ่ง", role: "WAREHOUSE_STAFF" },
@@ -119,6 +145,7 @@ export function useTransferMovement({
   const [submitted, setSubmitted] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [pendingTasks, setPendingTasks] = useState<TransferNotification[]>([]);
   const [waitingApprovalTasks, setWaitingApprovalTasks] = useState<TransferNotification[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -133,6 +160,7 @@ export function useTransferMovement({
   const [destLocations, setDestLocations] = useState<Location[]>([]);
   const [scannedFromLocation, setScannedFromLocation] = useState("");
   const [scannedToLocation, setScannedToLocation] = useState("");
+  const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
   const [sourceAllocations, setSourceAllocations] = useState<Array<{ location_id: string; location_name?: string; max_qty?: number; qty: number }>>([]);
   const [staffError, setStaffError] = useState("");
   const [staffSuccess, setStaffSuccess] = useState("");
@@ -272,6 +300,7 @@ export function useTransferMovement({
   const [selectedItems, setSelectedItems] = useState<SelectedTransferItem[]>([]);
 
   const addTransferItem = useCallback((prod: Product) => {
+    setSuccessMessage("");
     const stockQty = prod.quantity ?? prod.total_quantity ?? 0;
     setSelectedItems((prev) => {
       const idx = prev.findIndex((i) => i.product_id === prod.product_id);
@@ -353,15 +382,18 @@ export function useTransferMovement({
   useEffect(() => {
     const updateTasks = () => {
       const all = getTransferNotifications();
-      const staffName = tabUser?.role !== "ADMIN" ? tabUser?.name : undefined;
+      const isAdmin = tabUser?.role === "ADMIN" || tabUser?.role === "APPROVER";
+      const isStaff = !isAdmin;
       
-      // All users see all pending tasks (shared team visibility)
-      const pending = getPendingTransferNotifications();
-      setPendingTasks(pending);
+      // If staff, strictly filter by the active warehouse they scanned into
+      const pending = isStaff
+        ? getPendingTransferNotifications(tabUser?.name, activeWhId)
+        : getPendingTransferNotifications(undefined, undefined);
+        
+      const waiting = all.filter((t) => t && t.status === "WAITING_APPROVAL");
 
-      // All users see all waiting approval tasks (shared team visibility)
-      const waiting = all.filter((t) => t && (t.status === "WAITING_APPROVAL" || t.current_step === 3));
-      setWaitingApprovalTasks(waiting);
+      setPendingTasks((prev) => (areTasksEqual(prev, pending) ? prev : pending));
+      setWaitingApprovalTasks((prev) => (areTasksEqual(prev, waiting) ? prev : waiting));
     };
     updateTasks();
 
@@ -370,21 +402,39 @@ export function useTransferMovement({
     };
 
     fetchServerTransfers();
-    const interval = setInterval(fetchServerTransfers, 2000);
+    const interval = setInterval(fetchServerTransfers, 3000);
 
     window.addEventListener("stockify-transfer-created", updateTasks);
     window.addEventListener("stockify-transfer-updated", updateTasks);
+    window.addEventListener("stockify-warehouse-changed", updateTasks);
     window.addEventListener("storage", updateTasks);
     return () => {
       clearInterval(interval);
       window.removeEventListener("stockify-transfer-created", updateTasks);
       window.removeEventListener("stockify-transfer-updated", updateTasks);
+      window.removeEventListener("stockify-warehouse-changed", updateTasks);
       window.removeEventListener("storage", updateTasks);
     };
-  }, [tabUser]);
+  }, [tabUser, activeWhId]);
 
   useEffect(() => {
     setSourceAllocations([]);
+    setScannedToLocation("");
+    if (selectedTask?.to_warehouse_id) {
+      const destWhId = normalizeWarehouseId(selectedTask.to_warehouse_id);
+      fetch(`/api/locations?warehouse_id=${destWhId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+            setDestLocations(d.data.filter((l: Location) => l && l.active !== false));
+          } else {
+            setDestLocations(getDefaultLocationsForWarehouse(destWhId));
+          }
+        })
+        .catch(() => {
+          setDestLocations(getDefaultLocationsForWarehouse(destWhId));
+        });
+    }
   }, [selectedTask]);
 
   const handleCleanupHistory = async () => {
@@ -629,7 +679,7 @@ export function useTransferMovement({
         });
 
       setStaffStep(3);
-      updateTransferTaskProgress(selectedTask.id, 2, "กำลังนำเข้าตำแหน่งปลายทาง");
+      updateTransferTaskProgress(selectedTask.id, 3, "กำลังนำเข้าตำแหน่งปลายทาง");
     } else {
       const displayExpected = [targetBarcode, targetSku]
         .filter(Boolean)
@@ -665,32 +715,50 @@ export function useTransferMovement({
       validLocs = getDefaultLocationsForWarehouse(srcWhId);
     }
 
-    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
 
     const matchedLoc = validLocs.find((loc) => {
       const locId = (loc.location_id || "").trim().toLowerCase();
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-      const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+      
+      const cleanLocId = locId.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanShelfCode = shelfCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanLocName = locName.replace(/[\s\-_#]/g, "");
 
       return (
         code === locId ||
         code === locCode ||
         code === locName ||
         code === shelfCode ||
-        (cleanLocCode && cleanCode === cleanLocCode)
+        (cleanLocCode && cleanCode === cleanLocCode) ||
+        (cleanShelfCode && cleanCode === cleanShelfCode) ||
+        (cleanLocId && cleanCode === cleanLocId) ||
+        (cleanLocName && cleanCode === cleanLocName)
       );
     });
 
-    const targetLocId = matchedLoc
-      ? (matchedLoc.shelf_code && (matchedLoc.shelf_code.trim().toLowerCase() === code || matchedLoc.shelf_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
-          ? matchedLoc.shelf_code.toUpperCase()
-          : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === code || matchedLoc.location_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
-              ? matchedLoc.location_code.toUpperCase()
-              : scannedCode.trim().toUpperCase()))
-      : scannedCode.trim().toUpperCase();
-    const targetLocName = matchedLoc ? (matchedLoc.location_name || matchedLoc.location_code || targetLocId) : targetLocId;
+    if (!matchedLoc) {
+      const sampleNames = validLocs
+        .map((l) => l.location_code || l.location_name)
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(", ");
+
+      setStaffError(
+        `❌ ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.from_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
+      );
+      return;
+    }
+
+    const targetLocId = (
+      matchedLoc.location_code ||
+      matchedLoc.location_name ||
+      matchedLoc.location_id
+    ).toUpperCase();
+    const targetLocName = matchedLoc.location_name || matchedLoc.location_code || targetLocId;
 
     // Check picked total so far (excluding if re-picking same location)
     const existingPicks = sourceAllocations.filter((a) => a.location_id !== targetLocId);
@@ -855,36 +923,111 @@ export function useTransferMovement({
     let validLocs = (destLocations || []).filter(
       (l) => l && l.warehouse_id && normalizeWarehouseId(l.warehouse_id) === destWhId
     );
+
+    // If local state hasn't loaded yet, fetch from API
+    if (validLocs.length === 0) {
+      try {
+        const res = await fetch(`/api/locations?warehouse_id=${destWhId}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          validLocs = data.data.filter((l: Location) => l && l.active !== false);
+          setDestLocations(validLocs);
+        }
+      } catch {}
+    }
+
     if (validLocs.length === 0) {
       validLocs = getDefaultLocationsForWarehouse(destWhId);
     }
 
-    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+    const cleanCode = code.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
 
     const matchedLoc = validLocs.find((loc) => {
       const locId = (loc.location_id || "").trim().toLowerCase();
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-      const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "");
+      
+      const cleanLocId = locId.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanShelfCode = shelfCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
+      const cleanLocName = locName.replace(/[\s\-_#]/g, "");
 
       return (
         code === locId ||
         code === locCode ||
         code === locName ||
         code === shelfCode ||
-        (cleanLocCode && cleanCode === cleanLocCode)
+        (cleanLocCode && cleanCode === cleanLocCode) ||
+        (cleanShelfCode && cleanCode === cleanShelfCode) ||
+        (cleanLocId && cleanCode === cleanLocId) ||
+        (cleanLocName && cleanCode === cleanLocName)
       );
     });
 
-    const targetToLocId = matchedLoc
-      ? (matchedLoc.shelf_code && (matchedLoc.shelf_code.trim().toLowerCase() === code || matchedLoc.shelf_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
-          ? matchedLoc.shelf_code.toUpperCase()
-          : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === code || matchedLoc.location_code.trim().toLowerCase().replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "") === cleanCode)
-              ? matchedLoc.location_code.toUpperCase()
-              : scannedCode.trim().toUpperCase()))
-      : scannedCode.trim().toUpperCase();
+    if (!matchedLoc) {
+      const sampleNames = validLocs
+        .map((l) => l.location_code || l.location_name)
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(", ");
+
+      setScannedToLocation("");
+      setStaffError(
+        `❌ ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.to_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
+      );
+      return;
+    }
+
+    const targetToLocId = (
+      matchedLoc.location_code ||
+      matchedLoc.location_name ||
+      matchedLoc.location_id
+    ).toUpperCase();
+
     setScannedToLocation(targetToLocId);
+    setStaffScanDestLocationInput(targetToLocId);
+    setStaffError("");
+    setStaffSuccess(
+      `✅ สแกนชั้นวางปลายทาง "${targetToLocId}" ใน "${selectedTask.to_warehouse_name}" ถูกต้อง กรุณากดยืนยันการเบิก`
+    );
+  };
+
+  const handleSubmitTransfer = async () => {
+    if (!selectedTask || isSubmittingTransfer) return;
+    const targetToLocId = (scannedToLocation || staffScanDestLocationInput).trim().toUpperCase();
+    if (!targetToLocId) {
+      setStaffError(
+        `❌ กรุณาสแกนหรือระบุตำแหน่งปลายทางใน "${selectedTask.to_warehouse_name}" ก่อนกดยืนยัน`
+      );
+      return;
+    }
+
+    // Re-verify that target location actually exists in dest warehouse
+    const destWhId = normalizeWarehouseId(selectedTask.to_warehouse_id || "");
+    const validLocs = (destLocations || []).filter(
+      (l) => l && l.warehouse_id && normalizeWarehouseId(l.warehouse_id) === destWhId
+    );
+    if (validLocs.length > 0) {
+      const c = targetToLocId.toLowerCase().replace(/[\s\-_#]/g, "");
+      const isRealLoc = validLocs.some((loc) => {
+        const locId = (loc.location_id || "").toLowerCase().replace(/[\s\-_#]/g, "");
+        const locCode = (loc.location_code || "").toLowerCase().replace(/[\s\-_#]/g, "");
+        const locName = (loc.location_name || "").toLowerCase().replace(/[\s\-_#]/g, "");
+        return c === locId || c === locCode || c === locName;
+      });
+
+      if (!isRealLoc) {
+        setStaffError(
+          `❌ ตำแหน่ง "${targetToLocId}" ไม่ใช่ตำแหน่งจริงใน "${selectedTask.to_warehouse_name}" กรุณาสแกนตำแหน่งที่มีอยู่จริง`
+        );
+        return;
+      }
+    }
+
+    setIsSubmittingTransfer(true);
+    setStaffError("");
+    setStaffSuccess("");
 
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -930,10 +1073,12 @@ export function useTransferMovement({
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
       if (selectedTask?.id) {
-        updateTransferTaskProgress(selectedTask.id, 3, "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)");
+        updateTransferTaskProgress(selectedTask.id, 4, "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)");
       }
     } catch (err: any) {
       setStaffError(`❌ เกิดข้อผิดพลาด: ${err.message || "ไม่สามารถย้ายสินค้าได้"}`);
+    } finally {
+      setIsSubmittingTransfer(false);
     }
   };
 
@@ -1090,13 +1235,12 @@ export function useTransferMovement({
 
       refreshData();
       setSelectedItems([]);
-      setSubmitted(true);
-
-      // Auto-open scanner modal for the created transfer item
-      if (createdNotifs.length > 0) {
-        setSelectedTask(createdNotifs[0]);
-        setStaffStep(1);
-      }
+      setValue("product_id", "");
+      setValue("qty", 1);
+      setError("");
+      setSuccessMessage(`✅ สร้างรายการเบิกสินค้าสำเร็จ ${createdDocs.length} รายการ (บันทึกใน "รายการที่ต้องไปเบิก" เรียบร้อยแล้ว)`);
+      setSelectedTask(null);
+      setStaffStep(1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง";
       setError(msg);
@@ -1184,6 +1328,12 @@ export function useTransferMovement({
     handleVerifyProductBarcode,
     handleVerifySourceLocationBarcode,
     handleVerifyDestinationLocationBarcode,
+    handleSubmitTransfer,
+    scannedToLocation,
+    setScannedToLocation,
+    isSubmittingTransfer,
+    successMessage,
+    setSuccessMessage,
     onSubmit,
     resetForm,
   };

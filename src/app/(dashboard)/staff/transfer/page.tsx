@@ -69,7 +69,7 @@ export default function StaffTransferPage() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            พนักงาน: <span className="font-bold text-slate-800">{tabUser?.name || "พนักงานคลัง"}</span> • {activeWhName}
+            พนักงาน: <span className="font-bold text-slate-800">{tabUser?.name || "พนักงานคลัง"}</span> • <span className="font-extrabold text-indigo-700">{activeWhName}</span>
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function StaffTransferPage() {
         isAdmin={false}
         onSelectTask={(task) => {
           setSelectedTask(task);
-          setStaffStep(1);
+          setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
         }}
         onCancelTask={transferHook.handleCancelTransfer}
       />
@@ -108,6 +108,10 @@ export default function StaffTransferPage() {
         setStaffScanSourceLocationInput={setStaffScanSourceLocationInput}
         staffScanDestLocationInput={staffScanDestLocationInput}
         setStaffScanDestLocationInput={setStaffScanDestLocationInput}
+        scannedToLocation={transferHook.scannedToLocation}
+        setScannedToLocation={transferHook.setScannedToLocation}
+        isSubmittingTransfer={transferHook.isSubmittingTransfer}
+        onSubmitTransfer={transferHook.handleSubmitTransfer}
         sourceAllocations={transferHook.sourceAllocations}
         onUpdateSourceAllocationQty={transferHook.handleUpdateSourceAllocationQty}
         onRemoveSourceAllocation={transferHook.handleRemoveSourceAllocation}

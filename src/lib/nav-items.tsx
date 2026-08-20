@@ -96,6 +96,23 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN", "WAREHOUSE_STAFF", "APPROVER"],
   },
   {
+    href: "/movements/transfer/history",
+    label: "ประวัติเบิกสินค้า",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    staffIcon: (
+      <div className="w-5 h-5 rounded bg-purple-50 border border-purple-200 flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+    ),
+    roles: ["ADMIN"],
+  },
+  {
     href: "/products",
     label: "สินค้าทั้งหมด",
     icon: (

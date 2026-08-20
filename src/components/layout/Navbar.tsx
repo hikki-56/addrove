@@ -40,6 +40,7 @@ const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
   "/locations": { parent: "คลังสินค้า", title: "จัดการตำแหน่งจัดเก็บ" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
   "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า (Admin)" },
+  "/movements/transfer/history": { parent: "การเคลื่อนไหว", title: "ประวัติเบิกสินค้า" },
   "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า (Admin)" },
   "/staff/receive": { parent: "พนักงาน", title: "สแกนรับสินค้าเข้าคลัง" },
   "/staff/transfer": { parent: "พนักงาน", title: "รายการที่ต้องไปเบิกสินค้า" },
@@ -71,10 +72,12 @@ export default function Navbar({
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [staffWhName, setStaffWhName] = useState("");
+  const [activeWhId, setActiveWhId] = useState("wh-01");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const activeWh = getActiveWarehouse();
+      setActiveWhId(activeWh);
       setStaffWhName(getWarehouseName(activeWh));
     }
   }, []);
@@ -101,8 +104,15 @@ export default function Navbar({
   // Fetch transfer notifications for all users
   useEffect(() => {
     const updateCount = () => {
+      const activeWh = getActiveWarehouse();
+      setActiveWhId(activeWh);
+      setStaffWhName(getWarehouseName(activeWh));
+
       const staffFilter = isAdmin ? undefined : user.name;
-      const list = getPendingTransferNotifications(staffFilter);
+      const list = isAdmin
+        ? getPendingTransferNotifications()
+        : getPendingTransferNotifications(staffFilter, activeWh);
+
       setPendingTransferCount(list.length);
       setNotificationsList(list);
     };
@@ -115,13 +125,22 @@ export default function Navbar({
     fetchServerTransfers();
     const interval = setInterval(fetchServerTransfers, 5000);
 
+    const handleWhChange = (e: any) => {
+      const newWh = e.detail?.warehouseId || getActiveWarehouse();
+      setActiveWhId(newWh);
+      setStaffWhName(getWarehouseName(newWh));
+      updateCount();
+    };
+
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);
+    window.addEventListener("stockify-warehouse-changed", handleWhChange);
     window.addEventListener("storage", updateCount);
     return () => {
       clearInterval(interval);
       window.removeEventListener("stockify-transfer-created", updateCount);
       window.removeEventListener("stockify-transfer-updated", updateCount);
+      window.removeEventListener("stockify-warehouse-changed", handleWhChange);
       window.removeEventListener("storage", updateCount);
     };
   }, [isAdmin, user.name]);
@@ -172,12 +191,6 @@ export default function Navbar({
               <span className="text-slate-300">/</span>
               <span className="text-slate-900 font-black">{breadcrumb.title}</span>
             </div>
-          )}
-
-          {!isAdmin && staffWhName && (
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
-              📍 {staffWhName}
-            </span>
           )}
         </div>
 

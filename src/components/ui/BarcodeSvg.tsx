@@ -24,7 +24,11 @@ export default function BarcodeSvg({
 }: BarcodeSvgProps) {
   const cleanValue = (to8DigitBarcode(value) || value || "").trim();
   if (!cleanValue) {
-    return null;
+    return (
+      <div className={`inline-flex flex-col items-center justify-center p-3 rounded-lg border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none ${className}`}>
+        <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
+      </div>
+    );
   }
 
   const modules = encodeCode128Modules(cleanValue);

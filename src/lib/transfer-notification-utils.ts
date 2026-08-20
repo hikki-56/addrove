@@ -1,3 +1,5 @@
+import { normalizeWarehouseId, getWarehouseName } from "./warehouse-utils";
+
 export interface TransferNotification {
   id: string;
   doc_no?: string;
@@ -52,13 +54,19 @@ export function getTransferNotifications(): TransferNotification[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: TransferNotification[] = JSON.parse(raw);
-    return parsed.map((t) => {
+    const list = parsed.map((t) => {
       const completed = isTransferCompleted(t.id) || isTransferCompleted(t.doc_no);
       return {
         ...t,
         product_name: getDisplayProductName(t),
-        status: completed ? "COMPLETED" : t.status,
+        status: completed ? ("COMPLETED" as const) : t.status,
       };
+    });
+    return list.sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.doc_no || "").localeCompare(a.doc_no || "");
     });
   } catch {
     return [];
@@ -98,15 +106,17 @@ export function purgeInvalidNotifications() {
     const cleaned = parsed.filter((t) => {
       // Keep notifications that have real product data
       const hasBadSku = !t.sku || t.sku === "TRF" || t.sku.startsWith("TRF-");
-      const hasBadPid = !t.product_id || t.product_id === "TRF" || t.product_id.startsWith("TRF-");
+      const hasBadPid = !t.product_id || t.product_id === "TRF" || t.product_id.startsWith("TRF-") || t.product_id === "trf-item";
+      const hasNoProdName = !t.product_name || t.product_name === "รายการย้ายสินค้า";
       const hasDummyToWh = t.to_warehouse_name === "โกดังปลายทาง" || !t.to_warehouse_name;
       
-      // Remove entries where product data is bad or destination warehouse is unassigned/dummy
-      if ((hasBadSku && hasBadPid) || hasDummyToWh) return false;
+      // Remove entries where product data is completely empty or destination warehouse is unassigned/dummy
+      if ((hasBadSku && hasBadPid && hasNoProdName) || hasDummyToWh) return false;
       return true;
     });
     if (cleaned.length !== parsed.length) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+      broadcastTransferChange();
     }
   } catch (e) {
     console.error("[TransferNotification] Purge error:", e);
@@ -141,7 +151,8 @@ export function markTransferCancelled(id: string) {
         : t
     );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent("stockify-transfer-updated"));
+    markTransferCompleted(id);
+    broadcastTransferChange();
   } catch (e) {
     console.error("[TransferNotification] Mark cancelled error:", e);
   }
@@ -164,7 +175,7 @@ export function markTransferWaitingApproval(
         ? {
             ...t,
             status: "WAITING_APPROVAL" as const,
-            current_step: 3,
+            current_step: 4,
             current_step_text: "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)",
             from_location_id: details?.from_location_id || t.from_location_id,
             to_location_id: details?.to_location_id || t.to_location_id,
@@ -198,7 +209,7 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
                 ? "กำลังหยิบสินค้าต้นทาง"
                 : step === 3
                 ? "กำลังนำเข้าตำแหน่งปลายทาง"
-                : step === 4
+                : step >= 4
                 ? "ย้ายสินค้าสำเร็จ"
                 : "รอดำเนินการ"),
             last_active_at: new Date().toISOString(),
@@ -240,61 +251,22 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
   }
 }
 
-function normWh(id?: string): string {
-  if (!id) return "";
-  const s = String(id).trim().toLowerCase();
-  if (s === "โกดัง 1" || s === "โกดัง1" || s === "wh-1" || s === "wh-01" || s === "1") return "wh-1";
-  if (s === "โกดัง 2" || s === "โกดัง2" || s === "wh-2" || s === "wh-02" || s === "2") return "wh-2";
-  return s.replace(/^wh-0*/, "wh-");
-}
-
 export function getPendingTransferNotifications(staffName?: string, warehouseId?: string): TransferNotification[] {
   const notifications = getTransferNotifications();
   return notifications.filter((t) => {
     if (!t) return false;
     // Exclude tasks that are waiting approval, completed, or cancelled
-    if (t.status === "WAITING_APPROVAL" || t.current_step === 3) return false;
-    if (t.status && t.status !== "PENDING") return false;
+    if (t.status === "WAITING_APPROVAL") return false;
+    if (t.status && t.status !== "PENDING" && t.status !== "ACKNOWLEDGED") return false;
     if (isTransferCompleted(t.id)) return false;
 
-    const movedByRaw = String(t.moved_by || "").trim();
-    const staffNameRaw = String(staffName || "").trim();
-
-    if (staffNameRaw && staffNameRaw !== "ผู้ใช้งานระบบ" && movedByRaw) {
-      const cleanStaff = staffNameRaw.toLowerCase();
-      const cleanMovedBy = movedByRaw.replace(/^(?:คนไปย้ายสินค้า|มอบหมาย|ย้ายโดย):\s*/i, "").toLowerCase();
-
-      const isGenericStaff =
-        !cleanMovedBy ||
-        cleanMovedBy === "พนักงาน" ||
-        cleanMovedBy === "พนักงานโกดัง" ||
-        cleanMovedBy === "ผู้ใช้งานระบบ" ||
-        cleanStaff === "พนักงาน" ||
-        cleanStaff === "พนักงานโกดัง";
-
-      if (!isGenericStaff) {
-        const staffTokens = cleanStaff.split(/\s+/).filter(Boolean);
-        const movedByTokens = cleanMovedBy.split(/\s+/).filter(Boolean);
-
-        const tokenMatch = staffTokens.some((st) => movedByTokens.some((mt) => mt.includes(st) || st.includes(mt)));
-        const directMatch = cleanMovedBy.includes(cleanStaff) || cleanStaff.includes(cleanMovedBy);
-
-        if (!tokenMatch && !directMatch) return false;
-      }
-    }
-
+    // Filter by source warehouse if specified
     if (warehouseId && warehouseId !== "*") {
-      const target = normWh(warehouseId);
-      const fromId = normWh(t.from_warehouse_id);
-      const fromName = normWh(t.from_warehouse_name);
-      const toId = normWh(t.to_warehouse_id);
-      const toName = normWh(t.to_warehouse_name);
+      const target = normalizeWarehouseId(warehouseId);
+      const fromId = normalizeWarehouseId(t.from_warehouse_id || t.from_warehouse_name);
 
-      const matchesFrom = fromId === target || fromName === target;
-      const matchesTo = toId === target || toName === target;
-
-      // Show notification if target warehouse matches source or destination, or if warehouse info is unassigned
-      if ((fromId || toId || fromName || toName) && !matchesFrom && !matchesTo) {
+      // Staff can ONLY see tasks to be picked from the warehouse they are currently in
+      if (fromId !== target) {
         return false;
       }
     }
@@ -391,23 +363,21 @@ export function saveTransferNotification(task: TransferNotification, options?: {
     const isNew = existingIndex === -1;
 
     if (!isNew) {
-      if (existing[existingIndex].status === "COMPLETED" || isCompleted) {
+      const prev = existing[existingIndex];
+      if (prev.status === "COMPLETED" || isCompleted) {
         cleanTask.status = "COMPLETED";
-      } else if (
-        existing[existingIndex].status === "WAITING_APPROVAL" ||
-        existing[existingIndex].current_step === 3
-      ) {
-        if (cleanTask.status !== "COMPLETED" && cleanTask.status !== "CANCELLED" && cleanTask.status !== "REJECTED") {
-          cleanTask.status = "WAITING_APPROVAL";
-          cleanTask.current_step = 3;
-          cleanTask.current_step_text = "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)";
+      } else if (cleanTask.status === "WAITING_APPROVAL") {
+        cleanTask.status = "WAITING_APPROVAL";
+        if (cleanTask.current_step === undefined) {
+          cleanTask.current_step = prev.current_step || 4;
+          cleanTask.current_step_text = prev.current_step_text || "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)";
         }
       }
       // If cleanTask does not have a current_step, or existing has a valid step and cleanTask has 0/undefined, preserve existing
-      if (cleanTask.current_step === undefined && existing[existingIndex].current_step !== undefined) {
-        cleanTask.current_step = existing[existingIndex].current_step;
-        cleanTask.current_step_text = existing[existingIndex].current_step_text;
-        cleanTask.last_active_at = existing[existingIndex].last_active_at;
+      if (cleanTask.current_step === undefined && prev.current_step !== undefined) {
+        cleanTask.current_step = prev.current_step;
+        cleanTask.current_step_text = prev.current_step_text;
+        cleanTask.last_active_at = prev.last_active_at;
       }
       const isGenericName = (name?: string) => {
         if (!name) return true;
@@ -422,23 +392,29 @@ export function saveTransferNotification(task: TransferNotification, options?: {
       };
 
       if (
-        existing[existingIndex].created_by_name &&
-        !isGenericName(existing[existingIndex].created_by_name) &&
+        prev.created_by_name &&
+        !isGenericName(prev.created_by_name) &&
         isGenericName(cleanTask.created_by_name)
       ) {
-        cleanTask.created_by_name = existing[existingIndex].created_by_name;
-      } else if (!cleanTask.created_by_name && existing[existingIndex].created_by_name) {
-        cleanTask.created_by_name = existing[existingIndex].created_by_name;
+        cleanTask.created_by_name = prev.created_by_name;
+      } else if (!cleanTask.created_by_name && prev.created_by_name) {
+        cleanTask.created_by_name = prev.created_by_name;
       }
 
-      if (!cleanTask.created_by && existing[existingIndex].created_by) {
-        cleanTask.created_by = existing[existingIndex].created_by;
+      if (!cleanTask.created_by && prev.created_by) {
+        cleanTask.created_by = prev.created_by;
       }
     }
 
-    const filtered = existing.filter((t) => !isMatchTask(t));
+    let updated: TransferNotification[];
+    if (!isNew) {
+      // Update IN-PLACE to preserve list order and eliminate flickering/shuffling!
+      updated = [...existing];
+      updated[existingIndex] = cleanTask;
+    } else {
+      updated = [cleanTask, ...existing];
+    }
 
-    const updated = [cleanTask, ...filtered];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated.slice(0, 100)));
 
     if (!options?.silent) {
@@ -466,6 +442,7 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
   try {
     const serverDoneDocIds = new Set<string>();
     const serverActiveDocIds = new Set<string>();
+    const serverMappedTasks: TransferNotification[] = [];
 
     for (const doc of serverDocs) {
       if (!doc) continue;
@@ -491,8 +468,10 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
         ""
       ).trim();
 
-      const fromWhId = String(meta.from_warehouse_id || doc.from_warehouse_id || "wh-1");
-      const toWhId = String(meta.to_warehouse_id || doc.to_warehouse_id || "wh-2");
+      const rawFromWh = String(meta.from_warehouse_id || doc.from_warehouse_id || "wh-01");
+      const rawToWh = String(meta.to_warehouse_id || doc.to_warehouse_id || "wh-02");
+      const fromWhId = normalizeWarehouseId(rawFromWh);
+      const toWhId = normalizeWarehouseId(rawToWh);
       const qty = Number(meta.qty || doc.qty) || 1;
       const sku = String(meta.sku || doc.sku || (prodId && !prodId.startsWith("trf") ? prodId.replace(/^prod-/, "") : ""));
       const barcode = String(meta.barcode || doc.barcode || "");
@@ -523,86 +502,110 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
           markTransferCompleted(docId);
         }
       } else {
-        const fromWhName =
-          fromWhId === "wh-1" || fromWhId === "wh-01"
-            ? "โกดัง 1"
-            : fromWhId === "wh-2" || fromWhId === "wh-02"
-            ? "โกดัง 2"
-            : fromWhId;
-
-        const toWhName =
-          toWhId === "wh-1" || toWhId === "wh-01"
-            ? "โกดัง 1"
-            : toWhId === "wh-2" || toWhId === "wh-02"
-            ? "โกดัง 2"
-            : toWhId;
+        const fromWhName = getWarehouseName(fromWhId);
+        const toWhName = getWarehouseName(toWhId);
 
         const notifStatus =
           status === "WAITING_APPROVAL" ||
-          meta.status === "WAITING_APPROVAL" ||
-          serverStep === 3 ||
-          meta.current_step === 3
+          meta.status === "WAITING_APPROVAL"
             ? ("WAITING_APPROVAL" as const)
             : ("PENDING" as const);
 
-        saveTransferNotification(
-          {
-            id: docId || String(`trf-${Date.now()}`),
-            doc_no: String(doc.document_no || doc.document_id || ""),
-            product_id: prodId || "trf-item",
-            product_name: productName || (sku ? `สินค้า ${sku}` : "รายการย้ายสินค้า"),
-            sku: sku,
-            barcode: barcode,
-            from_warehouse_id: fromWhId,
-            from_warehouse_name: fromWhName,
-            to_warehouse_id: toWhId,
-            to_warehouse_name: toWhName,
-            qty: qty,
-            moved_by: movedBy,
-            assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
-            assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
-            created_by: createdBy || "admin",
-            created_by_name: createdByName || "ผู้ดูแลระบบ (Admin)",
-            created_at: String(doc.created_at || new Date().toISOString()),
-            status: notifStatus,
-            current_step: serverStep || (notifStatus === "WAITING_APPROVAL" ? 3 : undefined),
-            current_step_text: serverStepText || (notifStatus === "WAITING_APPROVAL" ? "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)" : undefined),
-            last_active_at: serverLastActive,
-            from_location_id: meta.from_location_id,
-            to_location_id: meta.to_location_id,
-            source_allocations: meta.source_allocations,
-            note: String(meta.original_note || doc.note || ""),
-          },
-          { silent: true }
-        );
+        serverMappedTasks.push({
+          id: docId || String(`trf-${Date.now()}`),
+          doc_no: String(doc.document_no || doc.document_id || ""),
+          product_id: prodId || "trf-item",
+          product_name: productName || (sku ? `สินค้า ${sku}` : "รายการย้ายสินค้า"),
+          sku: sku,
+          barcode: barcode,
+          from_warehouse_id: fromWhId,
+          from_warehouse_name: fromWhName,
+          to_warehouse_id: toWhId,
+          to_warehouse_name: toWhName,
+          qty: qty,
+          moved_by: movedBy,
+          assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
+          assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
+          created_by: createdBy || "admin",
+          created_by_name: createdByName || "ผู้ดูแลระบบ (Admin)",
+          created_at: String(doc.created_at || new Date().toISOString()),
+          status: notifStatus,
+          current_step: serverStep ?? (notifStatus === "WAITING_APPROVAL" ? 4 : undefined),
+          current_step_text: serverStepText || (notifStatus === "WAITING_APPROVAL" ? "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)" : undefined),
+          last_active_at: serverLastActive,
+          from_location_id: meta.from_location_id,
+          to_location_id: meta.to_location_id,
+          source_allocations: meta.source_allocations,
+          note: String(meta.original_note || doc.note || ""),
+        });
       }
     }
 
-    const latest = getTransferNotifications();
-    const cleaned = latest.filter((item) => {
+    const existing = getTransferNotifications();
+    const updatedMap = new Map<string, TransferNotification>();
+
+    // Seed with existing tasks
+    for (const item of existing) {
+      if (item && item.id) {
+        const idLower = String(item.id).trim().toLowerCase();
+        updatedMap.set(idLower, item);
+      }
+    }
+
+    // Merge server tasks in batch
+    for (const serverTask of serverMappedTasks) {
+      const idLower = String(serverTask.id).trim().toLowerCase();
+      const existingTask = updatedMap.get(idLower);
+
+      if (existingTask) {
+        const merged: TransferNotification = {
+          ...serverTask,
+          product_name: getDisplayProductName(serverTask),
+          status: existingTask.status === "COMPLETED" ? "COMPLETED" : serverTask.status,
+          current_step: existingTask.current_step !== undefined ? existingTask.current_step : serverTask.current_step,
+          current_step_text: existingTask.current_step_text || serverTask.current_step_text,
+          last_active_at: existingTask.last_active_at || serverTask.last_active_at,
+          created_by_name: existingTask.created_by_name || serverTask.created_by_name,
+        };
+        updatedMap.set(idLower, merged);
+      } else {
+        updatedMap.set(idLower, {
+          ...serverTask,
+          product_name: getDisplayProductName(serverTask),
+        });
+      }
+    }
+
+    // Filter out completed and purged tasks
+    const mergedList = Array.from(updatedMap.values()).filter((item) => {
       const itemId = String(item.id || "").trim().toLowerCase();
+      if (itemId && serverDoneDocIds.has(itemId)) return false;
+      if (isTransferCompleted(item.id)) return false;
 
-      if (itemId && serverDoneDocIds.has(itemId)) {
-        return false;
-      }
-      if (isTransferCompleted(item.id)) {
-        return false;
-      }
-
-      // Purge ghost notifications if deleted from server Documents sheet
       const isServerSynced = itemId && serverActiveDocIds.has(itemId);
       const createdAt = new Date(item.created_at || 0).getTime();
       const ageMs = Date.now() - createdAt;
-
-      if (!isServerSynced && ageMs > 180000) {
-        return false;
-      }
+      if (!isServerSynced && ageMs > 180000) return false;
 
       return true;
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-    broadcastTransferChange();
+    // Stably sort: newest first
+    mergedList.sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.doc_no || "").localeCompare(a.doc_no || "");
+    });
+
+    const rawExisting = localStorage.getItem(STORAGE_KEY);
+    const newJson = JSON.stringify(mergedList.slice(0, 100));
+
+    // ONLY write to localStorage and broadcast if data actually changed!
+    if (rawExisting !== newJson) {
+      localStorage.setItem(STORAGE_KEY, newJson);
+      broadcastTransferChange();
+    }
   } catch (e) {
     console.error("[TransferNotification] Sync server error:", e);
   }

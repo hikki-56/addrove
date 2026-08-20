@@ -214,7 +214,7 @@ export default function CameraBarcodeScannerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md fade-in">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md fade-in">
       {/* Hidden container required by Html5Qrcode.scanFile */}
       <div id="html5qr-temp-file-reader" className="hidden" />
 

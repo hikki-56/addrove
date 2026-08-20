@@ -113,6 +113,7 @@ export default function Sidebar({
     [
       "/movements/receive",
       "/movements/transfer",
+      "/movements/transfer/history",
       "/movements/move",
       "/staff/receive",
       "/staff/transfer",

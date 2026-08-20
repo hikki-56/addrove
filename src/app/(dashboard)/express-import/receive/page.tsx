@@ -179,9 +179,9 @@ export default function ExpressReceivePage() {
         const supplier = String(row[6] ?? "-").trim() || "-";
 
         const barcode =
-          rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined"
+          rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined" && !rawBarcode.toLowerCase().startsWith("rec-")
             ? rawBarcode
-            : to8DigitBarcode(rawBarcode, sku) || sku;
+            : to8DigitBarcode(rawBarcode, sku, productName) || sku;
 
         const uniqueId = `rec_${doc.document_id}_${sku}_${rowIdx}`;
 
@@ -809,7 +809,7 @@ export default function ExpressReceivePage() {
             <p className="text-slate-500 text-xs sm:text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาหรือตัวกรองแท็ก</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 print:grid-cols-2 print:gap-3 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 print:grid-cols-2 print:gap-3 w-full">
             {filteredItems.map((item, idx) => {
               const barcodeValue = item.barcode || item.sku;
               const isRowCopied = copiedItemId === item.id;
@@ -820,7 +820,7 @@ export default function ExpressReceivePage() {
               return (
                 <div
                   key={`${item.id}-${idx}`}
-                  className={`p-4 rounded-2xl border transition-all shadow-sm space-y-3 relative bg-white print:border-black print:break-inside-avoid ${
+                  className={`p-4 rounded-2xl border transition-all shadow-sm space-y-3 relative bg-white min-w-0 max-w-full overflow-hidden print:border-black print:break-inside-avoid ${
                     isSelected
                       ? "border-indigo-500 ring-2 ring-indigo-500/20"
                       : tagged?.status === "IMPORTED"
@@ -831,21 +831,21 @@ export default function ExpressReceivePage() {
                   }`}
                 >
                   {/* Top Bar: Checkbox & Tag Badge */}
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 min-w-0">
+                    <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 truncate">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleSelectItem(item.id)}
-                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
                       />
-                      <span className="text-[11px] font-mono font-bold text-slate-600">
+                      <span className="text-[11px] font-mono font-bold text-slate-600 truncate">
                         {item.document_no}
                       </span>
                     </label>
 
                     {/* Tag Status / Action Buttons */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                       {tagged ? (
                         <>
                           <button
@@ -887,7 +887,7 @@ export default function ExpressReceivePage() {
                   </div>
 
                   {/* Header info */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 min-w-0">
                     {displayFields.productName && (
                       <div className="text-sm font-bold text-slate-900 leading-snug break-words">
                         {displayFields.sku && <span className="font-mono text-emerald-700 mr-1.5">[{item.sku}]</span>}
@@ -931,16 +931,16 @@ export default function ExpressReceivePage() {
 
                   {/* Visual Code 128 Barcode Image (Crisp Box) */}
                   {displayFields.barcode && (
-                    <div className="py-2.5 w-full flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-slate-200 shadow-2xs print:border-black">
+                    <div className="py-2.5 w-full max-w-full overflow-x-auto min-w-0 flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-slate-200 shadow-xs print:border-black">
                       <BarcodeSvg value={barcodeValue} height={65} showText={true} />
                     </div>
                   )}
 
                   {/* Footer Row: Copy Full Row with Tab & Barcode Copy */}
-                  <div className="pt-2.5 border-t border-slate-100 space-y-2 print:hidden">
+                  <div className="pt-2.5 border-t border-slate-100 space-y-2 print:hidden min-w-0">
                     {/* Visual Tab String Preview (Light Theme) */}
                     <div
-                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[11px] font-mono text-slate-600 overflow-x-auto select-all"
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[11px] font-mono text-slate-600 overflow-x-auto select-all min-w-0"
                       title="ตัวอย่างข้อมูลเมื่อกดคัดลอก (คั่นด้วย Tab)"
                     >
                       <span className="truncate">
@@ -951,27 +951,27 @@ export default function ExpressReceivePage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => handleCopySingleBarcode(barcodeValue)}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer grow sm:grow-0"
                         title="คัดลอกเฉพาะเลขบาร์โค้ด"
                       >
-                        <span>{isBarcodeCopied ? "✓ คัดลอกเลขแล้ว" : "คัดลอกบาร์โค้ด"}</span>
+                        <span>{isBarcodeCopied ? "✓ คัดลอกแล้ว" : "คัดลอกบาร์โค้ด"}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleCopyRow(item)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs grow sm:grow-0 ${
                           isRowCopied
                             ? "bg-emerald-600 text-white shadow-sm"
                             : "bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 hover:border-emerald-600"
                         }`}
                         title="คัดลอกทั้งแถว (บาร์โค้ด [TAB] ชื่อสินค้า [TAB] โกดัง [TAB] จำนวน) เพื่อไปกด Ctrl+V ใน Express"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                         </svg>
                         <span>{isRowCopied ? "✓ คัดลอกแถวแล้ว!" : "📋 คัดลอกทั้งแถว (Tab)"}</span>

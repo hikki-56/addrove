@@ -19,7 +19,7 @@ const PIN_RATE_LIMIT = {
   blockMs: 5 * 60 * 1000,
 };
 
-/** Check PIN strictly against stored bcrypt hash only. Plaintext PIN fallback is strictly rejected. */
+/** Check PIN against bcrypt hash, or plaintext PIN fallback if entered directly in Google Sheets */
 function checkPinMatch(user: User, inputPin: string): boolean {
   if (!/^\d{4}$/.test(inputPin)) return false;
   const rawPin = user.pin_hash?.trim() || "";
@@ -33,8 +33,8 @@ function checkPinMatch(user: User, inputPin: string): boolean {
     }
   }
 
-  // Fail closed: Plain text PIN strings are rejected
-  return false;
+  // Fallback: Support direct plaintext 4-digit PIN comparison
+  return rawPin === inputPin;
 }
 
 export async function POST(req: Request) {

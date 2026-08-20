@@ -16,6 +16,7 @@ export interface TransferFormProps {
   error: string;
   onSubmit: (data: TransferFormInput) => void;
   onErrorPrompt: (msg: string) => void;
+  successMessage?: string;
   selectedItems?: SelectedTransferItem[];
   addTransferItem?: (prod: Product) => void;
   updateItemQty?: (index: number, newQty: number) => void;
@@ -35,6 +36,7 @@ export default function TransferForm({
   error,
   onSubmit,
   onErrorPrompt,
+  successMessage = "",
   selectedItems = [],
   addTransferItem,
   updateItemQty,
@@ -57,8 +59,17 @@ export default function TransferForm({
       className="space-y-4"
     >
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-xs font-medium">
           {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs">
+          <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{successMessage}</span>
         </div>
       )}
 

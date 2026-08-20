@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { type TransferNotification, updateTransferTaskProgress } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 
@@ -15,6 +16,10 @@ export interface TransferStaffWorkflowModalProps {
   setStaffScanSourceLocationInput: (val: string) => void;
   staffScanDestLocationInput: string;
   setStaffScanDestLocationInput: (val: string) => void;
+  scannedToLocation?: string;
+  setScannedToLocation?: (val: string) => void;
+  isSubmittingTransfer?: boolean;
+  onSubmitTransfer?: () => void;
   sourceAllocations?: Array<{ location_id: string; location_name?: string; max_qty?: number; qty: number }>;
   onUpdateSourceAllocationQty?: (index: number, newQty: number) => void;
   onRemoveSourceAllocation?: (index: number) => void;
@@ -41,6 +46,10 @@ export default function TransferStaffWorkflowModal({
   setStaffScanSourceLocationInput,
   staffScanDestLocationInput,
   setStaffScanDestLocationInput,
+  scannedToLocation = "",
+  setScannedToLocation,
+  isSubmittingTransfer = false,
+  onSubmitTransfer,
   sourceAllocations = [],
   onUpdateSourceAllocationQty,
   onRemoveSourceAllocation,
@@ -55,13 +64,28 @@ export default function TransferStaffWorkflowModal({
   onVerifyDestinationLocationBarcode,
   onOpenStaffCamera,
 }: TransferStaffWorkflowModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+    };
+  }, []);
+
   useEffect(() => {
     if (selectedTask?.id && staffStep) {
       updateTransferTaskProgress(selectedTask.id, staffStep);
     }
   }, [selectedTask?.id, staffStep]);
 
-  if (!selectedTask) return null;
+  if (!selectedTask || !mounted) return null;
 
   const totalPickedQty = sourceAllocations.reduce((sum, a) => sum + (a.qty || 0), 0);
   const remainingNeeded = Math.max(0, selectedTask.qty - totalPickedQty);
@@ -69,9 +93,9 @@ export default function TransferStaffWorkflowModal({
   const rawBarcode = selectedTask.barcode && selectedTask.barcode.trim() !== "-" ? selectedTask.barcode.trim() : "";
   const barcode = rawBarcode || selectedTask.sku || "";
 
-  return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in fade-in duration-150 flex flex-col">
-      <div className="w-full max-w-lg mx-auto min-h-screen flex flex-col justify-between p-4 sm:p-6 space-y-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-white overflow-y-auto overscroll-contain flex flex-col min-h-dvh w-screen">
+      <div className="w-full max-w-lg mx-auto min-h-dvh flex flex-col justify-between p-4 sm:p-6 space-y-4 min-w-0 bg-white">
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
@@ -338,19 +362,86 @@ export default function TransferStaffWorkflowModal({
         )}
         */}
 
-        {/* Step 3: Scan Destination Location Barcode */}
+        {/* Step 3: Scan Destination Location Barcode & Confirm */}
         {staffStep === 3 && (
-          <div className="space-y-3 pt-1">
-            <label className="block text-xs font-bold text-slate-700">
-              สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
-            </label>
-            <BarcodeScanInput
-              value={staffScanDestLocationInput}
-              onChange={setStaffScanDestLocationInput}
-              onScanSubmit={onVerifyDestinationLocationBarcode}
-              inputRef={staffDestLocationInputRef}
-              placeholder="สแกนตำแหน่งปลายทาง..."
-            />
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
+              </label>
+              <BarcodeScanInput
+                value={staffScanDestLocationInput}
+                onChange={(val) => {
+                  setStaffScanDestLocationInput(val);
+                  if (scannedToLocation && val !== scannedToLocation) {
+                    setScannedToLocation?.("");
+                  }
+                }}
+                onScanSubmit={onVerifyDestinationLocationBarcode}
+                inputRef={staffDestLocationInputRef}
+                placeholder="สแกนตำแหน่งปลายทาง..."
+              />
+            </div>
+
+            {/* If shelf/destination location has been scanned -> Show confirmation UI */}
+            {scannedToLocation ? (
+              <div className="p-4 rounded-2xl bg-emerald-50/90 border-2 border-emerald-500 shadow-sm space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">✓</span>
+                    <span className="text-xs font-bold text-emerald-900">สแกนชั้นวางปลายทางสำเร็จ:</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannedToLocation?.("");
+                      setStaffScanDestLocationInput("");
+                      setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
+                    }}
+                    className="text-xs text-emerald-700 hover:text-emerald-900 underline font-semibold cursor-pointer"
+                  >
+                    สแกนใหม่ / เปลี่ยนตำแหน่ง
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📍</span>
+                    <div>
+                      <div className="text-[11px] text-slate-500 font-medium">ตำแหน่งปลายทาง</div>
+                      <div className="font-mono font-black text-xl text-emerald-950 tracking-wider">
+                        {scannedToLocation}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    {selectedTask.to_warehouse_name}
+                  </span>
+                </div>
+
+                {/* Confirm & Submit Button */}
+                <button
+                  type="button"
+                  disabled={isSubmittingTransfer}
+                  onClick={onSubmitTransfer}
+                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-emerald-600/30 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {isSubmittingTransfer ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>กำลังบันทึกข้อมูล...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>กดยืนยันการเบิก (ส่งให้ Admin อนุมัติ)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -377,6 +468,7 @@ export default function TransferStaffWorkflowModal({
         )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

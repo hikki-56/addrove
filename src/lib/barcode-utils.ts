@@ -32,14 +32,38 @@ export const CODE128_PATTERNS: Record<number, string> = {
 /**
  * Returns clean exact barcode string or SKU without modifying digits
  */
-export function to8DigitBarcode(rawBarcode?: string, sku?: string): string {
+export function to8DigitBarcode(rawBarcode?: string, sku?: string, productName?: string): string {
+  const isInvalid = (val?: string) => {
+    if (!val) return true;
+    const clean = val.trim().toLowerCase();
+    return (
+      clean === "" ||
+      clean === "-" ||
+      clean === "null" ||
+      clean === "undefined" ||
+      clean === "trf" ||
+      clean === "trf-item" ||
+      clean.startsWith("trf-") ||
+      clean.startsWith("mov-") ||
+      clean.startsWith("iss-")
+    );
+  };
+
   const code = (rawBarcode || "").trim();
-  if (code && code !== "TRF" && !code.startsWith("TRF-")) {
+  if (!isInvalid(code)) {
     return code;
   }
   const s = (sku || "").trim();
-  if (s && s !== "TRF" && !s.startsWith("TRF-")) {
+  if (!isInvalid(s)) {
     return s;
+  }
+  if (productName) {
+    const match = productName.trim().match(/^(\d{3,8})/);
+    if (match) {
+      const numStr = match[1];
+      if (numStr.length >= 7) return numStr;
+      return "9000" + numStr.padStart(4, "0");
+    }
   }
   return "";
 }
