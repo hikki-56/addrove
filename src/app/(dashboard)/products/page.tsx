@@ -69,7 +69,9 @@ export default function ProductsPage() {
     if (filterCategory) params.set("category", filterCategory);
     if (filterWarehouse) params.set("warehouse_id", filterWarehouse);
 
-    fetch(`/api/products?${params.toString()}`)
+    params.set("_t", String(Date.now()));
+
+    fetch(`/api/products?${params.toString()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
@@ -89,6 +91,13 @@ export default function ProductsPage() {
 
   useEffect(() => {
     loadProducts();
+    const handleUpdate = () => loadProducts();
+    window.addEventListener("stockify-product-updated", handleUpdate);
+    window.addEventListener("stockify-stock-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("stockify-product-updated", handleUpdate);
+      window.removeEventListener("stockify-stock-updated", handleUpdate);
+    };
   }, [loadProducts]);
 
   // Reset page to 1 when filters change

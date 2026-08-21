@@ -140,7 +140,7 @@ export class SheetsProductRepository implements IProductRepository {
           p.product_id.toLowerCase() === `prod-${rawSku}` ||
           (p.barcode && p.barcode.trim().toLowerCase() === cleanId) ||
           (p.barcode && p.barcode.trim().toLowerCase() === rawSku) ||
-          p.sku.toLowerCase().replace(/[^a-zA-Z0-9]/g, "") === rawSku.replace(/[^a-zA-Z0-9]/g, "")
+          p.sku.toLowerCase().replace(/[\s\-_#]/g, "") === rawSku.replace(/[\s\-_#]/g, "")
       ) ?? null
     );
   }

@@ -139,7 +139,13 @@ export default function MoveForm({
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-500">บาร์โค้ด:</span>
                     <span className="font-mono font-bold text-slate-900 text-sm sm:text-base">
-                      {displayBarcode}
+                      {displayBarcode || "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500">ตำแหน่งปัจจุบัน:</span>
+                    <span className="font-mono font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200 text-xs sm:text-sm">
+                      {selectedProduct?.location && selectedProduct.location !== "-" ? selectedProduct.location : (watchFromLocation || "ยังไม่ระบุ")}
                     </span>
                   </div>
                 </div>
@@ -221,13 +227,24 @@ export default function MoveForm({
         {step === 2 && (
           <div className="space-y-4">
             <input type="hidden" {...register("to_location_id")} />
-            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1.5 text-xs">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2 text-xs">
               <div className="flex items-center justify-between text-slate-500">
                 <span className="font-semibold">สินค้าที่เลือก:</span>
                 <span className="text-amber-600 font-extrabold text-sm">จำนวน: {watchQty} ชิ้น</span>
               </div>
               <div className="text-sm font-bold text-slate-900 font-mono">
                 [{displaySku}]{hasDistinctName ? ` ${displayName}` : ""}
+              </div>
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100 text-slate-600">
+                <span className="font-bold text-slate-500">จากตำแหน่ง:</span>
+                <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                  {selectedFromLoc?.location_code || watchFromLocation || selectedProduct?.location || "ไม่ระบุ"}
+                </span>
+                <span className="text-slate-400">➔</span>
+                <span className="font-bold text-slate-500">ไปตำแหน่ง:</span>
+                <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  {selectedToLoc?.location_code || watchToLocation || "รอสแกน..."}
+                </span>
               </div>
             </div>
 

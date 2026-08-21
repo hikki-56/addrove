@@ -29,6 +29,88 @@ export interface TransferNotification {
   note?: string;
 }
 
+export interface ParsedTransferMetadata {
+  from_warehouse_id?: string;
+  to_warehouse_id?: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  source_allocations?: Array<{ location_id: string; location_name?: string; qty: number }>;
+  product_id?: string;
+  sku?: string;
+  barcode?: string;
+  product_name?: string;
+  category?: string;
+  base_unit?: string;
+  supplier?: string;
+  qty?: number;
+  moved_by?: string;
+  assigned_to_user_id?: string;
+  assigned_to_name?: string;
+  created_by?: string;
+  created_by_name?: string;
+  idempotency_key?: string;
+  completed_at?: string;
+  completed_by?: string;
+  completed_by_name?: string;
+  express_tag?: string;
+  express_status?: string;
+  original_note?: string;
+  current_step?: number;
+  current_step_text?: string;
+  last_active_at?: string;
+  [key: string]: any;
+}
+
+export function parseTransferMetadata(note?: string | null): ParsedTransferMetadata {
+  if (!note || typeof note !== "string") return {};
+
+  const trimmed = note.trim();
+  if (!trimmed) return {};
+
+  // 1. Try direct JSON parsing
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {}
+  }
+
+  // 2. Try substring JSON parsing (handles wrapped quotes, trailing text, etc.)
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const parsed = JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {}
+  }
+
+  // 3. Fallback for legacy key-value notes
+  const result: ParsedTransferMetadata = { original_note: trimmed };
+  const skuMatch = trimmed.match(/(?:รหัสสินค้า|sku):\s*([^|,\n]+)/i);
+  if (skuMatch) result.sku = skuMatch[1].trim();
+
+  const barcodeMatch = trimmed.match(/(?:บาร์โค้ด|barcode):\s*([^|,\n]+)/i);
+  if (barcodeMatch) result.barcode = barcodeMatch[1].trim();
+
+  const nameMatch = trimmed.match(/(?:ชื่อสินค้า|product_name|สินค้า):\s*([^|,\n]+)/i);
+  if (nameMatch) result.product_name = nameMatch[1].trim();
+
+  const qtyMatch = trimmed.match(/(?:จำนวน|qty):\s*(\d+(?:\.\d+)?)/i);
+  if (qtyMatch) result.qty = Number(qtyMatch[1]);
+
+  const fromMatch = trimmed.match(/(?:ย้ายจาก|จากโกดัง|from_wh|จาก):\s*([^|,\n]+)/i);
+  if (fromMatch) result.from_warehouse_id = fromMatch[1].trim();
+
+  const toMatch = trimmed.match(/(?:ไปโกดัง|ปลายทาง|to_wh|ไป):\s*([^|,\n]+)/i);
+  if (toMatch) result.to_warehouse_id = toMatch[1].trim();
+
+  const movedByMatch = trimmed.match(/(?:คนไปย้ายสินค้า|มอบหมาย|ย้ายโดย|คนเบิก):\s*([^|,\n]+)/i);
+  if (movedByMatch) result.moved_by = movedByMatch[1].trim();
+
+  return result;
+}
+
 const STORAGE_KEY = "stockify_transfer_notifications";
 
 export function getDisplayProductName(t?: { product_name?: string; note?: string; sku?: string; product_id?: string }): string {
@@ -164,6 +246,9 @@ export function markTransferWaitingApproval(
     from_location_id?: string;
     to_location_id?: string;
     source_allocations?: Array<{ location_id: string; location_name?: string; qty: number }>;
+    moved_by?: string;
+    assigned_to_name?: string;
+    assigned_to_user_id?: string;
   }
 ) {
   if (typeof window === "undefined") return;
@@ -180,6 +265,9 @@ export function markTransferWaitingApproval(
             from_location_id: details?.from_location_id || t.from_location_id,
             to_location_id: details?.to_location_id || t.to_location_id,
             source_allocations: details?.source_allocations || t.source_allocations,
+            moved_by: details?.moved_by || t.moved_by,
+            assigned_to_name: details?.assigned_to_name || details?.moved_by || t.assigned_to_name,
+            assigned_to_user_id: details?.assigned_to_user_id || t.assigned_to_user_id,
             last_active_at: new Date().toISOString(),
           }
         : t
@@ -449,14 +537,8 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const docId = String(doc.document_id || doc.document_no || "").trim().toLowerCase();
       const status = String(doc.status || "").toUpperCase();
 
-      // Safely parse JSON metadata stored inside doc.note
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let meta: Record<string, any> = {};
-      if (doc.note && typeof doc.note === "string" && doc.note.startsWith("{")) {
-        try {
-          meta = JSON.parse(doc.note);
-        } catch {}
-      }
+      // Safely parse metadata stored inside doc.note
+      const meta = parseTransferMetadata(doc.note);
 
       const prodId = String(meta.product_id || doc.product_id || "").trim();
       const movedBy = String(
@@ -464,7 +546,6 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
         meta.assigned_to_name ||
         doc.assigned_to_name ||
         doc.moved_by ||
-        (typeof doc.note === "string" && doc.note.match(/(?:คนไปย้ายสินค้า|มอบหมาย|ย้ายโดย):\s*([^|]+)/i)?.[1]?.trim()) ||
         ""
       ).trim();
 
@@ -472,7 +553,7 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const rawToWh = String(meta.to_warehouse_id || doc.to_warehouse_id || "wh-02");
       const fromWhId = normalizeWarehouseId(rawFromWh);
       const toWhId = normalizeWarehouseId(rawToWh);
-      const qty = Number(meta.qty || doc.qty) || 1;
+      const qty = Number(meta.qty !== undefined && meta.qty !== null ? meta.qty : (doc.qty || 1));
       const sku = String(meta.sku || doc.sku || (prodId && !prodId.startsWith("trf") ? prodId.replace(/^prod-/, "") : ""));
       const barcode = String(meta.barcode || doc.barcode || "");
       const productName = String(meta.product_name || doc.product_name || (sku ? `สินค้า ${sku}` : ""));
@@ -641,25 +722,34 @@ export async function fetchAndSyncTransferNotifications(): Promise<void> {
         }
       } catch {}
 
-      let res = await fetch(`/api/movements/transfer?_t=${now}`, {
-        cache: "no-store",
-        headers,
-      });
-
-      if (!res.ok) {
-        res = await fetch(`/api/movements/transfer/assigned?_t=${now}`, {
+      let res: Response | null = null;
+      try {
+        res = await fetch(`/api/movements/transfer?_t=${now}`, {
           cache: "no-store",
           headers,
         });
+      } catch {
+        res = null;
       }
 
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`/api/movements/transfer/assigned?_t=${now}`, {
+            cache: "no-store",
+            headers,
+          });
+        } catch {
+          res = null;
+        }
+      }
+
+      if (!res || !res.ok) return;
+      const json = await res.json().catch(() => null);
+      if (json && json.success && Array.isArray(json.data)) {
         syncServerTransferNotifications(json.data);
       }
-    } catch (e) {
-      console.error("[TransferNotification] Sync server error:", e);
+    } catch {
+      // Gracefully ignore transient background sync errors
     }
   })();
 

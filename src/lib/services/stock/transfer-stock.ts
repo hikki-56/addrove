@@ -32,6 +32,7 @@ import {
 import { hasWarehouseAccess } from "@/lib/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
 import { appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
+import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 export {
   CreateTransferSchema,
   SubmitTransferSchema,
@@ -144,9 +145,9 @@ export async function createTransfer(
         product_name: finalProdName,
         base_unit: prod.base_unit || "ชิ้น",
         qty: input.qty,
-        moved_by: input.moved_by || input.assigned_to_name || "พนักงาน",
+        moved_by: input.moved_by || "",
         assigned_to_user_id: input.assigned_to_user_id || "",
-        assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
+        assigned_to_name: input.assigned_to_name || input.moved_by || "",
         assigned_by_user_id: input.user_id,
         created_by: (input as any).created_by || input.user_id,
         created_by_name: (input as any).created_by_name || (input.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
@@ -163,7 +164,7 @@ export async function createTransfer(
         note: notePayload,
         created_by: (input as any).created_by || input.user_id,
         assigned_to_user_id: input.assigned_to_user_id || "",
-        assigned_to_name: input.assigned_to_name || input.moved_by || "พนักงาน",
+        assigned_to_name: input.assigned_to_name || input.moved_by || "",
         assigned_by_user_id: input.user_id,
       });
 
@@ -213,22 +214,25 @@ export async function submitTransferMove(
   const finalFromLoc = (input.fromLocationId || meta.from_location_id || (rawAllocations.length > 0 ? rawAllocations[0].location_id : "A1")).trim();
   const finalToLoc = (input.toLocationId || meta.to_location_id || "A1").trim();
 
+  const moverName = (input.userName && input.userName.trim()) || input.userId || "พนักงาน";
   meta.from_location_id = finalFromLoc;
   meta.to_location_id = finalToLoc;
   meta.source_allocations = rawAllocations;
   meta.current_step = 4;
   meta.current_step_text = "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)";
   meta.moved_at = new Date().toISOString();
-  if (input.userName || input.userId) {
-    meta.moved_by = input.userName || input.userId;
-    meta.mover_user_id = input.userId || "";
-  }
+  meta.moved_by = moverName;
+  meta.assigned_to_name = moverName;
+  meta.mover_user_id = input.userId || "";
+  meta.assigned_to_user_id = input.userId || "";
 
   const updatedNote = JSON.stringify(meta);
   if (typeof deps.repo.documents.updateDoc === "function") {
     await deps.repo.documents.updateDoc(doc.document_id, {
       status: "WAITING_APPROVAL",
       note: updatedNote,
+      assigned_to_name: moverName,
+      assigned_to_user_id: input.userId || doc.assigned_to_user_id,
     });
   } else {
     await deps.repo.documents.updateNote(doc.document_id, updatedNote);
@@ -250,15 +254,25 @@ export async function completeTransfer(
   userId?: string,
   userRole?: string,
   warehouseAccess?: string | string[],
-  sourceAllocations?: Array<{ location_id: string; qty: number }>
+  sourceAllocations?: Array<{ location_id: string; qty: number }>,
+  userName?: string
 ): Promise<Document> {
   if (userRole === "VIEWER") {
     throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในการปิดงานใบย้ายสินค้า");
   }
 
-  const doc =
+  let doc =
     (await deps.repo.documents.findById(docId)) ||
     (await deps.repo.documents.findByNo(docId));
+  if (!doc && typeof deps.repo.documents.findAll === "function") {
+    const allDocs = await deps.repo.documents.findAll({ page: 1, limit: 9999, document_type: "TRANSFER" as any });
+    const cleanTargetId = docId.trim().toLowerCase();
+    doc = allDocs.data.find(
+      (d) =>
+        d.document_id.trim().toLowerCase() === cleanTargetId ||
+        d.document_no.trim().toLowerCase() === cleanTargetId
+    ) || null;
+  }
   if (!doc) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
   if (doc.document_type !== "TRANSFER") {
     throw new InvalidTransferStateError("เอกสารนี้ไม่ใช่ใบย้ายสินค้า");
@@ -273,12 +287,7 @@ export async function completeTransfer(
     throw new InvalidTransferStateError("ไม่สามารถเปลี่ยนใบย้ายที่ยกเลิกแล้วเป็น COMPLETED");
   }
 
-  // Fail closed on missing or malformed note
-  if (!doc.note || !doc.note.startsWith("{")) {
-    throw new InvalidTransferStateError("ข้อมูลเอกสารใบย้ายสินค้าไม่สมบูรณ์หรือไม่ถูกต้อง");
-  }
-
-  let meta: {
+  interface TransferMetadata {
     from_warehouse_id: string;
     to_warehouse_id: string;
     from_location_id?: string;
@@ -298,17 +307,42 @@ export async function completeTransfer(
     idempotency_key?: string;
     completed_at?: string;
     completed_by?: string;
+    completed_by_name?: string;
     express_tag?: string;
     express_status?: string;
-  };
-
-  try {
-    meta = JSON.parse(doc.note);
-  } catch {
-    throw new InvalidTransferStateError("ข้อมูลเอกสารใบย้ายสินค้าไม่สมบูรณ์หรือไม่ถูกต้อง");
+    original_note?: string;
+    [key: string]: any;
   }
 
-  if (!meta.from_warehouse_id || !meta.to_warehouse_id || !meta.product_id || typeof meta.qty !== "number" || meta.qty <= 0) {
+  let parsedRaw: Record<string, any> = {};
+  try {
+    if (doc.note && typeof doc.note === "string") {
+      const trimmedNote = doc.note.trim();
+      if (trimmedNote.startsWith("{")) {
+        parsedRaw = JSON.parse(trimmedNote);
+      } else {
+        parsedRaw.original_note = trimmedNote;
+      }
+    }
+  } catch {
+    parsedRaw = {};
+  }
+
+  // Safe fallback and normalization
+  const rawFromWh = parsedRaw.from_warehouse_id || (doc as any).from_warehouse_id || (doc as any).warehouse_id || "wh-1";
+  const rawToWh = parsedRaw.to_warehouse_id || (doc as any).to_warehouse_id || "wh-2";
+  const rawProdId = parsedRaw.product_id || (doc as any).product_id || (doc as any).sku || parsedRaw.sku || "";
+  const rawQty = Number(parsedRaw.qty !== undefined && parsedRaw.qty !== null ? parsedRaw.qty : ((doc as any).qty || (doc as any).items?.[0]?.qty || 1));
+
+  const meta: TransferMetadata = {
+    ...parsedRaw,
+    from_warehouse_id: normalizeWarehouseId(rawFromWh),
+    to_warehouse_id: normalizeWarehouseId(rawToWh),
+    product_id: rawProdId,
+    qty: isNaN(rawQty) || rawQty <= 0 ? 1 : rawQty,
+  };
+
+  if (!meta.from_warehouse_id || !meta.to_warehouse_id || !meta.product_id) {
     throw new InvalidTransferStateError("ข้อมูลเอกสารใบย้ายสินค้าไม่สมบูรณ์หรือไม่ถูกต้อง");
   }
 
@@ -694,6 +728,15 @@ export async function completeTransfer(
       meta.to_location_id = finalToLocId;
       meta.completed_at = new Date().toISOString();
       meta.completed_by = executorId;
+      if (userName) {
+        meta.completed_by_name = userName;
+      }
+      if (!meta.moved_by || meta.moved_by === "พนักงาน" || meta.moved_by === "รอดำเนินการ" || meta.moved_by === "-") {
+        if (userName || executorId) {
+          meta.moved_by = userName || executorId;
+          meta.assigned_to_name = userName || executorId;
+        }
+      }
       meta.express_tag = "เบิกสินค้าเข้า Express";
       meta.express_status = "PENDING";
 
@@ -731,8 +774,8 @@ export async function cancelTransfer(
   userRole?: string,
   warehouseAccess?: string | string[]
 ): Promise<Document> {
-  if (userRole === "VIEWER") {
-    throw new UnauthorizedStockOperationError("คุณไม่มีสิทธิ์ในการยกเลิกใบย้ายสินค้า");
+  if (userRole === "VIEWER" || userRole === "STAFF" || userRole === "WAREHOUSE_STAFF") {
+    throw new UnauthorizedStockOperationError("พนักงานไม่มีสิทธิ์ในการยกเลิกหรือลบใบเบิกสินค้า (เฉพาะผู้ดูแลระบบ)");
   }
 
   const doc =

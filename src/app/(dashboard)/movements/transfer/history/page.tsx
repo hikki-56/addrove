@@ -4,7 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
-import { getTransferNotifications, getDisplayProductName, isTransferCompleted } from "@/lib/transfer-notification-utils";
+import {
+  getTransferNotifications,
+  getDisplayProductName,
+  isTransferCompleted,
+  parseTransferMetadata,
+  purgeInvalidNotifications,
+} from "@/lib/transfer-notification-utils";
 import type { Product, Warehouse } from "@/types/models";
 
 export interface TransferHistoryRecord {
@@ -66,6 +72,8 @@ export default function TransferHistoryPage() {
   const loadData = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     try {
+      purgeInvalidNotifications();
+
       // 1. Fetch products & warehouses for data enrichment
       const [prodsRes, whsRes] = await Promise.allSettled([
         fetch("/api/products").then((r) => (r.ok ? r.json() : { data: [] })),
@@ -140,12 +148,7 @@ export default function TransferHistoryPage() {
         const docId = String(doc.document_id || doc.document_no || "").trim();
         if (!docId) continue;
 
-        let meta: Record<string, any> = {};
-        if (doc.note && typeof doc.note === "string" && doc.note.startsWith("{")) {
-          try {
-            meta = JSON.parse(doc.note);
-          } catch {}
-        }
+        const meta = parseTransferMetadata(doc.note);
 
         const rawProdId = String(meta.product_id || doc.product_id || "").trim();
         const rawSku = String(meta.sku || doc.sku || (rawProdId.startsWith("prod-") ? rawProdId.replace(/^prod-/, "") : ""));
@@ -168,15 +171,19 @@ export default function TransferHistoryPage() {
         const fromWhName = getWarehouseName(fromWhId);
         const toWhName = getWarehouseName(toWhId);
 
-        const qty = Number(meta.qty || doc.qty) || 1;
-        const movedBy = String(
+        const qty = Number(meta.qty !== undefined && meta.qty !== null ? meta.qty : (doc.qty || 1));
+        const rawMovedBy = String(
           meta.moved_by ||
           meta.assigned_to_name ||
           doc.assigned_to_name ||
           doc.moved_by ||
-          (typeof doc.note === "string" && doc.note.match(/(?:คนไปย้ายสินค้า|มอบหมาย|ย้ายโดย):\s*([^|]+)/i)?.[1]?.trim()) ||
-          "พนักงาน"
+          ""
         ).trim();
+
+        const movedBy =
+          rawMovedBy && rawMovedBy !== "null" && rawMovedBy !== "undefined" && rawMovedBy !== "-"
+            ? rawMovedBy
+            : "-";
 
         const createdBy = String(meta.created_by || doc.created_by || "").trim();
         const rawCreatedByName = String(
@@ -227,11 +234,23 @@ export default function TransferHistoryPage() {
         }
       }
 
-      // B. Merge local storage transfer notifications
+      // B. Merge local storage transfer notifications (ONLY for un-synced/optimistic items)
       for (const notif of localNotifs) {
         if (!notif || !notif.id) continue;
         const key = notif.id.toLowerCase();
-        const existing = recordMap.get(key) || (notif.doc_no ? recordMap.get(notif.doc_no.toLowerCase()) : undefined);
+        const docNoKey = notif.doc_no ? notif.doc_no.toLowerCase() : "";
+        const existing = recordMap.get(key) || (docNoKey ? recordMap.get(docNoKey) : undefined);
+
+        // Server record already exists -> Never let stale/dummy localStorage overwrite valid server data
+        if (existing) {
+          if (notif.status === "COMPLETED" && existing.status !== "COMPLETED") {
+            existing.status = "COMPLETED";
+          }
+          if (notif.moved_by && notif.moved_by !== "-" && notif.moved_by !== "พนักงาน" && (!existing.moved_by || existing.moved_by === "-")) {
+            existing.moved_by = notif.moved_by;
+          }
+          continue;
+        }
 
         const rawProdId = notif.product_id || "";
         const rawSku = notif.sku || (rawProdId.startsWith("prod-") ? rawProdId.replace(/^prod-/, "") : "");
@@ -242,17 +261,16 @@ export default function TransferHistoryPage() {
           (rawProdId ? prodMapById.get(rawProdId.toLowerCase()) : undefined) ||
           (rawBarcode ? prodMapByBarcode.get(rawBarcode.toLowerCase()) : undefined);
 
-        const sku = notif.sku || matchedProduct?.sku || (existing?.sku !== "-" ? existing?.sku : "-") || "-";
+        const sku = notif.sku || matchedProduct?.sku || "-";
         const barcode =
           notif.barcode && notif.barcode.trim() !== "-"
             ? notif.barcode.trim()
-            : matchedProduct?.barcode || (existing?.barcode !== "-" ? existing?.barcode : "-") || "-";
+            : matchedProduct?.barcode || "-";
         const productName =
           notif.product_name ||
           matchedProduct?.product_name ||
-          existing?.product_name ||
           (sku !== "-" ? `สินค้า ${sku}` : "รายการเบิกสินค้า");
-        const baseUnit = matchedProduct?.base_unit || existing?.base_unit || "ชิ้น";
+        const baseUnit = matchedProduct?.base_unit || "ชิ้น";
 
         const fromWhId = normalizeWarehouseId(notif.from_warehouse_id || "wh-01");
         const toWhId = normalizeWarehouseId(notif.to_warehouse_id || "wh-02");
@@ -266,31 +284,30 @@ export default function TransferHistoryPage() {
 
         const merged: TransferHistoryRecord = {
           id: notif.id,
-          doc_no: notif.doc_no || existing?.doc_no || notif.id,
-          reference_no: existing?.reference_no || "-",
+          doc_no: notif.doc_no || notif.id,
+          reference_no: "-",
           barcode: barcode !== "-" && barcode.trim() ? barcode.trim() : (sku !== "-" ? sku : "-"),
           sku: sku,
-          product_id: rawProdId || matchedProduct?.product_id || existing?.product_id || "",
-          product_name: getDisplayProductName({ product_name: productName, note: notif.note || existing?.note, sku }),
+          product_id: rawProdId || matchedProduct?.product_id || "",
+          product_name: getDisplayProductName({ product_name: productName, note: notif.note, sku }),
           from_warehouse_id: fromWhId,
           from_warehouse_name: fromWhName,
           to_warehouse_id: toWhId,
           to_warehouse_name: toWhName,
-          qty: Number(notif.qty) || existing?.qty || 1,
+          qty: Number(notif.qty) || 1,
           base_unit: baseUnit,
-          created_by: notif.created_by || existing?.created_by || "admin",
-          created_by_name: notif.created_by_name || existing?.created_by_name || "ผู้ดูแลระบบ (Admin)",
-          moved_by: notif.moved_by || notif.assigned_to_name || existing?.moved_by || "พนักงาน",
-          assigned_to_name: notif.assigned_to_name || notif.moved_by || existing?.assigned_to_name || "พนักงาน",
-          assigned_to_user_id: notif.assigned_to_user_id || existing?.assigned_to_user_id || "",
+          created_by: notif.created_by || "admin",
+          created_by_name: notif.created_by_name || "ผู้ดูแลระบบ (Admin)",
+          moved_by: notif.moved_by || "-",
+          assigned_to_name: notif.assigned_to_name || notif.moved_by || "",
+          assigned_to_user_id: notif.assigned_to_user_id || "",
           status: status,
-          created_at: notif.created_at || existing?.created_at || new Date().toISOString(),
-          document_date: existing?.document_date || String(notif.created_at || "").slice(0, 10),
-          from_location_id: notif.from_location_id || existing?.from_location_id,
-          to_location_id: notif.to_location_id || existing?.to_location_id,
-          source_allocations: notif.source_allocations || existing?.source_allocations,
-          note: notif.note || existing?.note,
-          original_note: existing?.original_note,
+          created_at: notif.created_at || new Date().toISOString(),
+          document_date: String(notif.created_at || "").slice(0, 10),
+          from_location_id: notif.from_location_id,
+          to_location_id: notif.to_location_id,
+          source_allocations: notif.source_allocations,
+          note: notif.note,
         };
 
         recordMap.set(key, merged);
@@ -549,7 +566,7 @@ export default function TransferHistoryPage() {
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-5 space-y-4 sm:space-y-5">
+    <div className="w-full max-w-full space-y-4 sm:space-y-5">
       {/* Toast Copy Success Notification */}
       {copySuccess && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
@@ -1021,14 +1038,18 @@ export default function TransferHistoryPage() {
 
                       {/* 11. คนเบิก */}
                       <td className="py-2.5 px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-slate-800 font-semibold text-[11px]">
-                          <div className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center shrink-0">
-                            {(item.moved_by || item.assigned_to_name)?.charAt(0) || "พ"}
+                        {item.moved_by && item.moved_by !== "-" && item.moved_by !== "พนักงาน" ? (
+                          <div className="flex items-center gap-1 text-slate-800 font-semibold text-[11px]">
+                            <div className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center shrink-0">
+                              {item.moved_by.charAt(0)}
+                            </div>
+                            <span className="truncate max-w-[120px]" title={item.moved_by}>
+                              {item.moved_by}
+                            </span>
                           </div>
-                          <span className="truncate max-w-[85px]" title={item.moved_by || item.assigned_to_name}>
-                            {item.moved_by || item.assigned_to_name || "พนักงาน"}
-                          </span>
-                        </div>
+                        ) : (
+                          <span className="text-slate-400 font-normal text-[11px]">-</span>
+                        )}
                       </td>
 
                       {/* 12. สถานะ */}
@@ -1225,9 +1246,11 @@ export default function TransferHistoryPage() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-400 font-medium">พนักงานผู้เบิก/ผู้รับมอบหมาย</span>
+                    <span className="text-[10px] text-slate-400 font-medium">พนักงานผู้ไปเบิกสินค้า</span>
                     <p className="font-bold text-slate-800 text-xs sm:text-sm">
-                      {selectedRecord.moved_by || selectedRecord.assigned_to_name || "พนักงาน"}
+                      {selectedRecord.moved_by && selectedRecord.moved_by !== "-" && selectedRecord.moved_by !== "พนักงาน"
+                        ? selectedRecord.moved_by
+                        : "รอพนักงานไปเบิก"}
                     </p>
                   </div>
 

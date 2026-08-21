@@ -120,15 +120,12 @@ export async function moveStock(
 
       // 7. Synchronize move via repository adapter
       if (repo.warehouseSync) {
-        const product =
-          (await repo.products.findById(input.product_id)) ||
-          (await repo.products.findBySku(input.product_id));
-
+        const cleanSku = input.product_id.replace(/^prod-/, "");
         await repo.warehouseSync.syncMove(
           warehouse.warehouse_id,
-          product?.sku || input.product_id,
+          cleanSku || input.product_id,
           input.qty,
-          fromLoc,
+          input.from_location_id,
           input.to_location_id
         );
       }

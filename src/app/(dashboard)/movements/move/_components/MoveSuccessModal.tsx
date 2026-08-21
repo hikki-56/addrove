@@ -9,21 +9,21 @@ export interface MoveSuccessModalProps {
 export default function MoveSuccessModal({ onReset }: MoveSuccessModalProps) {
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="glass-card rounded-2xl p-10 text-center border border-white/10 shadow-2xl space-y-4">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+      <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-xl space-y-4">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center mx-auto text-emerald-600 shadow-md">
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-100">จัดตำแหน่งสำเร็จ</h2>
-        <p className="text-slate-400 text-sm max-w-sm mx-auto">
-          บันทึกตำแหน่งจัดเก็บสินค้าเข้าสู่ระบบเรียบร้อยแล้ว
+        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">จัดตำแหน่งสินค้าสำเร็จ!</h2>
+        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">
+          ระบบได้อัปเดตตำแหน่งจัดเก็บสินค้าเข้าสู่ Google Sheets และฐานข้อมูลเรียบร้อยแล้ว
         </p>
         <div className="pt-4">
           <button
             type="button"
             onClick={onReset}
-            className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-emerald-950/40 cursor-pointer active:scale-95 transition-all"
+            className="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-95 transition-all"
           >
             จัดตำแหน่งรายการถัดไป
           </button>

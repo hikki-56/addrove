@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
       return forbiddenResponse(authErr.message);
     }
 
+    console.log("[API Move] Payload received:", parsed.data);
+
     const repo = getRepository();
     const doc = await moveStock(
       { repo },
@@ -40,8 +42,10 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    console.log("[API Move] Success doc:", doc.document_id);
     return successResponse(doc, "ย้ายตำแหน่งสินค้าและอัปเดตสต็อกเรียบร้อยแล้ว", 201);
   } catch (e) {
+    console.error("[API Move] Error:", e);
     return mapStockErrorToResponse(e) || serverErrorResponse(e);
   }
 }

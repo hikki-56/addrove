@@ -93,7 +93,6 @@ export default function StaffTransferPage() {
           setSelectedTask(task);
           setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
         }}
-        onCancelTask={transferHook.handleCancelTransfer}
       />
 
       {/* Staff Guided 4-Step Execution Modal */}

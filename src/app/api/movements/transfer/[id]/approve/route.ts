@@ -69,7 +69,8 @@ export async function POST(
       actor.id,
       actor.role,
       actor.warehouseAccess,
-      allocations
+      allocations,
+      session?.user?.name || actor.id
     );
 
     return successResponse(doc, "อนุมัติการย้ายสินค้าและบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว");

@@ -471,9 +471,27 @@ export function useTransferMovement({
     window.dispatchEvent(new Event("stockify-transfer-updated"));
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const storedToken =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("stockify_tab_token") ||
+            localStorage.getItem("stockify_tab_token") ||
+            (function () {
+              try {
+                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+              } catch {
+                return null;
+              }
+            })()
+          : null;
+      if (storedToken) {
+        headers["x-tab-token"] = storedToken;
+        headers["Authorization"] = `Bearer ${storedToken}`;
+      }
+
       const res = await fetch(`/api/movements/transfer/${t.id}/cancel`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ note: "ยกเลิกโดย Admin" }),
       });
       const json = await res.json();
@@ -1065,10 +1083,15 @@ export function useTransferMovement({
       }
 
       setStaffError("");
+      const moverStaffName = tabUser?.name || "พนักงาน";
+      const moverStaffId = tabUser?.id || "";
       markTransferWaitingApproval(selectedTask.id, {
         from_location_id: sourceAllocations[0]?.location_id || scannedFromLocation,
         to_location_id: targetToLocId,
         source_allocations: sourceAllocations.length > 0 ? sourceAllocations.map(a => ({ location_id: a.location_id, qty: a.qty })) : undefined,
+        moved_by: moverStaffName,
+        assigned_to_name: moverStaffName,
+        assigned_to_user_id: moverStaffId,
       });
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
@@ -1147,12 +1170,8 @@ export function useTransferMovement({
 
       // Always generate a fresh unique idempotency base key on every submission attempt to prevent key conflict
       const baseIdemKey = uuidv4();
-      const rawMovedBy = data.moved_by && data.moved_by.trim() ? data.moved_by.trim() : (tabUser?.name || "พนักงาน");
-      const matchedStaff =
-        staffList.find((s) => s.id === rawMovedBy || s.full_name === rawMovedBy) ||
-        defaultStaff.find((s) => s.id === rawMovedBy || s.full_name === rawMovedBy);
-      const assignedUserId = matchedStaff ? matchedStaff.id : (rawMovedBy.startsWith("usr-") || rawMovedBy.startsWith("user-") ? rawMovedBy : (tabUser?.id || ""));
-      const assignedName = matchedStaff ? matchedStaff.full_name : (rawMovedBy || tabUser?.name || "พนักงาน");
+      const creatorId = tabUser?.id || "admin";
+      const creatorName = tabUser?.name || "ผู้สร้างรายการ";
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
 
       // Process all items in parallel concurrently for maximum speed
@@ -1170,11 +1189,11 @@ export function useTransferMovement({
                 barcode: item.barcode,
                 product_name: item.product_name,
                 qty: Math.max(1, item.qty || 1),
-                moved_by: assignedName,
-                assigned_to_user_id: assignedUserId,
-                assigned_to_name: assignedName,
-                created_by: tabUser?.id || "admin",
-                created_by_name: tabUser?.name || "Admin",
+                moved_by: "",
+                assigned_to_user_id: "",
+                assigned_to_name: "",
+                created_by: creatorId,
+                created_by_name: creatorName,
                 document_date: docDateVal,
                 idempotency_key: itemKey,
               }),
@@ -1203,9 +1222,9 @@ export function useTransferMovement({
               created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
               created_at: realDoc.created_at || new Date().toISOString(),
               status: "PENDING",
-              moved_by: assignedName,
-              assigned_to_user_id: assignedUserId,
-              assigned_to_name: assignedName,
+              moved_by: "",
+              assigned_to_user_id: "",
+              assigned_to_name: "",
             };
 
             saveTransferNotification(notif);

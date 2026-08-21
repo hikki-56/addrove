@@ -133,6 +133,18 @@ export function useMoveMovement({
     (l) => l.location_code === watchToLocation || l.location_id === watchToLocation
   );
 
+  useEffect(() => {
+    if (selectedProduct) {
+      if (selectedProduct.location && selectedProduct.location !== "-" && selectedProduct.location.trim()) {
+        setValue("from_location_id", selectedProduct.location.trim(), { shouldValidate: true });
+      }
+      const pQty = Number(selectedProduct.quantity ?? selectedProduct.minimum_stock ?? 0);
+      if (pQty > 0) {
+        setValue("qty", pQty, { shouldValidate: true });
+      }
+    }
+  }, [selectedProduct, setValue]);
+
   const lastStepTransitionRef = useRef<number>(0);
 
   const handleScanBarcode = useCallback(async (code: string) => {
@@ -197,9 +209,16 @@ export function useMoveMovement({
       if (matched) {
         const pid = matched.sku || matched.product_id;
         setValue("product_id", pid, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+        if (matched.location && matched.location.trim() && matched.location.trim() !== "-") {
+          setValue("from_location_id", matched.location.trim(), { shouldValidate: true });
+        }
+        if (matched.quantity && matched.quantity > 0) {
+          setValue("qty", matched.quantity, { shouldValidate: true });
+        }
+        const locText = matched.location && matched.location !== "-" ? ` (ตำแหน่งเดิม: ${matched.location})` : "";
         setScanFeedback({
           type: "success",
-          message: `✓ สแกนสำเร็จ: ${matched.sku || matched.product_name}`,
+          message: `✓ สแกนสำเร็จ: ${matched.sku || matched.product_name}${locText}`,
         });
         setBarcodeInput("");
         setTimeout(() => setScanFeedback(null), 3000);
@@ -367,6 +386,7 @@ export function useMoveMovement({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
+          product_id: selectedProduct?.sku || selectedProduct?.product_id || data.product_id,
           from_location_id: rawFrom,
           to_location_id: rawTo,
           qty: currentQty,
@@ -376,6 +396,8 @@ export function useMoveMovement({
       if (json.success) {
         if (typeof window !== "undefined") {
           localStorage.removeItem(MOVE_DRAFT_KEY);
+          window.dispatchEvent(new Event("stockify-product-updated"));
+          window.dispatchEvent(new Event("stockify-stock-updated"));
         }
         refreshWarehouseData(activeWhId);
         setSubmitted(true);

@@ -53,10 +53,11 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
     setLoading(true);
     setError(null);
     try {
+      const now = Date.now();
       const [whRes, locRes, prodRes] = await Promise.all([
-        fetch("/api/warehouses").then((r) => (r.ok ? r.json() : { data: [] })),
-        fetch("/api/locations").then((r) => (r.ok ? r.json() : { data: [] })),
-        fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}`).then((r) => (r.ok ? r.json() : { data: [] })),
+        fetch(`/api/warehouses?_t=${now}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
+        fetch(`/api/locations?_t=${now}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
+        fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}&_t=${now}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
       ]);
 
       const fetchedWarehouses: Warehouse[] = whRes.data || [];

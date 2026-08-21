@@ -291,7 +291,7 @@ export default function TransferNotificationList({
                           <strong className="text-slate-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                         </span>
                       </div>
-                      {onCancelTask && (
+                      {isAdmin && onCancelTask && (
                         <button
                           type="button"
                           disabled={isCancelling}
@@ -325,7 +325,7 @@ export default function TransferNotificationList({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {onCancelTask && (
+                      {isAdmin && onCancelTask && (
                         <button
                           type="button"
                           disabled={isCancelling}

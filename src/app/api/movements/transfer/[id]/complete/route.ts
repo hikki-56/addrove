@@ -59,7 +59,8 @@ export async function POST(
       actor.id,
       actor.role,
       actor.warehouseAccess,
-      parsed.data.source_allocations
+      parsed.data.source_allocations,
+      session?.user?.name || actor.id
     );
 
     return successResponse(doc, "ดำเนินการย้ายสินค้าและปรับปรุงสต็อกสำเร็จเรียบร้อยแล้ว");

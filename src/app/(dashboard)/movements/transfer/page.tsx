@@ -182,7 +182,7 @@ export default function TransferPage() {
               setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
             }
           }}
-          onCancelTask={handleCancelTransfer}
+          onCancelTask={canApprove ? handleCancelTransfer : undefined}
           onApproveTask={handleApproveTransfer}
           onRejectTask={handleRejectTransfer}
           onCleanupHistory={handleCleanupHistory}
@@ -199,7 +199,7 @@ export default function TransferPage() {
             setSelectedTask(task);
             setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);
           }}
-          onCancelTask={handleCancelTransfer}
+          onCancelTask={isAdmin ? handleCancelTransfer : undefined}
           onApproveTask={handleApproveTransfer}
           onRejectTask={handleRejectTransfer}
           onCleanupHistory={handleCleanupHistory}
