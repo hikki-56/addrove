@@ -41,22 +41,30 @@ function rowToProduct(row: string[], idx: number = 0): Product | null {
   let supplier = "";
 
   // Detect New 7-Column Layout: [0:ลำดับ, 1:ผู้จัดจำหน่าย, 2:รหัสสินค้า, 3:รหัสนำหน้า 4 หลัก, 4:รายละเอียด, 5:หมวดสินค้า, 6:บาร์โค้ด]
-  if (col2 || (row.length >= 7 && !isNaN(Number(col0)))) {
+  const is7ColLayout =
+    row.length >= 7 &&
+    col0 !== "" &&
+    !isNaN(Number(col0)) &&
+    Number(col0) < 10000 &&
+    (row[3]?.trim() === col2.slice(0, 4) || (col2 !== "" && row[4]?.trim() !== ""));
+
+  if (is7ColLayout) {
     supplier = col1;
     sku = col2 || col0;
     productName = row[4]?.trim() || sku;
     category = row[5]?.trim() || "ทั่วไป";
     barcode = row[6]?.trim() || sku;
   } else if (row.length >= 4) {
-    // Legacy 8-col layout: [0:รหัสสินค้า, 1:บาร์โค้ด, 2:ชื่อสินค้า, 3:หมวดหมู่, 4:หน่วยนับ, 5:สต็อกขั้นต่ำ, 6:ตำแหน่ง, 7:ผู้จัดจำหน่าย]
+    // Standard/Legacy layout: [0:รหัสสินค้า/SKU, 1:บาร์โค้ด, 2:ชื่อสินค้า/รายละเอียด, 3:หมวดหมู่, 4:หน่วยนับ, 5:สต็อกขั้นต่ำ, 6:ตำแหน่ง, 7:ผู้จัดจำหน่าย]
     sku = col0 || `SKU-${idx}`;
-    barcode = col1;
+    barcode = col1 && col1 !== "-" ? col1 : sku;
     productName = col2 || sku;
     category = row[3]?.trim() || "ทั่วไป";
     baseUnit = row[4]?.trim() || "ชิ้น";
     supplier = row[7]?.trim() ?? "";
   } else {
     sku = col0 || `SKU-${idx}`;
+    barcode = col0 || `SKU-${idx}`;
     productName = col1 || sku;
     category = col2 || "ทั่วไป";
     baseUnit = row[3]?.trim() || "ชิ้น";
@@ -130,6 +138,8 @@ export class SheetsProductRepository implements IProductRepository {
           p.sku.toLowerCase() === cleanId ||
           p.sku.toLowerCase() === rawSku ||
           p.product_id.toLowerCase() === `prod-${rawSku}` ||
+          (p.barcode && p.barcode.trim().toLowerCase() === cleanId) ||
+          (p.barcode && p.barcode.trim().toLowerCase() === rawSku) ||
           p.sku.toLowerCase().replace(/[^a-zA-Z0-9]/g, "") === rawSku.replace(/[^a-zA-Z0-9]/g, "")
       ) ?? null
     );
@@ -142,8 +152,17 @@ export class SheetsProductRepository implements IProductRepository {
 
   async findByBarcode(barcode: string): Promise<Product | null> {
     if (!barcode) return null;
+    const cleanBarcode = barcode.trim().toLowerCase();
     const products = await this.findAll();
-    return products.find((p) => p.barcode === barcode) ?? null;
+    return (
+      products.find(
+        (p) =>
+          (p.barcode && p.barcode.trim().toLowerCase() === cleanBarcode) ||
+          p.sku.toLowerCase() === cleanBarcode ||
+          p.product_id.toLowerCase() === cleanBarcode ||
+          p.product_id.toLowerCase() === `prod-${cleanBarcode}`
+      ) ?? null
+    );
   }
 
   async create(input: CreateProductInput): Promise<Product> {

@@ -970,5 +970,31 @@ describe("transferStock Use Cases & Authorization Rules", () => {
       )
     ).rejects.toThrow(/ไม่เพียงพอสำหรับจำนวนที่เลือกหยิบ/);
   });
+
+  test("24. createTransfer preserves 13-digit barcode without converting or truncating to 8 digits", async () => {
+    const input = CreateTransferSchema.parse({
+      product_id: "prod-001",
+      barcode: "8851234567890",
+      sku: "SKU001",
+      product_name: "ก๊อกน้ำ EAN-13 8851234567890",
+      from_warehouse_id: "wh-1",
+      to_warehouse_id: "wh-2",
+      qty: 2,
+      moved_by: "สมชาย",
+      document_date: "2026-08-13",
+      idempotency_key: "idem-13digit-test",
+    });
+
+    const doc = await createTransfer(
+      { repo },
+      { ...input, user_id: "admin-1", role: "ADMIN" }
+    );
+
+    const meta = JSON.parse(doc.note);
+    expect(meta.barcode).toBe("8851234567890");
+    expect(meta.barcode.length).toBe(13);
+    expect(meta.sku).toBe("SKU001");
+    expect(meta.product_name).toBe("ก๊อกน้ำ EAN-13 8851234567890");
+  });
 });
 

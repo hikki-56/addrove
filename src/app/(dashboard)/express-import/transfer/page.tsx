@@ -205,7 +205,7 @@ export default function ExpressTransferPage() {
           ? rawBarcode
           : (sku && sku !== "-" && sku !== "trf-item" && !sku.toLowerCase().startsWith("trf") ? sku : "");
 
-      const finalBarcode = barcode || to8DigitBarcode(rawBarcode, sku, prodName) || (prodName.match(/^(\d{3,8})/) ? (prodName.match(/^(\d{3,8})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,8})/)![1] : "9000" + prodName.match(/^(\d{3,8})/)![1].padStart(4, "0")) : "");
+      const finalBarcode = barcode || to8DigitBarcode(rawBarcode, sku, prodName) || (prodName.match(/^(\d{3,18})/) ? (prodName.match(/^(\d{3,18})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,18})/)![1] : "9000" + prodName.match(/^(\d{3,18})/)![1].padStart(4, "0")) : "");
 
       const qty = Math.abs(Number(m.qty_change) || 1);
       const uniqueId = `trf_${m.movement_id || m.document_id || idx}_${sku}_${idx}`;

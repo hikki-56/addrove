@@ -178,6 +178,9 @@ export type MoveStockInput = MoveDocumentInput;
 // ------ Movement: Transfer (cross-warehouse) ------
 export const TransferDocumentSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
+  sku: z.string().optional(),
+  barcode: z.string().optional(),
+  product_name: z.string().optional(),
   from_warehouse_id: z.string().min(1, "กรุณาเลือกโกดังต้นทาง"),
   from_location_id: z.string().optional().default(""),
   to_warehouse_id: z.string().min(1, "กรุณาเลือกโกดังปลายทาง"),

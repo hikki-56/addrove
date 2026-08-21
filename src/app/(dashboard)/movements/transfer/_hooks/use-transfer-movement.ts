@@ -1166,6 +1166,9 @@ export function useTransferMovement({
               body: JSON.stringify({
                 ...data,
                 product_id: item.product_id,
+                sku: item.sku,
+                barcode: item.barcode,
+                product_name: item.product_name,
                 qty: Math.max(1, item.qty || 1),
                 moved_by: assignedName,
                 assigned_to_user_id: assignedUserId,

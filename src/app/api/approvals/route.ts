@@ -40,23 +40,14 @@ export async function GET(req: NextRequest) {
       rows: Array<[string, string, string, string, number, string, string, string]>;
     }> = [];
 
-    // Fetch PRODUCTS sheet to build exact SKU -> Barcode lookup map
-    const productSheetRows = await readSheet(SHEETS.PRODUCTS).catch(() => []);
-    const productBarcodeMap = new Map<string, string>();
-    for (const pRow of productSheetRows) {
-      if (!pRow || pRow.length === 0) continue;
-      const pSku = String(pRow[0] ?? "").trim();
-      if (!pSku || pSku === "รหัสสินค้า" || pSku === "SKU") continue;
-      const pBarcode = String(pRow[1] ?? "").trim();
-      if (pBarcode && pBarcode.toLowerCase() !== pSku.toLowerCase()) {
-        productBarcodeMap.set(pSku.toLowerCase(), pBarcode);
-      }
-    }
-
-    // Fetch PRODUCTS repository to build SKU -> Supplier map
+    // Fetch PRODUCTS repository to build SKU -> Barcode and SKU -> Supplier map
     const allProducts = await repo.products.findAll().catch(() => []);
+    const productBarcodeMap = new Map<string, string>();
     const productSupplierMap = new Map<string, string>();
     allProducts.forEach((p: any) => {
+      if (p.sku && p.barcode && p.barcode !== "-" && p.barcode.toLowerCase() !== p.sku.toLowerCase()) {
+        productBarcodeMap.set(p.sku.toLowerCase(), p.barcode);
+      }
       const s = p.supplier || (p.description ? p.description.replace(/^ผู้จำหน่าย:\s*/, "") : "");
       if (s && p.sku) productSupplierMap.set(p.sku.toLowerCase(), s);
     });
@@ -105,7 +96,7 @@ export async function GET(req: NextRequest) {
 
           if (!rawBarcode || rawBarcode.toLowerCase() === sku.toLowerCase()) {
             const textToSearch = r3 || r1;
-            const match = textToSearch.match(/^(\d{3,10})/);
+            const match = textToSearch.match(/^(\d{3,18})/);
             if (match) {
               rawBarcode = match[1];
             }

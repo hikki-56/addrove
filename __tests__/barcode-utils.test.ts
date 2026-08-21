@@ -19,6 +19,11 @@ describe("barcode-utils", () => {
       expect(to8DigitBarcode("TRF-12345", "SKU-999")).toBe("SKU-999");
       expect(to8DigitBarcode("TRF", "SKU-888")).toBe("SKU-888");
     });
+
+    it("should preserve 13-digit barcode from product name and not truncate to 8 digits", () => {
+      expect(to8DigitBarcode("", "", "8851234567890 สินค้าตัวอย่าง")).toBe("8851234567890");
+      expect(to8DigitBarcode("-", "-", "8859999888877")).toBe("8859999888877");
+    });
   });
 
   describe("encodeCode128Modules", () => {

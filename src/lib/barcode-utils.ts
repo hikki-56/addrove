@@ -58,7 +58,7 @@ export function to8DigitBarcode(rawBarcode?: string, sku?: string, productName?:
     return s;
   }
   if (productName) {
-    const match = productName.trim().match(/^(\d{3,8})/);
+    const match = productName.trim().match(/^(\d{3,18})/);
     if (match) {
       const numStr = match[1];
       if (numStr.length >= 7) return numStr;

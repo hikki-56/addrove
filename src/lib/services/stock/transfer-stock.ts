@@ -82,7 +82,7 @@ export async function createTransfer(
         throw new StockNotFoundError("ไม่พบโกดังต้นทางหรือโกดังปลายทาง");
       }
 
-      // Lookup product by product_id or SKU to snapshot product details
+      // Lookup product by product_id, SKU or Barcode to snapshot product details
       const cleanProdId = (input.product_id || "").trim();
       let prod = await repo.products.findById(cleanProdId);
       if (!prod) {
@@ -92,6 +92,13 @@ export async function createTransfer(
         // Fallback: check if product_id without 'prod-' prefix matches SKU
         const cleanSku = cleanProdId.replace(/^prod-/, "");
         prod = await repo.products.findBySku(cleanSku);
+      }
+      if (!prod) {
+        // Fallback: lookup by barcode (e.g. 13-digit barcode)
+        prod = await repo.products.findByBarcode(cleanProdId);
+      }
+      if (!prod && input.barcode) {
+        prod = await repo.products.findByBarcode(input.barcode.trim());
       }
       if (!prod) {
         throw new StockNotFoundError(`ไม่พบข้อมูลสินค้าสำหรับรหัส "${input.product_id}"`);
@@ -117,15 +124,24 @@ export async function createTransfer(
         );
       }
 
+      const finalBarcode =
+        (input.barcode && input.barcode.trim() !== "-" && input.barcode.trim() !== "" ? input.barcode.trim() : "") ||
+        (prod.barcode && prod.barcode.trim() !== "-" && prod.barcode.trim() !== "" ? prod.barcode.trim() : "") ||
+        prod.sku ||
+        cleanProdId;
+
+      const finalSku = (input.sku && input.sku.trim() ? input.sku.trim() : "") || prod.sku || cleanProdId.replace(/^prod-/, "");
+      const finalProdName = (input.product_name && input.product_name.trim() ? input.product_name.trim() : "") || prod.product_name || `สินค้า ${finalSku}`;
+
       const notePayload = JSON.stringify({
         from_warehouse_id: fromWh.warehouse_id,
         to_warehouse_id: toWh.warehouse_id,
         from_location_id: finalFromLocId,
         to_location_id: finalToLocId,
         product_id: prod.product_id,
-        sku: prod.sku,
-        barcode: prod.barcode || prod.sku,
-        product_name: prod.product_name,
+        sku: finalSku,
+        barcode: finalBarcode,
+        product_name: finalProdName,
         base_unit: prod.base_unit || "ชิ้น",
         qty: input.qty,
         moved_by: input.moved_by || input.assigned_to_name || "พนักงาน",

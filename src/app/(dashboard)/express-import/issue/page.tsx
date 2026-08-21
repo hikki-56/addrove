@@ -150,7 +150,7 @@ export default function ExpressIssuePage() {
         if (pCleanName) prodByNameClean.set(pCleanName, p);
 
         // Leading number indexing (e.g. "8412#GT..." -> "8412")
-        const numMatch = (p.product_name || "").match(/^(\d{3,8})/) || (p.sku || "").match(/^(\d{3,8})/);
+        const numMatch = (p.product_name || "").match(/^(\d{3,18})/) || (p.sku || "").match(/^(\d{3,18})/);
         if (numMatch) {
           prodByLeadingNumber.set(numMatch[1], p);
         }
@@ -196,7 +196,7 @@ export default function ExpressIssuePage() {
             const clean = resName.replace(/[\s\-_#]/g, "").toLowerCase();
             if (prodByNameClean.has(clean)) return prodByNameClean.get(clean);
 
-            const numMatch = resName.match(/^(\d{3,8})/);
+            const numMatch = resName.match(/^(\d{3,18})/);
             if (numMatch && prodByLeadingNumber.has(numMatch[1])) {
               return prodByLeadingNumber.get(numMatch[1]);
             }
@@ -217,9 +217,9 @@ export default function ExpressIssuePage() {
           }
         }
 
-        // 3. Fallback extraction of standard Express 8-digit barcode if still missing
+        // 3. Fallback extraction of standard Express barcode if still missing
         if (!resBarcode) {
-          const numMatch = (resName || item.product_name || "").match(/^(\d{3,8})/) || (resSku || "").match(/^(\d{3,8})/);
+          const numMatch = (resName || item.product_name || "").match(/^(\d{3,18})/) || (resSku || "").match(/^(\d{3,18})/);
           if (numMatch) {
             const numStr = numMatch[1];
             resBarcode = numStr.length >= 7 ? numStr : "9000" + numStr.padStart(4, "0");
@@ -456,7 +456,7 @@ export default function ExpressIssuePage() {
           ? rawBarcode
           : (sku && sku !== "-" && sku !== "trf-item" && !sku.toLowerCase().startsWith("trf") ? sku : "");
 
-      const finalBarcode = barcode || (prodName.match(/^(\d{3,8})/) ? (prodName.match(/^(\d{3,8})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,8})/)![1] : "9000" + prodName.match(/^(\d{3,8})/)![1].padStart(4, "0")) : "");
+      const finalBarcode = barcode || (prodName.match(/^(\d{3,18})/) ? (prodName.match(/^(\d{3,18})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,18})/)![1] : "9000" + prodName.match(/^(\d{3,18})/)![1].padStart(4, "0")) : "");
 
       const qty = Math.abs(Number(m.qty_change) || 1);
       const uniqueId = m.movement_id?.startsWith("trf-mov-")

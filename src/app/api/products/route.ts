@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
     masterProducts.forEach((mp) => {
       if (mp.sku) masterMap.set(mp.sku.toLowerCase(), mp);
       if (mp.product_id) masterMap.set(mp.product_id.toLowerCase(), mp);
+      if (mp.barcode) masterMap.set(mp.barcode.toLowerCase(), mp);
     });
 
     const readWarehouseProducts = async (whId: string, sheetName: string) => {
@@ -60,7 +61,11 @@ export async function GET(req: NextRequest) {
         const sku = r[0].trim();
         if (sku === "รหัสสินค้า" || sku === "product_id" || sku === "SKU" || sku === "Code") return;
 
-        const master = masterMap.get(sku.toLowerCase()) || masterMap.get(`prod-${sku}`.toLowerCase());
+        const rawCol1 = r[1]?.trim() || "";
+        const master =
+          masterMap.get(sku.toLowerCase()) ||
+          masterMap.get(`prod-${sku}`.toLowerCase()) ||
+          (rawCol1 ? masterMap.get(rawCol1.toLowerCase()) : undefined);
 
         let qtyVal = 0;
         for (let col = 3; col < r.length; col++) {
@@ -92,7 +97,8 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        const barcodeVal = (r[1] && r[1].trim() !== sku ? r[1].trim() : master?.barcode) || sku;
+        const barcodeVal =
+          (rawCol1 && rawCol1 !== "-" && rawCol1 !== "" && rawCol1 !== sku ? rawCol1 : (master?.barcode && master.barcode !== "-" ? master.barcode : "")) || sku;
         const unitVal = is9Col ? (r[4]?.trim() || master?.base_unit || "ชิ้น") : (r[3]?.trim() || "ชิ้น");
         const minStockVal = is9Col ? (parseFloat((r[5] ?? "").replace(/,/g, "").trim()) || 0) : qtyVal;
 
