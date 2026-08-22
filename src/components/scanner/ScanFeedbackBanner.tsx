@@ -26,19 +26,19 @@ export default function ScanFeedbackBanner({
 
   return (
     <div
-      className={`p-4 rounded-2xl border transition-all duration-300 flex items-start gap-3 shadow-lg ${
+      className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300 flex items-start gap-2.5 sm:gap-3 shadow-lg ${
         isSuccess
           ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
           : "bg-rose-950/40 border-rose-500/30 text-rose-300"
       } ${className}`}
     >
       <div
-        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
           isSuccess ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
         }`}
       >
         {isSuccess ? (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         ) : (

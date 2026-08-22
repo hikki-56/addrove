@@ -172,6 +172,8 @@ export default function MoveForm({
                   type="number"
                   min="1"
                   placeholder="ระบุจำนวน..."
+                  onFocus={(e) => (e.target as HTMLInputElement).select()}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
                   max={maxAvailableQty && maxAvailableQty > 0 ? maxAvailableQty : undefined}
                   {...register("qty", {
                     valueAsNumber: true,
@@ -194,15 +196,15 @@ export default function MoveForm({
                       }
                     }
                   }}
-                  className={`w-full py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-base font-mono font-bold outline-none ${
+                  className={`w-full py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-sm sm:text-base font-mono font-bold outline-none ${
                     maxAvailableQty !== null && maxAvailableQty !== undefined
-                      ? "pl-4 pr-36"
-                      : "px-4"
+                      ? "pl-3 sm:pl-4 pr-28 sm:pr-36"
+                      : "px-3 sm:px-4"
                   }`}
                 />
                 {maxAvailableQty !== null && maxAvailableQty !== undefined && (
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                    <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs font-sans">
+                  <div className="absolute inset-y-0 right-1.5 sm:right-2 flex items-center pointer-events-none">
+                    <span className="text-[10px] sm:text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 sm:px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs font-sans">
                       คงเหลือ: {maxAvailableQty} ชิ้น
                     </span>
                   </div>
@@ -213,7 +215,7 @@ export default function MoveForm({
             <button
               type="button"
               onClick={onNextStep1}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-sm cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95"
+              className="w-full py-3 sm:py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95"
             >
               <span>ถัดไป: สแกนตำแหน่งปลายทาง</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,15 +229,15 @@ export default function MoveForm({
         {step === 2 && (
           <div className="space-y-4">
             <input type="hidden" {...register("to_location_id")} />
-            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2 text-xs">
+            <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2 text-xs">
               <div className="flex items-center justify-between text-slate-500">
                 <span className="font-semibold">สินค้าที่เลือก:</span>
-                <span className="text-amber-600 font-extrabold text-sm">จำนวน: {watchQty} ชิ้น</span>
+                <span className="text-amber-600 font-extrabold text-xs sm:text-sm">จำนวน: {watchQty} ชิ้น</span>
               </div>
-              <div className="text-sm font-bold text-slate-900 font-mono">
+              <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
                 [{displaySku}]{hasDistinctName ? ` ${displayName}` : ""}
               </div>
-              <div className="flex items-center gap-2 pt-1 border-t border-slate-100 text-slate-600">
+              <div className="flex items-center gap-1.5 sm:gap-2 pt-1 border-t border-slate-100 text-slate-600 flex-wrap">
                 <span className="font-bold text-slate-500">จากตำแหน่ง:</span>
                 <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
                   {selectedFromLoc?.location_code || watchFromLocation || selectedProduct?.location || "ไม่ระบุ"}

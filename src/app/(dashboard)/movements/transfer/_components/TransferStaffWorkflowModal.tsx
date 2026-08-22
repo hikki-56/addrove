@@ -95,15 +95,15 @@ export default function TransferStaffWorkflowModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] bg-white overflow-y-auto overscroll-contain flex flex-col min-h-dvh w-screen">
-      <div className="w-full max-w-lg mx-auto min-h-dvh flex flex-col justify-between p-4 sm:p-6 space-y-4 min-w-0 bg-white">
+      <div className="w-full max-w-lg mx-auto min-h-dvh flex flex-col justify-between p-3.5 sm:p-6 space-y-4 min-w-0 bg-white">
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-            <div className="flex items-center gap-2.5">
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-mono font-bold text-xs sm:text-sm border border-indigo-200">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className="px-2 sm:px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-mono font-bold text-xs sm:text-sm border border-indigo-200 shrink-0">
                 {selectedTask.doc_no}
               </span>
-              <span className="text-xs sm:text-sm text-slate-600 font-medium truncate max-w-[200px] sm:max-w-[280px]">
+              <span className="text-xs sm:text-sm text-slate-600 font-medium truncate max-w-[140px] sm:max-w-[280px]">
                 ผู้สร้าง: <strong className="text-slate-900 font-semibold">{selectedTask.created_by_name || selectedTask.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
               </span>
             </div>
@@ -111,7 +111,7 @@ export default function TransferStaffWorkflowModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-base transition-all active:scale-95"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-base transition-all active:scale-95 shrink-0"
               title="ปิดหน้าต่าง"
             >
               ✕
@@ -314,6 +314,8 @@ export default function TransferStaffWorkflowModal({
                           min={1}
                           max={alloc.max_qty || undefined}
                           value={alloc.qty}
+                          onFocus={(e) => (e.target as HTMLInputElement).select()}
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
                           onChange={(e) => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, parseInt(e.target.value) || 0)}
                           className="w-20 text-center font-mono font-bold text-sm bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1 text-indigo-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />

@@ -31,12 +31,12 @@ export default function ReceiveConfirmModal({
   const totalQty = watchLines.reduce((acc, curr) => acc + (Number(curr.qty) || 1), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-            <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">ยืนยันการรับสินค้าเข้า</h3>
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 animate-ping" />
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-lg">ยืนยันการรับสินค้าเข้า</h3>
           </div>
           <button
             type="button"
@@ -49,7 +49,7 @@ export default function ReceiveConfirmModal({
           </button>
         </div>
 
-        <div className="space-y-3.5 text-xs">
+        <div className="space-y-3 sm:space-y-3.5 text-xs flex-1 overflow-y-auto">
           <div className="flex justify-between items-center p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
             <span className="text-slate-600 font-bold text-xs sm:text-sm">โกดังปลายทาง:</span>
             <span className="font-extrabold text-emerald-700 text-sm sm:text-base">{activeWhName}</span>
@@ -112,7 +112,20 @@ export default function ReceiveConfirmModal({
               return (
                 <div key={`confirm-row-${idx}`} className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 flex items-center justify-between gap-3 shadow-2xs">
                   <div className="space-y-1 min-w-0 flex-1">
-                    <div className="font-mono font-bold text-slate-900 truncate text-xs sm:text-sm">{matched?.sku || line.product_id}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(matched?.barcode && matched.barcode.trim() !== "-") ? (
+                        <span className="font-mono text-xs sm:text-base font-black text-slate-900 tracking-wide">
+                          {matched.barcode}
+                        </span>
+                      ) : (line as any).barcode ? (
+                        <span className="font-mono text-xs sm:text-base font-black text-slate-900 tracking-wide">
+                          {(line as any).barcode}
+                        </span>
+                      ) : null}
+                      <span className="font-mono font-bold text-slate-500 truncate text-xs sm:text-sm">
+                        {matched?.sku || line.product_id}
+                      </span>
+                    </div>
                     <div className="text-slate-700 font-bold truncate text-xs">{matched?.product_name || "สินค้า"}</div>
                     <div className="inline-block text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md font-mono">
                       📍 ตำแหน่ง: {allLocs}

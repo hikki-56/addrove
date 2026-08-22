@@ -155,10 +155,10 @@ export default function Navbar({
   return (
     <>
       {/* Top Header Navbar (Original White Theme) */}
-      <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20 shadow-xs">
+      <header className="h-16 sm:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-4 md:px-6 flex-shrink-0 z-20 shadow-xs">
 
         {/* Left Side: Desktop 3-Lines Toggle + Logo + Breadcrumbs */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {onToggleSidebar && (
             <button
               type="button"
@@ -180,13 +180,13 @@ export default function Navbar({
               <img
                 src="/logo.png"
                 alt="Stockify Logo"
-                className="h-11 md:h-13 w-auto object-contain max-w-[220px] sm:max-w-[280px] transition-transform group-hover:scale-105"
+                className="h-8 sm:h-11 md:h-13 w-auto object-contain max-w-[160px] sm:max-w-[280px] transition-transform group-hover:scale-105"
               />
             </Link>
           )}
 
           {isAdmin && (
-            <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm font-bold text-slate-800">
+            <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm font-bold text-slate-800 truncate">
               <span className="text-slate-500 font-medium">{breadcrumb.parent}</span>
               <span className="text-slate-300">/</span>
               <span className="text-slate-900 font-black">{breadcrumb.title}</span>
@@ -195,9 +195,7 @@ export default function Navbar({
         </div>
 
         {/* Right Side: Role-Specific Action Controls & User Profile Dropdown */}
-        <div className="flex items-center gap-2.5 relative">
-
-
+        <div className="flex items-center gap-1.5 sm:gap-2.5 relative shrink-0">
 
           {/* STAFF Specific Notification Bell */}
           {!isAdmin && (
@@ -230,7 +228,7 @@ export default function Navbar({
 
               {/* Staff Transfer Notification Dropdown */}
               {notificationsOpen && (
-                <div className="absolute -right-4 sm:right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-black text-slate-900">🔔 การแจ้งเตือนงานเบิกสินค้า</span>
@@ -312,7 +310,7 @@ export default function Navbar({
 
               {/* Role-Specific User Dropdown Menu */}
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-64 max-w-xs rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                     <div className="w-10 h-10 rounded-full bg-emerald-500 text-white font-black flex items-center justify-center text-sm shadow-xs shrink-0">
                       👑
@@ -371,9 +369,9 @@ export default function Navbar({
           }`}
         >
           {/* Drawer Header */}
-          <div className="flex items-center justify-between px-5 h-20 border-b border-slate-200">
+          <div className="flex items-center justify-between px-4 sm:px-5 h-16 sm:h-20 border-b border-slate-200">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="A'AMAZON Logo" className="h-11 w-auto object-contain max-w-[200px]" />
+              <img src="/logo.png" alt="A'AMAZON Logo" className="h-9 sm:h-11 w-auto object-contain max-w-[150px] sm:max-w-[200px]" />
             </div>
             <button
               onClick={() => setMobileOpen(false)}

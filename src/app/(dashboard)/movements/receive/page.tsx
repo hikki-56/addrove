@@ -82,7 +82,7 @@ export default function ReceivePage() {
           {/* Left side: Title + Badges */}
           <div className="space-y-3 sm:space-y-4 flex-1 min-w-0 z-10">
             <h1 className="font-extrabold text-slate-900 text-xl sm:text-2xl md:text-3xl tracking-tight">
-              รับสินค้าเข้าคลัง (Admin)
+              รับสินค้าเข้าคลัง
             </h1>
 
             {/* Info Row: Warehouse & Date on the Exact Same Line */}

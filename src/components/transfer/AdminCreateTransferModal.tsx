@@ -148,17 +148,17 @@ export default function AdminCreateTransferModal({
   const toLocations = locations.filter((l) => l.warehouse_id === toWhId);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl text-slate-100 animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl text-slate-100 animate-fadeIn">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-bold">📋</span>
-            <span>สร้างใบสั่งย้ายสินค้า (Admin Assign)</span>
+          <h2 className="text-sm sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs sm:text-sm font-bold">📋</span>
+            <span className="truncate">สร้างใบสั่งย้ายสินค้า (Admin Assign)</span>
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-xl font-bold p-1"
+            className="text-slate-400 hover:text-white text-lg sm:text-xl font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -197,6 +197,8 @@ export default function AdminCreateTransferModal({
                 type="number"
                 min={1}
                 value={qty}
+                onFocus={(e) => (e.target as HTMLInputElement).select()}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
                 onChange={(e) => setQty(Number(e.target.value))}
                 className="w-full p-2.5 rounded-xl bg-black/40 border border-slate-700 text-slate-200 focus:border-indigo-500 outline-none"
                 required

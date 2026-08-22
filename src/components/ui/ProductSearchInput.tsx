@@ -253,35 +253,35 @@ export default function ProductSearchInput({
                       : "text-slate-900 hover:bg-slate-100"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3 py-1.5">
+                  <div className="flex items-center justify-between gap-2 sm:gap-3 py-1 sm:py-1.5">
                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                      {/* บรรทัดที่ 1: เลขบาร์โค้ดขนาดใหญ่ */}
-                      <div className="text-slate-950 font-mono font-black text-base sm:text-lg tracking-wide truncate">
+                      {/* บรรทัดที่ 1: เลขบาร์โค้ด */}
+                      <div className="text-slate-950 font-mono font-black text-sm sm:text-lg tracking-wide truncate">
                         {p.barcode || p.sku}
                       </div>
 
                       {/* บรรทัดที่ 2: [ผู้จำหน่าย] | [SKU] */}
-                      <div className="flex items-center gap-x-2 text-xs sm:text-sm text-slate-500 font-medium truncate">
+                      <div className="flex items-center gap-x-1.5 sm:gap-x-2 text-[11px] sm:text-sm text-slate-500 font-medium truncate">
                         {p.supplier ? (
                           <>
-                            <span className="text-slate-800 font-bold">{p.supplier}</span>
+                            <span className="text-slate-800 font-bold truncate">{p.supplier}</span>
                             <span className="text-slate-300">|</span>
                           </>
                         ) : null}
-                        <span className="font-mono text-slate-700">{p.sku}</span>
+                        <span className="font-mono text-slate-700 truncate">{p.sku}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       {/* Far Right: Stock Balance Text (Black & Frameless) */}
                       <div className="text-right shrink-0">
-                        <span className="text-xs text-black font-bold">
-                          คงเหลือ <strong className="text-black font-mono font-extrabold text-xs sm:text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
+                        <span className="text-[10px] sm:text-xs text-black font-bold">
+                          คงเหลือ <strong className="text-black font-mono font-extrabold text-[11px] sm:text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
                         </span>
                       </div>
 
                       {isSelected && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
                           ✓ เลือกแล้ว
                         </span>
                       )}
