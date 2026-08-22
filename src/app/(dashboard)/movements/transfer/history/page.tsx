@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
@@ -68,8 +68,13 @@ export default function TransferHistoryPage() {
   const [selectedRecord, setSelectedRecord] = useState<TransferHistoryRecord | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
+  // Refs for debouncing and stale-load protection
+  const loadIdRef = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Fetch all transfer records, products, and warehouses
   const loadData = useCallback(async (showRefreshing = false) => {
+    const currentLoadId = ++loadIdRef.current;
     if (showRefreshing) setIsRefreshing(true);
     try {
       purgeInvalidNotifications();
@@ -241,6 +246,7 @@ export default function TransferHistoryPage() {
         const docNoKey = notif.doc_no ? notif.doc_no.toLowerCase() : "";
         const existing = recordMap.get(key) || (docNoKey ? recordMap.get(docNoKey) : undefined);
 
+
         // Server record already exists -> Never let stale/dummy localStorage overwrite valid server data
         if (existing) {
           if (notif.status === "COMPLETED" && existing.status !== "COMPLETED") {
@@ -249,8 +255,35 @@ export default function TransferHistoryPage() {
           if (notif.moved_by && notif.moved_by !== "-" && notif.moved_by !== "พนักงาน" && (!existing.moved_by || existing.moved_by === "-")) {
             existing.moved_by = notif.moved_by;
           }
+          // Merge product info จาก localStorage เมื่อ server record มีข้อมูลไม่ครบ
+          // (เกิดขึ้นเมื่อ note metadata parse ไม่ได้ หรือ document ถูกสร้างโดยไม่มี product info ใน note)
+          const isPlaceholderName =
+            !existing.product_name ||
+            existing.product_name === "รายการเบิกสินค้า" ||
+            existing.product_name === "รายการย้ายสินค้า";
+          if (
+            notif.product_name &&
+            notif.product_name !== "รายการย้ายสินค้า" &&
+            notif.product_name !== "รายการเบิกสินค้า" &&
+            isPlaceholderName
+          ) {
+            existing.product_name = notif.product_name;
+          }
+          if (notif.sku && notif.sku !== "-" && (!existing.sku || existing.sku === "-")) {
+            existing.sku = notif.sku;
+          }
+          if (notif.barcode && notif.barcode !== "-" && (!existing.barcode || existing.barcode === "-" || existing.barcode === existing.sku)) {
+            existing.barcode = notif.barcode;
+          }
+          if (notif.qty && notif.qty > 0 && (!existing.qty || existing.qty <= 0)) {
+            existing.qty = notif.qty;
+          }
+          if (notif.assigned_to_name && notif.assigned_to_name !== "-" && (!existing.assigned_to_name || existing.assigned_to_name === "-")) {
+            existing.assigned_to_name = notif.assigned_to_name;
+          }
           continue;
         }
+
 
         const rawProdId = notif.product_id || "";
         const rawSku = notif.sku || (rawProdId.startsWith("prod-") ? rawProdId.replace(/^prod-/, "") : "");
@@ -325,20 +358,34 @@ export default function TransferHistoryPage() {
         return (b.doc_no || "").localeCompare(a.doc_no || "");
       });
 
-      setRecords(uniqueRecords);
+      // Guard: ถ้า load นี้ไม่ใช่ load ล่าสุดแล้ว (มี load ใหม่กว่ารันอยู่) → ทิ้งผลลัพธ์
+      if (currentLoadId !== loadIdRef.current) return;
+
+      // Guard: อย่า overwrite ข้อมูลดีด้วยผลลัพธ์ว่างจาก API failure ชั่วคราว
+      setRecords((prev) => {
+        if (uniqueRecords.length === 0 && prev.length > 0) {
+          return prev;
+        }
+        return uniqueRecords;
+      });
     } catch (e) {
       console.error("[TransferHistory] Load data error:", e);
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      if (currentLoadId === loadIdRef.current) {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadData();
 
-    // Event listeners for real-time live sync
-    const handleUpdate = () => loadData();
+    // Debounced handler — ป้องกัน event listeners ยิง loadData ซ้ำรัวๆ
+    const handleUpdate = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => loadData(), 800);
+    };
     window.addEventListener("stockify-transfer-updated", handleUpdate);
     window.addEventListener("stockify-transfer-created", handleUpdate);
     window.addEventListener("storage", handleUpdate);
@@ -348,11 +395,12 @@ export default function TransferHistoryPage() {
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       try {
         syncChannel = new BroadcastChannel("stockify_transfer_sync");
-        syncChannel.onmessage = () => loadData();
+        syncChannel.onmessage = handleUpdate;
       } catch {}
     }
 
     return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       window.removeEventListener("stockify-transfer-updated", handleUpdate);
       window.removeEventListener("stockify-transfer-created", handleUpdate);
       window.removeEventListener("storage", handleUpdate);

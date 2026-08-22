@@ -5,9 +5,31 @@ import {
   normalizeBarcode,
   areBarcodesMatching,
   generateCode128PngDataUrl,
+  getShelfArrowDirection,
 } from "../src/lib/barcode-utils";
 
 describe("barcode-utils", () => {
+  describe("getShelfArrowDirection", () => {
+    it("should return down for codes ending in A or containing sub-shelf A", () => {
+      expect(getShelfArrowDirection("1K14-1A")).toBe("down");
+      expect(getShelfArrowDirection("1A")).toBe("down");
+      expect(getShelfArrowDirection("LOC-A")).toBe("down");
+      expect(getShelfArrowDirection("WH1-01A")).toBe("down");
+    });
+
+    it("should return up for codes ending in B or containing sub-shelf B", () => {
+      expect(getShelfArrowDirection("1K14-1B")).toBe("up");
+      expect(getShelfArrowDirection("1B")).toBe("up");
+      expect(getShelfArrowDirection("LOC-B")).toBe("up");
+      expect(getShelfArrowDirection("WH1-01B")).toBe("up");
+    });
+
+    it("should return null for codes that do not have A/B direction indicators", () => {
+      expect(getShelfArrowDirection("WH-01")).toBeNull();
+      expect(getShelfArrowDirection("1K14")).toBeNull();
+      expect(getShelfArrowDirection("")).toBeNull();
+    });
+  });
   describe("to8DigitBarcode", () => {
     it("should return clean barcode value", () => {
       expect(to8DigitBarcode("1K14-1A")).toBe("1K14-1A");

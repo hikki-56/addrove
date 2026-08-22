@@ -253,12 +253,70 @@ export function generateShelfBarcodeStickerDataUrl(
   // 1. Draw Outer Card (Pure white background with rounded corners & soft border)
   drawRoundRect(2, 2, cardWidth - 4, cardHeight - 4, 28, "#FFFFFF", "#e2e8f0", 2.5);
 
-  // 2. Draw Top Location Code Title - Extra Large
-  ctx.fillStyle = "#0f172a";
-  ctx.font = '900 68px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(cleanCode, cardWidth / 2, outerPaddingTop + Math.floor(titleHeight / 2));
+  // 2. Draw Top Location Code Title - Extra Large with Direction Arrows on BOTH Sides (A -> Down, B -> Up)
+  const arrowDir = getShelfArrowDirection(cleanCode);
+  const textY = outerPaddingTop + Math.floor(titleHeight / 2);
+
+  if (arrowDir) {
+    ctx.font = '900 64px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const textWidth = ctx.measureText(cleanCode).width;
+    const arrowW = 36;
+    const arrowH = 46;
+    const gapWidth = 20;
+
+    const totalWidth = arrowW + gapWidth + textWidth + gapWidth + arrowW;
+    const startX = (cardWidth - totalWidth) / 2;
+
+    const drawArrow = (arrowX: number) => {
+      ctx.fillStyle = "#16a34a";
+      if (arrowDir === "down") {
+        const stemW = 14;
+        const stemH = 24;
+        const stemX = arrowX + (arrowW - stemW) / 2;
+        const stemY = textY - arrowH / 2;
+        ctx.fillRect(stemX, stemY, stemW, stemH);
+
+        ctx.beginPath();
+        ctx.moveTo(arrowX, stemY + stemH);
+        ctx.lineTo(arrowX + arrowW, stemY + stemH);
+        ctx.lineTo(arrowX + arrowW / 2, textY + arrowH / 2);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        const stemW = 14;
+        const stemH = 24;
+        const stemX = arrowX + (arrowW - stemW) / 2;
+        const stemY = textY - arrowH / 2 + (arrowH - stemH);
+        ctx.fillRect(stemX, stemY, stemW, stemH);
+
+        ctx.beginPath();
+        ctx.moveTo(arrowX, stemY);
+        ctx.lineTo(arrowX + arrowW, stemY);
+        ctx.lineTo(arrowX + arrowW / 2, textY - arrowH / 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    };
+
+    // Draw Left Arrow (Green #16a34a)
+    drawArrow(startX);
+
+    // Draw Location Code text (Dark Slate)
+    ctx.fillStyle = "#0f172a";
+    ctx.font = '900 64px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(cleanCode, startX + arrowW + gapWidth, textY);
+
+    // Draw Right Arrow (Green #16a34a)
+    drawArrow(startX + arrowW + gapWidth + textWidth + gapWidth);
+  } else {
+    ctx.fillStyle = "#0f172a";
+    ctx.font = '900 68px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(cleanCode, cardWidth / 2, textY);
+  }
 
   // 3. Draw Inner Barcode Box (Rounded box with gray outline)
   const innerBoxX = (cardWidth - innerBoxWidth) / 2;
@@ -279,6 +337,32 @@ export function generateShelfBarcodeStickerDataUrl(
   }
 
   return canvas.toDataURL("image/png");
+}
+
+/**
+ * Determines directional arrow for a shelf/location code:
+ * - If code ends with 'A' or has sub-shelf 'A' (e.g. 1K14-1A, 1A, SH-A) -> 'down' (ลูกศรชี้ลง ↓)
+ * - If code ends with 'B' or has sub-shelf 'B' (e.g. 1K14-1B, 1B, SH-B) -> 'up' (ลูกศรชี้ขึ้น ↑)
+ */
+export function getShelfArrowDirection(locationCode?: string): "down" | "up" | null {
+  if (!locationCode) return null;
+  const clean = locationCode.trim().toUpperCase();
+
+  // 1. Exact ends with A or B (e.g. 1K14-1A, 1K14-1B, 1A, 1B, SH-A, SH-B)
+  if (clean.endsWith("A") || /[-_. ]A$/i.test(clean)) {
+    return "down";
+  }
+  if (clean.endsWith("B") || /[-_. ]B$/i.test(clean)) {
+    return "up";
+  }
+
+  // 2. Suffix with separator before other trailing info
+  const match = clean.match(/[-_.]([AB])(?:\D*$)/i);
+  if (match && match[1]) {
+    return match[1].toUpperCase() === "A" ? "down" : "up";
+  }
+
+  return null;
 }
 
 /**
@@ -315,3 +399,4 @@ export function areBarcodesMatching(
 
   return false;
 }
+

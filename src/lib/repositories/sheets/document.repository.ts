@@ -3,6 +3,7 @@ import {
   appendRows,
   updateRow,
   SHEETS,
+  clearSheetCache,
 } from "@/lib/google-sheets/client";
 import type { IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
@@ -143,6 +144,12 @@ export class SheetsDocumentRepository implements IDocumentRepository {
 
     try {
       await appendRows(SHEETS.DOCUMENTS, [documentToRow(newDoc)]);
+      // Doc ถูก sync ลง Sheets สำเร็จแล้ว → ลบออกจาก inMemoryDocs
+      // เพื่อป้องกัน race condition ระหว่าง server restart (HMR/cold-start)
+      const syncedIdx = inMemoryDocs.findIndex((d) => d.document_id === newDoc.document_id);
+      if (syncedIdx !== -1) inMemoryDocs.splice(syncedIdx, 1);
+      // Clear cache หลัง write สำเร็จ เพื่อให้ read ถัดไปได้ข้อมูลใหม่
+      clearSheetCache(SHEETS.DOCUMENTS);
     } catch (err) {
       console.warn("[SheetsDocumentRepository] Google Sheets append failed, stored in memory fallback:", err);
     }
@@ -167,8 +174,15 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     if (idx !== -1) {
       const doc = rowToDocument(sheetRows[idx]);
       doc.status = status;
+      // สำคัญ: ถ้า memDoc มี note ที่ถูกอัปเดตแล้ว (เช่น moved_by ถูก set โดย submitTransferMove/completeTransfer)
+      // ให้ sync note นั้นกลับลงไปใน Sheets ด้วย เพื่อไม่ให้ข้อมูล metadata หาย
+      if (memDoc?.note && memDoc.note !== doc.note) {
+        doc.note = memDoc.note;
+      }
       // idx is 0-based from row 2 in sheets, so actual row = idx + 2
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+      // Clear cache หลัง write สำเร็จ เพื่อป้องกัน stale read จาก race condition
+      clearSheetCache(SHEETS.DOCUMENTS);
     } else {
       console.warn(`[SheetsDocumentRepository] updateStatus: document "${id}" not found in Google Sheets rows`);
     }
@@ -193,6 +207,7 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       doc.note = note;
       // idx is 0-based from row 2 in sheets, so actual row = idx + 2
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+      clearSheetCache(SHEETS.DOCUMENTS);
     } else {
       console.warn(`[SheetsDocumentRepository] updateNote: document "${id}" not found in Google Sheets rows`);
     }
@@ -214,6 +229,7 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       const doc = rowToDocument(sheetRows[idx]);
       Object.assign(doc, updates);
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+      clearSheetCache(SHEETS.DOCUMENTS);
     } else {
       console.warn(`[SheetsDocumentRepository] updateDoc: document "${id}" not found in Google Sheets rows`);
     }

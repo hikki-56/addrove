@@ -272,7 +272,7 @@ export default function ExpressImportModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="🔍 ค้นหาบาร์โค้ด, ชื่อสินค้า, โกดัง..."
+                placeholder="ค้นหาบาร์โค้ด, ชื่อสินค้า, โกดัง..."
                 className="w-full pl-3.5 pr-4 py-2 bg-[#1b1b26] border border-white/10 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
               {searchQuery && (

@@ -4,7 +4,10 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
+import ScrollSelect from "@/components/ui/ScrollSelect";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
+import { getWarehouseName } from "@/lib/warehouse-utils";
+import type { Product } from "@/types/models";
 import {
   getAllTaggedExpressItems,
   tagExpressItem,
@@ -63,10 +66,14 @@ export default function ExpressReceivePage() {
   }, [status, user, router]);
 
   const [docs, setDocs] = useState<ApprovalDoc[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocId, setSelectedDocId] = useState<string>("ALL");
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDay, setSelectedDay] = useState<string>("ALL");
+  const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
+  const [selectedYear, setSelectedYear] = useState<string>("ALL");
   const [tagFilter, setTagFilter] = useState<TagFilterType>("ALL");
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
@@ -105,17 +112,33 @@ export default function ExpressReceivePage() {
     return "01";
   };
 
+  // Helper to get user-friendly Thai warehouse name
+  const getWarehouseDisplayName = (raw: string | undefined | null): string => {
+    if (!raw) return "-";
+    if (raw.includes("โกดัง") || raw.includes("สำนักงานใหญ่")) return raw;
+    return getWarehouseName(raw);
+  };
+
   const fetchDocs = async () => {
     setLoading(true);
     try {
       const ts = Date.now();
-      const [postedRes, pendingRes] = await Promise.all([
+      const [postedRes, pendingRes, prodRes] = await Promise.all([
         fetch(`/api/approvals?status=POSTED&_t=${ts}`, { cache: "no-store" }),
         fetch(`/api/approvals?status=PENDING&_t=${ts}`, { cache: "no-store" }),
+        fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const postedJson = await postedRes.json();
       const pendingJson = await pendingRes.json();
+      const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
+
+      const products: Product[] = Array.isArray(prodJson?.data)
+        ? prodJson.data
+        : Array.isArray(prodJson?.data?.data)
+        ? prodJson.data.data
+        : [];
+      setCatalogProducts(products);
 
       const combined: ApprovalDoc[] = [];
       if (postedJson.success && Array.isArray(postedJson.data)) {
@@ -144,6 +167,26 @@ export default function ExpressReceivePage() {
     fetchDocs();
   }, []);
 
+  // Product catalog indexing
+  const catalogProductsMap = useMemo(() => {
+    const bySku = new Map<string, Product>();
+    const byBarcode = new Map<string, Product>();
+    const byName = new Map<string, Product>();
+
+    catalogProducts.forEach((p) => {
+      if (!p) return;
+      const sku = (p.sku || "").trim().toLowerCase();
+      const barcode = (p.barcode || "").trim().toLowerCase();
+      const name = (p.product_name || "").replace(/[\s\-_#]/g, "").toLowerCase();
+
+      if (sku) bySku.set(sku, p);
+      if (barcode && barcode !== "-") byBarcode.set(barcode, p);
+      if (name) byName.set(name, p);
+    });
+
+    return { bySku, byBarcode, byName };
+  }, [catalogProducts]);
+
   // Flatten items with metadata & unique ID
   const allItems = useMemo(() => {
     const list: Array<{
@@ -170,7 +213,7 @@ export default function ExpressReceivePage() {
 
       doc.rows?.forEach((row, rowIdx) => {
         const sku = String(row[0] ?? "").trim();
-        const location = String(row[1] ?? "-").trim() || "-";
+        let rawLoc = String(row[1] ?? "-").trim() || "-";
         const rawBarcode = String(row[2] ?? "").trim();
         const productName = String(row[3] ?? "").trim() || sku;
         const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
@@ -178,9 +221,22 @@ export default function ExpressReceivePage() {
         const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
         const supplier = String(row[6] ?? "-").trim() || "-";
 
+        // Lookup from catalog products
+        const matchedProd =
+          (sku ? catalogProductsMap.bySku.get(sku.toLowerCase()) : undefined) ||
+          (rawBarcode && rawBarcode !== "-" ? catalogProductsMap.byBarcode.get(rawBarcode.toLowerCase()) : undefined) ||
+          (productName ? catalogProductsMap.byName.get(productName.replace(/[\s\-_#]/g, "").toLowerCase()) : undefined);
+
+        let finalLoc = rawLoc;
+        if ((!finalLoc || finalLoc === "-" || finalLoc === "A1") && matchedProd?.location && matchedProd.location !== "-") {
+          finalLoc = matchedProd.location;
+        }
+
         const barcode =
           rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined" && !rawBarcode.toLowerCase().startsWith("rec-")
             ? rawBarcode
+            : matchedProd?.barcode && matchedProd.barcode !== "-"
+            ? matchedProd.barcode
             : to8DigitBarcode(rawBarcode, sku, productName) || sku;
 
         const uniqueId = `rec_${doc.document_id}_${sku}_${rowIdx}`;
@@ -197,7 +253,7 @@ export default function ExpressReceivePage() {
           category: "ทั่วไป",
           unit: "ชิ้น",
           quantity,
-          location,
+          location: finalLoc,
           supplier,
           barcode,
           status: doc.status,
@@ -206,9 +262,75 @@ export default function ExpressReceivePage() {
     });
 
     return list;
-  }, [docs, selectedDocId, selectedWarehouse]);
+  }, [docs, selectedDocId, selectedWarehouse, catalogProductsMap]);
 
-  // Filter items by search query & Tag filter
+  const availableWarehouses = useMemo(() => {
+    const set = new Set<string>();
+    docs.forEach((d) => {
+      if (d.target_sheet) set.add(d.target_sheet);
+    });
+    return Array.from(set);
+  }, [docs]);
+
+  const availableYears = useMemo(() => {
+    const set = new Set<string>();
+    const currentYear = String(new Date().getFullYear());
+    set.add(currentYear);
+    set.add(String(new Date().getFullYear() - 1));
+    allItems.forEach((item) => {
+      const rawDate = item.document_date || "";
+      if (rawDate && rawDate.length >= 4) {
+        const yr = rawDate.slice(0, 4);
+        if (/^\d{4}$/.test(yr)) set.add(yr);
+      }
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [allItems]);
+
+  const warehouseOptions = useMemo(() => [
+    { value: "ALL", label: `ทุกคลังสินค้า (${availableWarehouses.length})` },
+    ...availableWarehouses.map((wh) => ({
+      value: wh,
+      label: `โกดัง: ${getWarehouseDisplayName(wh)}`,
+    })),
+  ], [availableWarehouses]);
+
+  const dayOptions = useMemo(() => [
+    { value: "ALL", label: "ทุกวัน" },
+    ...Array.from({ length: 31 }, (_, i) => {
+      const d = String(i + 1).padStart(2, "0");
+      return { value: d, label: `วันที่ ${parseInt(d, 10)}` };
+    }),
+  ], []);
+
+  const monthOptions = useMemo(() => [
+    { value: "ALL", label: "ทุกเดือน" },
+    { value: "01", label: "ม.ค. (01)" },
+    { value: "02", label: "ก.พ. (02)" },
+    { value: "03", label: "มี.ค. (03)" },
+    { value: "04", label: "เม.ย. (04)" },
+    { value: "05", label: "พ.ค. (05)" },
+    { value: "06", label: "มิ.ย. (06)" },
+    { value: "07", label: "ก.ค. (07)" },
+    { value: "08", label: "ส.ค. (08)" },
+    { value: "09", label: "ก.ย. (09)" },
+    { value: "10", label: "ต.ค. (10)" },
+    { value: "11", label: "พ.ย. (11)" },
+    { value: "12", label: "ธ.ค. (12)" },
+  ], []);
+
+  const yearOptions = useMemo(() => [
+    { value: "ALL", label: "ทุกปี" },
+    ...availableYears.map((yr) => ({ value: yr, label: `ปี ${yr}` })),
+  ], [availableYears]);
+
+  const resetDateFilter = () => {
+    setSelectedYear("ALL");
+    setSelectedMonth("ALL");
+    setSelectedDay("ALL");
+  };
+
+  // Filter items by search query, Tag filter, & Day/Month/Year date filter
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
       // Tag filter check
@@ -217,6 +339,20 @@ export default function ExpressReceivePage() {
       if (tagFilter === "PENDING" && (!tagged || tagged.status !== "PENDING")) return false;
       if (tagFilter === "IMPORTED" && (!tagged || tagged.status !== "IMPORTED")) return false;
       if (tagFilter === "UNTAGGED" && tagged) return false;
+
+      // Day / Month / Year date filter check
+      if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
+        const rawDate = item.document_date || "";
+        const itemDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.split(" ")[0];
+        if (itemDate && itemDate.length >= 10) {
+          const [iYear, iMonth, iDay] = itemDate.split("-");
+          if (selectedYear !== "ALL" && iYear !== selectedYear) return false;
+          if (selectedMonth !== "ALL" && iMonth !== selectedMonth) return false;
+          if (selectedDay !== "ALL" && iDay !== selectedDay) return false;
+        } else {
+          return false;
+        }
+      }
 
       // Search query check
       if (!searchQuery.trim()) return true;
@@ -231,15 +367,7 @@ export default function ExpressReceivePage() {
         (tagged && tagged.tag.toLowerCase().includes(q))
       );
     });
-  }, [allItems, searchQuery, tagFilter, taggedItemsMap]);
-
-  const availableWarehouses = useMemo(() => {
-    const set = new Set<string>();
-    docs.forEach((d) => {
-      if (d.target_sheet) set.add(d.target_sheet);
-    });
-    return Array.from(set);
-  }, [docs]);
+  }, [allItems, searchQuery, tagFilter, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
 
   // Tagging Stats
   const tagStats = useMemo(() => {
@@ -256,10 +384,16 @@ export default function ExpressReceivePage() {
       }
     });
 
-    return { total: allItems.length, taggedCount, pendingCount, importedCount };
+    return {
+      total: allItems.length,
+      taggedCount,
+      pendingCount,
+      importedCount,
+      untaggedCount: allItems.length - taggedCount,
+    };
   }, [allItems, taggedItemsMap]);
 
-  // Toggle Single Tag
+  // Handle single tag toggle
   const handleToggleTag = (item: (typeof allItems)[0]) => {
     const existing = taggedItemsMap.get(item.id);
     if (existing) {
@@ -268,32 +402,90 @@ export default function ExpressReceivePage() {
       tagExpressItem({
         id: item.id,
         type: "RECEIVE",
-        tag: customTagInput || "รอนำเข้า Express",
+        tag: customTagInput.trim() || "รอนำเข้า Express",
         sku: item.sku,
         barcode: item.barcode,
         product_name: item.product_name,
-        quantity: item.quantity,
-        location: item.location,
         warehouse: item.target_sheet,
         warehouse_code: toExpressWhCode(item.target_sheet),
+        quantity: item.quantity,
         document_no: item.document_no,
         document_date: item.document_date,
-        supplier: item.supplier,
+        location: item.location,
+        status: "PENDING",
       });
     }
+    refreshTaggedMap();
   };
 
-  // Update Status
-  const handleToggleStatus = (id: string) => {
-    const existing = taggedItemsMap.get(id);
-    if (!existing) return;
-    const nextStatus: ExpressSyncStatus = existing.status === "PENDING" ? "IMPORTED" : "PENDING";
-    updateExpressItemStatus(id, nextStatus);
+  // Handle single item status update
+  const handleSetStatus = (item: (typeof allItems)[0], status: ExpressSyncStatus) => {
+    const existing = taggedItemsMap.get(item.id);
+    if (!existing) {
+      tagExpressItem({
+        id: item.id,
+        type: "RECEIVE",
+        tag: customTagInput.trim() || "รอนำเข้า Express",
+        sku: item.sku,
+        barcode: item.barcode,
+        product_name: item.product_name,
+        warehouse: item.target_sheet,
+        warehouse_code: toExpressWhCode(item.target_sheet),
+        quantity: item.quantity,
+        document_no: item.document_no,
+        document_date: item.document_date,
+        location: item.location,
+        status: status,
+      });
+    } else {
+      updateExpressItemStatus(item.id, status);
+    }
+    refreshTaggedMap();
   };
 
-  // Multi-Select
+  // Handle batch tagging
+  const handleBatchTag = (tagText: string) => {
+    const itemsToTag = allItems.filter((i) => selectedItemIds.has(i.id));
+    const dtos = itemsToTag.map((i) => ({
+      id: i.id,
+      type: "RECEIVE" as const,
+      tag: tagText.trim() || "รอนำเข้า Express",
+      sku: i.sku,
+      barcode: i.barcode,
+      product_name: i.product_name,
+      warehouse: i.target_sheet,
+      warehouse_code: toExpressWhCode(i.target_sheet),
+      quantity: i.quantity,
+      document_no: i.document_no,
+      document_date: i.document_date,
+      location: i.location,
+      status: "PENDING" as const,
+    }));
+    batchTagExpressItems(dtos);
+    refreshTaggedMap();
+    setSelectedItemIds(new Set());
+    setShowTagModal(false);
+  };
+
+  // Handle batch mark status
+  const handleBatchMarkStatus = (status: ExpressSyncStatus) => {
+    const ids = Array.from(selectedItemIds);
+    batchUpdateExpressItemStatus(ids, status);
+    refreshTaggedMap();
+    setSelectedItemIds(new Set());
+  };
+
+  // Handle batch untag
+  const handleBatchUntag = () => {
+    const ids = Array.from(selectedItemIds);
+    batchUntagExpressItems(ids);
+    refreshTaggedMap();
+    setSelectedItemIds(new Set());
+  };
+
+  // Select all / Deselect all
   const handleSelectAll = () => {
-    if (selectedItemIds.size === filteredItems.length) {
+    if (selectedItemIds.size === filteredItems.length && filteredItems.length > 0) {
       setSelectedItemIds(new Set());
     } else {
       setSelectedItemIds(new Set(filteredItems.map((i) => i.id)));
@@ -309,110 +501,72 @@ export default function ExpressReceivePage() {
     });
   };
 
-  // Batch Actions
-  const handleBatchTag = (tagLabel: string) => {
-    const selectedItems = allItems.filter((i) => selectedItemIds.has(i.id));
-    if (selectedItems.length === 0) return;
-
-    batchTagExpressItems(
-      selectedItems.map((item) => ({
-        id: item.id,
-        type: "RECEIVE",
-        tag: tagLabel || "รอนำเข้า Express",
-        sku: item.sku,
-        barcode: item.barcode,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        location: item.location,
-        warehouse: item.target_sheet,
-        warehouse_code: toExpressWhCode(item.target_sheet),
-        document_no: item.document_no,
-        document_date: item.document_date,
-        supplier: item.supplier,
-      }))
-    );
-    setShowTagModal(false);
-  };
-
-  const handleBatchUntag = () => {
-    if (selectedItemIds.size === 0) return;
-    batchUntagExpressItems(Array.from(selectedItemIds));
-    setSelectedItemIds(new Set());
-  };
-
-  const handleBatchMarkStatus = (status: ExpressSyncStatus) => {
-    if (selectedItemIds.size === 0) return;
-    batchUpdateExpressItemStatus(Array.from(selectedItemIds), status);
-  };
-
-  // Generate Tab-delimited row for an item
-  const getItemExpressRowString = useCallback(
-    (item: (typeof allItems)[0]) => {
-      const parts: string[] = [];
-      if (displayFields.barcode) parts.push(item.barcode);
-      if (displayFields.productName) parts.push(item.product_name.replace(/\t/g, " "));
-      if (displayFields.warehouse) parts.push(toExpressWhCode(item.target_sheet));
-      if (displayFields.quantity) parts.push(String(item.quantity));
-      if (displayFields.sku) parts.push(item.sku);
-      if (displayFields.location) parts.push(item.location);
-      if (displayFields.docNo) parts.push(item.document_no);
-
-      if (parts.length === 0) {
-        return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`;
-      }
-      return parts.join("\t");
-    },
-    [displayFields]
-  );
-
-  // Copy Single Row with TAB separators
+  // Express Tab Format: [Barcode] \t [Product Name] \t [Warehouse Code] \t [Quantity]
   const handleCopyRow = (item: (typeof allItems)[0]) => {
-    const rowStr = getItemExpressRowString(item);
-    navigator.clipboard.writeText(rowStr);
+    const expressBarcode = item.barcode;
+    const whCode = toExpressWhCode(item.target_sheet);
+    const tabString = `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
+    navigator.clipboard.writeText(tabString);
+
     setCopiedItemId(item.id);
     setTimeout(() => setCopiedItemId(null), 2000);
   };
 
-  // Copy Single Barcode Only
-  const handleCopySingleBarcode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedItemSku(code);
+  // Copy single barcode value
+  const handleCopySingleBarcode = (barcode: string) => {
+    navigator.clipboard.writeText(barcode);
+    setCopiedItemSku(barcode);
     setTimeout(() => setCopiedItemSku(null), 2000);
   };
 
-  // Copy Only Selected Rows
+  // Copy all selected rows as batch TSV
   const handleCopySelectedRows = () => {
     const selectedItems = filteredItems.filter((i) => selectedItemIds.has(i.id));
     if (selectedItems.length === 0) return;
-    const lines = selectedItems.map((item) => getItemExpressRowString(item));
-    const content = lines.join("\n");
-    navigator.clipboard.writeText(content);
+
+    const tsvData = selectedItems
+      .map((item) => {
+        const expressBarcode = item.barcode;
+        const whCode = toExpressWhCode(item.target_sheet);
+        return `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
+      })
+      .join("\n");
+
+    navigator.clipboard.writeText(tsvData);
     setCopySuccess(`คัดลอกเฉพาะ ${selectedItems.length} รายการที่เลือกเรียบร้อยแล้ว!`);
+    setTimeout(() => setCopySuccess(null), 3000);
+  };
+
+  // Copy entire filtered list
+  const handleCopyAllExpressData = () => {
+    if (filteredItems.length === 0) return;
+
+    const tsvData = filteredItems
+      .map((item) => {
+        const expressBarcode = item.barcode;
+        const whCode = toExpressWhCode(item.target_sheet);
+        return `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
+      })
+      .join("\n");
+
+    navigator.clipboard.writeText(tsvData);
+    setCopySuccess(`คัดลอกทั้งหมด ${filteredItems.length} รายการแล้ว! นำไปกด Ctrl+V ใน Express ได้เลย`);
     setTimeout(() => setCopySuccess(null), 3000);
   };
 
   const handleDownloadExpressTxt = () => {
     if (filteredItems.length === 0) return;
-    const headers: string[] = [];
-    if (displayFields.barcode) headers.push("บาร์โค้ด");
-    if (displayFields.productName) headers.push("ชื่อสินค้า");
-    if (displayFields.warehouse) headers.push("โกดัง");
-    if (displayFields.quantity) headers.push("จำนวน");
-    if (displayFields.sku) headers.push("รหัสสินค้า");
-    if (displayFields.location) headers.push("ตำแหน่ง");
-    if (displayFields.docNo) headers.push("เลขที่เอกสาร");
-
-    const headerLine = (headers.length > 0 ? headers.join("\t") : "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน") + "\n";
-    const body = filteredItems.map((item) => getItemExpressRowString(item)).join("\n");
+    const headerLine = "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน\n";
+    const body = filteredItems
+      .map((item) => `${item.barcode}\t${item.product_name}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`)
+      .join("\n");
 
     const blob = new Blob([headerLine + body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `express_receive_${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(a);
+    a.download = `express-receive-${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -420,43 +574,33 @@ export default function ExpressReceivePage() {
     window.print();
   };
 
-  const toggleField = (field: keyof DisplayFields) => {
-    setDisplayFields((prev) => ({ ...prev, [field]: !prev[field] }));
-  };
-
   return (
-    <div className="w-full max-w-full space-y-5 pb-12">
-      {/* Top Header Banner (Clean Light Style) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm print:hidden">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold flex-shrink-0">
+    <div className="w-full max-w-full space-y-5 pb-12 print:p-0 print:m-0 print:max-w-none text-slate-800">
+      {/* Header Banner (Clean Light Theme) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl shadow-xs print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2.5">
-              <span>นำเข้า Express — รับสินค้า</span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                {filteredItems.length} รายการ
-              </span>
+            <h1 className="text-base sm:text-lg font-black text-slate-900">
+              นำเข้า Express — รับสินค้า
             </h1>
-            <p className="text-slate-500 text-xs mt-0.5">
-              กดปุ่ม <strong className="text-emerald-700">📋 คัดลอกทั้งแถว (Tab)</strong> เพื่อนำข้อมูลไปกด <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800 font-mono font-bold">Ctrl+V</kbd> วางลงในโปรแกรม Express ได้ทันที
-            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={handleCopySelectedRows}
+            onClick={handleCopyAllExpressData}
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
             </svg>
-            <span>คัดลอกข้อมูลทั้งหมด</span>
+            <span>{copySuccess || "คัดลอกข้อมูลทั้งหมด"}</span>
           </button>
 
           <button
@@ -481,11 +625,29 @@ export default function ExpressReceivePage() {
             </svg>
             <span>พิมพ์ใบสแกน</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+              } else {
+                document.exitFullscreen().catch(() => {});
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            title="ขยายเต็มหน้าจอ (Fullscreen)"
+          >
+            <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            <span>เต็มจอ</span>
+          </button>
         </div>
       </div>
 
       {/* Express Tagging & Batch Stats Bar (Clean Light Theme Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
         {/* All Items Card */}
         <div
           onClick={() => setTagFilter("ALL")}
@@ -499,24 +661,6 @@ export default function ExpressReceivePage() {
           <div className="text-2xl font-black text-slate-900 mt-1 font-mono">{tagStats.total}</div>
         </div>
 
-        {/* Tagged Card */}
-        <div
-          onClick={() => setTagFilter("TAGGED_ONLY")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            tagFilter === "TAGGED_ONLY"
-              ? "bg-indigo-100/70 border-indigo-500 shadow-sm"
-              : "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 shadow-2xs"
-          }`}
-        >
-          <div className="text-xs font-bold text-indigo-700 flex items-center justify-between">
-            <span>🏷️ ติดแท็กไว้</span>
-            <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-mono font-bold">
-              {tagStats.taggedCount}
-            </span>
-          </div>
-          <div className="text-2xl font-black text-indigo-900 mt-1 font-mono">{tagStats.taggedCount}</div>
-        </div>
-
         {/* Pending Card */}
         <div
           onClick={() => setTagFilter("PENDING")}
@@ -526,12 +670,7 @@ export default function ExpressReceivePage() {
               : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-amber-800 flex items-center justify-between">
-            <span>⏳ รอนำเข้า Express</span>
-            <span className="text-[11px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-mono font-bold">
-              {tagStats.pendingCount}
-            </span>
-          </div>
+          <div className="text-xs font-bold text-amber-800">⏳ รอนำเข้า Express</div>
           <div className="text-2xl font-black text-amber-900 mt-1 font-mono">{tagStats.pendingCount}</div>
         </div>
 
@@ -544,12 +683,7 @@ export default function ExpressReceivePage() {
               : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-emerald-800 flex items-center justify-between">
-            <span>✅ นำเข้าแล้ว</span>
-            <span className="text-[11px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full font-mono font-bold">
-              {tagStats.importedCount}
-            </span>
-          </div>
+          <div className="text-xs font-bold text-emerald-800">✅ นำเข้าแล้ว</div>
           <div className="text-2xl font-black text-emerald-900 mt-1 font-mono">{tagStats.importedCount}</div>
         </div>
       </div>
@@ -558,7 +692,7 @@ export default function ExpressReceivePage() {
       <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3.5 shadow-2xs print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Search Box */}
-          <div className="sm:col-span-6 relative">
+          <div className="sm:col-span-5 relative">
             <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -566,8 +700,8 @@ export default function ExpressReceivePage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="🔍 ค้นหาบาร์โค้ด, SKU, ชื่อสินค้า, แท็ก, โกดัง..."
-              className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-medium"
+              placeholder="ค้นหาบาร์โค้ด, SKU, ชื่อสินค้า, แท็ก, โกดัง, เลขเอกสาร..."
+              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-medium"
             />
             {searchQuery && (
               <button
@@ -579,211 +713,61 @@ export default function ExpressReceivePage() {
             )}
           </div>
 
-          {/* Doc Selector */}
-          <div className="sm:col-span-3">
-            <select
-              value={selectedDocId}
-              onChange={(e) => setSelectedDocId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white cursor-pointer"
-            >
-              <option value="ALL">เอกสารทั้งหมด ({docs.length})</option>
-              {docs.map((doc) => (
-                <option key={doc.document_id} value={doc.document_id}>
-                  {doc.document_no} ({doc.target_sheet})
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Warehouse Selector */}
           <div className="sm:col-span-3">
-            <select
+            <ScrollSelect
               value={selectedWarehouse}
-              onChange={(e) => setSelectedWarehouse(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white cursor-pointer"
-            >
-              <option value="ALL">ทุกคลังสินค้า ({availableWarehouses.length})</option>
-              {availableWarehouses.map((wh) => (
-                <option key={wh} value={wh}>
-                  โกดัง: {wh}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Tag Filters & Multi-Select Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-bold text-slate-600 mr-1">ตัวกรองแท็ก:</span>
-            <button
-              onClick={() => setTagFilter("ALL")}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tagFilter === "ALL"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              ทั้งหมด ({allItems.length})
-            </button>
-            <button
-              onClick={() => setTagFilter("TAGGED_ONLY")}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tagFilter === "TAGGED_ONLY"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
-              }`}
-            >
-              🏷️ ติดแท็ก ({tagStats.taggedCount})
-            </button>
-            <button
-              onClick={() => setTagFilter("PENDING")}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tagFilter === "PENDING"
-                  ? "bg-amber-600 text-white shadow-xs"
-                  : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
-              }`}
-            >
-              ⏳ รอนำเข้า ({tagStats.pendingCount})
-            </button>
-            <button
-              onClick={() => setTagFilter("IMPORTED")}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tagFilter === "IMPORTED"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-              }`}
-            >
-              ✅ นำเข้าแล้ว ({tagStats.importedCount})
-            </button>
+              onChange={setSelectedWarehouse}
+              options={warehouseOptions}
+              maxVisibleItems={4}
+              title="เลือกคลังสินค้า"
+            />
           </div>
 
-          {/* Multi-Select & Batch Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={handleSelectAll}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold cursor-pointer"
-            >
-              {selectedItemIds.size === filteredItems.length && filteredItems.length > 0
-                ? "ยกเลิกการเลือกทั้งหมด"
-                : `เลือกทั้งหมด (${filteredItems.length})`}
-            </button>
+          {/* Day / Month / Year Dropdowns */}
+          <div className="sm:col-span-4 flex items-center gap-1.5">
+            {/* วัน (Day) */}
+            <ScrollSelect
+              value={selectedDay}
+              onChange={setSelectedDay}
+              options={dayOptions}
+              maxVisibleItems={4}
+              title="เลือกวัน"
+            />
 
-            {selectedItemIds.size > 0 && (
-              <>
-                <button
-                  onClick={handleCopySelectedRows}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                  title="คัดลอกเฉพาะรายการที่เลือกแบบแยกช่อง Tab"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                  <span>📋 คัดลอกที่เลือก ({selectedItemIds.size})</span>
-                </button>
+            {/* เดือน (Month) */}
+            <ScrollSelect
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              options={monthOptions}
+              maxVisibleItems={4}
+              title="เลือกเดือน"
+            />
 
-                <button
-                  onClick={() => setShowTagModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <span>🏷️ ติดแท็ก ({selectedItemIds.size})</span>
-                </button>
+            {/* ปี (Year) */}
+            <ScrollSelect
+              value={selectedYear}
+              onChange={setSelectedYear}
+              options={yearOptions}
+              maxVisibleItems={4}
+              title="เลือกปี"
+            />
 
-                <button
-                  onClick={() => handleBatchMarkStatus("IMPORTED")}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <span>✅ มาร์กนำเข้าแล้ว</span>
-                </button>
-
-                <button
-                  onClick={handleBatchUntag}
-                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold cursor-pointer"
-                >
-                  ลบแท็ก
-                </button>
-              </>
+            {(selectedDay !== "ALL" || selectedMonth !== "ALL" || selectedYear !== "ALL") && (
+              <button
+                type="button"
+                onClick={resetDateFilter}
+                className="px-2.5 py-2 min-h-[42px] text-sm text-rose-600 hover:bg-rose-50 rounded-xl font-bold cursor-pointer flex-shrink-0 border border-rose-200"
+                title="ล้างตัวกรองวันที่"
+              >
+                ✕
+              </button>
             )}
           </div>
         </div>
-
-        {/* Display Fields Selection Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
-          <span className="text-xs font-bold text-slate-500 mr-1">ฟิลด์ในแถวที่คัดลอก:</span>
-
-          <button
-            type="button"
-            onClick={() => toggleField("barcode")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.barcode ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.barcode ? "✓" : "+"} บาร์โค้ด</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("productName")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.productName ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.productName ? "✓" : "+"} ชื่อสินค้า</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("warehouse")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.warehouse ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.warehouse ? "✓" : "+"} โกดัง</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("quantity")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.quantity ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.quantity ? "✓" : "+"} จำนวน</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("sku")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.sku ? "bg-indigo-50 text-indigo-800 border-indigo-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.sku ? "✓" : "+"} SKU</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("location")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.location ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.location ? "✓" : "+"} ตำแหน่ง</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggleField("docNo")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-              displayFields.docNo ? "bg-purple-50 text-purple-800 border-purple-300" : "bg-slate-50 text-slate-500 border-slate-200"
-            }`}
-          >
-            <span>{displayFields.docNo ? "✓" : "+"} เลขเอกสาร</span>
-          </button>
-        </div>
       </div>
 
-      {/* Main Items Content (Clean Light Card Design) */}
+      {/* Main Items Content (Clean Light Table Design) */}
       <div className="space-y-4">
         {/* Printable Header */}
         <div className="hidden print:block text-center mb-6 pb-3 border-b-2 border-black">
@@ -809,178 +793,146 @@ export default function ExpressReceivePage() {
             <p className="text-slate-500 text-xs sm:text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาหรือตัวกรองแท็ก</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 print:grid-cols-2 print:gap-3 w-full">
-            {filteredItems.map((item, idx) => {
-              const barcodeValue = item.barcode || item.sku;
-              const isRowCopied = copiedItemId === item.id;
-              const isBarcodeCopied = copiedItemSku === barcodeValue;
-              const isSelected = selectedItemIds.has(item.id);
-              const tagged = taggedItemsMap.get(item.id);
+          /* Table View */
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden print:border-black">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/95 border-b border-slate-200 text-slate-700 text-sm font-bold tracking-normal print:bg-white">
+                    <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-slate-700">ลำดับ</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">เลขที่เอกสาร</th>
+                    <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">รหัสสินค้า</th>
+                    <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-slate-700">ชื่อสินค้า</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">คลังสินค้า</th>
+                    <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
+                    <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">สถานะ Express</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredItems.map((item, idx) => {
+                    const barcodeValue = item.barcode || item.sku;
+                    const isRowCopied = copiedItemId === item.id;
+                    const isBarcodeCopied = copiedItemSku === barcodeValue;
+                    const isSelected = selectedItemIds.has(item.id);
+                    const tagged = taggedItemsMap.get(item.id);
+                    const isImported = tagged?.status === "IMPORTED";
 
-              return (
-                <div
-                  key={`${item.id}-${idx}`}
-                  className={`p-4 rounded-2xl border transition-all shadow-sm space-y-3 relative bg-white min-w-0 max-w-full overflow-hidden print:border-black print:break-inside-avoid ${
-                    isSelected
-                      ? "border-indigo-500 ring-2 ring-indigo-500/20"
-                      : tagged?.status === "IMPORTED"
-                      ? "border-emerald-300"
-                      : tagged
-                      ? "border-indigo-300"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  {/* Top Bar: Checkbox & Tag Badge */}
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 min-w-0">
-                    <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 truncate">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelectItem(item.id)}
-                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
-                      />
-                      <span className="text-[11px] font-mono font-bold text-slate-600 truncate">
-                        {item.document_no}
-                      </span>
-                    </label>
+                    return (
+                      <tr
+                        key={`${item.id}-${idx}`}
+                        className={`transition-colors duration-150 ${
+                          isSelected
+                            ? "bg-emerald-50/80"
+                            : isImported
+                            ? "!bg-emerald-100 hover:!bg-emerald-200/80"
+                            : idx % 2 === 0
+                            ? "bg-white hover:bg-slate-50/80"
+                            : "bg-slate-50/40 hover:bg-slate-50/80"
+                        }`}
+                      >
+                        {/* 1. ลำดับ */}
+                        <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-emerald-100" : ""}`}>
+                          {idx + 1}
+                        </td>
 
-                    {/* Tag Status / Action Buttons */}
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                      {tagged ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStatus(item.id)}
-                            title="คลิกเพื่อสลับสถานะ นำเข้าแล้ว / รอนำเข้า"
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                              tagged.status === "IMPORTED"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                                : "bg-amber-50 text-amber-800 border-amber-300"
+                        {/* 2. เลขที่เอกสาร */}
+                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <div className="font-mono font-bold text-slate-900 text-sm">
+                            {item.document_no}
+                          </div>
+                          {item.document_date && (
+                            <div className="text-xs text-slate-400 font-mono mt-0.5">
+                              {item.document_date}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 3. บาร์โค้ด (รูปบาร์โค้ด) */}
+                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <div className="flex flex-col items-center justify-center gap-1">
+                            <BarcodeSvg
+                              value={barcodeValue}
+                              height={40}
+                              width={1.4}
+                              fontSize={12}
+                              showText={true}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleCopySingleBarcode(barcodeValue)}
+                              className="text-xs font-mono text-slate-500 hover:text-emerald-600 px-2 py-0.5 rounded hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-1 print:hidden"
+                              title="คัดลอกเฉพาะเลขบาร์โค้ด"
+                            >
+                              {isBarcodeCopied ? (
+                                <span className="text-emerald-600 font-bold">✓ คัดลอกแล้ว</span>
+                              ) : (
+                                <>
+                                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                  <span>คัดลอกเลข</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* 4. รหัสสินค้า SKU */}
+                        <td className={`py-3 px-3 whitespace-nowrap font-mono text-xs font-bold text-slate-900 text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                          {item.sku || "-"}
+                        </td>
+
+                        {/* 5. ชื่อสินค้า */}
+                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <div className="text-slate-900 font-semibold text-sm leading-snug" title={item.product_name}>
+                            {item.product_name}
+                          </div>
+                        </td>
+
+                        {/* 6. ตำแหน่ง */}
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <span className="font-mono font-bold text-slate-800 text-sm">
+                            {item.location && item.location !== "-" ? item.location : "-"}
+                          </span>
+                        </td>
+
+                        {/* 7. คลังสินค้า */}
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <span className="text-slate-800 font-semibold">
+                            {getWarehouseDisplayName(item.target_sheet)}
+                          </span>
+                        </td>
+
+                        {/* 8. จำนวน */}
+                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <span className="font-mono font-bold text-slate-900 text-base">
+                            {item.quantity.toLocaleString()} <span className="font-normal text-slate-500 text-xs">ชิ้น</span>
+                          </span>
+                        </td>
+
+                        {/* 8. สถานะ Express Tag */}
+                        <td className={`py-2.5 px-3 text-center whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <select
+                            value={tagged?.status || "PENDING"}
+                            onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
+                              isImported
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
                             }`}
                           >
-                            <span>{tagged.status === "IMPORTED" ? "✅ นำเข้าแล้ว" : "⏳ รอนำเข้า"}</span>
-                          </button>
-
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            🏷️ {tagged.tag}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleTag(item)}
-                            title="ปลดแท็กนี้ออก"
-                            className="text-xs text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer font-bold"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTag(item)}
-                          className="px-2.5 py-0.5 rounded-lg bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 border border-slate-200 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          <span>+ ติดแท็ก Express</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Header info */}
-                  <div className="space-y-1.5 min-w-0">
-                    {displayFields.productName && (
-                      <div className="text-sm font-bold text-slate-900 leading-snug break-words">
-                        {displayFields.sku && <span className="font-mono text-emerald-700 mr-1.5">[{item.sku}]</span>}
-                        {item.product_name}
-                      </div>
-                    )}
-
-                    {!displayFields.productName && displayFields.sku && (
-                      <div className="text-sm font-mono font-bold text-emerald-700">
-                        รหัสสินค้า: {item.sku}
-                      </div>
-                    )}
-
-                    {/* Badges: Warehouse, Quantity, Location, Doc No */}
-                    <div className="flex items-center gap-2 flex-wrap text-xs">
-                      {displayFields.warehouse && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                          🏢 โกดัง: <strong className="text-indigo-950">{item.target_sheet} ({toExpressWhCode(item.target_sheet)})</strong>
-                        </span>
-                      )}
-
-                      {displayFields.quantity && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-mono font-extrabold border border-emerald-200">
-                          📦 จำนวน: <strong className="text-emerald-700">{item.quantity} ชิ้น</strong>
-                        </span>
-                      )}
-
-                      {displayFields.location && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-800 font-mono font-bold border border-amber-200">
-                          📍 {item.location}
-                        </span>
-                      )}
-
-                      {displayFields.docNo && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200">
-                          📄 {item.document_no}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Visual Code 128 Barcode Image (Crisp Box) */}
-                  {displayFields.barcode && (
-                    <div className="py-2.5 w-full max-w-full overflow-x-auto min-w-0 flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-slate-200 shadow-xs print:border-black">
-                      <BarcodeSvg value={barcodeValue} height={75} showText={true} />
-                    </div>
-                  )}
-
-                  {/* Footer Row: Copy Full Row with Tab & Barcode Copy */}
-                  <div className="pt-2.5 border-t border-slate-100 space-y-2 print:hidden min-w-0">
-                    {/* Visual Tab String Preview (Light Theme) */}
-                    <div
-                      className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[11px] font-mono text-slate-600 overflow-x-auto select-all min-w-0"
-                      title="ตัวอย่างข้อมูลเมื่อกดคัดลอก (คั่นด้วย Tab)"
-                    >
-                      <span className="truncate">
-                        {item.barcode}&nbsp;<span className="text-emerald-700 font-black bg-emerald-100 px-1 rounded text-[10px]">TAB</span>&nbsp;
-                        {item.product_name}&nbsp;<span className="text-emerald-700 font-black bg-emerald-100 px-1 rounded text-[10px]">TAB</span>&nbsp;
-                        {toExpressWhCode(item.target_sheet)}&nbsp;<span className="text-emerald-700 font-black bg-emerald-100 px-1 rounded text-[10px]">TAB</span>&nbsp;
-                        {item.quantity}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => handleCopySingleBarcode(barcodeValue)}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer grow sm:grow-0"
-                        title="คัดลอกเฉพาะเลขบาร์โค้ด"
-                      >
-                        <span>{isBarcodeCopied ? "✓ คัดลอกแล้ว" : "คัดลอกบาร์โค้ด"}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleCopyRow(item)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs grow sm:grow-0 ${
-                          isRowCopied
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : "bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 hover:border-emerald-600"
-                        }`}
-                        title="คัดลอกทั้งแถว (บาร์โค้ด [TAB] ชื่อสินค้า [TAB] โกดัง [TAB] จำนวน) เพื่อไปกด Ctrl+V ใน Express"
-                      >
-                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                        </svg>
-                        <span>{isRowCopied ? "✓ คัดลอกแถวแล้ว!" : "📋 คัดลอกทั้งแถว (Tab)"}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                            <option value="PENDING">⏳ รอนำเข้า</option>
+                            <option value="IMPORTED">✅ นำเข้าแล้ว</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -1004,7 +956,7 @@ export default function ExpressReceivePage() {
               value={customTagInput}
               onChange={(e) => setCustomTagInput(e.target.value)}
               placeholder="ระบุชื่อแท็ก..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white"
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -1018,7 +970,7 @@ export default function ExpressReceivePage() {
               <button
                 type="button"
                 onClick={() => handleBatchTag(customTagInput)}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-xs"
               >
                 บันทึกแท็ก
               </button>

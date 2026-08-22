@@ -5,7 +5,11 @@ import QRCode from "qrcode";
 import type { Location, Warehouse } from "@/types/models";
 import { getDefaultLocationsForWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
-import { generateCode128PngDataUrl, generateShelfBarcodeStickerDataUrl } from "@/lib/barcode-utils";
+import {
+  generateCode128PngDataUrl,
+  generateShelfBarcodeStickerDataUrl,
+  getShelfArrowDirection,
+} from "@/lib/barcode-utils";
 
 interface ShelfQrItem {
   location_id: string;
@@ -198,17 +202,42 @@ export default function ShelfQrPage() {
     }
   };
 
-  const renderItemCard = (item: ShelfQrItem, idx: number) => (
-    <div
-      key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
-      onClick={() => handleDownloadSingle(item)}
-      title="คลิกเพื่อดาวน์โหลดรูปภาพบาร์โค้ด"
-      className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-slate-200 shadow-md flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:scale-[1.01] hover:border-emerald-500 hover:shadow-xl cursor-pointer"
-    >
-      {/* Location Code (On Top of Barcode) */}
-      <h2 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-wider font-mono select-none">
-        {item.location_code}
-      </h2>
+  const renderItemCard = (item: ShelfQrItem, idx: number) => {
+    const arrowDir = getShelfArrowDirection(item.location_code);
+
+    return (
+      <div
+        key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
+        onClick={() => handleDownloadSingle(item)}
+        title="คลิกเพื่อดาวน์โหลดรูปภาพบาร์โค้ด"
+        className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-slate-200 shadow-md flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:scale-[1.01] hover:border-emerald-500 hover:shadow-xl cursor-pointer"
+      >
+        {/* Location Code (On Top of Barcode) with Bold Green Arrows on BOTH Sides */}
+        <h2 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-wider font-mono select-none flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+          {arrowDir === "down" && (
+            <svg className="w-8 h-8 sm:w-11 sm:h-11 text-emerald-600 inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
+              <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
+            </svg>
+          )}
+          {arrowDir === "up" && (
+            <svg className="w-8 h-8 sm:w-11 sm:h-11 text-emerald-600 inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
+              <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
+            </svg>
+          )}
+
+          <span>{item.location_code}</span>
+
+          {arrowDir === "down" && (
+            <svg className="w-8 h-8 sm:w-11 sm:h-11 text-emerald-600 inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
+              <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
+            </svg>
+          )}
+          {arrowDir === "up" && (
+            <svg className="w-8 h-8 sm:w-11 sm:h-11 text-emerald-600 inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
+              <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
+            </svg>
+          )}
+        </h2>
 
       {/* Barcode Inner Box (Matching sticker mockup with clean border) */}
       <div className="w-full flex items-center justify-center">
@@ -238,6 +267,7 @@ export default function ShelfQrPage() {
       </div>
     </div>
   );
+};
 
   const totalStickerPages = stickerPages.length;
 
@@ -519,44 +549,81 @@ export default function ShelfQrPage() {
 
         {stickerPages.map((pageItems, pageIdx) => (
           <div key={`print-page-${pageIdx}`} className="a4-sticker-page">
-            {pageItems.map((item, itemIdx) => (
-              <div key={`slot-${item.warehouse_id}-${item.location_id}-${itemIdx}`} className="sticker-slot">
-                {/* Top: Location Code Title - Super Extra Large & Bold */}
-                <div
-                  className="font-mono font-black text-slate-900 tracking-wider leading-none mb-2 select-none"
-                  style={{ fontSize: "52px", fontWeight: 900 }}
-                >
-                  {item.location_code}
-                </div>
+            {pageItems.map((item, itemIdx) => {
+              const arrowDir = getShelfArrowDirection(item.location_code);
+              return (
+                <div key={`slot-${item.warehouse_id}-${item.location_id}-${itemIdx}`} className="sticker-slot">
+                  {/* Top: Location Code Title - Super Extra Large & Bold with Bold Green Arrows on Both Sides */}
+                  <div
+                    className="font-mono font-black text-slate-900 tracking-wider leading-none mb-2 select-none flex items-center justify-center gap-2.5"
+                    style={{ fontSize: "46px", fontWeight: 900 }}
+                  >
+                    {arrowDir === "down" && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        style={{ width: "34px", height: "34px", fill: "#16a34a", display: "inline-block", flexShrink: 0 }}
+                      >
+                        <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
+                      </svg>
+                    )}
+                    {arrowDir === "up" && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        style={{ width: "34px", height: "34px", fill: "#16a34a", display: "inline-block", flexShrink: 0 }}
+                      >
+                        <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
+                      </svg>
+                    )}
 
-                {/* Bottom: Barcode / QR in Inner Box */}
-                <div className="w-full flex items-center justify-center">
-                  {displayFormat === "barcode" ? (
-                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1 flex items-center justify-center">
-                      <BarcodeSvg
-                        value={item.location_code}
-                        width={2.4}
-                        height={46}
-                        showText={false}
-                        className="border-0 p-0 shadow-none bg-transparent w-full"
-                      />
-                    </div>
-                  ) : item.qr_data_url ? (
-                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 p-1 flex items-center justify-center">
-                      <img
-                        src={item.qr_data_url}
-                        alt={`QR ${item.location_code}`}
-                        className="w-12 h-12 object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-14 h-14 flex items-center justify-center text-[10px] text-slate-400">
-                      ...
-                    </div>
-                  )}
+                    <span>{item.location_code}</span>
+
+                    {arrowDir === "down" && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        style={{ width: "34px", height: "34px", fill: "#16a34a", display: "inline-block", flexShrink: 0 }}
+                      >
+                        <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
+                      </svg>
+                    )}
+                    {arrowDir === "up" && (
+                      <svg
+                        viewBox="0 0 24 24"
+                        style={{ width: "34px", height: "34px", fill: "#16a34a", display: "inline-block", flexShrink: 0 }}
+                      >
+                        <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
+                      </svg>
+                    )}
+                  </div>
+
+                  {/* Bottom: Barcode / QR in Inner Box */}
+                  <div className="w-full flex items-center justify-center">
+                    {displayFormat === "barcode" ? (
+                      <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1 flex items-center justify-center">
+                        <BarcodeSvg
+                          value={item.location_code}
+                          width={2.4}
+                          height={46}
+                          showText={false}
+                          className="border-0 p-0 shadow-none bg-transparent w-full"
+                        />
+                      </div>
+                    ) : item.qr_data_url ? (
+                      <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 p-1 flex items-center justify-center">
+                        <img
+                          src={item.qr_data_url}
+                          alt={`QR ${item.location_code}`}
+                          className="w-12 h-12 object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 flex items-center justify-center text-[10px] text-slate-400">
+                        ...
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Empty slots to preserve 3x3 grid on the last page */}
             {pageItems.length < 9 &&

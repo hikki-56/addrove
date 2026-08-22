@@ -16,11 +16,11 @@ interface BarcodeSvgProps {
 
 export default function BarcodeSvg({
   value,
-  width = 2,
-  height = 75,
+  width = 1.4,
+  height = 42,
   showText = true,
   className = "",
-  fontSize = 14,
+  fontSize = 12,
   textPosition = "bottom",
 }: BarcodeSvgProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -33,15 +33,15 @@ export default function BarcodeSvg({
     try {
       JsBarcode(canvasRef.current, cleanValue, {
         format: "CODE128",
-        width: Math.max(1.8, width),
-        height: Math.max(60, height),
+        width: Math.max(1.3, width),
+        height: Math.max(38, height),
         displayValue: showText,
         textPosition: textPosition,
         font: "monospace",
         fontOptions: "bold",
         fontSize: fontSize,
-        textMargin: 4,
-        margin: 12,
+        textMargin: 2,
+        margin: 6,
         background: "#FFFFFF",
         lineColor: "#000000",
       });
@@ -74,7 +74,7 @@ export default function BarcodeSvg({
 
   if (!cleanValue) {
     return (
-      <div className={`inline-flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none ${className}`}>
+      <div className={`w-[200px] min-w-[200px] max-w-[200px] h-[72px] flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none bg-slate-50 ${className}`}>
         <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
       </div>
     );
@@ -85,13 +85,14 @@ export default function BarcodeSvg({
       <div
         onClick={() => setIsZoomed(true)}
         title="🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"
-        className={`group relative inline-flex flex-col items-center justify-center bg-white p-2 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none ${className}`}
+        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none w-[200px] min-w-[200px] max-w-[200px] h-[72px] overflow-hidden ${className}`}
       >
         <canvas
           ref={canvasRef}
           style={{
             maxWidth: "100%",
-            height: "auto",
+            maxHeight: "100%",
+            objectFit: "contain",
             display: "block",
           }}
         />
