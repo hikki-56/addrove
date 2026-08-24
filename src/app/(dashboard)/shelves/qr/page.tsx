@@ -20,6 +20,7 @@ interface ShelfQrItem {
   level_name: string;
   qr_data_url?: string;
   barcode_data_url?: string;
+  pure_barcode_url?: string;
 }
 
 const WAREHOUSES = [
@@ -116,6 +117,12 @@ export default function ShelfQrPage() {
           }
 
           const barcodeDataUrl = generateShelfBarcodeStickerDataUrl(codeValue);
+          const pureBarcodeUrl = generateCode128PngDataUrl(codeValue, {
+            showText: false,
+            scale: 4,
+            height: 100,
+            quietZone: 8,
+          });
 
           items.push({
             location_id: loc.location_id,
@@ -126,6 +133,7 @@ export default function ShelfQrPage() {
             level_name: levelName,
             qr_data_url: qrDataUrl,
             barcode_data_url: barcodeDataUrl,
+            pure_barcode_url: pureBarcodeUrl,
           });
         }
 
@@ -242,14 +250,23 @@ export default function ShelfQrPage() {
       {/* Barcode Inner Box (Matching sticker mockup with clean border) */}
       <div className="w-full flex items-center justify-center">
         {displayFormat === "barcode" ? (
-          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-center shadow-2xs">
-            <BarcodeSvg
-              value={item.location_code}
-              width={2.8}
-              height={82}
-              showText={false}
-              className="border-0 p-0 shadow-none bg-transparent w-full"
-            />
+          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-center shadow-2xs">
+            {item.pure_barcode_url ? (
+              <img
+                src={item.pure_barcode_url}
+                alt={`Barcode ${item.location_code}`}
+                className="w-full h-auto max-h-[88px] object-contain mx-auto select-none"
+                style={{ imageRendering: "pixelated" }}
+              />
+            ) : (
+              <BarcodeSvg
+                value={item.location_code}
+                width={2.8}
+                height={82}
+                showText={false}
+                className="border-0 p-0 shadow-none bg-transparent w-full"
+              />
+            )}
           </div>
         ) : item.qr_data_url ? (
           <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 p-4 flex items-center justify-center shadow-2xs">
@@ -598,14 +615,23 @@ export default function ShelfQrPage() {
                   {/* Bottom: Barcode / QR in Inner Box */}
                   <div className="w-full flex items-center justify-center">
                     {displayFormat === "barcode" ? (
-                      <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1 flex items-center justify-center">
-                        <BarcodeSvg
-                          value={item.location_code}
-                          width={2.4}
-                          height={46}
-                          showText={false}
-                          className="border-0 p-0 shadow-none bg-transparent w-full"
-                        />
+                      <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1.5 flex items-center justify-center">
+                        {item.pure_barcode_url ? (
+                          <img
+                            src={item.pure_barcode_url}
+                            alt={`Barcode ${item.location_code}`}
+                            className="w-full h-auto max-h-[44px] object-contain mx-auto select-none block"
+                            style={{ imageRendering: "pixelated" }}
+                          />
+                        ) : (
+                          <BarcodeSvg
+                            value={item.location_code}
+                            width={2.4}
+                            height={46}
+                            showText={false}
+                            className="border-0 p-0 shadow-none bg-transparent w-full"
+                          />
+                        )}
                       </div>
                     ) : item.qr_data_url ? (
                       <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 p-1 flex items-center justify-center">

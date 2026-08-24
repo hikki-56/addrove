@@ -7,7 +7,8 @@ import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import ScrollSelect from "@/components/ui/ScrollSelect";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
-import type { MovementWithDetails } from "@/types/models";
+import type { MovementWithDetails, Product } from "@/types/models";
+import { getTransferNotifications } from "@/lib/transfer-notification-utils";
 import {
   getAllTaggedExpressItems,
   tagExpressItem,
@@ -133,8 +134,23 @@ export default function ExpressTransferPage() {
         : [];
       setCatalogProducts(prods);
 
-      // Build transfer docs map for fast from/to warehouse resolution
-      const trfDocMap = new Map<string, { from_warehouse_name: string; to_warehouse_name: string }>();
+      // Extract local transfer notifications
+      const localNotifications = getTransferNotifications();
+      const notifMap = new Map<string, any>();
+      localNotifications.forEach((n) => {
+        if (n.doc_no) notifMap.set(n.doc_no.trim().toLowerCase(), n);
+        if (n.id) notifMap.set(n.id.trim().toLowerCase(), n);
+      });
+
+      // Build transfer docs map for fast from/to warehouse resolution & destination location
+      const trfDocMap = new Map<string, {
+        from_warehouse_name: string;
+        to_warehouse_name: string;
+        to_location_id?: string;
+        from_location_id?: string;
+        note?: string;
+      }>();
+
       if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
         trfJson.data.forEach((t: any) => {
           let meta: Record<string, any> = {};
@@ -147,8 +163,37 @@ export default function ExpressTransferPage() {
           const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
           const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
           const docId = (t.document_id || t.id || "").trim().toLowerCase();
-          if (docNo) trfDocMap.set(docNo, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
-          if (docId) trfDocMap.set(docId, { from_warehouse_name: fromWh, to_warehouse_name: toWh });
+          const notif = (docNo && notifMap.get(docNo)) || (docId && notifMap.get(docId));
+
+          const toLoc =
+            meta.to_location_id ||
+            meta.to_location ||
+            meta.completed_location_id ||
+            meta.destination_location ||
+            t.to_location_id ||
+            t.to_location ||
+            t.completed_location_id ||
+            notif?.to_location_id ||
+            "";
+
+          const fromLoc =
+            meta.from_location_id ||
+            meta.from_location ||
+            meta.source_allocations?.[0]?.location_id ||
+            t.from_location_id ||
+            t.from_location ||
+            notif?.from_location_id ||
+            "";
+
+          const info = {
+            from_warehouse_name: fromWh,
+            to_warehouse_name: toWh,
+            to_location_id: toLoc,
+            from_location_id: fromLoc,
+            note: t.note,
+          };
+          if (docNo) trfDocMap.set(docNo, info);
+          if (docId) trfDocMap.set(docId, info);
         });
       }
 
@@ -167,10 +212,14 @@ export default function ExpressTransferPage() {
           .map((m: MovementWithDetails) => {
             const docNo = m.document_no || m.document_id || "";
             const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
+            const notif = docNo ? notifMap.get(docNo.trim().toLowerCase()) : undefined;
+            const toLoc = (m as any).to_location_id || trfInfo?.to_location_id || notif?.to_location_id || "";
+
             return {
               ...m,
               from_warehouse_name: (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1",
               to_warehouse_name: (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "",
+              to_location_id: toLoc,
             };
           });
         setMovements(transferMovements);
@@ -185,6 +234,29 @@ export default function ExpressTransferPage() {
   useEffect(() => {
     fetchMovements();
   }, [dateFrom, dateTo]);
+
+  // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
+  const extractShelfFromText = (text: string | undefined | null): string => {
+    if (!text) return "";
+    const str = String(text).trim();
+    // 1. Explicit hash tag like #AD-02, #ADS-05, #HC40, #B-12, #A01
+    const hashMatch = str.match(/#\s*([A-Za-z0-9\-_/]+)/);
+    if (hashMatch && hashMatch[1]) {
+      const loc = hashMatch[1].trim();
+      if (loc && loc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1") {
+        return loc;
+      }
+    }
+    // 2. Bracketed shelf code e.g. [AD-02], (AD-02)
+    const bracketMatch = str.match(/[\(\[\{]([A-Za-z0-9\-_/]+)[\)\]\}]/);
+    if (bracketMatch && bracketMatch[1]) {
+      const loc = bracketMatch[1].trim();
+      if (loc && loc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1" && loc.length >= 2 && loc.length <= 15) {
+        return loc;
+      }
+    }
+    return "";
+  };
 
   // Flatten & transform movement items
   const allItems = useMemo(() => {
@@ -207,13 +279,55 @@ export default function ExpressTransferPage() {
       movement_type: string;
     }> = [];
 
-    const prodMap = new Map<string, any>();
+    // Multi-index catalog products for thorough matching
+    const prodBySku = new Map<string, Product>();
+    const prodByCleanSku = new Map<string, Product>();
+    const prodById = new Map<string, Product>();
+    const prodByBarcode = new Map<string, Product>();
+    const prodByNameClean = new Map<string, Product>();
+    const prodByLeadingNumber = new Map<string, Product>();
+
     catalogProducts.forEach((p) => {
       if (!p) return;
-      if (p.sku) prodMap.set(p.sku.toLowerCase().trim(), p);
-      if (p.barcode) prodMap.set(p.barcode.toLowerCase().trim(), p);
-      if (p.product_name) prodMap.set(p.product_name.toLowerCase().trim(), p);
+      const pSku = (p.sku || "").trim().toLowerCase();
+      const pCleanSku = (p.sku || "").replace(/[\s\-_#]/g, "").toLowerCase();
+      const pId = (p.product_id || "").trim().toLowerCase();
+      const pCleanId = (p.product_id || "").replace(/^prod-/, "").toLowerCase();
+      const pBcode = (p.barcode || "").trim().toLowerCase();
+      const pCleanName = (p.product_name || "").replace(/[\s\-_#]/g, "").toLowerCase();
+
+      if (pSku) prodBySku.set(pSku, p);
+      if (pCleanSku) prodByCleanSku.set(pCleanSku, p);
+      if (pId) prodById.set(pId, p);
+      if (pCleanId) prodById.set(pCleanId, p);
+      if (pBcode && pBcode !== "-") prodByBarcode.set(pBcode, p);
+      if (pCleanName) prodByNameClean.set(pCleanName, p);
+
+      const numMatch = (p.product_name || "").match(/^(\d{3,18})/) || (p.sku || "").match(/^(\d{3,18})/);
+      if (numMatch) {
+        prodByLeadingNumber.set(numMatch[1], p);
+      }
     });
+
+    const findMatchedProduct = (sku: string, barcode: string, prodName: string, id?: string): Product | undefined => {
+      const cleanSku = (sku || "").toLowerCase().trim();
+      const strippedSku = cleanSku.replace(/[\s\-_#]/g, "");
+      const cleanBcode = (barcode || "").toLowerCase().trim();
+      const cleanName = (prodName || "").replace(/[\s\-_#]/g, "").toLowerCase();
+      const cleanId = (id || "").toLowerCase().trim();
+
+      if (cleanSku && prodBySku.has(cleanSku)) return prodBySku.get(cleanSku);
+      if (strippedSku && prodByCleanSku.has(strippedSku)) return prodByCleanSku.get(strippedSku);
+      if (cleanBcode && prodByBarcode.has(cleanBcode)) return prodByBarcode.get(cleanBcode);
+      if (cleanId && prodById.has(cleanId)) return prodById.get(cleanId);
+      if (cleanName && prodByNameClean.has(cleanName)) return prodByNameClean.get(cleanName);
+
+      const numMatch = (prodName || "").match(/^(\d{3,18})/) || (sku || "").match(/^(\d{3,18})/);
+      if (numMatch && prodByLeadingNumber.has(numMatch[1])) {
+        return prodByLeadingNumber.get(numMatch[1]);
+      }
+      return undefined;
+    };
 
     movements.forEach((m: any, idx) => {
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
@@ -237,32 +351,94 @@ export default function ExpressTransferPage() {
 
       const finalBarcode = barcode || to8DigitBarcode(rawBarcode, sku, prodName) || (prodName.match(/^(\d{3,18})/) ? (prodName.match(/^(\d{3,18})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,18})/)![1] : "9000" + prodName.match(/^(\d{3,18})/)![1].padStart(4, "0")) : "");
 
-      // Resolve Real Location
-      const matchedProd =
-        prodMap.get(sku.toLowerCase().trim()) ||
-        prodMap.get(finalBarcode.toLowerCase().trim()) ||
-        prodMap.get(prodName.toLowerCase().trim());
-
+      // 1. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง)
       let realLocation = "";
-      if (matchedProd) {
-        const whId = m.warehouse_id || normalizeWarehouseId(m.from_warehouse_name || m.warehouse_name);
-        if (Array.isArray(matchedProd.locations_breakdown)) {
-          const whLoc = matchedProd.locations_breakdown.find(
-            (l: any) => l.warehouse_id === whId && l.location && l.location !== "-" && l.location !== "A1"
-          );
-          if (whLoc?.location) realLocation = whLoc.location;
-        }
-        if (!realLocation && matchedProd.location && matchedProd.location !== "-" && matchedProd.location !== "A1" && matchedProd.location !== "loc-A1") {
-          realLocation = matchedProd.location;
+      const destScannedLoc = (
+        (m as any).to_location_id ||
+        (m as any).to_location ||
+        (m as any).completed_location_id ||
+        ""
+      ).trim();
+
+      if (destScannedLoc && !/^loc-?(a0?1|b0?1)?$/i.test(destScannedLoc) && destScannedLoc !== "A1" && destScannedLoc !== "A01" && destScannedLoc !== "-" && destScannedLoc !== "ตำแหน่งเริ่มต้น") {
+        realLocation = destScannedLoc.replace(/^loc-/, "");
+      }
+
+      // 2. Direct location on movement record if not dummy
+      if (!realLocation) {
+        const rawLoc = (m.location_code || m.location_id || m.location || "").trim();
+        const isDummy = !rawLoc || /^loc-?(a0?1|b0?1)?$/i.test(rawLoc) || rawLoc === "A1" || rawLoc === "A01" || rawLoc === "-" || rawLoc === "ตำแหน่งเริ่มต้น";
+        if (!isDummy) {
+          realLocation = rawLoc.replace(/^loc-/, "");
         }
       }
 
+      // 3. Fallback: extract shelf tag #SHELF from product name, SKU, or note
       if (!realLocation) {
-        const rawLoc = (m.location_code || m.location_id || "").trim();
-        const isDummy = /^loc-?(a0?1|b0?1)?$/i.test(rawLoc) || rawLoc === "A1" || rawLoc === "A01" || rawLoc === "-" || rawLoc === "ตำแหน่งเริ่มต้น";
-        if (rawLoc && !isDummy) {
-          realLocation = rawLoc.replace(/^loc-/, "");
+        realLocation =
+          extractShelfFromText(prodName) ||
+          extractShelfFromText(m.product_name) ||
+          extractShelfFromText(sku) ||
+          extractShelfFromText(m.note);
+      }
+
+      // 4. From Matched Product in catalog (Destination warehouse first, then Source)
+      const matchedProd = findMatchedProduct(sku, finalBarcode, prodName, m.product_id);
+      if (!realLocation && matchedProd) {
+        const destWhId = normalizeWarehouseId((m as any).to_warehouse_id || (m as any).to_warehouse_name);
+        const srcWhId = normalizeWarehouseId(m.warehouse_id || m.from_warehouse_name || m.warehouse_name);
+        
+        if (Array.isArray(matchedProd.locations_breakdown)) {
+          // Destination warehouse location
+          const destLoc = matchedProd.locations_breakdown.find(
+            (l: any) =>
+              normalizeWarehouseId(l.warehouse_id) === destWhId &&
+              l.location &&
+              l.location !== "-" &&
+              !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
+              l.location !== "A1"
+          );
+          if (destLoc?.location) realLocation = destLoc.location.replace(/^loc-/, "");
+
+          // Source warehouse location
+          if (!realLocation) {
+            const srcLoc = matchedProd.locations_breakdown.find(
+              (l: any) =>
+                normalizeWarehouseId(l.warehouse_id) === srcWhId &&
+                l.location &&
+                l.location !== "-" &&
+                !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
+                l.location !== "A1"
+            );
+            if (srcLoc?.location) realLocation = srcLoc.location.replace(/^loc-/, "");
+          }
+
+          // Fallback any warehouse location
+          if (!realLocation) {
+            const anyLoc = matchedProd.locations_breakdown.find(
+              (l: any) =>
+                l.location &&
+                l.location !== "-" &&
+                !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
+                l.location !== "A1"
+            );
+            if (anyLoc?.location) realLocation = anyLoc.location.replace(/^loc-/, "");
+          }
         }
+
+        // Matched product's main location field
+        if (!realLocation && matchedProd.location && matchedProd.location !== "-" && matchedProd.location !== "A1" && matchedProd.location !== "loc-A1") {
+          realLocation = matchedProd.location.replace(/^loc-/, "");
+        }
+      }
+
+      // 3. Fallback: extract shelf tag #SHELF from product name, SKU, or note
+      if (!realLocation) {
+        realLocation =
+          extractShelfFromText(prodName) ||
+          extractShelfFromText(m.product_name) ||
+          extractShelfFromText(sku) ||
+          extractShelfFromText(m.note);
       }
 
       const qty = Math.abs(Number(m.qty_change) || 1);
@@ -292,17 +468,58 @@ export default function ExpressTransferPage() {
   }, [movements, selectedDocNo, selectedWarehouse, catalogProducts]);
 
   // Available distinct years from dataset
+  // Helper to parse date into { year, month, day }
+  const parseDateParts = (raw: string | undefined | null) => {
+    if (!raw || raw === "-") return null;
+    const clean = (raw.includes("T") ? raw.split("T")[0] : raw.split(" ")[0]).trim();
+    if (clean.includes("-")) {
+      const parts = clean.split("-");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          return {
+            year: parts[0],
+            month: parts[1].padStart(2, "0"),
+            day: parts[2].padStart(2, "0"),
+          };
+        } else if (parts[2].length === 4) {
+          return {
+            year: parts[2],
+            month: parts[1].padStart(2, "0"),
+            day: parts[0].padStart(2, "0"),
+          };
+        }
+      }
+    } else if (clean.includes("/")) {
+      const parts = clean.split("/");
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          return {
+            year: parts[2],
+            month: parts[1].padStart(2, "0"),
+            day: parts[0].padStart(2, "0"),
+          };
+        } else if (parts[0].length === 4) {
+          return {
+            year: parts[0],
+            month: parts[1].padStart(2, "0"),
+            day: parts[2].padStart(2, "0"),
+          };
+        }
+      }
+    }
+    return null;
+  };
+
+  // Available distinct years from dataset
   const availableYears = useMemo(() => {
     const set = new Set<string>();
     const currentYear = String(new Date().getFullYear());
     set.add(currentYear);
     set.add(String(new Date().getFullYear() - 1));
     allItems.forEach((item) => {
-      const rawDate = item.created_at || "";
-      const dateStr = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.split(" ")[0];
-      if (dateStr && dateStr.length >= 4) {
-        const yr = dateStr.slice(0, 4);
-        if (/^\d{4}$/.test(yr)) set.add(yr);
+      const parts = parseDateParts(item.created_at);
+      if (parts && /^\d{4}$/.test(parts.year)) {
+        set.add(parts.year);
       }
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
@@ -379,13 +596,11 @@ export default function ExpressTransferPage() {
 
       // Day / Month / Year date filter check
       if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
-        const rawDate = item.created_at || "";
-        const itemDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.split(" ")[0];
-        if (itemDate && itemDate.length >= 10) {
-          const [iYear, iMonth, iDay] = itemDate.split("-");
-          if (selectedYear !== "ALL" && iYear !== selectedYear) return false;
-          if (selectedMonth !== "ALL" && iMonth !== selectedMonth) return false;
-          if (selectedDay !== "ALL" && iDay !== selectedDay) return false;
+        const parts = parseDateParts(item.created_at);
+        if (parts) {
+          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
+          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
+          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
         } else {
           return false;
         }
@@ -406,7 +621,7 @@ export default function ExpressTransferPage() {
         (tagged && tagged.tag.toLowerCase().includes(q))
       );
     });
-  }, [allItems, searchQuery, tagFilter, taggedItemsMap]);
+  }, [allItems, searchQuery, tagFilter, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
 
   const availableDocNos = useMemo(() => {
     const set = new Set<string>();
@@ -422,7 +637,21 @@ export default function ExpressTransferPage() {
     let pendingCount = 0;
     let importedCount = 0;
 
-    allItems.forEach((item) => {
+    const baseItems = allItems.filter((item) => {
+      if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
+        const parts = parseDateParts(item.created_at);
+        if (parts) {
+          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
+          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
+          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
       if (t) {
         taggedCount++;
@@ -431,8 +660,8 @@ export default function ExpressTransferPage() {
       }
     });
 
-    return { total: allItems.length, taggedCount, pendingCount, importedCount };
-  }, [allItems, taggedItemsMap]);
+    return { total: baseItems.length, taggedCount, pendingCount, importedCount };
+  }, [allItems, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
 
   // Toggle Single Tag
   const handleToggleTag = (item: (typeof allItems)[0]) => {
@@ -454,6 +683,19 @@ export default function ExpressTransferPage() {
         document_no: item.document_no,
         document_date: item.created_at,
       });
+    }
+  };
+
+  // Helper to sync status to Google Sheets and DB in background
+  const syncStatusToSheet = async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "TRANSFER" }>) => {
+    try {
+      await fetch("/api/express-import/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+    } catch (e) {
+      console.warn("[ExpressTransferPage] Background status sync to sheet failed:", e);
     }
   };
 
@@ -480,6 +722,7 @@ export default function ExpressTransferPage() {
       });
     }
     refreshTaggedMap();
+    syncStatusToSheet([{ document_no: item.document_no, sku: item.sku, status: newStatus, type: "TRANSFER" }]);
   };
 
   const handleToggleStatus = (id: string) => {
@@ -487,6 +730,10 @@ export default function ExpressTransferPage() {
     if (!existing) return;
     const nextStatus: ExpressSyncStatus = existing.status === "PENDING" ? "IMPORTED" : "PENDING";
     updateExpressItemStatus(id, nextStatus);
+    refreshTaggedMap();
+    if (existing.document_no) {
+      syncStatusToSheet([{ document_no: existing.document_no, sku: existing.sku, status: nextStatus, type: "TRANSFER" }]);
+    }
   };
 
   // Multi-Select
@@ -539,7 +786,13 @@ export default function ExpressTransferPage() {
 
   const handleBatchMarkStatus = (status: ExpressSyncStatus) => {
     if (selectedItemIds.size === 0) return;
-    batchUpdateExpressItemStatus(Array.from(selectedItemIds), status);
+    const ids = Array.from(selectedItemIds);
+    batchUpdateExpressItemStatus(ids, status);
+    refreshTaggedMap();
+    const itemsToSync = allItems
+      .filter((i) => selectedItemIds.has(i.id))
+      .map((i) => ({ document_no: i.document_no, sku: i.sku, status, type: "TRANSFER" as const }));
+    syncStatusToSheet(itemsToSync);
   };
 
   // Generate Tab-delimited row for an item
@@ -861,8 +1114,8 @@ export default function ExpressTransferPage() {
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">รหัสสินค้า</th>
                     <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-slate-700">ชื่อสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">คลังสินค้า</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
                     <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
                     <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-slate-700">สถานะ Express</th>
                   </tr>
@@ -946,14 +1199,7 @@ export default function ExpressTransferPage() {
                           </div>
                         </td>
 
-                        {/* 6. ตำแหน่ง */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <span className="font-mono font-bold text-slate-800 text-sm">
-                            {item.location && item.location !== "-" ? item.location : "-"}
-                          </span>
-                        </td>
-
-                        {/* 7. คลังสินค้า */}
+                        {/* 6. คลังสินค้า */}
                         <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
                           {item.to_warehouse_name ? (
                             <div className="inline-flex items-center gap-1.5 text-slate-800 font-medium">
@@ -968,7 +1214,14 @@ export default function ExpressTransferPage() {
                           )}
                         </td>
 
-                        {/* 7. จำนวน */}
+                        {/* 7. ตำแหน่ง */}
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <span className="font-mono font-bold text-slate-800 text-sm">
+                            {item.location && item.location !== "-" ? item.location : "-"}
+                          </span>
+                        </td>
+
+                        {/* 8. จำนวน */}
                         <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
                           <span className="font-mono font-bold text-slate-900 text-base">
                             {item.quantity.toLocaleString()} <span className="font-normal text-slate-500 text-xs">ชิ้น</span>

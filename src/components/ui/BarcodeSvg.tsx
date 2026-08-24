@@ -72,9 +72,12 @@ export default function BarcodeSvg({
     }
   }, [isZoomed, cleanValue]);
 
+  const hasCustomSize = className.includes("w-") || className.includes("h-") || className.includes("border-0");
+  const sizeClasses = hasCustomSize ? "" : "w-[200px] min-w-[200px] max-w-[200px] h-[72px]";
+
   if (!cleanValue) {
     return (
-      <div className={`w-[200px] min-w-[200px] max-w-[200px] h-[72px] flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none bg-slate-50 ${className}`}>
+      <div className={`flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none bg-slate-50 ${sizeClasses} ${className}`}>
         <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
       </div>
     );
@@ -85,7 +88,7 @@ export default function BarcodeSvg({
       <div
         onClick={() => setIsZoomed(true)}
         title="🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"
-        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none w-[200px] min-w-[200px] max-w-[200px] h-[72px] overflow-hidden ${className}`}
+        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none overflow-hidden ${sizeClasses} ${className}`}
       >
         <canvas
           ref={canvasRef}
@@ -94,6 +97,7 @@ export default function BarcodeSvg({
             maxHeight: "100%",
             objectFit: "contain",
             display: "block",
+            margin: "0 auto",
           }}
         />
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[9px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">

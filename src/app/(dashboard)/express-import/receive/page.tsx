@@ -272,16 +272,57 @@ export default function ExpressReceivePage() {
     return Array.from(set);
   }, [docs]);
 
+  // Helper to parse date into { year, month, day }
+  const parseDateParts = (raw: string | undefined | null) => {
+    if (!raw || raw === "-") return null;
+    const clean = (raw.includes("T") ? raw.split("T")[0] : raw.split(" ")[0]).trim();
+    if (clean.includes("-")) {
+      const parts = clean.split("-");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          return {
+            year: parts[0],
+            month: parts[1].padStart(2, "0"),
+            day: parts[2].padStart(2, "0"),
+          };
+        } else if (parts[2].length === 4) {
+          return {
+            year: parts[2],
+            month: parts[1].padStart(2, "0"),
+            day: parts[0].padStart(2, "0"),
+          };
+        }
+      }
+    } else if (clean.includes("/")) {
+      const parts = clean.split("/");
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          return {
+            year: parts[2],
+            month: parts[1].padStart(2, "0"),
+            day: parts[0].padStart(2, "0"),
+          };
+        } else if (parts[0].length === 4) {
+          return {
+            year: parts[0],
+            month: parts[1].padStart(2, "0"),
+            day: parts[2].padStart(2, "0"),
+          };
+        }
+      }
+    }
+    return null;
+  };
+
   const availableYears = useMemo(() => {
     const set = new Set<string>();
     const currentYear = String(new Date().getFullYear());
     set.add(currentYear);
     set.add(String(new Date().getFullYear() - 1));
     allItems.forEach((item) => {
-      const rawDate = item.document_date || "";
-      if (rawDate && rawDate.length >= 4) {
-        const yr = rawDate.slice(0, 4);
-        if (/^\d{4}$/.test(yr)) set.add(yr);
+      const parts = parseDateParts(item.document_date);
+      if (parts && /^\d{4}$/.test(parts.year)) {
+        set.add(parts.year);
       }
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
@@ -342,13 +383,11 @@ export default function ExpressReceivePage() {
 
       // Day / Month / Year date filter check
       if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
-        const rawDate = item.document_date || "";
-        const itemDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.split(" ")[0];
-        if (itemDate && itemDate.length >= 10) {
-          const [iYear, iMonth, iDay] = itemDate.split("-");
-          if (selectedYear !== "ALL" && iYear !== selectedYear) return false;
-          if (selectedMonth !== "ALL" && iMonth !== selectedMonth) return false;
-          if (selectedDay !== "ALL" && iDay !== selectedDay) return false;
+        const parts = parseDateParts(item.document_date);
+        if (parts) {
+          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
+          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
+          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
         } else {
           return false;
         }
@@ -375,7 +414,21 @@ export default function ExpressReceivePage() {
     let pendingCount = 0;
     let importedCount = 0;
 
-    allItems.forEach((item) => {
+    const baseItems = allItems.filter((item) => {
+      if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
+        const parts = parseDateParts(item.document_date);
+        if (parts) {
+          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
+          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
+          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
       if (t) {
         taggedCount++;
@@ -385,13 +438,13 @@ export default function ExpressReceivePage() {
     });
 
     return {
-      total: allItems.length,
+      total: baseItems.length,
       taggedCount,
       pendingCount,
       importedCount,
-      untaggedCount: allItems.length - taggedCount,
+      untaggedCount: baseItems.length - taggedCount,
     };
-  }, [allItems, taggedItemsMap]);
+  }, [allItems, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
 
   // Handle single tag toggle
   const handleToggleTag = (item: (typeof allItems)[0]) => {
@@ -418,6 +471,19 @@ export default function ExpressReceivePage() {
     refreshTaggedMap();
   };
 
+  // Helper to sync status to Google Sheets and DB in background
+  const syncStatusToSheet = async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "RECEIVE" }>) => {
+    try {
+      await fetch("/api/express-import/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+    } catch (e) {
+      console.warn("[ExpressReceivePage] Background status sync to sheet failed:", e);
+    }
+  };
+
   // Handle single item status update
   const handleSetStatus = (item: (typeof allItems)[0], status: ExpressSyncStatus) => {
     const existing = taggedItemsMap.get(item.id);
@@ -441,6 +507,7 @@ export default function ExpressReceivePage() {
       updateExpressItemStatus(item.id, status);
     }
     refreshTaggedMap();
+    syncStatusToSheet([{ document_no: item.document_no, sku: item.sku, status, type: "RECEIVE" }]);
   };
 
   // Handle batch tagging
@@ -472,6 +539,10 @@ export default function ExpressReceivePage() {
     const ids = Array.from(selectedItemIds);
     batchUpdateExpressItemStatus(ids, status);
     refreshTaggedMap();
+    const itemsToSync = allItems
+      .filter((i) => selectedItemIds.has(i.id))
+      .map((i) => ({ document_no: i.document_no, sku: i.sku, status, type: "RECEIVE" as const }));
+    syncStatusToSheet(itemsToSync);
     setSelectedItemIds(new Set());
   };
 
@@ -804,8 +875,8 @@ export default function ExpressReceivePage() {
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">รหัสสินค้า</th>
                     <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-slate-700">ชื่อสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">คลังสินค้า</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
                     <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">สถานะ Express</th>
                   </tr>
@@ -891,17 +962,17 @@ export default function ExpressReceivePage() {
                           </div>
                         </td>
 
-                        {/* 6. ตำแหน่ง */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <span className="font-mono font-bold text-slate-800 text-sm">
-                            {item.location && item.location !== "-" ? item.location : "-"}
-                          </span>
-                        </td>
-
-                        {/* 7. คลังสินค้า */}
+                        {/* 6. คลังสินค้า */}
                         <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
                           <span className="text-slate-800 font-semibold">
                             {getWarehouseDisplayName(item.target_sheet)}
+                          </span>
+                        </td>
+
+                        {/* 7. ตำแหน่ง */}
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <span className="font-mono font-bold text-slate-800 text-sm">
+                            {item.location && item.location !== "-" ? item.location : "-"}
                           </span>
                         </td>
 

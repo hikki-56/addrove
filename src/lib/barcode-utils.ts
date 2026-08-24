@@ -113,6 +113,7 @@ export function generateCode128PngDataUrl(
     showText?: boolean;
     label?: string;
     textPosition?: "top" | "bottom";
+    quietZone?: number;
   }
 ): string {
   if (typeof document === "undefined") return "";
@@ -123,9 +124,9 @@ export function generateCode128PngDataUrl(
   const modules = encodeCode128Modules(cleanValue);
   const scale = options?.scale || 4;
   const height = options?.height || 100;
-  const showText = options?.showText !== false;
+  const showText = options?.showText === true;
   const textPosition = options?.textPosition || "top";
-  const quietZone = 14;
+  const quietZone = options?.quietZone !== undefined ? options.quietZone : (showText ? 12 : 6);
 
   const totalUnits = modules.reduce((sum, m) => sum + m.width, 0);
   const fullUnits = totalUnits + quietZone * 2;
@@ -147,7 +148,7 @@ export function generateCode128PngDataUrl(
   const displayText = options?.label || cleanValue;
   const fontSize = Math.max(16, Math.floor(scale * 6.5));
 
-  // 2. Human readable text (Top or Bottom)
+  // 2. Human readable text (Top)
   if (showText && textPosition === "top") {
     ctx.font = `bold ${fontSize}px monospace, Courier, sans-serif`;
     ctx.textAlign = "center";
@@ -156,9 +157,9 @@ export function generateCode128PngDataUrl(
     ctx.fillText(displayText, canvasWidth / 2, Math.floor(textHeight / 2) + 2);
   }
 
-  // 3. Barcode black bars
-  const barsStartY = showText && textPosition === "top" ? textHeight : 10;
-  const barsHeight = height - 10;
+  // 3. Barcode black bars (Cleanly spanning the full bar height without clipping)
+  const barsStartY = showText && textPosition === "top" ? textHeight : 0;
+  const barsHeight = height;
 
   let currentX = quietZone * scale;
   ctx.fillStyle = "#000000";

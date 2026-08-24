@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
       product_name: string;
       quantity: number;
       location: string;
+      to_location_id?: string;
+      from_location_id?: string;
       barcode: string;
       movement_type: string;
       tag: string;
@@ -40,7 +42,17 @@ export async function GET(req: NextRequest) {
     const seenDocNos = new Set<string>();
 
     // Preload transfer docs map to enrich all items (sheet or repo) with from/to warehouse info
-    const trfDocMap = new Map<string, { from_warehouse_name: string; from_warehouse_id: string; to_warehouse_name: string; to_warehouse_id: string }>();
+    const trfDocMap = new Map<
+      string,
+      {
+        from_warehouse_name: string;
+        from_warehouse_id: string;
+        to_warehouse_name: string;
+        to_warehouse_id: string;
+        to_location_id?: string;
+        from_location_id?: string;
+      }
+    >();
     try {
       const allDocs = await repo.documents.findAll({ page: 1, limit: 9999, document_type: "TRANSFER" as any });
       (allDocs.data || []).forEach((doc) => {
@@ -54,9 +66,18 @@ export async function GET(req: NextRequest) {
         const fromWhId = meta.from_warehouse_id || "wh-1";
         const toWh = meta.to_warehouse_name || meta.to_warehouse_id || "";
         const toWhId = meta.to_warehouse_id || "";
+        const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || "";
+        const fromLoc = meta.from_location_id || meta.from_location || "";
         const docNo = (doc.document_no || meta.doc_no || "").trim().toLowerCase();
         const docId = doc.document_id.trim().toLowerCase();
-        const info = { from_warehouse_name: fromWh, from_warehouse_id: fromWhId, to_warehouse_name: toWh, to_warehouse_id: toWhId };
+        const info = {
+          from_warehouse_name: fromWh,
+          from_warehouse_id: fromWhId,
+          to_warehouse_name: toWh,
+          to_warehouse_id: toWhId,
+          to_location_id: toLoc,
+          from_location_id: fromLoc,
+        };
         if (docNo) trfDocMap.set(docNo, info);
         if (docId) trfDocMap.set(docId, info);
       });
@@ -193,6 +214,9 @@ export async function GET(req: NextRequest) {
         const toWarehouseName = meta.to_warehouse_name || meta.to_warehouse_id || trfInfo?.to_warehouse_name || "";
         const toWarehouseId = meta.to_warehouse_id || trfInfo?.to_warehouse_id || "";
 
+        const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || trfInfo?.to_location_id || "";
+        const fromLoc = meta.from_location_id || meta.from_location || trfInfo?.from_location_id || "-";
+
         items.push({
           id: uniqueKey,
           movement_id: `trf-mov-${doc.document_id}`,
@@ -209,7 +233,9 @@ export async function GET(req: NextRequest) {
           sku,
           product_name: productName,
           quantity: Math.abs(Number(meta.qty) || 1),
-          location: meta.from_location_id || "-",
+          location: toLoc || fromLoc,
+          to_location_id: toLoc,
+          from_location_id: fromLoc,
           barcode,
           movement_type: "TRANSFER_OUT",
           tag: meta.express_tag || "เบิกสินค้าเข้า Express",
