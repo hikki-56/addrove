@@ -1,13 +1,22 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
-import { readSheet, appendRows, SHEETS } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { parseTransferMetadata } from "@/lib/transfer-notification-utils";
 import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function cleanCode(str?: string): string {
+  if (!str) return "";
+  return String(str)
+    .trim()
+    .toLowerCase()
+    .replace(/^prod-/, "")
+    .replace(/[\s\-_#]/g, "");
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -43,53 +52,135 @@ export async function GET(req: NextRequest) {
     const seenDocNos = new Set<string>();
     const seenUniqueKeys = new Set<string>();
 
-    // 1. Preload transfer docs map to enrich items with from/to warehouse info
-    const trfDocMap = new Map<
-      string,
-      {
-        doc: any;
-        from_warehouse_name: string;
-        from_warehouse_id: string;
-        to_warehouse_name: string;
-        to_warehouse_id: string;
-        to_location_id?: string;
-        from_location_id?: string;
-        meta: Record<string, any>;
-      }
-    >();
+    // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
+    const productCatalogMap = new Map<string, { sku: string; barcode: string; name: string; location: string }>();
 
-    let allDocsList: any[] = [];
     try {
-      const allDocs = await repo.documents.findAll({ page: 1, limit: 9999, document_type: "TRANSFER" as any });
-      allDocsList = allDocs.data || [];
-      allDocsList.forEach((doc) => {
-        const meta = parseTransferMetadata(doc.note);
-        const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || "โกดัง 1";
-        const fromWhId = meta.from_warehouse_id || "wh-1";
-        const toWh = meta.to_warehouse_name || meta.to_warehouse_id || "";
-        const toWhId = meta.to_warehouse_id || "";
-        const toLoc = meta.to_location_id || meta.from_location_id || "";
-        const fromLoc = meta.from_location_id || "";
-        const docNo = (doc.document_no || meta.doc_no || "").trim().toLowerCase();
-        const docId = doc.document_id.trim().toLowerCase();
-        const info = {
-          doc,
-          from_warehouse_name: fromWh,
-          from_warehouse_id: fromWhId,
-          to_warehouse_name: toWh,
-          to_warehouse_id: toWhId,
-          to_location_id: toLoc,
-          from_location_id: fromLoc,
-          meta,
+      const [prodRows, wh1Rows, wh2Rows, wh3Rows] = await Promise.all([
+        readSheet(SHEETS.PRODUCTS).catch(() => []),
+        readSheet(getWarehouseSheetName("wh-01"), "A2:I").catch(() => []),
+        readSheet(getWarehouseSheetName("wh-02"), "A2:I").catch(() => []),
+        readSheet(getWarehouseSheetName("wh-03"), "A2:I").catch(() => []),
+      ]);
+
+      const addProductEntry = (rawSku: string, rawBcode: string, rawName: string, rawLoc: string = "") => {
+        const sku = (rawSku || "").trim();
+        const bcode = (rawBcode || "").trim();
+        const name = (rawName || "").trim();
+        const loc = (rawLoc || "").trim();
+        if (!sku && !bcode && !name) return;
+
+        const entry = {
+          sku: sku || bcode,
+          barcode: bcode && bcode !== "-" && bcode !== "null" ? bcode : "",
+          name: name && name !== sku ? name : "",
+          location: loc && loc !== "-" ? loc : "",
         };
-        if (docNo) trfDocMap.set(docNo, info);
-        if (docId) trfDocMap.set(docId, info);
+
+        const keys = [cleanCode(sku), cleanCode(bcode), sku.toLowerCase(), bcode.toLowerCase()].filter(Boolean);
+        keys.forEach((k) => {
+          const existing = productCatalogMap.get(k);
+          if (!existing || (!existing.name && entry.name) || (!existing.barcode && entry.barcode)) {
+            productCatalogMap.set(k, { ...(existing || {}), ...entry });
+          }
+        });
+      };
+
+      // Ingest warehouse sheets (Col 0=SKU, Col 1=Barcode, Col 2=Name, Col 6=Loc)
+      [wh1Rows, wh2Rows, wh3Rows].forEach((rows) => {
+        rows.forEach((r) => {
+          if (r && r[0]) addProductEntry(r[0], r[1], r[2], r[6]);
+        });
+      });
+
+      // Ingest PRODUCTS sheet
+      prodRows.forEach((r) => {
+        if (!r || r.length < 3) return;
+        if (r.length >= 7 && !isNaN(Number(r[0]))) {
+          addProductEntry(r[2], r[6], r[4]);
+        } else {
+          addProductEntry(r[0], r[1], r[2]);
+        }
       });
     } catch (e) {
-      console.warn("[GET /api/express-import/issue] Preload transfer docs map error:", e);
+      console.warn("[GET /api/express-import/issue] Preload products warning:", e);
     }
 
-    // 2. Read directly from Google Sheets Tab: "เบิกสินค้าเข้าExpress" (Primary Source containing user's 59 sheet items)
+    const enrichProduct = (rawSku: string, rawBarcode: string, rawName: string, rawLocation?: string) => {
+      const cleanSku = (rawSku || "").replace(/^prod-/, "").trim();
+      const keys = [cleanCode(cleanSku), cleanCode(rawBarcode), cleanSku.toLowerCase()].filter(Boolean);
+      
+      let matched: { sku: string; barcode: string; name: string; location: string } | undefined;
+      for (const k of keys) {
+        if (productCatalogMap.has(k)) {
+          matched = productCatalogMap.get(k);
+          break;
+        }
+      }
+
+      const finalSku = cleanSku || matched?.sku || rawBarcode;
+      let finalName = (rawName || "").trim();
+      if (!finalName || finalName === cleanSku || finalName === `สินค้า ${cleanSku}` || finalName === "สินค้า") {
+        finalName = matched?.name || finalName || cleanSku;
+      }
+
+      let finalBarcode = (rawBarcode || "").trim();
+      if (!finalBarcode || finalBarcode === "-" || finalBarcode === "null" || finalBarcode === cleanSku || /[ก-๙]/.test(finalBarcode)) {
+        if (matched?.barcode && !/[ก-๙]/.test(matched.barcode) && matched.barcode !== "-") {
+          finalBarcode = matched.barcode;
+        } else {
+          finalBarcode = to8DigitBarcode(finalBarcode, finalSku) || finalSku;
+        }
+      }
+
+      const finalLocation = (rawLocation && rawLocation !== "-" && rawLocation !== "A1") ? rawLocation : (matched?.location || rawLocation || "-");
+
+      return {
+        sku: finalSku,
+        name: finalName,
+        barcode: finalBarcode,
+        location: finalLocation,
+      };
+    };
+
+    // 2. Preload documents map (for metadata & clean doc numbers)
+    const allDocsMap = new Map<string, any>();
+    let allDocsList: any[] = [];
+    try {
+      const allDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
+      allDocsList = allDocs.data || [];
+      allDocsList.forEach((doc) => {
+        const docIdKey = (doc.document_id || "").trim().toLowerCase();
+        const docNoKey = (doc.document_no || "").trim().toLowerCase();
+        if (docIdKey) allDocsMap.set(docIdKey, doc);
+        if (docNoKey) allDocsMap.set(docNoKey, doc);
+      });
+    } catch (e) {
+      console.warn("[GET /api/express-import/issue] Preload all docs error:", e);
+    }
+
+    const cleanDocNumber = (rawDocNo: string, rawDocId: string, createdAt: string, prefix: string = "ISS"): string => {
+      let docNo = String(rawDocNo || "").trim();
+      const docId = String(rawDocId || "").trim();
+
+      const docRec = docId ? allDocsMap.get(docId.toLowerCase()) : (docNo ? allDocsMap.get(docNo.toLowerCase()) : undefined);
+      if (docRec?.reference_no && !docRec.reference_no.startsWith("doc-") && docRec.reference_no.length <= 25) {
+        return docRec.reference_no;
+      }
+      if (docRec?.document_no && !docRec.document_no.startsWith("doc-") && docRec.document_no.length <= 25) {
+        return docRec.document_no;
+      }
+
+      if (docNo && !docNo.startsWith("doc-") && docNo.length <= 25) {
+        return docNo;
+      }
+
+      const datePart = (createdAt || new Date().toISOString()).slice(0, 10).replace(/-/g, "");
+      const shortId = (docId || docNo || "0000").replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase();
+      return `${prefix}-${datePart}-${shortId}`;
+    };
+
+    // 3. Read directly from Google Sheets Tab: "เบิกสินค้าเข้าExpress"
     try {
       const sheetRows = await readSheet(SHEETS.EXPRESS_ISSUE).catch(() => []);
       for (let idx = 0; idx < sheetRows.length; idx++) {
@@ -142,40 +233,37 @@ export async function GET(req: NextRequest) {
           barcode = rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" ? rawBarcode : sku;
         }
 
-        if (!barcode || barcode === "-" || barcode === "null") {
-          barcode = to8DigitBarcode(barcode, sku) || sku;
+        // Skip production orders
+        if (docNo.toUpperCase().startsWith("PRD-") || docNo.toLowerCase().includes("prd")) {
+          continue;
         }
 
-        const docNoKey = docNo.toLowerCase();
-        const uniqueKey = `sheet_iss_${docNo}_${sku}_${idx}`;
+        const enriched = enrichProduct(sku, barcode, productName, location);
+        const resolvedDocNo = cleanDocNumber(docNo, docNo, date, "TRF");
+        const docNoKey = resolvedDocNo.toLowerCase();
+        const uniqueKey = `sheet_iss_${resolvedDocNo}_${enriched.sku}_${idx}`;
 
         seenUniqueKeys.add(uniqueKey);
         if (docNoKey) seenDocNos.add(docNoKey);
 
-        const trfInfo = docNo ? trfDocMap.get(docNoKey) : undefined;
-        const fromWarehouseName = whName || trfInfo?.from_warehouse_name || "โกดัง 1";
-        const fromWarehouseId = trfInfo?.from_warehouse_id || fromWarehouseName;
-        const toWarehouseName = trfInfo?.to_warehouse_name || "";
-        const toWarehouseId = trfInfo?.to_warehouse_id || "";
-
         items.push({
           id: uniqueKey,
-          movement_id: `mov-${docNo}-${idx}`,
-          document_id: docNo,
-          document_no: docNo,
-          warehouse_name: fromWarehouseName,
-          warehouse_id: fromWarehouseId,
-          from_warehouse_name: fromWarehouseName,
-          from_warehouse_id: fromWarehouseId,
-          to_warehouse_name: toWarehouseName,
-          to_warehouse_id: toWarehouseId,
+          movement_id: `mov-${resolvedDocNo}-${idx}`,
+          document_id: resolvedDocNo,
+          document_no: resolvedDocNo,
+          warehouse_name: whName,
+          warehouse_id: whName,
+          from_warehouse_name: whName,
+          from_warehouse_id: whName,
+          to_warehouse_name: "",
+          to_warehouse_id: "",
           created_at: date,
           created_by_name: "ผู้ดูแลระบบ",
-          sku,
-          product_name: productName,
+          sku: enriched.sku,
+          product_name: enriched.name,
           quantity: qty,
-          location,
-          barcode,
+          location: enriched.location,
+          barcode: enriched.barcode,
           movement_type: "TRANSFER_OUT",
           tag: "เบิกสินค้าเข้า Express",
           status: status.includes("แล้ว") || status === "IMPORTED" ? "IMPORTED" : "PENDING",
@@ -185,48 +273,52 @@ export async function GET(req: NextRequest) {
       console.warn("[GET /api/express-import/issue] Sheet read error:", e);
     }
 
-    // 3. Read approved TRANSFER documents from repository (if not already in sheet)
-    const completedDocs = allDocsList.filter(
-      (d) => d.status === "COMPLETED" || (d.status as string) === "POSTED" || (d.status as string) === "APPROVED"
-    );
+    // 4. Read approved TRANSFER (เบิกสินค้า/โอนย้าย) documents from repository
+    const completedTransferDocs = allDocsList.filter((d) => {
+      if (d.document_type !== "TRANSFER") return false;
+      const isCompleted = d.status === "COMPLETED" || (d.status as string) === "POSTED" || (d.status as string) === "APPROVED";
+      if (!isCompleted) return false;
 
-    for (const doc of completedDocs) {
+      // Exclude production orders
+      const isProd =
+        d.document_no?.toUpperCase().startsWith("PRD-") ||
+        d.reference_no?.toUpperCase().startsWith("PRD-") ||
+        d.document_id?.toLowerCase().includes("prd") ||
+        d.note?.includes('"type":"PRODUCTION_ORDER"');
+      return !isProd;
+    });
+
+    for (const doc of completedTransferDocs) {
       const meta = parseTransferMetadata(doc.note);
+      const rawDocNo = doc.document_no || meta.doc_no || "";
+      const resolvedDocNo = cleanDocNumber(rawDocNo, doc.document_id, doc.created_at, "TRF");
+      const docNoKey = resolvedDocNo.toLowerCase();
 
-      const docNo = doc.document_no || meta.doc_no || "TRF";
-      const docNoKey = docNo.toLowerCase();
-
-      // Only add if not already loaded from the Google Sheet
       if (docNoKey && seenDocNos.has(docNoKey)) continue;
 
-      const sku = meta.sku || meta.product_id?.replace(/^prod-/, "") || "";
+      const rawSku = meta.sku || meta.product_id?.replace(/^prod-/, "") || "";
       const rawBarcode = meta.barcode || "";
-      const barcode =
-        rawBarcode && rawBarcode !== "-" && rawBarcode !== "null"
-          ? rawBarcode
-          : to8DigitBarcode(rawBarcode, sku) || sku;
+      const rawProductName = meta.product_name || rawSku || "สินค้า";
+      const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || "";
+      const fromLoc = meta.from_location_id || meta.from_location || "-";
 
-      const productName = meta.product_name || sku || "สินค้า";
-      const uniqueKey = `iss_trf-mov-${doc.document_id}_${sku}`;
+      const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, toLoc || fromLoc);
+      const uniqueKey = `iss_trf-mov-${doc.document_id}_${enriched.sku}`;
 
       if (seenUniqueKeys.has(uniqueKey)) continue;
       seenUniqueKeys.add(uniqueKey);
       if (docNoKey) seenDocNos.add(docNoKey);
 
-      const trfInfo = docNo ? trfDocMap.get(docNoKey) : undefined;
-      const fromWarehouseName = meta.from_warehouse_name || meta.from_warehouse_id || trfInfo?.from_warehouse_name || "โกดัง 1";
-      const fromWarehouseId = meta.from_warehouse_id || trfInfo?.from_warehouse_id || "wh-1";
-      const toWarehouseName = meta.to_warehouse_name || meta.to_warehouse_id || trfInfo?.to_warehouse_name || "";
-      const toWarehouseId = meta.to_warehouse_id || trfInfo?.to_warehouse_id || "";
-
-      const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || trfInfo?.to_location_id || "";
-      const fromLoc = meta.from_location_id || meta.from_location || trfInfo?.from_location_id || "-";
+      const fromWarehouseName = meta.from_warehouse_name || meta.from_warehouse_id || "โกดัง 1";
+      const fromWarehouseId = meta.from_warehouse_id || "wh-1";
+      const toWarehouseName = meta.to_warehouse_name || meta.to_warehouse_id || "";
+      const toWarehouseId = meta.to_warehouse_id || "";
 
       items.push({
         id: uniqueKey,
         movement_id: `trf-mov-${doc.document_id}`,
         document_id: doc.document_id,
-        document_no: docNo,
+        document_no: resolvedDocNo,
         warehouse_name: fromWarehouseName,
         warehouse_id: fromWarehouseId,
         from_warehouse_name: fromWarehouseName,
@@ -235,81 +327,17 @@ export async function GET(req: NextRequest) {
         to_warehouse_id: toWarehouseId,
         created_at: (meta.completed_at || doc.created_at || new Date().toISOString()).slice(0, 10),
         created_by_name: meta.moved_by || meta.assigned_to_name || "ผู้ใช้งาน",
-        sku,
-        product_name: productName,
+        sku: enriched.sku,
+        product_name: enriched.name,
         quantity: Math.abs(Number(meta.qty) || 1),
-        location: toLoc || fromLoc,
+        location: enriched.location,
         to_location_id: toLoc,
         from_location_id: fromLoc,
-        barcode,
+        barcode: enriched.barcode,
         movement_type: "TRANSFER_OUT",
         tag: meta.express_tag || "เบิกสินค้าเข้า Express",
         status: meta.express_status === "IMPORTED" ? "IMPORTED" : "PENDING",
       });
-    }
-
-    // 4. Read standalone issue / outbound movements from repository (if not already in list)
-    try {
-      const movResult = await repo.movements.findAll({ page: 1, limit: 2000 });
-      const outboundMovements = (movResult.data || []).filter(
-        (m: any) =>
-          m.movement_type === "ISSUE" ||
-          m.movement_type === "ISSUE_OUT" ||
-          (m.movement_type === "TRANSFER_OUT" && !m.document_id?.startsWith("doc-trf-")) ||
-          (Number(m.qty_change) < 0 && !m.document_no?.startsWith("TRF"))
-      );
-
-      for (const m of outboundMovements) {
-        const docNo = m.document_no || m.document_id || "";
-        const docNoKey = docNo.toLowerCase();
-
-        if (docNoKey && seenDocNos.has(docNoKey)) continue;
-
-        const sku = m.sku || m.product_id?.replace(/^prod-/, "") || "";
-        const uniqueKey = `iss_${m.movement_id || m.document_id}_${sku}`;
-
-        if (seenUniqueKeys.has(uniqueKey)) continue;
-        seenUniqueKeys.add(uniqueKey);
-        if (docNoKey) seenDocNos.add(docNoKey);
-
-        const rawBarcode = (m as any).barcode || "";
-        const barcode =
-          rawBarcode && rawBarcode !== "-" && rawBarcode !== "null"
-            ? rawBarcode
-            : to8DigitBarcode(rawBarcode, sku) || sku;
-
-        const trfInfo = docNo ? trfDocMap.get(docNoKey) : undefined;
-        const fromWarehouseName = (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1";
-        const toWarehouseName = (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "";
-        const toLoc = (m as any).to_location_id || trfInfo?.to_location_id || m.location_id || "-";
-
-        items.push({
-          id: uniqueKey,
-          movement_id: m.movement_id,
-          document_id: m.document_id || docNo,
-          document_no: docNo || "ISS",
-          warehouse_name: fromWarehouseName,
-          warehouse_id: m.warehouse_id || "wh-1",
-          from_warehouse_name: fromWarehouseName,
-          from_warehouse_id: m.warehouse_id || "wh-1",
-          to_warehouse_name: toWarehouseName,
-          to_warehouse_id: (m as any).to_warehouse_id || "",
-          created_at: (m.created_at || new Date().toISOString()).slice(0, 10),
-          created_by_name: m.created_by_name || "ผู้ใช้งาน",
-          sku,
-          product_name: m.product_name || sku || "สินค้า",
-          quantity: Math.abs(Number(m.qty_change) || 1),
-          location: toLoc,
-          to_location_id: toLoc,
-          from_location_id: m.location_id || "-",
-          barcode,
-          movement_type: m.movement_type || "ISSUE_OUT",
-          tag: "เบิกสินค้าเข้า Express",
-          status: "PENDING",
-        });
-      }
-    } catch (movErr) {
-      console.warn("[GET /api/express-import/issue] Repo movements scan error:", movErr);
     }
 
     return successResponse(items, "โหลดรายการเบิกสินค้าเข้า Express สำเร็จ");

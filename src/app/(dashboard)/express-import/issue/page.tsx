@@ -443,10 +443,18 @@ export default function ExpressIssuePage() {
         created_at: m.created_at ? m.created_at.slice(0, 10) : "-",
         created_by_name: m.created_by_name || "ผู้ใช้งาน",
         sku: sku || finalBarcode,
-        product_name: prodName || sku || "สินค้า",
+        product_name:
+          matchedProd?.product_name && matchedProd.product_name !== sku
+            ? matchedProd.product_name
+            : prodName && prodName !== sku
+            ? prodName
+            : matchedProd?.product_name || prodName || sku || "สินค้า",
         quantity: qty,
         location: realLocation,
-        barcode: finalBarcode || rawBarcode || sku,
+        barcode:
+          matchedProd?.barcode && matchedProd.barcode !== "-" && !/[ก-๙]/.test(matchedProd.barcode)
+            ? matchedProd.barcode
+            : finalBarcode || rawBarcode || sku,
         movement_type: m.movement_type || "TRANSFER_OUT",
         status: m.status || "PENDING",
         express_status: (m.status as ExpressSyncStatus) || "PENDING",
