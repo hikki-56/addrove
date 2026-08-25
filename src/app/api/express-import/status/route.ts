@@ -9,6 +9,9 @@ import {
   errorResponse,
 } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface StatusUpdateItem {
   id?: string;
   document_no: string;
@@ -16,6 +19,82 @@ interface StatusUpdateItem {
   barcode?: string;
   status: "IMPORTED" | "PENDING";
   type?: "ISSUE" | "RECEIVE" | "TRANSFER";
+}
+
+// Global in-memory status cache to immediately sync across all clients
+const globalForExpressStatus = globalThis as unknown as {
+  expressStatusMap?: Map<string, { status: "IMPORTED" | "PENDING"; type: string; updated_at: string; document_no: string }>;
+};
+
+export const expressStatusMap =
+  globalForExpressStatus.expressStatusMap ||
+  (globalForExpressStatus.expressStatusMap = new Map<
+    string,
+    { status: "IMPORTED" | "PENDING"; type: string; updated_at: string; document_no: string }
+  >());
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getAuthSession(req);
+    if (!session) return unauthorizedResponse();
+
+    const { searchParams } = new URL(req.url);
+    const typeFilter = searchParams.get("type")?.toUpperCase();
+
+    const repo = getRepository();
+
+    // 1. Convert in-memory statuses to a plain object
+    const resultObj: Record<string, { status: "IMPORTED" | "PENDING"; type: string; updated_at: string; document_no: string }> = {};
+
+    expressStatusMap.forEach((val, key) => {
+      if (!typeFilter || val.type === typeFilter) {
+        resultObj[key] = val;
+      }
+    });
+
+    // 2. Also check recent documents from repository
+    try {
+      const allDocs = await repo.documents.findAll({ page: 1, limit: 1000 }).catch(() => ({ data: [] }));
+      (allDocs.data || []).forEach((doc) => {
+        if (!doc.document_no && !doc.document_id) return;
+        let meta: Record<string, any> = {};
+        try {
+          if (doc.note && typeof doc.note === "string" && doc.note.startsWith("{")) {
+            meta = JSON.parse(doc.note);
+          }
+        } catch {}
+
+        if (meta.express_status) {
+          const docNoKey = (doc.document_no || "").trim().toLowerCase();
+          const docIdKey = (doc.document_id || "").trim().toLowerCase();
+          const statusVal: "IMPORTED" | "PENDING" = meta.express_status === "IMPORTED" ? "IMPORTED" : "PENDING";
+          const type = (doc.document_type || "RECEIVE").toUpperCase();
+          const entry = {
+            status: statusVal,
+            type,
+            updated_at: meta.express_synced_at || doc.created_at || new Date().toISOString(),
+            document_no: doc.document_no || doc.document_id,
+          };
+
+          if (docNoKey && !resultObj[docNoKey]) {
+            resultObj[docNoKey] = entry;
+            expressStatusMap.set(docNoKey, entry);
+          }
+          if (docIdKey && !resultObj[docIdKey]) {
+            resultObj[docIdKey] = entry;
+            expressStatusMap.set(docIdKey, entry);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("[GET /api/express-import/status] repo scan error:", e);
+    }
+
+    return successResponse(resultObj, "ดึงสถานะ Express สำเร็จ");
+  } catch (error) {
+    console.error("[GET /api/express-import/status] Error:", error);
+    return serverErrorResponse(error);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -34,18 +113,39 @@ export async function POST(req: NextRequest) {
       return errorResponse("กรุณาระบุข้อมูลรายการที่ต้องการอัปเดตสถานะ", 400);
     }
 
+    const now = new Date().toISOString();
+
+    // 1. Immediately store in global in-memory map
+    rawItems.forEach((item) => {
+      const type = (item.type || "ISSUE").toUpperCase();
+      const statusVal: "IMPORTED" | "PENDING" = item.status === "IMPORTED" ? "IMPORTED" : "PENDING";
+      const entry: { status: "IMPORTED" | "PENDING"; type: string; updated_at: string; document_no: string } = {
+        status: statusVal,
+        type,
+        updated_at: now,
+        document_no: item.document_no,
+      };
+
+      if (item.document_no) {
+        expressStatusMap.set(item.document_no.trim().toLowerCase(), entry);
+      }
+      if (item.id) {
+        expressStatusMap.set(item.id.trim().toLowerCase(), entry);
+      }
+    });
+
     const repo = getRepository();
     const results: Array<{ document_no: string; updated: boolean; sheet_synced: boolean }> = [];
 
-    // Group items by sheet type
-    const sheetTypes = new Set(rawItems.map((i) => i.type || "ISSUE"));
+    // 2. Group items by sheet type
+    const sheetTypes = new Set(rawItems.map((i) => (i.type || "ISSUE").toUpperCase()));
 
     for (const type of Array.from(sheetTypes)) {
       let targetSheet: string = SHEETS.EXPRESS_ISSUE;
       if (type === "RECEIVE") targetSheet = SHEETS.EXPRESS_RECEIVE;
       if (type === "TRANSFER") targetSheet = SHEETS.EXPRESS_TRANSFER;
 
-      const itemsForType = rawItems.filter((i) => (i.type || "ISSUE") === type);
+      const itemsForType = rawItems.filter((i) => (i.type || "ISSUE").toUpperCase() === type);
       const targetDocNos = new Map<string, StatusUpdateItem>();
       itemsForType.forEach((i) => {
         if (i.document_no) {
@@ -55,7 +155,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const sheetRows = await readSheet(targetSheet, undefined, { forceFresh: true }).catch(() => []);
-        
+
         for (let rowIndex = 0; rowIndex < sheetRows.length; rowIndex++) {
           const row = sheetRows[rowIndex];
           if (!row || row.length === 0) continue;
@@ -104,7 +204,6 @@ export async function POST(req: NextRequest) {
             }
             updatedRow[statusColIdx] = statusText;
 
-            // Update row in Google Sheets (rowIndex is 0-indexed, Google Sheets is 1-indexed, header is row 1)
             const sheetRowNumber = rowIndex + 2;
             await updateRow(targetSheet, sheetRowNumber, updatedRow).catch((err) => {
               console.warn(`[POST /api/express-import/status] updateRow failed on row ${sheetRowNumber}:`, err);
@@ -122,7 +221,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Also update document note in repository
+    // 3. Update document note in repository
     for (const item of rawItems) {
       try {
         let doc = await repo.documents.findByNo(item.document_no);
@@ -140,7 +239,7 @@ export async function POST(req: NextRequest) {
 
           meta.express_status = item.status;
           meta.express_status_text = item.status === "IMPORTED" ? "นำเข้า Express แล้ว" : "รอนำเข้า Express";
-          meta.express_synced_at = new Date().toISOString();
+          meta.express_synced_at = now;
 
           const updatedNote = JSON.stringify(meta);
           await repo.documents.updateNote(doc.document_id, updatedNote);
@@ -151,7 +250,7 @@ export async function POST(req: NextRequest) {
     }
 
     return successResponse(
-      { updated_count: rawItems.length, details: results },
+      { updated_count: rawItems.length, details: results, updated_at: now },
       "อัปเดตสถานะ Express ทั้งบนระบบและ Google Sheet เรียบร้อยแล้ว"
     );
   } catch (error) {

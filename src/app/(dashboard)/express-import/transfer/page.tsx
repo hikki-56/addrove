@@ -110,22 +110,24 @@ export default function ExpressTransferPage() {
     return getWarehouseName(raw);
   };
 
-  const fetchMovements = async () => {
-    setLoading(true);
+  const fetchMovements = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const params = new URLSearchParams({ page: "1", limit: "2000" });
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
 
-      const [movRes, trfRes, prodRes] = await Promise.all([
+      const [movRes, trfRes, prodRes, statusRes] = await Promise.all([
         fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
         fetch(`/api/products?limit=5000&_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=TRANSFER&_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const json = await movRes.json();
       const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
+      const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
 
       const prods: any[] = Array.isArray(prodJson?.data)
         ? prodJson.data
@@ -223,17 +225,61 @@ export default function ExpressTransferPage() {
             };
           });
         setMovements(transferMovements);
+
+        // If server returned express statuses, synchronize into tagged map
+        if (statusJson?.success && statusJson?.data) {
+          const serverStatusMap: Record<string, { status: ExpressSyncStatus; type: string }> = statusJson.data;
+          const currentTagged = getAllTaggedExpressItems("TRANSFER");
+          const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
+          let hasChanges = false;
+
+          transferMovements.forEach((m: any) => {
+            const docKey = (m.document_no || "").trim().toLowerCase();
+            const docIdKey = (m.document_id || "").trim().toLowerCase();
+            const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
+            if (srv) {
+              const uniqueId = `trf_${m.movement_id || m.document_id}_${m.product_id || ""}_0`;
+              const existing = localMap.get(uniqueId);
+              if (!existing || existing.status !== srv.status) {
+                tagExpressItem({
+                  id: uniqueId,
+                  type: "TRANSFER",
+                  tag: existing?.tag || "โอนย้ายรอนำเข้า Express",
+                  sku: m.product_id || "",
+                  barcode: m.barcode || m.product_id || "",
+                  product_name: m.product_name || "สินค้า",
+                  warehouse: m.warehouse_name || "โกดัง 1",
+                  warehouse_code: toExpressWhCode(m.warehouse_name || "โกดัง 1"),
+                  quantity: Math.abs(Number(m.qty_change) || 1),
+                  document_no: m.document_no || "TRF",
+                  document_date: (m.created_at || "").slice(0, 10),
+                  location: m.location_id || "-",
+                  status: srv.status,
+                });
+                hasChanges = true;
+              }
+            }
+          });
+
+          if (hasChanges) {
+            refreshTaggedMap();
+          }
+        }
       }
     } catch (e) {
       console.error("Failed to fetch transfer movements for Express:", e);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, refreshTaggedMap]);
 
   useEffect(() => {
     fetchMovements();
-  }, [dateFrom, dateTo]);
+    const interval = setInterval(() => {
+      fetchMovements(true);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [fetchMovements]);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {
@@ -589,10 +635,13 @@ export default function ExpressTransferPage() {
     return allItems.filter((item) => {
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
-      if (tagFilter === "TAGGED_ONLY" && !tagged) return false;
-      if (tagFilter === "PENDING" && (!tagged || tagged.status !== "PENDING")) return false;
-      if (tagFilter === "IMPORTED" && (!tagged || tagged.status !== "IMPORTED")) return false;
-      if (tagFilter === "UNTAGGED" && tagged) return false;
+      const effectiveStatus: ExpressSyncStatus = tagged?.status || "PENDING";
+      const isTagged = true;
+
+      if (tagFilter === "TAGGED_ONLY" && !isTagged) return false;
+      if (tagFilter === "PENDING" && effectiveStatus !== "PENDING") return false;
+      if (tagFilter === "IMPORTED" && effectiveStatus !== "IMPORTED") return false;
+      if (tagFilter === "UNTAGGED" && (tagged || isTagged)) return false;
 
       // Day / Month / Year date filter check
       if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
@@ -653,11 +702,10 @@ export default function ExpressTransferPage() {
 
     baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
-      if (t) {
-        taggedCount++;
-        if (t.status === "PENDING") pendingCount++;
-        if (t.status === "IMPORTED") importedCount++;
-      }
+      const effectiveStatus: ExpressSyncStatus = t?.status || "PENDING";
+      taggedCount++;
+      if (effectiveStatus === "PENDING") pendingCount++;
+      if (effectiveStatus === "IMPORTED") importedCount++;
     });
 
     return { total: baseItems.length, taggedCount, pendingCount, importedCount };
@@ -682,8 +730,10 @@ export default function ExpressTransferPage() {
         warehouse_code: toExpressWhCode(item.warehouse_name),
         document_no: item.document_no,
         document_date: item.created_at,
+        status: "PENDING",
       });
     }
+    refreshTaggedMap();
   };
 
   // Helper to sync status to Google Sheets and DB in background
@@ -1127,7 +1177,8 @@ export default function ExpressTransferPage() {
                     const isBarcodeCopied = copiedItemSku === barcodeValue;
                     const isSelected = selectedItemIds.has(item.id);
                     const tagged = taggedItemsMap.get(item.id);
-                    const isImported = tagged?.status === "IMPORTED";
+                    const effectiveStatus: ExpressSyncStatus = tagged?.status || "PENDING";
+                    const isImported = effectiveStatus === "IMPORTED";
 
                     return (
                       <tr
@@ -1231,7 +1282,7 @@ export default function ExpressTransferPage() {
                         {/* 8. สถานะ Express */}
                         <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
                           <select
-                            value={tagged?.status || "PENDING"}
+                            value={effectiveStatus}
                             onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
                               isImported

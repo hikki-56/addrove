@@ -53,7 +53,7 @@ export default function ExpressIssuePage() {
     }
   }, [status, user, router]);
 
-  const [movements, setMovements] = useState<MovementWithDetails[]>([]);
+  const [movements, setMovements] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocNo, setSelectedDocNo] = useState<string>("ALL");
@@ -79,9 +79,22 @@ export default function ExpressIssuePage() {
   // Sync tagged items from localStorage
   const refreshTaggedMap = useCallback(() => {
     const tagged = getAllTaggedExpressItems("ISSUE");
-    const map = new Map<string, TaggedExpressItem>();
-    tagged.forEach((t) => map.set(t.id, t));
-    setTaggedItemsMap(map);
+    setTaggedItemsMap((prev) => {
+      if (prev.size === tagged.length) {
+        let isIdentical = true;
+        for (const t of tagged) {
+          const p = prev.get(t.id);
+          if (!p || p.status !== t.status || p.tag !== t.tag) {
+            isIdentical = false;
+            break;
+          }
+        }
+        if (isIdentical) return prev;
+      }
+      const map = new Map<string, TaggedExpressItem>();
+      tagged.forEach((t) => map.set(t.id, t));
+      return map;
+    });
   }, []);
 
   useEffect(() => {
@@ -109,393 +122,94 @@ export default function ExpressIssuePage() {
     return getWarehouseName(raw);
   };
 
-  const fetchMovements = async () => {
-    setLoading(true);
+  const fetchMovements = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
-      const params = new URLSearchParams({ page: "1", limit: "2000" });
-      if (dateFrom) params.set("date_from", dateFrom);
-      if (dateTo) params.set("date_to", dateTo);
-
-      const [movRes, trfRes, sheetRes, prodRes] = await Promise.all([
-        fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
-        fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/express-import/issue?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/products?limit=5000&_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+      const ts = Date.now();
+      const [issueRes, prodRes, statusRes] = await Promise.all([
+        fetch(`/api/express-import/issue?_t=${ts}`, { cache: "no-store" }),
+        fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=ISSUE&_t=${ts}`, { cache: "no-store" }).catch(() => null),
       ]);
 
-      const json = await movRes.json();
-      const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
-      const sheetJson = sheetRes ? await sheetRes.json().catch(() => null) : null;
+      const issueJson = await issueRes.json().catch(() => null);
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
+      const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
 
       // Extract products list for catalog matching
-      const products: Product[] = Array.isArray(prodJson?.data)
-        ? prodJson.data
-        : Array.isArray(prodJson?.data?.data)
-        ? prodJson.data.data
-        : [];
-      setCatalogProducts(products);
-
-      // Extract local transfer notifications
-      const localNotifications = getTransferNotifications();
-      const notifMap = new Map<string, any>();
-      localNotifications.forEach((n) => {
-        if (n.doc_no) notifMap.set(n.doc_no.trim().toLowerCase(), n);
-        if (n.id) notifMap.set(n.id.trim().toLowerCase(), n);
-      });
-
-      // Product catalog indexing
-      const prodBySku = new Map<string, Product>();
-      const prodById = new Map<string, Product>();
-      const prodByBarcode = new Map<string, Product>();
-      const prodByNameClean = new Map<string, Product>();
-      const prodByLeadingNumber = new Map<string, Product>();
-
-      products.forEach((p) => {
-        if (!p) return;
-        const pSku = (p.sku || "").trim().toLowerCase();
-        const pId = (p.product_id || "").trim().toLowerCase();
-        const pBcode = (p.barcode || "").trim().toLowerCase();
-        const pCleanName = (p.product_name || "").replace(/[\s\-_#]/g, "").toLowerCase();
-
-        if (pSku) prodBySku.set(pSku, p);
-        if (pId) prodById.set(pId, p);
-        if (pBcode && pBcode !== "-") prodByBarcode.set(pBcode, p);
-        if (pCleanName) prodByNameClean.set(pCleanName, p);
-
-        // Leading number indexing (e.g. "8412#GT..." -> "8412")
-        const numMatch = (p.product_name || "").match(/^(\d{3,18})/) || (p.sku || "").match(/^(\d{3,18})/);
-        if (numMatch) {
-          prodByLeadingNumber.set(numMatch[1], p);
-        }
-      });
-
-      // Helper to resolve barcode, SKU, and product name
-      const resolveProductDetails = (item: {
-        document_no?: string;
-        document_id?: string;
-        product_id?: string;
-        sku?: string;
-        barcode?: string;
-        product_name?: string;
-        note?: string;
-      }) => {
-        const docNo = (item.document_no || item.document_id || "").trim().toLowerCase();
-        const notif = docNo ? notifMap.get(docNo) : undefined;
-
-        let resBarcode = item.barcode && item.barcode !== "-" && item.barcode !== "null" && !item.barcode.toLowerCase().startsWith("trf") ? item.barcode : "";
-        let resSku = item.sku && item.sku !== "-" && item.sku !== "trf-item" && !item.sku.toLowerCase().startsWith("trf") ? item.sku : "";
-        let resName = item.product_name && item.product_name !== "สินค้า" && item.product_name !== "รายการย้ายสินค้า" ? item.product_name : "";
-
-        // 1. From notification
-        if (notif) {
-          if (!resBarcode && notif.barcode && notif.barcode !== "-" && !notif.barcode.toLowerCase().startsWith("trf")) {
-            resBarcode = notif.barcode;
-          }
-          if (!resSku && notif.sku && notif.sku !== "-" && !notif.sku.toLowerCase().startsWith("trf")) {
-            resSku = notif.sku;
-          }
-          if ((!resName || resName === "สินค้า") && notif.product_name) {
-            resName = notif.product_name;
-          }
-        }
-
-        // 2. From product catalog
-        const findMatchedProduct = (): Product | undefined => {
-          if (resSku && prodBySku.has(resSku.toLowerCase())) return prodBySku.get(resSku.toLowerCase());
-          if (resBarcode && prodByBarcode.has(resBarcode.toLowerCase())) return prodByBarcode.get(resBarcode.toLowerCase());
-          if (item.product_id && prodById.has(item.product_id.toLowerCase())) return prodById.get(item.product_id.toLowerCase());
-          
-          if (resName) {
-            const clean = resName.replace(/[\s\-_#]/g, "").toLowerCase();
-            if (prodByNameClean.has(clean)) return prodByNameClean.get(clean);
-
-            const numMatch = resName.match(/^(\d{3,18})/);
-            if (numMatch && prodByLeadingNumber.has(numMatch[1])) {
-              return prodByLeadingNumber.get(numMatch[1]);
-            }
-          }
-          return undefined;
-        };
-
-        const matchedProd = findMatchedProduct();
-        if (matchedProd) {
-          if (!resBarcode && matchedProd.barcode && matchedProd.barcode !== "-") {
-            resBarcode = matchedProd.barcode;
-          }
-          if (!resSku) {
-            resSku = matchedProd.sku || matchedProd.product_id.replace(/^prod-/, "");
-          }
-          if (!resName || resName === "สินค้า" || resName === "รายการย้ายสินค้า") {
-            resName = matchedProd.product_name;
-          }
-        }
-
-        // 3. Fallback extraction of standard Express barcode if still missing
-        if (!resBarcode) {
-          const numMatch = (resName || item.product_name || "").match(/^(\d{3,18})/) || (resSku || "").match(/^(\d{3,18})/);
-          if (numMatch) {
-            const numStr = numMatch[1];
-            resBarcode = numStr.length >= 7 ? numStr : "9000" + numStr.padStart(4, "0");
-          } else if (resSku) {
-            resBarcode = resSku;
-          }
-        }
-
-        return {
-          barcode: resBarcode,
-          sku: resSku || resBarcode,
-          product_name: resName || item.product_name || "สินค้า",
-        };
-      };
-
-      // Build transfer docs map for fast from/to warehouse resolution & destination location
-      const trfDocMap = new Map<string, {
-        from_warehouse_name: string;
-        to_warehouse_name: string;
-        to_location_id?: string;
-        from_location_id?: string;
-        note?: string;
-      }>();
-
-      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
-        trfJson.data.forEach((t: any) => {
-          let meta: Record<string, any> = {};
-          try {
-            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
-              meta = JSON.parse(t.note);
-            }
-          } catch {}
-          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
-          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
-          const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
-          const docId = (t.document_id || t.id || "").trim().toLowerCase();
-          const notif = (docNo && notifMap.get(docNo)) || (docId && notifMap.get(docId));
-
-          const toLoc =
-            meta.to_location_id ||
-            meta.to_location ||
-            meta.completed_location_id ||
-            meta.destination_location ||
-            t.to_location_id ||
-            t.to_location ||
-            t.completed_location_id ||
-            notif?.to_location_id ||
-            "";
-
-          const fromLoc =
-            meta.from_location_id ||
-            meta.from_location ||
-            meta.source_allocations?.[0]?.location_id ||
-            t.from_location_id ||
-            t.from_location ||
-            notif?.from_location_id ||
-            "";
-
-          const info = {
-            from_warehouse_name: fromWh,
-            to_warehouse_name: toWh,
-            to_location_id: toLoc,
-            from_location_id: fromLoc,
-            note: t.note,
-          };
-          if (docNo) trfDocMap.set(docNo, info);
-          if (docId) trfDocMap.set(docId, info);
-        });
+      if (prodJson && (Array.isArray(prodJson?.data) || Array.isArray(prodJson?.data?.data))) {
+        const products: Product[] = Array.isArray(prodJson.data) ? prodJson.data : prodJson.data.data;
+        setCatalogProducts(products);
       }
 
-      const combinedMovements: any[] = [];
-      const seenKeys = new Set<string>();
+      if (issueJson && issueJson.success && Array.isArray(issueJson.data)) {
+        const incomingMovements: any[] = issueJson.data;
+        setMovements((prev) => {
+          if (
+            prev.length === incomingMovements.length &&
+            prev[0]?.id === incomingMovements[0]?.id &&
+            prev[prev.length - 1]?.id === incomingMovements[incomingMovements.length - 1]?.id
+          ) {
+            return prev;
+          }
+          return incomingMovements;
+        });
 
-      // 1. Items directly from Google Sheets "เบิกสินค้าเข้าExpress"
-      if (sheetJson && sheetJson.success && Array.isArray(sheetJson.data)) {
-        sheetJson.data.forEach((item: any) => {
-          const docNo = item.document_no || item.document_id || "";
-          const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
-          const notif = docNo ? notifMap.get(docNo.trim().toLowerCase()) : undefined;
-          const fromWh = item.from_warehouse_name || trfInfo?.from_warehouse_name || item.warehouse_name || "โกดัง 1";
-          const toWh = item.to_warehouse_name || trfInfo?.to_warehouse_name || "";
-          const toLoc = trfInfo?.to_location_id || notif?.to_location_id || item.to_location_id || item.location || "";
+        // If server returned express statuses, synchronize into tagged map in a SINGLE batch
+        if (statusJson?.success && statusJson?.data) {
+          const serverStatusMap: Record<string, { status: ExpressSyncStatus; type: string }> = statusJson.data;
+          const currentTagged = getAllTaggedExpressItems("ISSUE");
+          const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
+          const toUpdate: Array<Omit<TaggedExpressItem, "tagged_at" | "status"> & { status?: ExpressSyncStatus }> = [];
 
-          const resolved = resolveProductDetails({
-            document_no: docNo,
-            product_id: item.sku,
-            sku: item.sku,
-            barcode: item.barcode,
-            product_name: item.product_name,
+          incomingMovements.forEach((item) => {
+            const docKey = (item.document_no || "").trim().toLowerCase();
+            const docIdKey = (item.document_id || "").trim().toLowerCase();
+            const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
+            const docExpressStatus = srv?.status || (item.status === "IMPORTED" ? "IMPORTED" : undefined);
+
+            if (docExpressStatus) {
+              const uniqueId = item.id || `iss_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;
+              const existing = localMap.get(uniqueId);
+              if (!existing || existing.status !== docExpressStatus) {
+                toUpdate.push({
+                  id: uniqueId,
+                  type: "ISSUE",
+                  tag: existing?.tag || "เบิกสินค้าเข้า Express",
+                  sku: item.sku,
+                  barcode: item.barcode,
+                  product_name: item.product_name,
+                  warehouse: item.warehouse_name,
+                  warehouse_code: toExpressWhCode(item.warehouse_name),
+                  quantity: Math.abs(Number(item.quantity) || 1),
+                  document_no: item.document_no,
+                  document_date: item.created_at,
+                  location: item.location || "-",
+                  status: docExpressStatus,
+                });
+              }
+            }
           });
 
-          const key = `sheet_${docNo}_${resolved.sku || item.sku || ""}`;
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            combinedMovements.push({
-              movement_id: item.movement_id || `mov-${docNo}`,
-              document_id: item.document_id,
-              document_no: docNo,
-              product_id: resolved.sku || item.sku,
-              warehouse_id: item.warehouse_id,
-              warehouse_name: fromWh,
-              from_warehouse_name: fromWh,
-              to_warehouse_name: toWh,
-              location_id: toLoc || item.location,
-              location_code: toLoc || item.location,
-              to_location_id: toLoc,
-              from_location_id: item.location,
-              qty_change: -Math.abs(Number(item.quantity) || 1),
-              movement_type: "TRANSFER_OUT",
-              idempotency_key: `sheet-${item.id}`,
-              created_by: item.created_by_name,
-              created_by_name: item.created_by_name,
-              created_at: item.created_at,
-              sku: resolved.sku || item.sku,
-              barcode: resolved.barcode || item.barcode,
-              product_name: resolved.product_name || item.product_name,
-            });
+          if (toUpdate.length > 0) {
+            batchTagExpressItems(toUpdate);
           }
-        });
+        }
       }
-
-      // 2. Outbound movements
-      if (json.success && Array.isArray(json.data?.data)) {
-        const issueMovements = json.data.data.filter(
-          (m: MovementWithDetails) =>
-            m.movement_type === "ISSUE" ||
-            m.movement_type === "ISSUE_OUT" ||
-            m.movement_type === "TRANSFER_OUT" ||
-            m.qty_change < 0
-        );
-        issueMovements.forEach((m: MovementWithDetails) => {
-          const docNo = m.document_no || m.document_id || "";
-          const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
-          const notif = docNo ? notifMap.get(docNo.trim().toLowerCase()) : undefined;
-          const fromWh = (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1";
-          const toWh = (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "";
-          const toLoc = (m as any).to_location_id || trfInfo?.to_location_id || notif?.to_location_id || "";
-
-          const resolved = resolveProductDetails({
-            document_no: docNo,
-            document_id: m.document_id,
-            product_id: m.product_id,
-            sku: m.sku,
-            barcode: (m as unknown as Record<string, unknown>).barcode as string | undefined,
-            product_name: m.product_name,
-          });
-
-          const key = `${m.movement_id || m.document_id || ""}_${resolved.sku || m.sku || ""}_${m.location_id || ""}`;
-          const altKey = `sheet_${docNo}_${resolved.sku || m.sku || ""}`;
-          if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
-            seenKeys.add(key);
-            combinedMovements.push({
-              ...m,
-              sku: resolved.sku || m.sku,
-              barcode: resolved.barcode || ((m as unknown as Record<string, unknown>).barcode as string | undefined),
-              product_name: resolved.product_name || m.product_name,
-              from_warehouse_name: fromWh,
-              to_warehouse_name: toWh,
-              to_location_id: toLoc,
-            });
-          }
-        });
-      }
-
-      // 3. Approved transfer documents
-      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
-        const completedTransfers = trfJson.data.filter(
-          (t: any) =>
-            t.status === "COMPLETED" ||
-            t.status === "POSTED" ||
-            t.status === "APPROVED"
-        );
-
-        completedTransfers.forEach((t: any) => {
-          let meta: Record<string, any> = {};
-          try {
-            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
-              meta = JSON.parse(t.note);
-            }
-          } catch {}
-
-          const docNo = t.document_no || t.doc_no || meta.doc_no || "TRF";
-          const notif = (docNo && notifMap.get(docNo.trim().toLowerCase())) || (t.id && notifMap.get(t.id.trim().toLowerCase()));
-
-          const toLoc =
-            meta.to_location_id ||
-            meta.to_location ||
-            meta.completed_location_id ||
-            meta.destination_location ||
-            t.to_location_id ||
-            t.to_location ||
-            t.completed_location_id ||
-            notif?.to_location_id ||
-            "";
-
-          const fromLoc =
-            meta.from_location_id ||
-            meta.from_location ||
-            meta.source_allocations?.[0]?.location_id ||
-            t.from_location_id ||
-            t.from_location ||
-            notif?.from_location_id ||
-            "";
-
-          const resolved = resolveProductDetails({
-            document_no: docNo,
-            document_id: t.document_id || t.id,
-            product_id: meta.product_id || t.product_id,
-            sku: meta.sku || t.sku,
-            barcode: meta.barcode || t.barcode,
-            product_name: meta.product_name || t.product_name,
-            note: t.note,
-          });
-
-          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
-          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
-          const qty = Math.abs(Number(meta.qty || t.qty) || 1);
-
-          const key = `trf_doc_${t.document_id || t.id}_${resolved.sku}`;
-          const altKey = `sheet_${docNo}_${resolved.sku}`;
-          if (!seenKeys.has(key) && !seenKeys.has(altKey)) {
-            seenKeys.add(key);
-            combinedMovements.push({
-              movement_id: `trf-mov-${t.document_id || t.id}`,
-              document_id: t.document_id || t.id,
-              document_no: docNo,
-              product_id: resolved.sku,
-              warehouse_id: meta.from_warehouse_id || "wh-1",
-              warehouse_name: fromWh,
-              from_warehouse_name: fromWh,
-              to_warehouse_name: toWh,
-              to_warehouse_id: meta.to_warehouse_id || t.to_warehouse_id,
-              location_id: toLoc || fromLoc,
-              location_code: toLoc || fromLoc,
-              to_location_id: toLoc,
-              from_location_id: fromLoc,
-              note: t.note,
-              qty_change: -qty,
-              movement_type: "TRANSFER_OUT",
-              idempotency_key: `trf-${t.document_id || t.id}`,
-              created_by: meta.moved_by || t.moved_by || "ผู้ใช้งาน",
-              created_by_name: meta.moved_by || t.moved_by || "ผู้ใช้งาน",
-              created_at: (meta.completed_at || t.completed_at || t.created_at || new Date().toISOString()).slice(0, 10),
-              sku: resolved.sku,
-              barcode: resolved.barcode,
-              product_name: resolved.product_name,
-            });
-          }
-        });
-      }
-
-      setMovements(combinedMovements);
     } catch (e) {
       console.error("Failed to fetch issue movements for Express:", e);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchMovements();
-  }, [dateFrom, dateTo]);
+    const interval = setInterval(() => {
+      fetchMovements(true);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [fetchMovements]);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {
@@ -539,6 +253,8 @@ export default function ExpressIssuePage() {
       location: string;
       barcode: string;
       movement_type: string;
+      status?: string;
+      express_status?: ExpressSyncStatus;
     }> = [];
 
     // Multi-index catalog products for thorough matching
@@ -613,29 +329,43 @@ export default function ExpressIssuePage() {
 
       const finalBarcode = barcode || (prodName.match(/^(\d{3,18})/) ? (prodName.match(/^(\d{3,18})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,18})/)![1] : "9000" + prodName.match(/^(\d{3,18})/)![1].padStart(4, "0")) : "");
 
-      // 1. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง)
-      let realLocation = "";
-      const destScannedLoc = (
-        (m as any).to_location_id ||
-        (m as any).to_location ||
-        (m as any).completed_location_id ||
-        ""
-      ).trim();
-
-      if (destScannedLoc && !/^loc-?(a0?1|b0?1)?$/i.test(destScannedLoc) && destScannedLoc !== "A1" && destScannedLoc !== "A01" && destScannedLoc !== "-" && destScannedLoc !== "ตำแหน่งเริ่มต้น") {
-        realLocation = destScannedLoc.replace(/^loc-/, "");
+      // 1. Existing Location on movement record
+      let realLocation = (m.location || "").trim();
+      if (
+        !realLocation ||
+        realLocation === "-" ||
+        realLocation === "A1" ||
+        realLocation === "A01" ||
+        /^loc-?(a0?1|b0?1)?$/i.test(realLocation) ||
+        realLocation === "ตำแหน่งเริ่มต้น"
+      ) {
+        realLocation = "";
       }
 
-      // 2. Direct location on movement record if not dummy
+      // 2. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง)
       if (!realLocation) {
-        const rawLoc = (m.location_code || m.location_id || m.location || "").trim();
+        const destScannedLoc = (
+          (m as any).to_location_id ||
+          (m as any).to_location ||
+          (m as any).completed_location_id ||
+          ""
+        ).trim();
+
+        if (destScannedLoc && !/^loc-?(a0?1|b0?1)?$/i.test(destScannedLoc) && destScannedLoc !== "A1" && destScannedLoc !== "A01" && destScannedLoc !== "-" && destScannedLoc !== "ตำแหน่งเริ่มต้น") {
+          realLocation = destScannedLoc.replace(/^loc-/, "");
+        }
+      }
+
+      // 3. Location code on movement record
+      if (!realLocation) {
+        const rawLoc = (m.location_code || m.location_id || "").trim();
         const isDummy = !rawLoc || /^loc-?(a0?1|b0?1)?$/i.test(rawLoc) || rawLoc === "A1" || rawLoc === "A01" || rawLoc === "-" || rawLoc === "ตำแหน่งเริ่มต้น";
         if (!isDummy) {
           realLocation = rawLoc.replace(/^loc-/, "");
         }
       }
 
-      // 3. Fallback: extract shelf tag #SHELF from product name, SKU, or note
+      // 4. Fallback: extract shelf tag #SHELF from product name, SKU, or note
       if (!realLocation) {
         realLocation =
           extractShelfFromText(prodName) ||
@@ -644,7 +374,7 @@ export default function ExpressIssuePage() {
           extractShelfFromText(m.note);
       }
 
-      // 4. From Matched Product in catalog (Destination warehouse first, then Source)
+      // 5. From Matched Product in catalog (Destination warehouse first, then Source)
       const matchedProd = findMatchedProduct(sku, finalBarcode, prodName, m.product_id);
       if (!realLocation && matchedProd) {
         const destWhId = normalizeWarehouseId((m as any).to_warehouse_id || (m as any).to_warehouse_name);
@@ -694,24 +424,17 @@ export default function ExpressIssuePage() {
         }
       }
 
-      // 3. Fallback: extract shelf tag #SHELF from product name, SKU, or note
       if (!realLocation) {
-        realLocation =
-          extractShelfFromText(prodName) ||
-          extractShelfFromText(m.product_name) ||
-          extractShelfFromText(sku) ||
-          extractShelfFromText(m.note);
+        realLocation = "-";
       }
 
-      const qty = Math.abs(Number(m.qty_change) || 1);
-      const uniqueId = m.movement_id?.startsWith("trf-mov-")
-        ? `iss_${m.movement_id}_${sku}_0`
-        : `iss_${m.movement_id || m.document_id || idx}_${sku}_${idx}`;
+      const qty = Math.abs(Number(m.quantity || m.qty_change) || 1);
+      const uniqueId = m.id || `iss_${m.movement_id || m.document_id || m.document_no || idx}_${sku}`;
 
       list.push({
         id: uniqueId,
-        movement_id: m.movement_id,
-        document_id: m.document_id,
+        movement_id: m.movement_id || uniqueId,
+        document_id: m.document_id || m.document_no,
         document_no: m.document_no || "ISS",
         warehouse_name: m.from_warehouse_name || m.warehouse_name || m.warehouse_id || "คลังสินค้า",
         warehouse_id: m.warehouse_id || "",
@@ -724,7 +447,9 @@ export default function ExpressIssuePage() {
         quantity: qty,
         location: realLocation,
         barcode: finalBarcode || rawBarcode || sku,
-        movement_type: m.movement_type,
+        movement_type: m.movement_type || "TRANSFER_OUT",
+        status: m.status || "PENDING",
+        express_status: (m.status as ExpressSyncStatus) || "PENDING",
       });
     });
 
@@ -825,7 +550,6 @@ export default function ExpressIssuePage() {
       return { value: d, label: `วันที่ ${parseInt(d, 10)}` };
     }),
   ], []);
-
   const monthOptions = useMemo(() => [
     { value: "ALL", label: "ทุกเดือน" },
     { value: "01", label: "ม.ค. (01)" },
@@ -852,7 +576,7 @@ export default function ExpressIssuePage() {
     return allItems.filter((item) => {
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
-      const effectiveStatus = tagged?.status || "PENDING";
+      const effectiveStatus: ExpressSyncStatus = tagged?.status || (item.status as ExpressSyncStatus) || "PENDING";
       const isTagged = true; // Approved items default to tagged for Express Issue
 
       if (tagFilter === "TAGGED_ONLY" && !isTagged) return false;
@@ -920,7 +644,7 @@ export default function ExpressIssuePage() {
 
     baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
-      const effectiveStatus = t?.status || "PENDING";
+      const effectiveStatus: ExpressSyncStatus = t?.status || (item.status as ExpressSyncStatus) || "PENDING";
       taggedCount++;
       if (effectiveStatus === "PENDING") pendingCount++;
       if (effectiveStatus === "IMPORTED") importedCount++;
@@ -1397,7 +1121,8 @@ export default function ExpressIssuePage() {
                     const isBarcodeCopied = copiedItemSku === barcodeValue;
                     const isSelected = selectedItemIds.has(item.id);
                     const tagged = taggedItemsMap.get(item.id);
-                    const isImported = tagged?.status === "IMPORTED";
+                    const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || (item.status as ExpressSyncStatus) || "PENDING";
+                    const isImported = effectiveStatus === "IMPORTED";
 
                     return (
                       <tr
@@ -1501,7 +1226,7 @@ export default function ExpressIssuePage() {
                         {/* 8. สถานะ Express */}
                         <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
                           <select
-                            value={tagged?.status || "PENDING"}
+                            value={effectiveStatus}
                             onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
                               isImported

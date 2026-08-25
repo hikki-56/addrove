@@ -30,6 +30,8 @@ interface ApprovalDoc {
   created_by: string;
   created_at?: string;
   status: string;
+  express_status?: string;
+  express_status_text?: string;
   rows: Array<[string, string, string, string, number, string, string, string]>;
 }
 
@@ -119,19 +121,21 @@ export default function ExpressReceivePage() {
     return getWarehouseName(raw);
   };
 
-  const fetchDocs = async () => {
-    setLoading(true);
+  const fetchDocs = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const ts = Date.now();
-      const [postedRes, pendingRes, prodRes] = await Promise.all([
+      const [postedRes, pendingRes, prodRes, statusRes] = await Promise.all([
         fetch(`/api/approvals?status=POSTED&_t=${ts}`, { cache: "no-store" }),
         fetch(`/api/approvals?status=PENDING&_t=${ts}`, { cache: "no-store" }),
         fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=RECEIVE&_t=${ts}`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const postedJson = await postedRes.json();
       const pendingJson = await pendingRes.json();
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
+      const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
 
       const products: Product[] = Array.isArray(prodJson?.data)
         ? prodJson.data
@@ -156,16 +160,65 @@ export default function ExpressReceivePage() {
         }
       });
       setDocs(Array.from(map.values()));
+
+      // If server returned express statuses, synchronize into tagged map
+      if (statusJson?.success && statusJson?.data) {
+        const serverStatusMap: Record<string, { status: ExpressSyncStatus; type: string }> = statusJson.data;
+        const currentTagged = getAllTaggedExpressItems("RECEIVE");
+        const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
+        let hasChanges = false;
+
+        map.forEach((doc) => {
+          const docKey = (doc.document_no || "").trim().toLowerCase();
+          const docIdKey = doc.document_id.trim().toLowerCase();
+          const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
+          const docExpressStatus = srv?.status || (doc.express_status as ExpressSyncStatus) || (doc.status === "IMPORTED" ? "IMPORTED" : undefined);
+
+          if (docExpressStatus) {
+            doc.rows?.forEach((row, rowIdx) => {
+              const sku = String(row[0] ?? "").trim();
+              const uniqueId = `rec_${doc.document_id}_${sku}_${rowIdx}`;
+              const existing = localMap.get(uniqueId);
+              if (!existing || existing.status !== docExpressStatus) {
+                tagExpressItem({
+                  id: uniqueId,
+                  type: "RECEIVE",
+                  tag: existing?.tag || "รอนำเข้า Express",
+                  sku,
+                  barcode: String(row[2] ?? "").trim(),
+                  product_name: String(row[3] ?? "").trim() || sku,
+                  warehouse: doc.target_sheet || "โกดัง1",
+                  warehouse_code: toExpressWhCode(doc.target_sheet || "โกดัง1"),
+                  quantity: parseFloat(String(row[4] ?? "1").replace(/,/g, "")) || 1,
+                  document_no: doc.document_no,
+                  document_date: doc.document_date || doc.created_at?.slice(0, 10) || "-",
+                  location: String(row[1] ?? "-").trim() || "-",
+                  status: docExpressStatus,
+                });
+                hasChanges = true;
+              }
+            });
+          }
+        });
+
+        if (hasChanges) {
+          refreshTaggedMap();
+        }
+      }
     } catch (e) {
       console.error("Failed to fetch documents for Express receive:", e);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
-  };
+  }, [refreshTaggedMap]);
 
   useEffect(() => {
     fetchDocs();
-  }, []);
+    const interval = setInterval(() => {
+      fetchDocs(true);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [fetchDocs]);
 
   // Product catalog indexing
   const catalogProductsMap = useMemo(() => {
@@ -205,6 +258,7 @@ export default function ExpressReceivePage() {
       supplier: string;
       barcode: string;
       status: string;
+      express_status?: ExpressSyncStatus;
     }> = [];
 
     docs.forEach((doc) => {
@@ -257,6 +311,7 @@ export default function ExpressReceivePage() {
           supplier,
           barcode,
           status: doc.status,
+          express_status: (doc.express_status as ExpressSyncStatus) || (doc.status === "IMPORTED" ? "IMPORTED" : "PENDING"),
         });
       });
     });
@@ -376,10 +431,13 @@ export default function ExpressReceivePage() {
     return allItems.filter((item) => {
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
-      if (tagFilter === "TAGGED_ONLY" && !tagged) return false;
-      if (tagFilter === "PENDING" && (!tagged || tagged.status !== "PENDING")) return false;
-      if (tagFilter === "IMPORTED" && (!tagged || tagged.status !== "IMPORTED")) return false;
-      if (tagFilter === "UNTAGGED" && tagged) return false;
+      const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || "PENDING";
+      const isTagged = true;
+
+      if (tagFilter === "TAGGED_ONLY" && !isTagged) return false;
+      if (tagFilter === "PENDING" && effectiveStatus !== "PENDING") return false;
+      if (tagFilter === "IMPORTED" && effectiveStatus !== "IMPORTED") return false;
+      if (tagFilter === "UNTAGGED" && (tagged || isTagged)) return false;
 
       // Day / Month / Year date filter check
       if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
@@ -430,11 +488,10 @@ export default function ExpressReceivePage() {
 
     baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
-      if (t) {
-        taggedCount++;
-        if (t.status === "PENDING") pendingCount++;
-        if (t.status === "IMPORTED") importedCount++;
-      }
+      const effectiveStatus: ExpressSyncStatus = t?.status || item.express_status || "PENDING";
+      taggedCount++;
+      if (effectiveStatus === "PENDING") pendingCount++;
+      if (effectiveStatus === "IMPORTED") importedCount++;
     });
 
     return {
@@ -888,7 +945,8 @@ export default function ExpressReceivePage() {
                     const isBarcodeCopied = copiedItemSku === barcodeValue;
                     const isSelected = selectedItemIds.has(item.id);
                     const tagged = taggedItemsMap.get(item.id);
-                    const isImported = tagged?.status === "IMPORTED";
+                    const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || "PENDING";
+                    const isImported = effectiveStatus === "IMPORTED";
 
                     return (
                       <tr
@@ -986,7 +1044,7 @@ export default function ExpressReceivePage() {
                         {/* 8. สถานะ Express Tag */}
                         <td className={`py-2.5 px-3 text-center whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
                           <select
-                            value={tagged?.status || "PENDING"}
+                            value={effectiveStatus}
                             onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
                               isImported
