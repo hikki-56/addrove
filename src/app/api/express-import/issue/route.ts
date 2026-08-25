@@ -4,6 +4,7 @@ import { getRepository } from "@/lib/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { parseTransferMetadata } from "@/lib/transfer-notification-utils";
+import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -246,17 +247,78 @@ export async function GET(req: NextRequest) {
         seenUniqueKeys.add(uniqueKey);
         if (docNoKey) seenDocNos.add(docNoKey);
 
+        // Resolve source and destination warehouse
+        let fromWarehouseName = whName || "โกดัง 1";
+        let fromWarehouseId = normalizeWarehouseId(fromWarehouseName);
+        let toWarehouseName = "";
+        let toWarehouseId = "";
+
+        // 1. Check if whName has delimiter (e.g. "โกดัง1 -> โกดัง2", "โกดัง 1 ➔ โกดัง 2")
+        if (whName.includes("->") || whName.includes("➔") || whName.includes("→") || whName.includes("ไป") || whName.includes("/")) {
+          const parts = whName.split(/\s*(?:->|➔|→|ไป|\/)\s*/);
+          if (parts.length >= 2) {
+            fromWarehouseName = getWarehouseName(parts[0]);
+            fromWarehouseId = normalizeWarehouseId(parts[0]);
+            toWarehouseName = getWarehouseName(parts[1]);
+            toWarehouseId = normalizeWarehouseId(parts[1]);
+          }
+        }
+
+        // 2. Look up in allDocsMap to get real transfer metadata if available
+        const docRec =
+          allDocsMap.get(docNo.toLowerCase()) ||
+          allDocsMap.get(resolvedDocNo.toLowerCase()) ||
+          allDocsMap.get(docNo.replace(/[^a-zA-Z0-9]/g, "").toLowerCase());
+
+        if (docRec) {
+          const meta = parseTransferMetadata(docRec.note);
+          if (meta.from_warehouse_name || meta.from_warehouse_id) {
+            fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : "โกดัง 1");
+            fromWarehouseId = meta.from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
+          }
+          if (meta.to_warehouse_name || meta.to_warehouse_id) {
+            toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : "");
+            toWarehouseId = meta.to_warehouse_id || normalizeWarehouseId(toWarehouseName);
+          } else if ((docRec as any).to_warehouse_id || (docRec as any).to_warehouse_name) {
+            toWarehouseName = (docRec as any).to_warehouse_name || ((docRec as any).to_warehouse_id ? getWarehouseName((docRec as any).to_warehouse_id) : "");
+            toWarehouseId = (docRec as any).to_warehouse_id || normalizeWarehouseId(toWarehouseName);
+          }
+        }
+
+        // 3. If toWarehouseName is still empty and this is a TRF transfer document:
+        if (!toWarehouseName) {
+          const meta = docRec ? parseTransferMetadata(docRec.note) : {};
+          const toLoc = meta.to_location_id || meta.to_location || "";
+          if (/^2[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-2") || toLoc.includes("โกดัง2")) {
+            toWarehouseName = "โกดัง 2";
+            toWarehouseId = "wh-02";
+          } else if (/^1[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-1") || toLoc.includes("โกดัง1")) {
+            toWarehouseName = "โกดัง 1";
+            toWarehouseId = "wh-01";
+          } else if (/^3[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-3") || toLoc.includes("โกดัง3")) {
+            toWarehouseName = "โกดัง 3";
+            toWarehouseId = "wh-03";
+          } else if (/^4[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-4") || toLoc.includes("โกดัง4")) {
+            toWarehouseName = "โกดัง 4";
+            toWarehouseId = "wh-04";
+          } else {
+            const normFrom = normalizeWarehouseId(fromWarehouseName);
+            toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
+            toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+          }
+        }
+
         items.push({
           id: uniqueKey,
           movement_id: `mov-${resolvedDocNo}-${idx}`,
           document_id: resolvedDocNo,
           document_no: resolvedDocNo,
-          warehouse_name: whName,
-          warehouse_id: whName,
-          from_warehouse_name: whName,
-          from_warehouse_id: whName,
-          to_warehouse_name: "",
-          to_warehouse_id: "",
+          warehouse_name: fromWarehouseName,
+          warehouse_id: fromWarehouseId,
+          from_warehouse_name: fromWarehouseName,
+          from_warehouse_id: fromWarehouseId,
+          to_warehouse_name: toWarehouseName,
+          to_warehouse_id: toWarehouseId,
           created_at: date,
           created_by_name: "ผู้ดูแลระบบ",
           sku: enriched.sku,
@@ -309,10 +371,30 @@ export async function GET(req: NextRequest) {
       seenUniqueKeys.add(uniqueKey);
       if (docNoKey) seenDocNos.add(docNoKey);
 
-      const fromWarehouseName = meta.from_warehouse_name || meta.from_warehouse_id || "โกดัง 1";
-      const fromWarehouseId = meta.from_warehouse_id || "wh-1";
-      const toWarehouseName = meta.to_warehouse_name || meta.to_warehouse_id || "";
-      const toWarehouseId = meta.to_warehouse_id || "";
+      let fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : (doc as any).from_warehouse_name || "โกดัง 1");
+      let fromWarehouseId = meta.from_warehouse_id || (doc as any).from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
+      let toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : (doc as any).to_warehouse_name || "");
+      let toWarehouseId = meta.to_warehouse_id || (doc as any).to_warehouse_id || "";
+
+      if (!toWarehouseName) {
+        if (/^2[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-2") || toLoc.includes("โกดัง2")) {
+          toWarehouseName = "โกดัง 2";
+          toWarehouseId = "wh-02";
+        } else if (/^1[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-1") || toLoc.includes("โกดัง1")) {
+          toWarehouseName = "โกดัง 1";
+          toWarehouseId = "wh-01";
+        } else if (/^3[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-3") || toLoc.includes("โกดัง3")) {
+          toWarehouseName = "โกดัง 3";
+          toWarehouseId = "wh-03";
+        } else if (/^4[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-4") || toLoc.includes("โกดัง4")) {
+          toWarehouseName = "โกดัง 4";
+          toWarehouseId = "wh-04";
+        } else {
+          const normFrom = normalizeWarehouseId(fromWarehouseName);
+          toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
+          toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+        }
+      }
 
       items.push({
         id: uniqueKey,

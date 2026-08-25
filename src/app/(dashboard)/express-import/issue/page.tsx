@@ -118,7 +118,6 @@ export default function ExpressIssuePage() {
   // Helper to get user-friendly Thai warehouse name
   const getWarehouseDisplayName = (raw: string | undefined | null): string => {
     if (!raw) return "-";
-    if (raw.includes("โกดัง") || raw.includes("สำนักงานใหญ่")) return raw;
     return getWarehouseName(raw);
   };
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { readSheet, appendRows, updateRow, SHEETS, getWarehouseSheetName, clearSheetCache } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, updateRow, batchUpdateRows, SHEETS, getWarehouseSheetName, clearSheetCache } from "@/lib/google-sheets/client";
 import { bomRepository } from "@/lib/repositories/sheets/bom.repository";
 import { logAudit } from "@/lib/audit";
 import type { StockMovement } from "@/types/models";
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
     };
 
     // 2. Validate BOM components and aggregated requirements in Warehouse 2
-    const totalRequiredMaterialsMap = new Map<string, { sku: string; name: string; unit: string; requiredQty: number; availableQty: number }>();
+    const totalRequiredMaterialsMap = new Map<string, { sku: string; barcode?: string; name: string; unit: string; requiredQty: number; availableQty: number }>();
     const formattedItems: ProductionOrderItem[] = [];
 
     for (const item of items) {
@@ -270,6 +270,7 @@ export async function POST(req: NextRequest) {
 
         const currentAgg = totalRequiredMaterialsMap.get(matKey) || {
           sku: mat.rm_sku,
+          barcode: mat.rm_barcode || "",
           name: mat.rm_name || mat.rm_sku,
           unit: mat.rm_unit || "ชิ้น",
           requiredQty: 0,
@@ -394,33 +395,24 @@ export async function POST(req: NextRequest) {
       return [];
     });
 
-    // Apply changes to StockSummary
+    // 5. Update Inventory in Google Sheets (Tab: โกดัง2) directly in-place
+    // IMPORTANT: Use "A2:Z" to skip header row. readSheet() may also auto-strip
+    // headers, so using A2 guarantees: array index 0 = sheet row 2.
+    // Therefore sheetRowNum = arrayIndex + 2.
     try {
-      await repo.stockSummary.applyChanges(
-        movementsToCreate.map((m) => ({
-          productId: m.product_id,
-          warehouseId: m.warehouse_id,
-          locationId: m.location_id,
-          delta: m.qty_change,
-        }))
-      );
-    } catch (sumErr) {
-      console.warn("[POST /api/production/orders] stockSummary.applyChanges warning:", sumErr);
-    }
-
-    // 5. Update Inventory in Google Sheets (Tab: โกดัง2)
-    try {
-      const freshWh2Rows: string[][] = await readSheet(wh2SheetName, "A1:Z", { forceFresh: true }).catch(() => []);
+      const freshWh2Rows: string[][] = await readSheet(wh2SheetName, "A2:Z", { forceFresh: true }).catch(() => []);
       
       if (freshWh2Rows.length > 0) {
-        // 5.1 Update / Add Finished Goods in โกดัง 2
+        const batchUpdates: { rowNumber: number; values: (string | number | boolean)[] }[] = [];
+
+        // 5.1 Update Finished Goods in โกดัง 2 (In-place update)
         for (const fgItem of formattedItems) {
           const normFgSku = cleanCode(fgItem.fg_sku);
           let fgRowIndex = -1;
-          for (let i = 1; i < freshWh2Rows.length; i++) {
+          for (let i = 0; i < freshWh2Rows.length; i++) {
             const r = freshWh2Rows[i];
             if (!r || !r[0]) continue;
-            if (cleanCode(r[0]) === normFgSku || cleanCode(r[1]) === normFgSku) {
+            if (cleanCode(r[0]) === normFgSku || (r[1] && cleanCode(r[1]) === normFgSku)) {
               fgRowIndex = i;
               break;
             }
@@ -433,11 +425,12 @@ export async function POST(req: NextRequest) {
             const newQty = curQty + fgItem.quantity;
             existingRow[5] = String(newQty);
             existingRow[8] = nowIso;
-            const sheetRowNum = fgRowIndex + 1;
-            await updateRow(wh2SheetName, sheetRowNum, existingRow);
+            // A2:Z means index 0 = sheet row 2
+            const sheetRowNum = fgRowIndex + 2;
+            batchUpdates.push({ rowNumber: sheetRowNum, values: existingRow });
             freshWh2Rows[fgRowIndex] = existingRow;
           } else {
-            // Append new FG row to โกดัง 2
+            // Append new FG row to โกดัง 2 only if truly not existing
             const newFgRow = [
               fgItem.fg_sku,
               fgItem.fg_barcode || "",
@@ -454,20 +447,44 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 5.2 Deduct Raw Materials from โกดัง 2
+        // 5.2 Deduct Raw Materials from โกดัง 2 (Strict exact SKU matching)
         for (const [, reqMat] of totalRequiredMaterialsMap.entries()) {
           const normMatSku = cleanCode(reqMat.sku);
+          const normMatName = cleanCode(reqMat.name);
           let rmRowIndex = -1;
-          for (let i = 1; i < freshWh2Rows.length; i++) {
+
+          // Pass 1: Exact SKU match
+          for (let i = 0; i < freshWh2Rows.length; i++) {
             const r = freshWh2Rows[i];
             if (!r || !r[0]) continue;
-            if (
-              cleanCode(r[0]) === normMatSku ||
-              cleanCode(r[1]) === normMatSku ||
-              cleanCode(r[2]).includes(normMatSku)
-            ) {
+            if (cleanCode(r[0]) === normMatSku) {
               rmRowIndex = i;
               break;
+            }
+          }
+
+          // Pass 2: Barcode match
+          if (rmRowIndex === -1 && reqMat.barcode) {
+            const normBarcode = cleanCode(reqMat.barcode);
+            for (let i = 0; i < freshWh2Rows.length; i++) {
+              const r = freshWh2Rows[i];
+              if (!r || !r[1]) continue;
+              if (cleanCode(r[1]) === normBarcode) {
+                rmRowIndex = i;
+                break;
+              }
+            }
+          }
+
+          // Pass 3: Exact Name match
+          if (rmRowIndex === -1 && normMatName) {
+            for (let i = 0; i < freshWh2Rows.length; i++) {
+              const r = freshWh2Rows[i];
+              if (!r || !r[2]) continue;
+              if (cleanCode(r[2]) === normMatName) {
+                rmRowIndex = i;
+                break;
+              }
             }
           }
 
@@ -478,10 +495,16 @@ export async function POST(req: NextRequest) {
             const newQty = Math.max(0, curQty - reqMat.requiredQty);
             existingRow[5] = String(newQty);
             existingRow[8] = nowIso;
-            const sheetRowNum = rmRowIndex + 1;
-            await updateRow(wh2SheetName, sheetRowNum, existingRow);
+            // A2:Z means index 0 = sheet row 2
+            const sheetRowNum = rmRowIndex + 2;
+            batchUpdates.push({ rowNumber: sheetRowNum, values: existingRow });
             freshWh2Rows[rmRowIndex] = existingRow;
           }
+        }
+
+        // Execute all updates in one batch
+        if (batchUpdates.length > 0) {
+          await batchUpdateRows(wh2SheetName, batchUpdates);
         }
       }
     } catch (syncErr) {
