@@ -42,6 +42,81 @@ export interface TransferHistoryRecord {
   original_note?: string;
 }
 
+// Custom Scrollable Dropdown (shows ~4 items at a time with smooth scroll)
+function ScrollableSelect({
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (val: string) => void;
+  title?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentOption = options.find((o) => o.value === value);
+
+  return (
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        title={title}
+        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-indigo-500 focus:bg-white"
+      >
+        <span className="truncate">{currentOption ? currentOption.label : value}</span>
+        <svg
+          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[148px] overflow-y-auto divide-y divide-slate-100 py-1">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                  isSelected
+                    ? "bg-indigo-50 text-indigo-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="text-indigo-600 text-xs font-bold ml-1.5 shrink-0">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TransferHistoryPage() {
   const { user } = useTabAuth();
 
@@ -52,17 +127,123 @@ export default function TransferHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Filter states
+  // Filter states (Default date range: วันนั้นๆ / TODAY)
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedFromWh, setSelectedFromWh] = useState<string>("ALL");
   const [selectedToWh, setSelectedToWh] = useState<string>("ALL");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("TODAY");
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [dateTo, setDateTo] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+
+  // Dropdown options
+  const statusOptions = useMemo(
+    () => [
+      { value: "ALL", label: "สถานะทั้งหมด" },
+      { value: "COMPLETED", label: "สำเร็จแล้ว (Completed)" },
+      { value: "WAITING_APPROVAL", label: "รออนุมัติ (Waiting Approval)" },
+      { value: "PENDING", label: "รอดำเนินการ (Pending)" },
+      { value: "CANCELLED", label: "ยกเลิก / ปฏิเสธ (Cancelled)" },
+    ],
+    []
+  );
+
+  const fromWarehouseOptions = useMemo(
+    () => [
+      { value: "ALL", label: "โกดังต้นทางทั้งหมด" },
+      { value: "wh-01", label: "โกดัง1" },
+      { value: "wh-02", label: "โกดัง2" },
+      { value: "wh-03", label: "โกดัง3" },
+      { value: "wh-04", label: "โกดัง4" },
+      { value: "wh-05", label: "โกดัง5" },
+      { value: "wh-06", label: "สำนักงานใหญ่" },
+    ],
+    []
+  );
+
+  const toWarehouseOptions = useMemo(
+    () => [
+      { value: "ALL", label: "โกดังปลายทางทั้งหมด" },
+      { value: "wh-01", label: "โกดัง1" },
+      { value: "wh-02", label: "โกดัง2" },
+      { value: "wh-03", label: "โกดัง3" },
+      { value: "wh-04", label: "โกดัง4" },
+      { value: "wh-05", label: "โกดัง5" },
+      { value: "wh-06", label: "สำนักงานใหญ่" },
+    ],
+    []
+  );
+
+  const dateRangeOptions = useMemo(
+    () => [
+      { value: "ALL", label: "ช่วงเวลาทั้งหมด" },
+      { value: "TODAY", label: "วันนี้" },
+      { value: "YESTERDAY", label: "เมื่อวานนี้" },
+      { value: "LAST_7_DAYS", label: "7 วันล่าสุด" },
+      { value: "LAST_30_DAYS", label: "30 วันล่าสุด" },
+      { value: "THIS_MONTH", label: "เดือนนี้" },
+      { value: "LAST_MONTH", label: "เดือนที่แล้ว" },
+    ],
+    []
+  );
+
+  const handleDateRangeChange = (preset: string) => {
+    setSelectedDateRange(preset);
+    setCurrentPage(1);
+
+    const now = new Date();
+    const toYMD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (preset === "TODAY") {
+      const todayStr = toYMD(now);
+      setDateFrom(todayStr);
+      setDateTo(todayStr);
+    } else if (preset === "YESTERDAY") {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = toYMD(y);
+      setDateFrom(yStr);
+      setDateTo(yStr);
+    } else if (preset === "LAST_7_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "LAST_30_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 29);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "THIS_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else if (preset === "LAST_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else {
+      setDateFrom("");
+      setDateTo("");
+    }
+  };
 
   // Detail Modal state
   const [selectedRecord, setSelectedRecord] = useState<TransferHistoryRecord | null>(null);
@@ -198,10 +379,38 @@ export default function TransferHistoryPage() {
           ""
         ).trim();
         const createdByName = rawCreatedByName || "ผู้ดูแลระบบ (Admin)";
+        const rawStatus = String(doc.status || meta.status || "PENDING").trim().toUpperCase();
+        let status: TransferHistoryRecord["status"] = "PENDING";
 
-        let status = (doc.status || "PENDING").toUpperCase() as TransferHistoryRecord["status"];
-        if (isTransferCompleted(docId) || isTransferCompleted(doc.document_no)) {
+        if (
+          rawStatus === "CANCELLED" ||
+          rawStatus === "CANCEL" ||
+          rawStatus === "CANCELED" ||
+          rawStatus === "REJECTED" ||
+          rawStatus === "VOID" ||
+          rawStatus === "ยกเลิก" ||
+          rawStatus === "ปฏิเสธ" ||
+          meta.current_step_text?.includes("ยกเลิก")
+        ) {
+          status = "CANCELLED";
+        } else if (
+          rawStatus === "COMPLETED" ||
+          rawStatus === "APPROVED" ||
+          rawStatus === "DONE" ||
+          rawStatus === "SUCCESS" ||
+          rawStatus === "สำเร็จ" ||
+          isTransferCompleted(docId) ||
+          isTransferCompleted(doc.document_no)
+        ) {
           status = "COMPLETED";
+        } else if (
+          rawStatus === "WAITING_APPROVAL" ||
+          rawStatus === "WAITING" ||
+          rawStatus === "รออนุมัติ"
+        ) {
+          status = "WAITING_APPROVAL";
+        } else {
+          status = "PENDING";
         }
 
         const item: TransferHistoryRecord = {
@@ -230,7 +439,12 @@ export default function TransferHistoryPage() {
           to_location_id: meta.to_location_id || undefined,
           source_allocations: meta.source_allocations || undefined,
           note: doc.note,
-          original_note: meta.original_note || (typeof doc.note === "string" && !doc.note.startsWith("{") ? doc.note : undefined),
+          original_note:
+            meta.original_note && !meta.original_note.includes("{") && !meta.original_note.includes('"""') && !meta.original_note.includes("from_warehouse_id")
+              ? meta.original_note
+              : typeof doc.note === "string" && !doc.note.trim().startsWith("{") && !doc.note.includes('"""') && !doc.note.includes("from_warehouse_id")
+              ? doc.note.trim()
+              : undefined,
         };
 
         recordMap.set(docId.toLowerCase(), item);
@@ -494,14 +708,19 @@ export default function TransferHistoryPage() {
     }
   };
 
-  // Reset all filters
+  // Reset all filters (Reset date to TODAY)
   const handleResetFilters = () => {
+    const todayStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
     setSearchQuery("");
     setSelectedStatus("ALL");
     setSelectedFromWh("ALL");
     setSelectedToWh("ALL");
-    setDateFrom("");
-    setDateTo("");
+    setSelectedDateRange("TODAY");
+    setDateFrom(todayStr);
+    setDateTo(todayStr);
     setCurrentPage(1);
   };
 
@@ -588,17 +807,11 @@ export default function TransferHistoryPage() {
           </span>
         );
       case "CANCELLED":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
-            <span>ยกเลิก</span>
-          </span>
-        );
       case "REJECTED":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
-            <span>ปฏิเสธ</span>
+            <span>ยกเลิก</span>
           </span>
         );
       case "PENDING":
@@ -626,65 +839,14 @@ export default function TransferHistoryPage() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center shadow-xs">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                ประวัติเบิกสินค้า
-              </h1>
-              <p className="text-xs text-slate-500 font-normal">
-                บันทึกและประวัติรายการเบิก-โอนย้ายสินค้าทั้งหมดในระบบ
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => loadData(true)}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            title="รีเฟรชข้อมูล"
-          >
-            <svg
-              className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-purple-600" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>{isRefreshing ? "กำลังโหลด..." : "รีเฟรช"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-all cursor-pointer"
-            title="ส่งออกไฟล์ CSV"
-          >
-            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span>ส่งออก CSV</span>
-          </button>
-
-          <Link
-            href="/movements/transfer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-95"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>+ ไปหน้าเบิกสินค้า</span>
-          </Link>
+      <div className="pb-3 border-b border-slate-200">
+        <div>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+            ประวัติเบิกสินค้า
+          </h1>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
+            บันทึกและประวัติรายการเบิก-โอนย้ายสินค้าทั้งหมดในระบบ
+          </p>
         </div>
       </div>
 
@@ -748,151 +910,117 @@ export default function TransferHistoryPage() {
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-end gap-2.5 sm:gap-3">
-          {/* Main Search Input */}
-          <div className="flex-[2_1_220px] min-w-[200px] relative">
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">ค้นหาข้อมูล</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="เลขเอกสาร, บาร์โค้ด, รหัส, ชื่อสินค้า, คนสร้าง, คนเบิก..."
-                className="w-full pl-8 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all"
-              />
-              <svg
-                className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex-[1_1_125px] min-w-[120px]">
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">สถานะ</label>
-            <select
-              value={selectedStatus}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+        {/* Row 1: Search Box (Full Width) */}
+        <div className="relative">
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>ค้นหาข้อมูล</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
               onChange={(e) => {
-                setSelectedStatus(e.target.value);
+                setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
+              placeholder="ค้นหาเลขเอกสาร (TRF-...), บาร์โค้ด, รหัสสินค้า, ชื่อสินค้า, พนักงานผู้เบิก..."
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+            />
+            <svg
+              className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <option value="ALL">สถานะทั้งหมด</option>
-              <option value="COMPLETED">สำเร็จแล้ว (Completed)</option>
-              <option value="WAITING_APPROVAL">รออนุมัติ (Waiting Approval)</option>
-              <option value="PENDING">รอดำเนินการ (Pending)</option>
-              <option value="CANCELLED">ยกเลิก / ปฏิเสธ (Cancelled)</option>
-            </select>
-          </div>
-
-          {/* From Warehouse Filter */}
-          <div className="flex-[1_1_125px] min-w-[120px]">
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">โกดังต้นทาง</label>
-            <select
-              value={selectedFromWh}
-              onChange={(e) => {
-                setSelectedFromWh(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
-            >
-              <option value="ALL">โกดังต้นทางทั้งหมด</option>
-              <option value="wh-01">โกดัง1</option>
-              <option value="wh-02">โกดัง2</option>
-              <option value="wh-03">โกดัง3</option>
-              <option value="wh-04">โกดัง4</option>
-              <option value="wh-05">โกดัง5</option>
-              <option value="wh-06">สำนักงานใหญ่</option>
-            </select>
-          </div>
-
-          {/* To Warehouse Filter */}
-          <div className="flex-[1_1_125px] min-w-[120px]">
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">โกดังปลายทาง</label>
-            <select
-              value={selectedToWh}
-              onChange={(e) => {
-                setSelectedToWh(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
-            >
-              <option value="ALL">โกดังปลายทางทั้งหมด</option>
-              <option value="wh-01">โกดัง1</option>
-              <option value="wh-02">โกดัง2</option>
-              <option value="wh-03">โกดัง3</option>
-              <option value="wh-04">โกดัง4</option>
-              <option value="wh-05">โกดัง5</option>
-              <option value="wh-06">สำนักงานใหญ่</option>
-            </select>
-          </div>
-
-          {/* Date Range Filter & Reset Button */}
-          <div className="flex-[1.8_1_250px] min-w-[240px] flex items-end gap-1.5">
-            <div className="flex-1">
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">ช่วงวันที่</label>
-              <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 focus-within:border-indigo-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full bg-transparent text-slate-800 text-xs font-medium focus:outline-none cursor-pointer"
-                  title="จากวันที่"
-                />
-                <span className="text-slate-400 text-xs shrink-0 font-medium">-</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full bg-transparent text-slate-800 text-xs font-medium focus:outline-none cursor-pointer"
-                  title="ถึงวันที่"
-                />
-              </div>
-            </div>
-
-            {(searchQuery || selectedStatus !== "ALL" || selectedFromWh !== "ALL" || selectedToWh !== "ALL" || dateFrom || dateTo) && (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
               <button
                 type="button"
-                onClick={handleResetFilters}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold shrink-0 transition-all cursor-pointer mb-0.5"
-                title="ล้างตัวกรองทั้งหมด"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             )}
           </div>
         </div>
 
-        {/* Filter Summary Results */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+        {/* Row 2: Dropdowns & Date Range (4 Columns Grid) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+          {/* Status Dropdown */}
+          <div className="lg:col-span-3">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</label>
+            <ScrollableSelect
+              value={selectedStatus}
+              options={statusOptions}
+              onChange={(val) => {
+                setSelectedStatus(val);
+                setCurrentPage(1);
+              }}
+              title="สถานะ"
+            />
+          </div>
+
+          {/* From Warehouse Dropdown */}
+          <div className="lg:col-span-3">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">โกดังต้นทาง</label>
+            <ScrollableSelect
+              value={selectedFromWh}
+              options={fromWarehouseOptions}
+              onChange={(val) => {
+                setSelectedFromWh(val);
+                setCurrentPage(1);
+              }}
+              title="โกดังต้นทาง"
+            />
+          </div>
+
+          {/* To Warehouse Dropdown */}
+          <div className="lg:col-span-3">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">โกดังปลายทาง</label>
+            <ScrollableSelect
+              value={selectedToWh}
+              options={toWarehouseOptions}
+              onChange={(val) => {
+                setSelectedToWh(val);
+                setCurrentPage(1);
+              }}
+              title="โกดังปลายทาง"
+            />
+          </div>
+
+          {/* Date Range Dropdown */}
+          <div className="lg:col-span-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700">ช่วงวันที่</label>
+              {(searchQuery || selectedStatus !== "ALL" || selectedFromWh !== "ALL" || selectedToWh !== "ALL" || selectedDateRange !== "TODAY") && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
+            <ScrollableSelect
+              value={selectedDateRange}
+              options={dateRangeOptions}
+              onChange={handleDateRangeChange}
+              title="ช่วงวันที่"
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Filter Summary & Page Size */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500">
           <div>
             พบทั้งหมด <span className="font-bold text-slate-800">{filteredRecords.length.toLocaleString()}</span> รายการ
             {filteredRecords.length !== records.length && (
@@ -957,24 +1085,17 @@ export default function TransferHistoryPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-wider">
-                  <th className="py-2.5 px-2 text-center w-8 whitespace-nowrap">ลำดับ</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap">เลขที่เอกสาร</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap">บาร์โค้ด</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap">รหัสสินค้า</th>
-                  <th className="py-2.5 px-2.5 whitespace-nowrap min-w-[130px]">ชื่อสินค้า</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap text-center">โกดังต้นทาง</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap text-center">โกดังปลายทาง</th>
-                  <th className="py-2.5 px-2 text-right whitespace-nowrap">จำนวน</th>
-                  <th className="py-2.5 px-1.5 text-center whitespace-nowrap">หน่วย</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap">คนสร้าง</th>
-                  <th className="py-2.5 px-2 whitespace-nowrap">คนเบิก</th>
-                  <th className="py-2.5 px-2 text-center whitespace-nowrap">สถานะ</th>
+                  <th className="py-3 px-3 text-center w-12 whitespace-nowrap">ลำดับ</th>
+                  <th className="py-3 px-3.5 whitespace-nowrap min-w-[220px]">ชื่อสินค้า</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">จำนวน</th>
+                  <th className="py-3 px-3 whitespace-nowrap">คนสร้าง</th>
+                  <th className="py-3 px-3 whitespace-nowrap">คนเบิก</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {paginatedRecords.map((item, index) => {
                   const globalIndex = (currentPage - 1) * pageSize + index + 1;
-                  const isBarcodeReal = item.barcode && item.barcode !== "-" && item.barcode !== item.sku;
 
                   return (
                     <tr
@@ -983,125 +1104,57 @@ export default function TransferHistoryPage() {
                       className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
                     >
                       {/* 1. ลำดับ */}
-                      <td className="py-2.5 px-2 text-center text-slate-400 font-semibold font-mono text-[11px]">
+                      <td className="py-3 px-3 text-center text-slate-400 font-semibold font-mono text-xs">
                         {globalIndex}
                       </td>
 
-                      {/* 2. เลขที่เอกสาร */}
-                      <td className="py-2.5 px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono font-bold text-indigo-700 bg-indigo-50/80 px-1.5 py-0.5 rounded text-[11px] border border-indigo-100">
-                            {item.doc_no || "-"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopy(item.doc_no, `เลขที่เอกสาร ${item.doc_no}`);
-                            }}
-                            className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                            title="คัดลอกเลขที่เอกสาร"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          {item.created_at ? new Date(item.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "-"}
-                        </div>
-                      </td>
-
-                      {/* 3. บาร์โค้ด */}
-                      <td className="py-2.5 px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1 font-mono font-semibold text-slate-700 text-[11px]">
-                          {isBarcodeReal ? (
-                            <>
-                              <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                              </svg>
-                              <span>{item.barcode}</span>
-                            </>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 4. รหัสสินค้า */}
-                      <td className="py-2.5 px-2 whitespace-nowrap">
-                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
-                          {item.sku || "-"}
-                        </span>
-                      </td>
-
-                      {/* 5. ชื่อสินค้า */}
-                      <td className="py-2.5 px-2.5 min-w-[130px] max-w-[200px]">
-                        <div className="font-bold text-slate-900 leading-snug truncate text-xs" title={item.product_name}>
+                      {/* 2. ชื่อสินค้า */}
+                      <td className="py-3 px-3.5 min-w-[200px]">
+                        <div className="font-bold text-slate-900 text-xs leading-snug group-hover:text-indigo-600 transition-colors" title={item.product_name}>
                           {item.product_name || "-"}
                         </div>
                       </td>
 
-                      {/* 6. โกดังต้นทาง */}
-                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
-                          <span>{item.from_warehouse_name}</span>
-                        </span>
-                      </td>
-
-                      {/* 7. โกดังปลายทาง */}
-                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                          <span>{item.to_warehouse_name}</span>
-                        </span>
-                      </td>
-
-                      {/* 8. จำนวน */}
-                      <td className="py-2.5 px-2 text-right whitespace-nowrap">
-                        <span className="font-mono font-black text-slate-900 text-xs">
+                      {/* 3. จำนวน */}
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <span className="font-mono font-black text-slate-900 text-sm">
                           {Number(item.qty || 0).toLocaleString()}
                         </span>
-                      </td>
-
-                      {/* 9. หน่วย */}
-                      <td className="py-2.5 px-1.5 text-center whitespace-nowrap">
-                        <span className="text-slate-600 font-medium bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                        <span className="text-slate-500 font-normal text-xs ml-1">
                           {item.base_unit || "ชิ้น"}
                         </span>
                       </td>
 
-                      {/* 10. คนสร้าง */}
-                      <td className="py-2.5 px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-slate-700 font-medium text-[11px]">
-                          <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 text-[9px] font-bold flex items-center justify-center shrink-0">
+                      {/* 4. คนสร้าง */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-slate-700 font-medium text-xs">
+                          <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold flex items-center justify-center shrink-0">
                             {item.created_by_name?.charAt(0) || "A"}
                           </div>
-                          <span className="truncate max-w-[85px]" title={item.created_by_name}>
-                            {item.created_by_name || "Admin"}
+                          <span className="truncate max-w-[130px]" title={item.created_by_name}>
+                            {item.created_by_name || "ผู้ดูแลระบบ (Admin)"}
                           </span>
                         </div>
                       </td>
 
-                      {/* 11. คนเบิก */}
-                      <td className="py-2.5 px-2 whitespace-nowrap">
+                      {/* 5. คนเบิก */}
+                      <td className="py-3 px-3 whitespace-nowrap">
                         {item.moved_by && item.moved_by !== "-" && item.moved_by !== "พนักงาน" ? (
-                          <div className="flex items-center gap-1 text-slate-800 font-semibold text-[11px]">
-                            <div className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center shrink-0">
+                          <div className="flex items-center gap-1.5 text-slate-800 font-semibold text-xs">
+                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center shrink-0">
                               {item.moved_by.charAt(0)}
                             </div>
-                            <span className="truncate max-w-[120px]" title={item.moved_by}>
+                            <span className="truncate max-w-[140px]" title={item.moved_by}>
                               {item.moved_by}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-normal text-[11px]">-</span>
+                          <span className="text-slate-400 font-normal text-xs">-</span>
                         )}
                       </td>
 
-                      {/* 12. สถานะ */}
-                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                      {/* 6. สถานะ */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
                         {renderStatusBadge(item.status)}
                       </td>
                     </tr>

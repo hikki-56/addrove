@@ -112,6 +112,9 @@ export default function Sidebar({
   const movementNav = visibleItems.filter((i) =>
     [
       "/movements/receive",
+      "/movements/receive/history",
+      "/production",
+      "/production/history",
       "/movements/transfer",
       "/movements/transfer/history",
       "/movements/move",

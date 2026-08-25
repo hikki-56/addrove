@@ -182,6 +182,14 @@ export const ALLOWED_SHEETS = [
   "เบิกสินค้าเข้าExpress",
   "รับสินค้าเข้าExpress",
   "ย้ายสินค้าเข้าExpress",
+  "BOM",
+  "BOM_Headers",
+  "BOM_Items",
+  "BOM_สายชำระ",
+  "BOM_ฝักบัว",
+  "BOM_ก๊อกน้ำ",
+  "BOM_โกดัง1",
+  "BOM_โกดัง2",
 ] as const;
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];
@@ -200,7 +208,9 @@ export function validateActionAndSheet(
   if (
     sheetName &&
     action !== "ping" &&
-    !(ALLOWED_SHEETS as readonly string[]).includes(sheetName)
+    !(ALLOWED_SHEETS as readonly string[]).includes(sheetName) &&
+    !sheetName.startsWith("BOM") &&
+    !sheetName.startsWith("โกดัง")
   ) {
     throw new Error(`SHEET_DENIED: Unknown sheet "${sheetName}"`);
   }

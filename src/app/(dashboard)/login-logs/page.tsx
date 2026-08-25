@@ -1,46 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import type { LoginLog, UserRole } from "@/types/models";
-import type { EmployeeProductAddition } from "@/lib/services/login-log.service";
 
-interface LoginLogWithDetails extends LoginLog {
-  added_products_count: number;
-  added_products: EmployeeProductAddition[];
+interface CleanLoginLog {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_role: string;
+  login_method: "QR_CODE" | "PASSWORD";
+  login_at: string;
+  ip_address?: string;
+  user_agent?: string;
 }
 
-interface StatsData {
-  total_logins: number;
-  staff_logins: number;
-  total_products_added: number;
-}
-
-const roleLabel: Record<UserRole, string> = {
-  ADMIN: "ผู้ดูแลระบบ",
-  MANAGER: "ผู้จัดการคลัง",
-  APPROVER: "ผู้อนุมัติ",
-  WAREHOUSE_STAFF: "พนักงานคลัง",
-  STAFF: "เจ้าหน้าที่",
-  VIEWER: "ผู้ดูข้อมูล",
+const roleLabel: Record<string, string> = {
+  ADMIN: "ผู้ดูแลระบบ (Admin)",
+  MANAGER: "ผู้จัดการคลัง (Manager)",
+  APPROVER: "ผู้อนุมัติ (Approver)",
+  WAREHOUSE_STAFF: "พนักงานคลัง (Staff)",
+  STAFF: "พนักงานคลัง (Staff)",
+  VIEWER: "ผู้ดูข้อมูล (Viewer)",
 };
 
-const roleColor: Record<UserRole, string> = {
-  ADMIN: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-  MANAGER: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  APPROVER: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  WAREHOUSE_STAFF: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  STAFF: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  VIEWER: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+const roleBadgeColor: Record<string, string> = {
+  ADMIN: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  MANAGER: "bg-purple-50 text-purple-700 border-purple-200",
+  APPROVER: "bg-amber-50 text-amber-800 border-amber-300",
+  WAREHOUSE_STAFF: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  STAFF: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  VIEWER: "bg-slate-100 text-slate-700 border-slate-200",
+};
+
+const avatarColor: Record<string, string> = {
+  ADMIN: "bg-indigo-600 text-white",
+  MANAGER: "bg-purple-600 text-white",
+  APPROVER: "bg-amber-600 text-white",
+  WAREHOUSE_STAFF: "bg-emerald-600 text-white",
+  STAFF: "bg-emerald-600 text-white",
+  VIEWER: "bg-slate-600 text-white",
 };
 
 function formatThaiDate(isoString: string): string {
   try {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) return isoString;
-    return date.toLocaleString("th-TH", {
+    return date.toLocaleDateString("th-TH", {
       day: "numeric",
       month: "short",
-      year: "numeric",
+      year: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -64,652 +73,677 @@ function getRelativeTime(isoString: string): string {
   }
 }
 
+function parseUserAgent(ua?: string): { browser: string; os: string } {
+  if (!ua) return { browser: "เบราว์เซอร์", os: "อุปกรณ์ทั่วไป" };
+  const s = ua.toLowerCase();
+
+  let browser = "เบราว์เซอร์";
+  if (s.includes("edg/")) browser = "Edge";
+  else if (s.includes("chrome") && !s.includes("chromium")) browser = "Chrome";
+  else if (s.includes("safari") && !s.includes("chrome")) browser = "Safari";
+  else if (s.includes("firefox")) browser = "Firefox";
+
+  let os = "อุปกรณ์ทั่วไป";
+  if (s.includes("windows")) os = "Windows";
+  else if (s.includes("macintosh") || s.includes("mac os")) os = "macOS";
+  else if (s.includes("iphone") || s.includes("ipad")) os = "iOS";
+  else if (s.includes("android")) os = "Android";
+  else if (s.includes("linux")) os = "Linux";
+
+  return { browser, os };
+}
+
+// Custom Scrollable Dropdown
+function ScrollableSelect({
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (val: string) => void;
+  title?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentOption = options.find((o) => o.value === value);
+
+  return (
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        title={title}
+        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-indigo-500 focus:bg-white"
+      >
+        <span className="truncate">{currentOption ? currentOption.label : value}</span>
+        <svg
+          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-slate-100 py-1">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                  isSelected
+                    ? "bg-indigo-50 text-indigo-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="text-indigo-600 text-xs font-bold ml-1.5 shrink-0">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LoginNotificationsPage() {
-  const [logs, setLogs] = useState<LoginLogWithDetails[]>([]);
-  const [stats, setStats] = useState<StatsData>({
-    total_logins: 0,
-    staff_logins: 0,
-    total_products_added: 0,
-  });
+  const [logs, setLogs] = useState<CleanLoginLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Filters
   const [search, setSearch] = useState("");
+  const [selectedRole, setSelectedRole] = useState<string>("ALL");
+  const [selectedMethod, setSelectedMethod] = useState<string>("ALL");
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("TODAY");
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [dateTo, setDateTo] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
 
-  // Toggle filter: Only show sessions with imported products by default
-  const [onlyImported, setOnlyImported] = useState<boolean>(true);
-
-  const today = new Date();
-  const [selectedDay, setSelectedDay] = useState<string>(String(today.getDate()));
-  const [selectedMonth, setSelectedMonth] = useState<string>(String(today.getMonth() + 1));
-  const [selectedYear, setSelectedYear] = useState<string>(String(today.getFullYear()));
-
-  // Pagination states: default 5 items per page
-  const [itemsPerPage, setItemsPerPage] = useState<string>("5");
+  // Pagination
+  const [pageSize, setPageSize] = useState<number>(15);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const [selectedLog, setSelectedLog] = useState<LoginLogWithDetails | null>(null);
+  const fetchLogs = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    else setLoading(true);
 
-  const fetchLogs = async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("/api/login-logs");
+      const res = await fetch(`/api/login-logs?_t=${Date.now()}`);
       const json = await res.json();
       if (json.success && json.data) {
         setLogs(json.data.logs || []);
-        setStats(
-          json.data.stats || {
-            total_logins: 0,
-            staff_logins: 0,
-            total_products_added: 0,
-          }
-        );
       }
     } catch (e) {
-      console.error("[LoginNotificationsPage error]", e);
+      console.error("[LoginLogs error]", e);
     } finally {
-      if (!isSilent) setLoading(false);
+      setLoading(false);
+      setIsRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchLogs();
   }, []);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedDay, selectedMonth, selectedYear, itemsPerPage, onlyImported]);
+    fetchLogs();
+  }, [fetchLogs]);
 
-  const filteredLogs = logs.filter((log) => {
-    // If onlyImported is true, filter only logs with added_products
-    if (onlyImported && log.added_products_count === 0) {
-      return false;
+  const roleOptions = useMemo(
+    () => [
+      { value: "ALL", label: "บทบาททั้งหมด" },
+      { value: "ADMIN", label: "ผู้ดูแลระบบ (Admin)" },
+      { value: "WAREHOUSE_STAFF", label: "พนักงานคลัง (Staff)" },
+      { value: "VIEWER", label: "ผู้ดูข้อมูล (Viewer)" },
+    ],
+    []
+  );
+
+  const methodOptions = useMemo(
+    () => [
+      { value: "ALL", label: "ทุกวิธีการเข้าใช้งาน" },
+      { value: "PASSWORD", label: "🔑 เข้าด้วยรหัสผ่าน (Password)" },
+      { value: "QR_CODE", label: "📱 สแกน QR Code" },
+    ],
+    []
+  );
+
+  const dateRangeOptions = useMemo(
+    () => [
+      { value: "ALL", label: "ช่วงเวลาทั้งหมด" },
+      { value: "TODAY", label: "วันนี้" },
+      { value: "YESTERDAY", label: "เมื่อวานนี้" },
+      { value: "LAST_7_DAYS", label: "7 วันล่าสุด" },
+      { value: "LAST_30_DAYS", label: "30 วันล่าสุด" },
+      { value: "THIS_MONTH", label: "เดือนนี้" },
+      { value: "LAST_MONTH", label: "เดือนที่แล้ว" },
+    ],
+    []
+  );
+
+  const handleDateRangeChange = (preset: string) => {
+    setSelectedDateRange(preset);
+    setCurrentPage(1);
+
+    const now = new Date();
+    const toYMD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (preset === "TODAY") {
+      const todayStr = toYMD(now);
+      setDateFrom(todayStr);
+      setDateTo(todayStr);
+    } else if (preset === "YESTERDAY") {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = toYMD(y);
+      setDateFrom(yStr);
+      setDateTo(yStr);
+    } else if (preset === "LAST_7_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "LAST_30_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 29);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "THIS_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else if (preset === "LAST_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else {
+      setDateFrom("");
+      setDateTo("");
+    }
+  };
+
+  // Filter logs
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      // 1. Search
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const matchesName = (log.user_name || "").toLowerCase().includes(q);
+        const matchesEmail = (log.user_email || "").toLowerCase().includes(q);
+        const matchesRole = (log.user_role || "").toLowerCase().includes(q);
+        const matchesIp = (log.ip_address || "").toLowerCase().includes(q);
+        const matchesUa = (log.user_agent || "").toLowerCase().includes(q);
+
+        if (!matchesName && !matchesEmail && !matchesRole && !matchesIp && !matchesUa) {
+          return false;
+        }
+      }
+
+      // 2. Role Filter
+      if (selectedRole !== "ALL") {
+        const normRole = (log.user_role || "").toUpperCase();
+        if (selectedRole === "WAREHOUSE_STAFF" && (normRole === "STAFF" || normRole === "WAREHOUSE_STAFF")) {
+          // matches staff
+        } else if (normRole !== selectedRole) {
+          return false;
+        }
+      }
+
+      // 3. Method Filter
+      if (selectedMethod !== "ALL") {
+        if (log.login_method !== selectedMethod) return false;
+      }
+
+      // 4. Date Range Filter
+      if (dateFrom || dateTo) {
+        const logDateStr = String(log.login_at || "").slice(0, 10);
+        if (dateFrom && logDateStr < dateFrom) return false;
+        if (dateTo && logDateStr > dateTo) return false;
+      }
+
+      return true;
+    });
+  }, [logs, search, selectedRole, selectedMethod, dateFrom, dateTo]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let total = logs.length;
+    let todayCount = 0;
+    let adminCount = 0;
+    let staffCount = 0;
+
+    for (const l of logs) {
+      if (String(l.login_at || "").slice(0, 10) === todayStr) {
+        todayCount++;
+      }
+      const r = (l.user_role || "").toUpperCase();
+      if (r === "ADMIN") adminCount++;
+      else if (r === "WAREHOUSE_STAFF" || r === "STAFF") staffCount++;
     }
 
-    const matchSearch =
-      !search ||
-      log.user_name.toLowerCase().includes(search.toLowerCase()) ||
-      log.user_email.toLowerCase().includes(search.toLowerCase()) ||
-      log.ip_address?.toLowerCase().includes(search.toLowerCase()) ||
-      log.added_products.some(
-        (p) =>
-          p.product_name.toLowerCase().includes(search.toLowerCase()) ||
-          p.sku.toLowerCase().includes(search.toLowerCase()) ||
-          p.warehouse_name.toLowerCase().includes(search.toLowerCase())
-      );
+    return { total, todayCount, adminCount, staffCount };
+  }, [logs]);
 
-    const d = new Date(log.login_at);
-    const logDay = String(d.getDate());
-    const logMonth = String(d.getMonth() + 1);
-    const logYear = String(d.getFullYear());
-
-    const matchDay = !selectedDay || logDay === selectedDay;
-    const matchMonth = !selectedMonth || logMonth === selectedMonth;
-    const matchYear = !selectedYear || logYear === selectedYear;
-
-    return matchSearch && matchDay && matchMonth && matchYear;
-  });
-
-  const totalItems = filteredLogs.length;
-  const isAll = itemsPerPage === "ALL";
-  const limit = isAll ? totalItems || 1 : Math.max(1, Number(itemsPerPage));
-  const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / limit));
-  const safePage = Math.min(currentPage, totalPages);
-
-  const paginatedLogs = isAll
-    ? filteredLogs
-    : filteredLogs.slice((safePage - 1) * limit, safePage * limit);
-
-  const thaiMonths = [
-    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-  ];
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, currentPage, pageSize]);
 
   return (
-    <div className="space-y-6 w-full max-w-full">
+    <div className="w-full max-w-full space-y-4 sm:space-y-5">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-slate-100 tracking-tight">
-              ประวัติการนำเข้าสินค้า & การเข้าใช้งาน
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+              ประวัติการเข้าสู่ระบบ
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>เรียลไทม์</span>
             </span>
           </div>
-          <p className="text-slate-500 text-xs mt-1">
-            ตรวจสอบรายชื่อพนักงานที่มีการนำเข้าสินค้าเข้าคลัง และรายละเอียดสินค้าในแต่ละรอบ
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
+            บันทึกประวัติการเข้าใช้งานระบบและรายชื่อผู้ใช้งานทั้งหมด
           </p>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-medium self-start sm:self-auto">
-          <button
-            onClick={() => setOnlyImported(true)}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              onlyImported
-                ? "bg-indigo-600 text-white font-semibold shadow-md"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            📦 เฉพาะรอบที่มีการนำเข้า ({logs.filter((l) => l.added_products_count > 0).length})
-          </button>
-          <button
-            onClick={() => setOnlyImported(false)}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              !onlyImported
-                ? "bg-indigo-600 text-white font-semibold shadow-md"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            📋 ทั้งหมด ({logs.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="glass-card rounded-xl p-4 border border-white/[0.08] flex flex-col lg:flex-row gap-3 items-center justify-between">
-        {/* Search input */}
-        <div className="relative w-full lg:w-80">
+        <button
+          type="button"
+          onClick={() => fetchLogs(true)}
+          disabled={isRefreshing}
+          className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
+        >
           <svg
-            className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+            className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหาชื่อพนักงาน, อีเมล, หรือชื่อสินค้า/SKU..."
-            className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.09] text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 text-xs transition-all"
-          />
+          <span>{isRefreshing ? "กำลังรีเฟรช..." : "รีเฟรช"}</span>
+        </button>
+      </div>
+
+      {/* Summary Statistics Cards (4 Columns) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">เข้าสู่ระบบทั้งหมด</span>
+            <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400">ครั้งทั้งหมดในระบบ</div>
         </div>
 
-        {/* 3 Separate Dropdowns: วัน / เดือน / ปี */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          <select
-            value={selectedDay}
-            onChange={(e) => setSelectedDay(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#161622] border border-white/[0.09] text-slate-100 text-xs focus:outline-none focus:border-indigo-500/50 transition-all cursor-pointer"
-          >
-            <option value="">วัน (ทั้งหมด)</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={String(d)}>
-                วันที่ {d}
-              </option>
-            ))}
-          </select>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">เข้าใช้งานวันนี้</span>
+            <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-xl font-black text-emerald-600">{stats.todayCount.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400">ครั้งในวันนี้</div>
+        </div>
 
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#161622] border border-white/[0.09] text-slate-100 text-xs focus:outline-none focus:border-indigo-500/50 transition-all cursor-pointer"
-          >
-            <option value="">เดือน (ทั้งหมด)</option>
-            {thaiMonths.map((mName, idx) => (
-              <option key={idx + 1} value={String(idx + 1)}>
-                {mName}
-              </option>
-            ))}
-          </select>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">ผู้ดูแลระบบ (Admin)</span>
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-xl font-black text-indigo-600">{stats.adminCount.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400">ครั้งที่ Admin เข้าระบบ</div>
+        </div>
 
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#161622] border border-white/[0.09] text-slate-100 text-xs focus:outline-none focus:border-indigo-500/50 transition-all cursor-pointer"
-          >
-            <option value="">ปี (ทั้งหมด)</option>
-            {[2026, 2025, 2024].map((y) => (
-              <option key={y} value={String(y)}>
-                พ.ศ. {y + 543} ({y})
-              </option>
-            ))}
-          </select>
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">พนักงานคลัง (Staff)</span>
+            <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-xl font-black text-teal-600">{stats.staffCount.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400">ครั้งที่พนักงานเข้าระบบ</div>
         </div>
       </div>
 
-      {/* Main History Table */}
-      <div className="glass-card rounded-xl border border-white/[0.08] overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-slate-500 text-sm flex flex-col items-center gap-3">
-            <svg
-              className="animate-spin h-6 w-6 text-indigo-400"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
+      {/* Search & Filters Card */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+        {/* Search Box */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span>กำลังโหลดข้อมูลประวัติการนำเข้าสินค้า...</span>
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm flex flex-col items-center gap-2">
+            <span>ค้นหาผู้ใช้งาน</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="ค้นหาชื่อผู้ใช้งาน, อีเมล, บทบาท, IP Address, หรือ อุปกรณ์..."
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+            />
             <svg
-              className="w-10 h-10 text-slate-600 mb-1"
+              className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="font-semibold text-slate-300">
-              {onlyImported
-                ? "ไม่พบประวัติการนำเข้าสินค้าในวันที่เลือก"
-                : "ไม่พบประวัติการเข้าใช้งาน"}
-            </p>
-            <p className="text-xs text-slate-500">
-              {onlyImported
-                ? "ลองเปลี่ยนวัน/เดือน/ปี หรือกดปุ่ม 'ทั้งหมด' เพื่อดูประวัติย้อนหลัง"
-                : "ลองเปลี่ยนคำค้นหาหรือตัวกรอง วัน/เดือน/ปี"}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-white/[0.08] bg-white/[0.02] text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="py-3.5 px-4">พนักงานที่นำเข้า</th>
-                    <th className="py-3.5 px-4">บทบาท</th>
-                    <th className="py-3.5 px-4">เวลาทำรายการ</th>
-                    <th className="py-3.5 px-4">สินค้าที่นำเข้าในรอบนั้น</th>
-                    <th className="py-3.5 px-4 text-center">สถานะ</th>
-                    <th className="py-3.5 px-4 text-right">ดำเนินการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.06]">
-                  {paginatedLogs.map((log) => {
-                    const firstProduct = log.added_products[0];
-                    const extraCount = log.added_products.length - 1;
-                    const totalQtyInSession = log.added_products.reduce(
-                      (sum, p) => sum + (Number(p.quantity) || 0),
-                      0
-                    );
-                    const hasPending = log.added_products.some(
-                      (p) => p.approval_status === "PENDING"
-                    );
-
-                    return (
-                      <tr
-                        key={log.id}
-                        className="hover:bg-white/[0.02] transition-colors group"
-                      >
-                        {/* Employee Info */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-md">
-                              {log.user_name?.charAt(0)?.toUpperCase() || "U"}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
-                                {log.user_name}
-                              </p>
-                              <p className="text-[11px] text-slate-500">
-                                {log.user_email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Role Badge */}
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                              roleColor[log.user_role] || roleColor.VIEWER
-                            }`}
-                          >
-                            {roleLabel[log.user_role] || log.user_role}
-                          </span>
-                        </td>
-
-                        {/* Timestamp */}
-                        <td className="py-3.5 px-4 min-w-[150px]">
-                          <p className="text-slate-200 font-medium">
-                            {formatThaiDate(log.login_at)}
-                          </p>
-                          <p className="text-[10px] text-slate-500">
-                            {getRelativeTime(log.login_at)}
-                          </p>
-                        </td>
-
-                        {/* Imported Products Preview */}
-                        <td className="py-3.5 px-4">
-                          {log.added_products_count > 0 ? (
-                            <div className="space-y-1 max-w-md">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-mono text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
-                                  {firstProduct?.sku || "SKU"}
-                                </span>
-                                <span className="font-semibold text-slate-200 text-xs">
-                                  {firstProduct?.product_name}
-                                </span>
-                                <span className="text-emerald-400 font-mono font-bold text-xs">
-                                  +{firstProduct?.quantity} {firstProduct?.base_unit || "ชิ้น"}
-                                </span>
-                              </div>
-
-                              {extraCount > 0 && (
-                                <p className="text-[11px] text-indigo-300 font-medium">
-                                  และสินค้าอีก <strong className="text-amber-400">{extraCount}</strong> รายการ (รวม <strong className="text-emerald-400">{totalQtyInSession}</strong> ชิ้น)
-                                </p>
-                              )}
-
-                              {firstProduct?.warehouse_name && (
-                                <p className="text-[10px] text-slate-500">
-                                  📍 นำเข้าสู่: <span className="text-slate-300">{firstProduct.warehouse_name}</span>
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-slate-500 text-[11px]">
-                              — ไม่มีรายการนำเข้า —
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Approval Status */}
-                        <td className="py-3.5 px-4 text-center">
-                          {log.added_products_count > 0 ? (
-                            hasPending ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[11px] font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                <span>รอ Admin อนุมัติ</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
-                                <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span>อนุมัติแล้ว</span>
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-slate-600 text-[11px]">-</span>
-                          )}
-                        </td>
-
-                        {/* View Details Button */}
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            id={`btn-view-details-${log.id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 font-semibold text-xs transition-all cursor-pointer hover:scale-105 active:scale-95"
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            <span>ดูรายละเอียด</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Footer Bar */}
-            <div className="px-4 py-3 border-t border-white/[0.08] bg-white/[0.02] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="flex flex-wrap items-center gap-4 text-slate-400">
-                <span>
-                  แสดง {isAll || totalItems === 0 ? totalItems : Math.min((safePage - 1) * limit + 1, totalItems)} - {isAll ? totalItems : Math.min(safePage * limit, totalItems)} จากทั้งหมด <strong className="text-slate-200 font-semibold">{totalItems}</strong> รายการ
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">แสดงทีละ:</span>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg bg-[#161622] border border-white/[0.09] text-slate-200 text-xs focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                  >
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="30">30</option>
-                    <option value="ALL">ทั้งหมด</option>
-                  </select>
-                </div>
-              </div>
-
-              {!isAll && totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    disabled={safePage <= 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="px-3 py-1 rounded-lg bg-white/[0.04] border border-white/[0.09] text-slate-300 disabled:opacity-40 hover:bg-white/[0.08] transition-all cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    ย้อนกลับ
-                  </button>
-                  <span className="px-3 py-1 text-slate-400 font-mono text-xs">
-                    หน้า {safePage} / {totalPages}
-                  </span>
-                  <button
-                    disabled={safePage >= totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="px-3 py-1 rounded-lg bg-white/[0.04] border border-white/[0.09] text-slate-300 disabled:opacity-40 hover:bg-white/[0.08] transition-all cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    ถัดไป
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Employee Import Details Modal */}
-      {selectedLog && (
-        <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedLog(null)}
-        >
-          <div
-            className="glass-card rounded-2xl max-w-2xl w-full border border-white/[0.12] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-md">
-                  {selectedLog.user_name?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-100">
-                    {selectedLog.user_name}
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    {selectedLog.user_email} • {roleLabel[selectedLog.user_role]}
-                  </p>
-                </div>
-              </div>
+            {search && (
               <button
-                onClick={() => setSelectedLog(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 cursor-pointer"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </div>
+            )}
+          </div>
+        </div>
 
-            {/* Session Info Bar */}
-            <div className="px-6 py-3 bg-white/[0.03] border-b border-white/[0.06] flex flex-wrap gap-4 text-xs">
-              <div>
-                <span className="text-slate-500">เวลาทำรายการ: </span>
-                <span className="text-slate-200 font-semibold">
-                  {formatThaiDate(selectedLog.login_at)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">วิธีเข้าใช้งาน: </span>
-                <span className="text-indigo-400 font-semibold">
-                  {selectedLog.login_method === "QR_CODE"
-                    ? "📱 สแกน QR Code"
-                    : "🔑 รหัสผ่าน"}
-                </span>
-              </div>
-            </div>
+        {/* Dropdown Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          {/* Role Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">บทบาท</label>
+            <ScrollableSelect
+              value={selectedRole}
+              options={roleOptions}
+              onChange={(val) => {
+                setSelectedRole(val);
+                setCurrentPage(1);
+              }}
+              title="บทบาท"
+            />
+          </div>
 
-            {/* Modal Body: Products Added */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 text-amber-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
-                  <span>รายการสินค้าที่พนักงานนำเข้าในรอบนี้</span>
-                </h3>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/20">
-                  รวม {selectedLog.added_products.length} รายการ
-                </span>
-              </div>
+          {/* Login Method Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">วิธีการเข้าใช้งาน</label>
+            <ScrollableSelect
+              value={selectedMethod}
+              options={methodOptions}
+              onChange={(val) => {
+                setSelectedMethod(val);
+                setCurrentPage(1);
+              }}
+              title="วิธีการเข้าใช้งาน"
+            />
+          </div>
 
-              {selectedLog.added_products.length === 0 ? (
-                <div className="p-8 text-center rounded-xl bg-white/[0.02] border border-white/[0.06] text-slate-500 text-xs flex flex-col items-center gap-2">
-                  <svg
-                    className="w-8 h-8 text-slate-600 mb-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                    />
-                  </svg>
-                  <p className="font-semibold text-slate-400">
-                    ยังไม่มีข้อมูลการเพิ่มสินค้าจากพนักงานคนนี้ในรอบนี้
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedLog.added_products.map((item, idx) => (
-                    <div
-                      key={item.product_id + idx}
-                      className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-indigo-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
-                            {item.sku}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-100">
-                            {item.product_name}
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                            {item.category}
-                          </span>
-                          {item.approval_status === "POSTED" && (
-                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
-                              <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>อนุมัติแล้ว</span>
-                            </span>
-                          )}
-                          {item.approval_status === "PENDING" && (
-                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                              <span>รอ Admin อนุมัติ</span>
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-400">
-                          {item.description || "รับสินค้าเข้าคลัง"}
-                        </p>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1">
-                          <span>จัดเก็บที่: <strong className="text-slate-300 font-normal">{item.warehouse_name}</strong></span>
-                          <span>•</span>
-                          <span>เวลาเพิ่ม: <strong className="text-slate-300 font-normal">{formatThaiDate(item.created_at)}</strong></span>
-                        </div>
-                      </div>
+          {/* Date Range Preset */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</label>
+            <ScrollableSelect
+              value={selectedDateRange}
+              options={dateRangeOptions}
+              onChange={handleDateRangeChange}
+              title="ช่วงเวลา"
+            />
+          </div>
+        </div>
 
-                      <div className="flex items-center gap-3 self-end sm:self-center">
-                        <div className="text-right">
-                          <span className="text-xs text-slate-400 block">จำนวน</span>
-                          <span className="text-sm font-bold text-emerald-400 font-mono">
-                            +{item.quantity} {item.base_unit}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Filter Summary & Reset Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <div>
+            พบทั้งหมด <span className="font-bold text-slate-800">{filteredLogs.length.toLocaleString()}</span> รายการ
+            {filteredLogs.length !== logs.length && (
+              <span className="ml-1 text-slate-400">(จากประวัติทั้งหมด {logs.length.toLocaleString()} ครั้ง)</span>
+            )}
+          </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-white/[0.08] bg-white/[0.02] flex justify-end">
+          <div className="flex items-center gap-3">
+            {(search || selectedRole !== "ALL" || selectedMethod !== "ALL" || selectedDateRange !== "TODAY") && (
               <button
-                onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 text-xs font-medium transition-all cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedRole("ALL");
+                  setSelectedMethod("ALL");
+                  handleDateRangeChange("TODAY");
+                }}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-bold hover:underline cursor-pointer"
               >
-                ปิดหน้าต่าง
+                ล้างตัวกรอง
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Login Logs Table Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+            <h2 className="text-sm font-extrabold text-slate-900">รายชื่อผู้เข้าสู่ระบบ</h2>
+            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+              {filteredLogs.length} รายการ
+            </span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center space-y-3">
+            <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-semibold text-slate-500">กำลังโหลดประวัติการเข้าสู่ระบบ...</p>
+          </div>
+        ) : paginatedLogs.length === 0 ? (
+          <div className="p-12 text-center space-y-2 text-slate-400">
+            <span className="text-4xl">👤</span>
+            <h3 className="text-sm font-bold text-slate-700">ไม่พบประวัติการเข้าสู่ระบบ</h3>
+            <p className="text-xs text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[750px]">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold">
+                  <th className="py-3.5 px-4">ผู้ใช้งาน</th>
+                  <th className="py-3.5 px-4">บทบาท</th>
+                  <th className="py-3.5 px-4">เวลาเข้าสู่ระบบ</th>
+                  <th className="py-3.5 px-4">วิธีการเข้าใช้งาน</th>
+                  <th className="py-3.5 px-4">IP Address</th>
+                  <th className="py-3.5 px-4">อุปกรณ์ / เบราว์เซอร์</th>
+                  <th className="py-3.5 px-4 text-center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedLogs.map((log) => {
+                  const roleKey = (log.user_role || "WAREHOUSE_STAFF").toUpperCase();
+                  const roleTxt = roleLabel[roleKey] || log.user_role;
+                  const roleBadge = roleBadgeColor[roleKey] || "bg-slate-100 text-slate-700 border-slate-200";
+                  const avatarBg = avatarColor[roleKey] || "bg-slate-600 text-white";
+                  const { browser, os } = parseUserAgent(log.user_agent);
+
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-50/70 transition-colors group">
+                      {/* User Info */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${avatarBg}`}>
+                            {log.user_name?.slice(0, 1) || "U"}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 text-xs">
+                              {log.user_name || "ไม่ทราบผู้ใช้งาน"}
+                            </div>
+                            {log.user_email && (
+                              <div className="text-[11px] text-slate-400 font-medium">
+                                {log.user_email}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Role Badge */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${roleBadge}`}>
+                          {roleTxt}
+                        </span>
+                      </td>
+
+                      {/* Login Time */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-bold text-slate-800 text-xs">
+                          {formatThaiDate(log.login_at)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          {getRelativeTime(log.login_at)}
+                        </div>
+                      </td>
+
+                      {/* Login Method */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {log.login_method === "QR_CODE" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-bold">
+                            <span>📱</span>
+                            <span>สแกน QR Code</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">
+                            <span>🔑</span>
+                            <span>รหัสผ่าน</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* IP Address */}
+                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600">
+                        <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                          {log.ip_address || "127.0.0.1"}
+                        </span>
+                      </td>
+
+                      {/* Device & Browser */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+                          <span>{browser}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-slate-500 font-normal">{os}</span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span>เข้าสู่ระบบสำเร็จ</span>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {!loading && filteredLogs.length > 0 && (
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <span>แสดง</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:border-indigo-500"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span>รายการต่อหน้า (ทั้งหมด {filteredLogs.length} รายการ)</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+              >
+                ← ก่อนหน้า
+              </button>
+
+              <span className="px-3 py-1.5 font-bold text-slate-800">
+                {currentPage} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+              >
+                ถัดไป →
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

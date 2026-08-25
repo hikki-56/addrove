@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     });
 
     const readWarehouseProducts = async (whId: string, sheetName: string) => {
-      const rows = await readSheet(sheetName, "A2:Z").catch(() => []);
+      const rows = await readSheet(sheetName, "A2:I").catch(() => []);
       if (!rows || rows.length === 0) return [];
       const listMap = new Map<string, any>();
 

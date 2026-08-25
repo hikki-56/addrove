@@ -64,49 +64,103 @@ export interface ParsedTransferMetadata {
 export function parseTransferMetadata(note?: string | null): ParsedTransferMetadata {
   if (!note || typeof note !== "string") return {};
 
-  const trimmed = note.trim();
-  if (!trimmed) return {};
+  const raw = note.trim();
+  if (!raw) return {};
 
-  // 1. Try direct JSON parsing
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+  // Helper to attempt parsing JSON
+  const tryParse = (str: string): ParsedTransferMetadata | null => {
+    if (!str) return null;
     try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === "object") return parsed;
+      // Direct parse
+      if ((str.startsWith("{") && str.endsWith("}")) || (str.startsWith("[") && str.endsWith("]"))) {
+        const parsed = JSON.parse(str);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      }
+      // Substring parse
+      const firstBrace = str.indexOf("{");
+      const lastBrace = str.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        const parsed = JSON.parse(str.slice(firstBrace, lastBrace + 1));
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      }
     } catch {}
+    return null;
+  };
+
+  // 1. Direct parse
+  let res = tryParse(raw);
+  if (res) return res;
+
+  // 2. Unescape quotes (handles """ -> ", "" -> ", \" -> ")
+  const unescapeQuotes = (s: string) =>
+    s
+      .replace(/^"+|"+$/g, "")
+      .replace(/\\"/g, '"')
+      .replace(/"""+/g, '"')
+      .replace(/""/g, '"');
+
+  res = tryParse(unescapeQuotes(raw));
+  if (res) return res;
+
+  // 3. Double-stringified JSON attempt
+  try {
+    const onceParsed = JSON.parse(raw);
+    if (typeof onceParsed === "string") {
+      res = tryParse(onceParsed) || tryParse(unescapeQuotes(onceParsed));
+      if (res) return res;
+    } else if (onceParsed && typeof onceParsed === "object") {
+      return onceParsed;
+    }
+  } catch {}
+
+  // 4. Robust Regex extraction for partially malformed or quote-escaped strings
+  const result: ParsedTransferMetadata = {};
+
+  const matchField = (patterns: string[]): string | undefined => {
+    for (const p of patterns) {
+      const re = new RegExp(`["'\\\\]*${p}["'\\\\]*\\s*[:=]\\s*["'\\\\]*([^"',}\\n\\]]+)["'\\\\]*`, "i");
+      const m = raw.match(re);
+      if (m && m[1]) {
+        const val = m[1].trim().replace(/^["'\\]+|["'\\]+$/g, "");
+        if (val && val !== "null" && val !== "undefined") return val;
+      }
+    }
+    return undefined;
+  };
+
+  result.sku = matchField(["sku", "รหัสสินค้า"]);
+  result.product_id = matchField(["product_id", "รหัส"]);
+  result.barcode = matchField(["barcode", "บาร์โค้ด"]);
+  result.product_name = matchField(["product_name", "ชื่อสินค้า", "สินค้า"]);
+  result.base_unit = matchField(["base_unit", "หน่วย"]);
+  result.from_warehouse_id = matchField(["from_warehouse_id", "from_wh", "จากโกดัง", "ย้ายจาก"]);
+  result.to_warehouse_id = matchField(["to_warehouse_id", "to_wh", "ไปโกดัง", "ปลายทาง"]);
+  result.from_location_id = matchField(["from_location_id", "from_loc", "จากตำแหน่ง"]);
+  result.to_location_id = matchField(["to_location_id", "to_loc", "ไปตำแหน่ง"]);
+  result.moved_by = matchField(["moved_by", "assigned_to_name", "คนไปย้ายสินค้า", "คนเบิก"]);
+  result.assigned_to_name = matchField(["assigned_to_name", "moved_by"]);
+  result.assigned_to_user_id = matchField(["assigned_to_user_id"]);
+  result.created_by = matchField(["created_by"]);
+  result.created_by_name = matchField(["created_by_name"]);
+  result.idempotency_key = matchField(["idempotency_key"]);
+  result.current_step_text = matchField(["current_step_text"]);
+
+  const qtyStr = matchField(["qty", "จำนวน"]);
+  if (qtyStr && !isNaN(Number(qtyStr))) {
+    result.qty = Number(qtyStr);
   }
 
-  // 2. Try substring JSON parsing (handles wrapped quotes, trailing text, etc.)
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      const parsed = JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
-      if (parsed && typeof parsed === "object") return parsed;
-    } catch {}
+  const stepStr = matchField(["current_step"]);
+  if (stepStr && !isNaN(Number(stepStr))) {
+    result.current_step = Number(stepStr);
   }
 
-  // 3. Fallback for legacy key-value notes
-  const result: ParsedTransferMetadata = { original_note: trimmed };
-  const skuMatch = trimmed.match(/(?:รหัสสินค้า|sku):\s*([^|,\n]+)/i);
-  if (skuMatch) result.sku = skuMatch[1].trim();
-
-  const barcodeMatch = trimmed.match(/(?:บาร์โค้ด|barcode):\s*([^|,\n]+)/i);
-  if (barcodeMatch) result.barcode = barcodeMatch[1].trim();
-
-  const nameMatch = trimmed.match(/(?:ชื่อสินค้า|product_name|สินค้า):\s*([^|,\n]+)/i);
-  if (nameMatch) result.product_name = nameMatch[1].trim();
-
-  const qtyMatch = trimmed.match(/(?:จำนวน|qty):\s*(\d+(?:\.\d+)?)/i);
-  if (qtyMatch) result.qty = Number(qtyMatch[1]);
-
-  const fromMatch = trimmed.match(/(?:ย้ายจาก|จากโกดัง|from_wh|จาก):\s*([^|,\n]+)/i);
-  if (fromMatch) result.from_warehouse_id = fromMatch[1].trim();
-
-  const toMatch = trimmed.match(/(?:ไปโกดัง|ปลายทาง|to_wh|ไป):\s*([^|,\n]+)/i);
-  if (toMatch) result.to_warehouse_id = toMatch[1].trim();
-
-  const movedByMatch = trimmed.match(/(?:คนไปย้ายสินค้า|มอบหมาย|ย้ายโดย|คนเบิก):\s*([^|,\n]+)/i);
-  if (movedByMatch) result.moved_by = movedByMatch[1].trim();
+  const noteText = matchField(["original_note", "note", "หมายเหตุ"]);
+  if (noteText && !noteText.startsWith("{")) {
+    result.original_note = noteText;
+  } else if (!raw.includes("{") && !raw.includes("from_warehouse_id")) {
+    result.original_note = raw;
+  }
 
   return result;
 }
@@ -115,11 +169,18 @@ const STORAGE_KEY = "stockify_transfer_notifications";
 
 export function getDisplayProductName(t?: { product_name?: string; note?: string; sku?: string; product_id?: string }): string {
   if (!t) return "รายการย้ายสินค้า";
-  const str = t.product_name || t.note || "";
-  let cleaned = str.replace(/คนไปย้ายสินค้า.*?(?=\||$)/gi, "").replace(/^[|\s]+|[|\s]+$/g, "").trim();
-  if (!cleaned && t.note) {
-    cleaned = t.note.replace(/คนไปย้ายสินค้า.*?(?=\||$)/gi, "").replace(/^[|\s]+|[|\s]+$/g, "").trim();
+  let str = t.product_name || "";
+
+  if (!str || str.startsWith("{") || str.includes('"""') || str === "รายการเบิกสินค้า" || str === "รายการย้ายสินค้า") {
+    if (t.note) {
+      const meta = parseTransferMetadata(t.note);
+      if (meta.product_name) {
+        str = meta.product_name;
+      }
+    }
   }
+
+  let cleaned = str.replace(/คนไปย้ายสินค้า.*?(?=\||$)/gi, "").replace(/^[|\s]+|[|\s]+$/g, "").trim();
   if (!cleaned && (t.sku || t.product_id)) {
     cleaned = (t.sku || t.product_id || "").replace(/^prod-/, "");
   }

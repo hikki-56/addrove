@@ -66,19 +66,14 @@ function locationToRow(l: Location): (string | boolean)[] {
 }
 export class SheetsLocationRepository implements ILocationRepository {
   async findAll(warehouseId?: string): Promise<Location[]> {
-    const [locRows1, locRows2, locRows3, shelfRows, shelvesTableRows] = await Promise.all([
+    const [locRows, shelfRows] = await Promise.all([
       readSheet(SHEETS.LOCATIONS, "A2:H").catch(() => []),
-      readSheet("LOCATIONS", "A2:H").catch(() => []),
-      readSheet("LocationsTable", "A2:H").catch(() => []),
       readSheet(SHEETS.SHELVES, "A2:F").catch(() => []),
-      readSheet("ShelvesTable", "A2:F").catch(() => []),
     ]);
 
-    const locRows = locRows1.length > 0 ? locRows1 : locRows2.length > 0 ? locRows2 : locRows3;
-    const allShelves = [...(shelfRows || []), ...(shelvesTableRows || [])];
     const shelfMapByLocId = new Map<string, { shelf_code: string; shelf_name: string; shelf_level: string }>();
 
-    for (const r of allShelves) {
+    for (const r of shelfRows) {
       if (!r || !r[1]) continue;
       // Col 0: slf-id, Col 1: loc-id, Col 2: shelf_code (SH-A1-L1), Col 3: shelf_name (ชั้นที่ 1), Col 4: shelf_level (1)
       const locId = r[1].trim();

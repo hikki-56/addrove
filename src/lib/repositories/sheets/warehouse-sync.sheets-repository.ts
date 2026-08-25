@@ -49,7 +49,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
     try {
       const sheetName = getWarehouseSheetName(warehouseId);
       clearSheetCache(sheetName);
-      const rows = await readSheet(sheetName, "A2:Z", { forceFresh: true });
+      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
       if (!rows || rows.length === 0) {
         console.warn(`[SheetsWarehouseSync] Sheet ${sheetName} returned empty rows for ${productId}`);
         return null;
@@ -207,7 +207,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
     try {
       const sheetName = getWarehouseSheetName(warehouseId);
       clearSheetCache(sheetName);
-      const rows = await readSheet(sheetName, "A2:Z", { forceFresh: true });
+      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
 
       const targetSku = cleanSkuCode(product.sku);
       const targetBarcode = cleanSkuCode(product.barcode);
@@ -294,7 +294,7 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
     try {
       const sheetName = getWarehouseSheetName(warehouseId);
       clearSheetCache(sheetName);
-      const rows = await readSheet(sheetName, "A2:Z", { forceFresh: true });
+      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
       if (!rows || rows.length === 0) {
         console.warn(`[SheetsWarehouseSync] Sheet ${sheetName} returned empty rows for ${productId}`);
         return;

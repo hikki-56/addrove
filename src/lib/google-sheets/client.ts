@@ -52,6 +52,9 @@ export const SHEETS = {
   EXPRESS_ISSUE: "เบิกสินค้าเข้าExpress",
   EXPRESS_RECEIVE: "รับสินค้าเข้าExpress",
   EXPRESS_TRANSFER: "ย้ายสินค้าเข้าExpress",
+  BOM: "BOM",
+  BOM_HEADERS: "BOM_Headers",
+  BOM_ITEMS: "BOM_Items",
 } as const;
 
 // Helper to map warehouse ID to Google Sheets tab name (e.g. wh-5 -> โกดัง5)
@@ -310,8 +313,9 @@ export async function readSheet(
   }
 
   const fetchFreshRows = async (): Promise<string[][]> => {
-    const safeSheet = sheetName.startsWith("'") ? sheetName : `'${sheetName.replace(/'/g, "")}'`;
-    const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}`;
+    const cleanSheet = sheetName.replace(/^'|'$/g, "").trim();
+    const safeSheet = cleanSheet.includes(" ") || cleanSheet.includes("-") ? `'${cleanSheet}'` : cleanSheet;
+    const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}!A1:Z5000`;
 
     if (process.env.GOOGLE_API_KEY) {
       try {
@@ -320,16 +324,27 @@ export async function readSheet(
         if (res.ok) {
           const json = await res.json();
           let googleRows = (json.values as string[][]) ?? [];
-          if (
-            googleRows.length > 0 &&
-            (googleRows[0][0]?.includes("_id") ||
-              googleRows[0][0]?.toLowerCase().includes("sku") ||
-              googleRows[0][0]?.includes("รหัสสินค้า") ||
-              googleRows[0][0]?.includes("ID"))
-          ) {
-            googleRows = googleRows.slice(1);
+          if (googleRows.length > 0) {
+            const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
+            const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
+            if (
+              firstCell.includes("_id") ||
+              firstCell.includes("sku") ||
+              firstCell.includes("รหัส") ||
+              firstCell.includes("ลำดับ") ||
+              firstCell.includes("header") ||
+              firstCell.includes("bom") ||
+              firstCell.includes("id") ||
+              secondCell.includes("sku") ||
+              secondCell.includes("รหัส") ||
+              secondCell.includes("barcode")
+            ) {
+              googleRows = googleRows.slice(1);
+            }
           }
           return googleRows;
+        } else {
+          console.warn(`[GoogleSheets API Key] HTTP ${res.status} for ${url}:`, await res.text());
         }
       } catch (e) {
         console.warn(`[GoogleSheets API Key] ${sheetName} read failed:`, e);
@@ -485,6 +500,45 @@ export async function batchUpdateRows(
   sheetName: string,
   updates: { rowNumber: number; values: (string | number | boolean)[] }[]
 ): Promise<void> {
+  if (updates.length === 0) return;
+  clearSheetCache(sheetName);
+
+  if (updates.length === 1) {
+    await updateRow(sheetName, updates[0].rowNumber, updates[0].values);
+    return;
+  }
+
+  if (hasServiceAccountCredentials()) {
+    const sheets = getSheetsClient();
+    const possibleSheetNames = getPossibleSheetNames(sheetName);
+
+    let lastBatchErr: unknown = null;
+    for (const nameCandidate of possibleSheetNames) {
+      try {
+        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+        const data = updates.map(({ rowNumber, values }) => ({
+          range: `${safeName}!A${rowNumber}:${columnLetter(values.length)}${rowNumber}`,
+          values: [values],
+        }));
+
+        await withRetry(() =>
+          sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            requestBody: {
+              valueInputOption: "USER_ENTERED",
+              data,
+            },
+          })
+        );
+        return;
+      } catch (candidateErr) {
+        lastBatchErr = candidateErr;
+      }
+    }
+    console.warn(`[batchUpdateRows Service Account Failed for ${sheetName}]:`, lastBatchErr);
+  }
+
+  // Fallback if Apps Script or Service Account batch fails
   for (const { rowNumber, values } of updates) {
     await updateRow(sheetName, rowNumber, values);
   }

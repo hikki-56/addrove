@@ -623,6 +623,65 @@ function doAtomicStockOperation(parsed) {
   }
 }
 
+// ---- Python / Custom Direct Import Handler ----
+
+/**
+ * Handle direct data insertion from Python or external scripts
+ * without requiring HMAC signature envelope, while still protecting
+ * with LockService.
+ */
+function handleDirectPythonImport(body, lock) {
+  var hasLock = lock.tryLock(30000);
+  if (!hasLock) {
+    return errorResponse('Lock timeout: Could not acquire script lock within 30 seconds', 'LOCK_TIMEOUT');
+  }
+
+  try {
+    var sheetName = body.sheetName || 'test003';
+    var rows = body.rows || body.data || [];
+    var clearSheet = !!body.clearSheet;
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(sheetName);
+
+    // If sheet tab does not exist, create it
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+    }
+
+    // If clearSheet is requested, clear sheet
+    if (clearSheet) {
+      sheet.clear();
+    }
+
+    // Insert rows
+    if (rows && rows.length > 0) {
+      var numRows = rows.length;
+      var numCols = rows[0].length;
+      var lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow + 1, 1, numRows, numCols).setValues(rows);
+      SpreadsheetApp.flush();
+    }
+
+    return jsonResponse({
+      status: 'success',
+      success: true,
+      sheet: sheetName,
+      count: rows.length,
+      lastRow: sheet.getLastRow()
+    });
+  } catch (err) {
+    return jsonResponse({
+      status: 'error',
+      success: false,
+      message: err.toString(),
+      error: err.toString()
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ---- Request Handler ----
 
 function doPost(e) {
@@ -638,13 +697,26 @@ function doPost(e) {
       return errorResponse('Request envelope is too large', 'PAYLOAD_TOO_LARGE');
     }
 
-    // Parse envelope
-    var envelope;
+    // Parse request body
+    var body;
     try {
-      envelope = JSON.parse(e.postData.contents);
+      body = JSON.parse(e.postData.contents);
     } catch (parseErr) {
       return errorResponse('Invalid JSON in request body', 'INVALID_JSON');
     }
+
+    // ------------------------------------------------------------------
+    // Mode 1: Python / Direct Batch Import (No HMAC Envelope)
+    // Runs when receiving raw { sheetName, rows, data, ... }
+    // ------------------------------------------------------------------
+    if (body && !body.signature && (body.rows !== undefined || body.data !== undefined || body.sheetName !== undefined)) {
+      return handleDirectPythonImport(body, lock);
+    }
+
+    // ------------------------------------------------------------------
+    // Mode 2: Stockify App Core Operations (HMAC-SHA256 Signed Envelope)
+    // ------------------------------------------------------------------
+    var envelope = body;
 
     // Verify HMAC signature (fail closed — reject unsigned/invalid)
     var parsed;

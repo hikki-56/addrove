@@ -71,14 +71,20 @@ export class SheetsStockSummaryRepository implements IStockSummaryRepository {
           else aggregated.set(key, { ...change });
         }
 
+        // Build fast lookup Map from existing rows: key -> rowIndex
+        const rowIndexMap = new Map<string, number>();
+        rows.forEach((r, idx) => {
+          if (r[0]) {
+            const key = `${r[0]}|${r[1]}|${r[2]}`;
+            rowIndexMap.set(key, idx);
+          }
+        });
+
         for (const change of aggregated.values()) {
-          const idx = rows.findIndex(
-            (r) =>
-              r[0] === change.productId &&
-              r[1] === change.warehouseId &&
-              r[2] === change.locationId
-          );
-          if (idx !== -1) {
+          const key = `${change.productId}|${change.warehouseId}|${change.locationId}`;
+          const idx = rowIndexMap.get(key);
+
+          if (idx !== undefined && idx !== -1) {
             const current = parseFloat(rows[idx][3] ?? "0") || 0;
             const newQty = current + change.delta;
             rows[idx][3] = String(newQty);

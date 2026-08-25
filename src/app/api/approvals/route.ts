@@ -13,6 +13,7 @@ export const revalidate = 0;
 
 import { getAuthSession } from "@/lib/auth-session";
 import { getDocumentStatus } from "@/lib/document-status-store";
+import { expressStatusMap } from "@/app/api/express-import/status/route";
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,6 +38,8 @@ export async function GET(req: NextRequest) {
       created_by: string;
       created_at: string;
       target_sheet: string;
+      express_status?: string;
+      express_status_text?: string;
       rows: Array<[string, string, string, string, number, string, string, string]>;
     }> = [];
 
@@ -73,7 +76,7 @@ export async function GET(req: NextRequest) {
         (targetStatus === "REJECTED" && (docStatus === "REJECTED" || docStatus === "REJECT" || docStatus === "CANCELLED"));
 
       if (matchesStatus) {
-        let parsedPayload = { warehouse_id: "wh-1", target_sheet: "โกดัง1", rows: [] as Array<any[]> };
+        let parsedPayload: { warehouse_id?: string; target_sheet?: string; rows?: any[][]; express_status?: string } = { warehouse_id: "wh-1", target_sheet: "โกดัง1", rows: [] };
         try {
           if (doc.note && doc.note.startsWith("{")) {
             parsedPayload = JSON.parse(doc.note);
@@ -113,6 +116,11 @@ export async function GET(req: NextRequest) {
           return itemRow;
         });
 
+        const docKey = (doc.document_no || "").trim().toLowerCase();
+        const docIdKey = (doc.document_id || "").trim().toLowerCase();
+        const memStatus = (docKey && expressStatusMap.get(docKey)?.status) || (docIdKey && expressStatusMap.get(docIdKey)?.status);
+        const effectiveExpressStatus = memStatus || parsedPayload.express_status || "PENDING";
+
         resultDocs.push({
           document_id: doc.document_id,
           document_no: doc.document_no || "",
@@ -122,6 +130,8 @@ export async function GET(req: NextRequest) {
           created_by: doc.created_by || "Staff",
           created_at: doc.created_at || new Date().toISOString(),
           target_sheet: parsedPayload.target_sheet || "โกดัง1",
+          express_status: effectiveExpressStatus,
+          express_status_text: effectiveExpressStatus === "IMPORTED" ? "นำเข้า Express แล้ว" : "รอนำเข้า Express",
           rows: resolvedRows as any,
         });
       }

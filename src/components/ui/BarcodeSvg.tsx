@@ -12,9 +12,10 @@ interface BarcodeSvgProps {
   className?: string;
   fontSize?: number;
   textPosition?: "top" | "bottom";
+  disableZoom?: boolean;
 }
 
-export default function BarcodeSvg({
+function BarcodeSvgComponent({
   value,
   width = 1.4,
   height = 42,
@@ -22,16 +23,21 @@ export default function BarcodeSvg({
   className = "",
   fontSize = 12,
   textPosition = "bottom",
+  disableZoom = false,
 }: BarcodeSvgProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const zoomCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const cleanValue = (to8DigitBarcode(value) || value || "").trim();
+  // CODE128 requires printable ASCII (32-126)
+  const isAscii = /^[\x20-\x7E]+$/.test(cleanValue);
+  const asciiValue = isAscii ? cleanValue : cleanValue.replace(/[^\x20-\x7E]/g, "").trim();
+  const renderableValue = isAscii ? cleanValue : (asciiValue.length >= 2 ? asciiValue : "");
 
   useEffect(() => {
-    if (!canvasRef.current || !cleanValue) return;
+    if (!canvasRef.current || !renderableValue) return;
     try {
-      JsBarcode(canvasRef.current, cleanValue, {
+      JsBarcode(canvasRef.current, renderableValue, {
         format: "CODE128",
         width: Math.max(1.3, width),
         height: Math.max(38, height),
@@ -45,15 +51,15 @@ export default function BarcodeSvg({
         background: "#FFFFFF",
         lineColor: "#000000",
       });
-    } catch (err) {
-      console.error("Barcode rendering error:", err);
+    } catch {
+      // Gracefully ignore barcode render errors for non-standard inputs
     }
-  }, [cleanValue, width, height, showText, fontSize, textPosition]);
+  }, [renderableValue, width, height, showText, fontSize, textPosition]);
 
   useEffect(() => {
-    if (!isZoomed || !zoomCanvasRef.current || !cleanValue) return;
+    if (!isZoomed || !zoomCanvasRef.current || !renderableValue) return;
     try {
-      JsBarcode(zoomCanvasRef.current, cleanValue, {
+      JsBarcode(zoomCanvasRef.current, renderableValue, {
         format: "CODE128",
         width: 3.5,
         height: 125,
@@ -67,10 +73,10 @@ export default function BarcodeSvg({
         background: "#FFFFFF",
         lineColor: "#000000",
       });
-    } catch (err) {
-      console.error("Zoom barcode rendering error:", err);
+    } catch {
+      // Gracefully ignore zoom barcode render errors
     }
-  }, [isZoomed, cleanValue]);
+  }, [isZoomed, renderableValue]);
 
   const hasCustomSize = className.includes("w-") || className.includes("h-") || className.includes("border-0");
   const sizeClasses = hasCustomSize ? "" : "w-[200px] min-w-[200px] max-w-[200px] h-[72px]";
@@ -86,9 +92,13 @@ export default function BarcodeSvg({
   return (
     <>
       <div
-        onClick={() => setIsZoomed(true)}
-        title="🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"
-        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs hover:border-indigo-400 hover:shadow-md transition-all cursor-zoom-in select-none overflow-hidden ${sizeClasses} ${className}`}
+        onClick={() => {
+          if (!disableZoom) setIsZoomed(true);
+        }}
+        title={disableZoom ? "" : "🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"}
+        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs ${
+          disableZoom ? "" : "hover:border-indigo-400 hover:shadow-md cursor-zoom-in"
+        } transition-all select-none overflow-hidden ${sizeClasses} ${className}`}
       >
         <canvas
           ref={canvasRef}
@@ -100,13 +110,15 @@ export default function BarcodeSvg({
             margin: "0 auto",
           }}
         />
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[9px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
-          <span>🔍</span> ขยาย
-        </div>
+        {!disableZoom && (
+          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[9px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
+            <span>🔍</span> ขยาย
+          </div>
+        )}
       </div>
 
       {/* Giant Fullscreen Barcode Modal */}
-      {isZoomed && (
+      {!disableZoom && isZoomed && (
         <div
           onClick={() => setIsZoomed(false)}
           className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-fade-in"
@@ -171,3 +183,6 @@ export default function BarcodeSvg({
     </>
   );
 }
+
+const BarcodeSvg = React.memo(BarcodeSvgComponent);
+export default BarcodeSvg;

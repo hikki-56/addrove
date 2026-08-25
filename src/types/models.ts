@@ -240,3 +240,45 @@ export interface LoginLog {
   ip_address?: string;
   user_agent?: string;
 }
+
+// ------ BOM (Bill of Materials) ------
+export interface BomItem {
+  bom_id: string;
+  fg_sku: string;
+  fg_barcode: string;
+  fg_name: string;
+  fg_unit: string;
+  base_qty: number;
+  rm_sku: string;
+  rm_barcode: string;
+  rm_name: string;
+  rm_wh: string;
+  rm_qty_required: number;
+  rm_unit: string;
+  waste_percentage: number;
+  note: string;
+  active: boolean;
+  updated_at: string;
+}
+
+export interface BomFormula {
+  bom_id: string;
+  fg_sku: string;
+  fg_barcode: string;
+  fg_name: string;
+  fg_unit: string;
+  base_qty: number;
+  active: boolean;
+  updated_at: string;
+  items: Array<{
+    rm_sku: string;
+    rm_barcode: string;
+    rm_name: string;
+    rm_wh: string;
+    rm_qty_required: number;
+    rm_unit: string;
+    waste_percentage: number;
+    note: string;
+  }>;
+}
+
