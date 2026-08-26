@@ -1,4 +1,4 @@
-const FALLBACK_PRODUCTION_ORIGIN = "https://addrove-app.vercel.app";
+const FALLBACK_PRODUCTION_ORIGIN = "https://addrove.vercel.app";
 
 function parseHttpOrigin(value: string | undefined): string | null {
   if (!value) return null;

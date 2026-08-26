@@ -4,7 +4,7 @@ import {
 } from "@/app/(dashboard)/warehouses/qr/_lib/warehouse-qr-url";
 
 describe("warehouse QR URL resolution", () => {
-  const productionUrl = "https://addrove-app.vercel.app";
+  const productionUrl = "https://addrove.vercel.app";
 
   test("replaces a Vercel preview URL with the production URL", () => {
     expect(
