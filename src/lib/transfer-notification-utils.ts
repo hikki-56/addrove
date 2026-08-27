@@ -1,4 +1,4 @@
-import { normalizeWarehouseId, getWarehouseName } from "./warehouse-utils";
+import { normalizeWarehouseId, getWarehouseName, detectWarehouseFromLocation, getWarehouseDisplayName } from "./warehouse-utils";
 
 export interface TransferNotification {
   id: string;
@@ -144,6 +144,25 @@ export function parseTransferMetadata(note?: string | null): ParsedTransferMetad
   result.created_by_name = matchField(["created_by_name"]);
   result.idempotency_key = matchField(["idempotency_key"]);
   result.current_step_text = matchField(["current_step_text"]);
+
+  // Detect route delimiter e.g. "โกดัง1 -> โกดัง2", "โกดัง 1 ➔ โกดัง 2", "wh-01 -> wh-02", "ย้ายจาก โกดัง 1 ไป โกดัง 2"
+  if (!result.from_warehouse_id || !result.to_warehouse_id) {
+    const routeMatch = raw.match(/(?:ย้ายจาก\s*)?(โกดัง\s*[1-6]|สำนักงานใหญ่|wh-?0?[1-6])\s*(?:->|➔|→|ไป|to|\/)\s*(โกดัง\s*[1-6]|สำนักงานใหญ่|wh-?0?[1-6])/i);
+    if (routeMatch) {
+      if (!result.from_warehouse_id) result.from_warehouse_id = normalizeWarehouseId(routeMatch[1]);
+      if (!result.to_warehouse_id) result.to_warehouse_id = normalizeWarehouseId(routeMatch[2]);
+    }
+  }
+
+  // Deduce from location IDs if still missing
+  if (!result.from_warehouse_id && result.from_location_id) {
+    const inferred = detectWarehouseFromLocation(result.from_location_id);
+    if (inferred) result.from_warehouse_id = inferred;
+  }
+  if (!result.to_warehouse_id && result.to_location_id) {
+    const inferred = detectWarehouseFromLocation(result.to_location_id);
+    if (inferred) result.to_warehouse_id = inferred;
+  }
 
   const qtyStr = matchField(["qty", "จำนวน"]);
   if (qtyStr && !isNaN(Number(qtyStr))) {
@@ -610,8 +629,18 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
         ""
       ).trim();
 
-      const rawFromWh = String(meta.from_warehouse_id || doc.from_warehouse_id || "wh-01");
-      const rawToWh = String(meta.to_warehouse_id || doc.to_warehouse_id || "wh-02");
+      const rawFromWh = String(
+        meta.from_warehouse_id ||
+        doc.from_warehouse_id ||
+        (meta.from_location_id ? detectWarehouseFromLocation(meta.from_location_id) : "") ||
+        "wh-01"
+      );
+      const rawToWh = String(
+        meta.to_warehouse_id ||
+        doc.to_warehouse_id ||
+        (meta.to_location_id ? detectWarehouseFromLocation(meta.to_location_id) : "") ||
+        "wh-02"
+      );
       const fromWhId = normalizeWarehouseId(rawFromWh);
       const toWhId = normalizeWarehouseId(rawToWh);
       const qty = Number(meta.qty !== undefined && meta.qty !== null ? meta.qty : (doc.qty || 1));

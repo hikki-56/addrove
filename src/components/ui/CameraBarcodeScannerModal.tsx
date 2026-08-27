@@ -214,23 +214,23 @@ export default function CameraBarcodeScannerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md fade-in">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-xs fade-in">
       {/* Hidden container required by Html5Qrcode.scanFile */}
       <div id="html5qr-temp-file-reader" className="hidden" />
 
-      <div className="relative w-full max-w-lg bg-[#111118] border border-white/[0.12] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-white/[0.08] bg-white/[0.02] gap-2">
+        <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-200 bg-slate-50 gap-2">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-xs sm:text-sm font-bold text-white leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">สแกนกล้องสด หรือ ถ่ายรูปบาร์โค้ดด่วน</p>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
+              <p className="text-[10px] sm:text-xs text-slate-500 truncate">สแกนกล้องสด หรือ ถ่ายรูปบาร์โค้ดด่วน</p>
             </div>
           </div>
 
@@ -238,20 +238,20 @@ export default function CameraBarcodeScannerModal({
             <button
               type="button"
               onClick={() => setIsContinuous(!isContinuous)}
-              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-semibold flex items-center gap-1 sm:gap-1.5 transition-all border cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all border cursor-pointer ${
                 isContinuous
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm"
-                  : "bg-white/[0.04] text-slate-400 border-white/10"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs"
+                  : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
               }`}
               title={isContinuous ? "โหมดสแกนต่อเนื่อง (สแกนหลายๆ บาร์โค้ดได้โดยไม่ต้องปิดกล้อง)" : "โหมดสแกนทีละครั้ง"}
             >
-              <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isContinuous ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+              <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isContinuous ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
               <span>{isContinuous ? "⚡ ต่อเนื่อง" : "ทีละครั้ง"}</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+              className="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -261,23 +261,23 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Video Camera Viewport */}
-        <div className="relative bg-black flex-1 min-h-[260px] sm:min-h-[300px] flex items-center justify-center overflow-hidden p-2">
+        <div className="relative bg-slate-900 flex-1 min-h-[260px] sm:min-h-[300px] flex items-center justify-center overflow-hidden p-2">
           <div id="html5qr-code-full-region" className="w-full h-full text-slate-300 text-xs text-center" />
 
           {cameraError && (
-            <div className="absolute inset-0 bg-[#111118] p-6 text-center space-y-4 flex flex-col items-center justify-center">
-              <div className="w-14 h-14 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <div className="absolute inset-0 bg-white p-6 text-center space-y-4 flex flex-col items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 </svg>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed font-medium max-w-xs">{cameraError}</p>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium max-w-xs">{cameraError}</p>
 
               {/* Native mobile camera capture button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -289,7 +289,7 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-white/[0.08] bg-[#111118] space-y-3">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3">
           {/* Native camera file input */}
           <input
             ref={fileInputRef}
@@ -304,9 +304,9 @@ export default function CameraBarcodeScannerModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-xs font-bold text-indigo-200 cursor-pointer transition-all shadow-md"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer transition-all shadow-xs active:scale-95"
             >
-              <svg className="w-4.5 h-4.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               </svg>
               <span>📷 ถ่ายรูปสแกนบาร์โค้ดด้วยกล้องมือถือ</span>
@@ -327,7 +327,7 @@ export default function CameraBarcodeScannerModal({
                 }
               }}
               placeholder="หรือพิมพ์รหัสบาร์โค้ดตรงนี้..."
-              className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-slate-500 text-xs font-mono focus:outline-none focus:border-indigo-500"
+              className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
             />
             <button
               type="button"
@@ -337,7 +337,7 @@ export default function CameraBarcodeScannerModal({
                   onClose();
                 }
               }}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
             >
               ตกลง
             </button>

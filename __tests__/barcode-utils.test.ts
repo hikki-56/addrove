@@ -6,6 +6,7 @@ import {
   areBarcodesMatching,
   generateCode128PngDataUrl,
   getShelfArrowDirection,
+  matchesBarcodeLast4,
 } from "../src/lib/barcode-utils";
 
 describe("barcode-utils", () => {
@@ -72,6 +73,37 @@ describe("barcode-utils", () => {
     });
   });
 
+  describe("matchesBarcodeLast4", () => {
+    it("should return true when query matches last 4 digits of barcode", () => {
+      expect(matchesBarcodeLast4("1234", "8850001234")).toBe(true);
+      expect(matchesBarcodeLast4("5678", "885012345678")).toBe(true);
+      expect(matchesBarcodeLast4("1234", "1234")).toBe(true);
+      expect(matchesBarcodeLast4("0001", "885000000001")).toBe(true);
+      expect(matchesBarcodeLast4("1234", "885-00-1234")).toBe(true);
+    });
+
+    it("should return false when 4-digit query is in the middle or beginning of barcode, not the end", () => {
+      expect(matchesBarcodeLast4("1234", "885012349999")).toBe(false);
+      expect(matchesBarcodeLast4("8850", "885012345678")).toBe(false);
+      expect(matchesBarcodeLast4("1234", "12345678")).toBe(false);
+    });
+
+    it("should return false when query is not exactly 4 digits", () => {
+      expect(matchesBarcodeLast4("123", "885000123")).toBe(false);
+      expect(matchesBarcodeLast4("12345", "88500012345")).toBe(false);
+      expect(matchesBarcodeLast4("เป๊ปซี่", "8850001234")).toBe(false);
+      expect(matchesBarcodeLast4("ABCD", "885000ABCD")).toBe(false);
+      expect(matchesBarcodeLast4("", "8850001234")).toBe(false);
+    });
+
+    it("should fallback to SKU if barcode is not set or empty", () => {
+      expect(matchesBarcodeLast4("1234", "", "PROD-1234")).toBe(true);
+      expect(matchesBarcodeLast4("1234", "-", "SKU-90001234")).toBe(true);
+      expect(matchesBarcodeLast4("1234", "null", "PROD-1234")).toBe(true);
+      expect(matchesBarcodeLast4("1234", "", "PROD-1234-X")).toBe(false);
+    });
+  });
+
   describe("generateCode128PngDataUrl", () => {
     it("should safely return empty string in non-DOM environment without crashing", () => {
       // In NodeJS/Jest environment without mocked canvas
@@ -80,3 +112,4 @@ describe("barcode-utils", () => {
     });
   });
 });
+

@@ -270,7 +270,7 @@ export default function TransferStaffWorkflowModal({
             </div>
 
             {sourceAllocations.length > 0 && (
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-0.5">
+              <div className="space-y-2 max-h-[40dvh] overflow-y-auto pr-0.5">
                 {sourceAllocations.map((alloc, idx) => (
                   <div key={`alloc-${idx}`} className="p-3 bg-white rounded-2xl border border-indigo-100 shadow-xs space-y-2">
                     <div className="flex items-center justify-between">

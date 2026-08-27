@@ -50,97 +50,97 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (loading) return <div className="text-center py-12 text-gray-400">กำลังโหลด...</div>;
-  if (!product) return <div className="text-center py-12 text-gray-400">ไม่พบสินค้า</div>;
+  if (loading) return <div className="text-center py-12 text-slate-500 font-medium">กำลังโหลด...</div>;
+  if (!product) return <div className="text-center py-12 text-slate-500 font-medium">ไม่พบสินค้า</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-4 transition-colors"
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 text-xs sm:text-sm mb-4 transition-colors cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           กลับ
         </button>
-        <h1 className="text-2xl font-bold text-white">แก้ไขข้อมูลสินค้า ({product.sku})</h1>
-        <p className="text-gray-400 text-sm mt-1">สามารถแก้ไขข้อมูลได้ทุกช่อง</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">แก้ไขข้อมูลสินค้า ({product.sku})</h1>
+        <p className="text-slate-500 text-xs sm:text-sm mt-1">สามารถแก้ไขข้อมูลได้ทุกช่อง</p>
       </div>
 
-      <div className="glass-card rounded-2xl p-6 border border-emerald-900/30">
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs">
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-medium">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">รหัสสินค้า (SKU) *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
               <input
                 {...register("sku")}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm font-mono"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
               />
-              {errors.sku && <p className="mt-1 text-xs text-red-400">{errors.sku.message}</p>}
+              {errors.sku && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.sku.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Barcode</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Barcode</label>
               <input
                 {...register("barcode")}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono transition-all"
               />
-              {errors.barcode && <p className="mt-1 text-xs text-red-400">{errors.barcode.message}</p>}
+              {errors.barcode && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.barcode.message}</p>}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">ชื่อสินค้า *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
             <input
               {...register("product_name")}
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-medium transition-all"
             />
-            {errors.product_name && <p className="mt-1 text-xs text-red-400">{errors.product_name.message}</p>}
+            {errors.product_name && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.product_name.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">หมวดหมู่ *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">หมวดหมู่ *</label>
               <input
                 {...register("category")}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
               />
-              {errors.category && <p className="mt-1 text-xs text-red-400">{errors.category.message}</p>}
+              {errors.category && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.category.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">หน่วยนับ *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">หน่วยนับ *</label>
               <input
                 {...register("base_unit")}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
               />
-              {errors.base_unit && <p className="mt-1 text-xs text-red-400">{errors.base_unit.message}</p>}
+              {errors.base_unit && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.base_unit.message}</p>}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">จำนวนขั้นต่ำ *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนขั้นต่ำ *</label>
             <input
               type="number"
               {...register("minimum_stock", { valueAsNumber: true })}
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
             />
-            {errors.minimum_stock && <p className="mt-1 text-xs text-red-400">{errors.minimum_stock.message}</p>}
+            {errors.minimum_stock && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.minimum_stock.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">รายละเอียดเพิ่มเติม / ตำแหน่ง</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียดเพิ่มเติม / ตำแหน่ง</label>
             <textarea
               {...register("description")}
               rows={3}
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-emerald-900/30 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm resize-none transition-all"
             />
           </div>
 
@@ -148,14 +148,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-all text-sm"
+              className="flex-1 py-2.5 sm:py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold transition-all text-xs sm:text-sm hover:bg-slate-50 cursor-pointer active:scale-95"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold transition-all text-sm shadow-lg shadow-emerald-600/30"
+              className="flex-1 py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold transition-all text-xs sm:text-sm shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95"
             >
               {isSubmitting ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
             </button>

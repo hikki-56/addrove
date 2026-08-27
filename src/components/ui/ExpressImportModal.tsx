@@ -52,6 +52,7 @@ export default function ExpressImportModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [copiedItemSku, setCopiedItemSku] = useState<string | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
   const [displayFields, setDisplayFields] = useState<DisplayFields>(DEFAULT_DISPLAY_FIELDS);
 
   // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
@@ -206,7 +207,13 @@ export default function ExpressImportModal({
     URL.revokeObjectURL(url);
   };
 
-  // Print barcode sheet for scanning
+  const handleCopyAllBarcodes = () => {
+    const codes = filteredItems.map(item => item.barcode).join("\n");
+    navigator.clipboard.writeText(codes);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
   const handlePrintBarcodes = () => {
     window.print();
   };
@@ -218,24 +225,24 @@ export default function ExpressImportModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md fade-in overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-[#111118] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 bg-slate-900/40 backdrop-blur-xs fade-in overflow-y-auto">
+      <div className="relative w-full max-w-5xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
         {/* Modal Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-white/10 bg-[#16161f] print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-slate-50 print:hidden">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>นำเข้า Express — บาร์โค้ดสินค้าที่อนุมัติแล้ว</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   {filteredItems.length} รายการ
                 </span>
               </h2>
-              <p className="text-slate-400 text-xs mt-0.5">
+              <p className="text-slate-500 text-xs mt-0.5">
                 เลือกข้อมูลที่ต้องการแสดงและสแกนนำเข้าโปรแกรม Express ERP
               </p>
             </div>
@@ -244,9 +251,9 @@ export default function ExpressImportModal({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrintBarcodes}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
             >
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               <span>พิมพ์ใบสแกน</span>
@@ -254,7 +261,7 @@ export default function ExpressImportModal({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -264,8 +271,7 @@ export default function ExpressImportModal({
         </div>
 
         {/* Filter & Column Selector Controls Header */}
-        <div className="p-4 bg-[#14141c] border-b border-white/10 space-y-3 print:hidden">
-          {/* Top Row: Doc Selector & Search */}
+        <div className="p-4 bg-slate-50/50 border-b border-slate-200 space-y-3 print:hidden">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1 relative">
               <input
@@ -273,12 +279,12 @@ export default function ExpressImportModal({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ค้นหาบาร์โค้ด, ชื่อสินค้า, โกดัง..."
-                className="w-full pl-3.5 pr-4 py-2 bg-[#1b1b26] border border-white/10 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full pl-3.5 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -289,7 +295,7 @@ export default function ExpressImportModal({
               <select
                 value={selectedDocId}
                 onChange={(e) => setSelectedDocId(e.target.value)}
-                className="px-3 py-2 bg-[#1b1b26] border border-white/10 rounded-xl text-xs font-mono font-bold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-xs"
               >
                 <option value="ALL">เอกสารทั้งหมด ({approvedDocs.length})</option>
                 {approvedDocs.map((doc) => (
@@ -301,152 +307,116 @@ export default function ExpressImportModal({
             </div>
           </div>
 
-          {/* Bottom Row: Field Selection Pills */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/5 pt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200 pt-3">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+              <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
                 <span>เลือกข้อมูลที่แสดง:</span>
               </span>
 
-              {/* Barcode Toggle */}
               <button
                 type="button"
                 onClick={() => toggleField("barcode")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   displayFields.barcode
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                 }`}
               >
-                <span>{displayFields.barcode ? "✓" : "+"}</span>
-                <span>บาร์โค้ด</span>
+                <span>🏷️</span>
+                <span>บาร์โค้ดแท่ง</span>
               </button>
 
-              {/* Product Name Toggle */}
-              <button
-                type="button"
-                onClick={() => toggleField("productName")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                  displayFields.productName
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
-                }`}
-              >
-                <span>{displayFields.productName ? "✓" : "+"}</span>
-                <span>ชื่อสินค้า</span>
-              </button>
-
-              {/* Warehouse Toggle */}
-              <button
-                type="button"
-                onClick={() => toggleField("warehouse")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                  displayFields.warehouse
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
-                }`}
-              >
-                <span>{displayFields.warehouse ? "✓" : "+"}</span>
-                <span>โกดังที่รับเข้า</span>
-              </button>
-
-              {/* Quantity Toggle */}
-              <button
-                type="button"
-                onClick={() => toggleField("quantity")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                  displayFields.quantity
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
-                }`}
-              >
-                <span>{displayFields.quantity ? "✓" : "+"}</span>
-                <span>จำนวน</span>
-              </button>
-
-              {/* SKU Toggle */}
               <button
                 type="button"
                 onClick={() => toggleField("sku")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   displayFields.sku
-                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                 }`}
               >
-                <span>{displayFields.sku ? "✓" : "+"}</span>
-                <span>รหัส SKU</span>
+                <span>รหัสสินค้า</span>
               </button>
 
-              {/* Location Toggle */}
+              <button
+                type="button"
+                onClick={() => toggleField("productName")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.productName
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                <span>ชื่อสินค้า</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleField("warehouse")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.warehouse
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                <span>โกดัง</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleField("quantity")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  displayFields.quantity
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                <span>จำนวน</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => toggleField("location")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   displayFields.location
-                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                    ? "bg-amber-50 text-amber-800 border-amber-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                 }`}
               >
-                <span>{displayFields.location ? "✓" : "+"}</span>
                 <span>ตำแหน่ง</span>
               </button>
 
-              {/* Doc No Toggle */}
               <button
                 type="button"
                 onClick={() => toggleField("docNo")}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                   displayFields.docNo
-                    ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-xs"
-                    : "bg-[#1b1b26] text-slate-500 border-white/5 hover:text-slate-300"
+                    ? "bg-slate-200 text-slate-800 border-slate-300 shadow-xs"
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                 }`}
               >
-                <span>{displayFields.docNo ? "✓" : "+"}</span>
-                <span>เลขเอกสาร</span>
+                <span>เลขที่เอกสาร</span>
               </button>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleCopyExpressData}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                <span>{copySuccess || "คัดลอกข้อมูล"}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadExpressTxt}
-                className="px-3 py-1.5 rounded-xl bg-[#1b1b26] hover:bg-[#252536] text-slate-200 border border-white/10 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="ดาวน์โหลดไฟล์ .txt สำหรับ Express"
-              >
-                <span>.txt</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleCopyAllBarcodes}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95 shrink-0"
+            >
+              <span>📋</span>
+              <span>{copiedAll ? "✓ คัดลอกแล้ว" : "คัดลอกทุกบาร์โค้ด"}</span>
+            </button>
           </div>
         </div>
 
-        {/* Printable Barcode Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 print:p-0 print:overflow-visible">
-          {/* Printable Header */}
-          <div className="hidden print:block text-center mb-6 pb-3 border-b-2 border-black">
-            <h1 className="text-xl font-bold text-black">ใบสแกนบาร์โค้ดสินค้าอนุมัติรับเข้า — Express ERP</h1>
-            <p className="text-xs text-gray-600 mt-1">
-              วันที่พิมพ์: {new Date().toLocaleDateString("th-TH")} | รวม {filteredItems.length} รายการ
-            </p>
-          </div>
-
+        {/* Modal Scrollable Body: Barcode Cards */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-white space-y-4 print:p-0 print:overflow-visible">
           {filteredItems.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
-              <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-500">
+            <div className="py-16 text-center text-slate-500 text-sm">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               ไม่พบรายการสินค้าที่อนุมัติแล้วตรงตามเงื่อนไข
@@ -460,67 +430,63 @@ export default function ExpressImportModal({
                 return (
                   <div
                     key={`${item.document_id}-${item.sku}-${idx}`}
-                    className="p-4 rounded-2xl border border-white/10 bg-[#16161f] shadow-sm space-y-3 print:border-black print:bg-white print:break-inside-avoid"
+                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-xs space-y-3 print:border-black print:bg-white print:break-inside-avoid"
                   >
-                    {/* Item Info Headers based on selected fields */}
                     <div className="space-y-1.5">
                       {displayFields.productName && (
-                        <div className="text-sm font-bold text-slate-100 print:text-black leading-snug break-words">
-                          {displayFields.sku && <span className="font-mono text-emerald-400 print:text-black mr-1.5">[{item.sku}]</span>}
+                        <div className="text-sm font-bold text-slate-900 print:text-black leading-snug break-words">
+                          {displayFields.sku && <span className="font-mono text-indigo-600 print:text-black mr-1.5">[{item.sku}]</span>}
                           {item.product_name}
                         </div>
                       )}
 
                       {(!displayFields.productName && displayFields.sku) && (
-                        <div className="text-sm font-mono font-bold text-emerald-400 print:text-black">
+                        <div className="text-sm font-mono font-bold text-indigo-600 print:text-black">
                           รหัสสินค้า: {item.sku}
                         </div>
                       )}
 
-                      {/* Badges: Warehouse, Quantity, Location, Doc No */}
                       <div className="flex items-center gap-2 flex-wrap text-xs">
                         {displayFields.warehouse && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-500/15 text-indigo-300 font-bold border border-indigo-500/30 print:border-black print:text-black print:bg-gray-100">
-                            🏢 โกดัง: <strong className="text-white print:text-black">{item.target_sheet} ({toExpressWhCode(item.target_sheet)})</strong>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 print:border-black print:text-black print:bg-gray-100">
+                            🏢 โกดัง: <strong className="text-slate-900 print:text-black">{item.target_sheet} ({toExpressWhCode(item.target_sheet)})</strong>
                           </span>
                         )}
 
                         {displayFields.quantity && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono font-extrabold border border-emerald-500/30 print:border-black print:text-black print:bg-gray-100">
-                            📦 จำนวน: <strong className="text-emerald-400 print:text-black">{item.quantity} ชิ้น</strong>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-mono font-extrabold border border-emerald-200 print:border-black print:text-black print:bg-gray-100">
+                            📦 จำนวน: <strong className="text-emerald-700 print:text-black">{item.quantity.toLocaleString()} ชิ้น</strong>
                           </span>
                         )}
 
                         {displayFields.location && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-300 font-mono font-bold border border-amber-500/30 print:border-black print:text-black print:bg-gray-100">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-800 font-mono font-bold border border-amber-200 print:border-black print:text-black print:bg-gray-100">
                             📍 {item.location}
                           </span>
                         )}
 
                         {displayFields.docNo && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-500/15 text-slate-300 font-mono text-[11px] border border-slate-500/30 print:border-black print:text-black print:bg-gray-100">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200 print:border-black print:text-black print:bg-gray-100">
                             📄 {item.document_no}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Visual Code 128 Barcode Image */}
                     {displayFields.barcode && (
-                      <div className="py-2.5 w-full flex flex-col items-center justify-center bg-white p-3.5 rounded-xl border border-slate-300 shadow-xs print:border-black">
+                      <div className="py-2.5 w-full flex flex-col items-center justify-center bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs print:border-black">
                         <BarcodeSvg value={barcodeValue} height={70} showText={true} />
                       </div>
                     )}
 
-                    {/* Footer Row */}
                     <div className="flex items-center justify-between text-xs pt-1 print:hidden">
                       <span className="text-slate-500 font-mono text-[11px]">
-                        บาร์โค้ด: <strong className="text-slate-300">{barcodeValue}</strong>
+                        บาร์โค้ด: <strong className="text-slate-800 font-bold">{barcodeValue}</strong>
                       </span>
                       <button
                         type="button"
                         onClick={() => handleCopySingle(barcodeValue)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 text-slate-200 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-colors cursor-pointer active:scale-95"
                         title="คัดลอกเฉพาะเลขบาร์โค้ด"
                       >
                         {isCopied ? "✓ คัดลอกแล้ว" : "คัดลอกบาร์โค้ด"}
@@ -534,13 +500,13 @@ export default function ExpressImportModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-[#16161f] border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-mono print:hidden">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 font-mono print:hidden">
           <div>
-            รวมบาร์โค้ดทั้งหมด <strong className="text-slate-200">{filteredItems.length}</strong> รายการ
+            รวมบาร์โค้ดทั้งหมด <strong className="text-slate-900 font-bold">{filteredItems.length}</strong> รายการ
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#111118] hover:bg-[#1c1c28] text-slate-200 border border-white/10 font-semibold cursor-pointer transition-all"
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold cursor-pointer transition-all shadow-xs active:scale-95"
           >
             ปิดหน้าต่าง
           </button>

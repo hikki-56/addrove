@@ -113,6 +113,7 @@ export default function StaffTransferPage() {
         onSubmitTransfer={transferHook.handleSubmitTransfer}
         sourceAllocations={transferHook.sourceAllocations}
         onUpdateSourceAllocationQty={transferHook.handleUpdateSourceAllocationQty}
+        /* toLocaleString formatted inside TransferStaffWorkflowModal */
         onRemoveSourceAllocation={transferHook.handleRemoveSourceAllocation}
         onProceedToDestStep={transferHook.handleProceedToDestStep}
         staffError={staffError}

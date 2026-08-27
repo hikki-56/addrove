@@ -1226,7 +1226,7 @@ export default function TransferHistoryPage() {
           onClick={() => setSelectedRecord(null)}
         >
           <div
-            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden space-y-0 relative max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-150"
+            className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden space-y-0 relative max-h-[90dvh] flex flex-col animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

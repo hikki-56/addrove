@@ -32,7 +32,7 @@ export default function ReceiveConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[92vh] flex flex-col">
+      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90dvh] flex flex-col">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 animate-ping" />
@@ -87,7 +87,7 @@ export default function ReceiveConfirmModal({
 
               const locBreakdowns: string[] = [];
               if (extraLocs.length > 0) {
-                locBreakdowns.push(`${locDisplay} (${primaryQty} ชิ้น)`);
+                locBreakdowns.push(`${locDisplay} (${primaryQty.toLocaleString()} ชิ้น)`);
                 for (let i = 0; i < extraLocs.length; i++) {
                   const eloc = extraLocs[i];
                   const eqty = extraQtys[i] || 1;
@@ -101,7 +101,7 @@ export default function ReceiveConfirmModal({
                     : matchedExtra?.location_code && matchedExtra.location_code.toLowerCase() === eloc.toLowerCase()
                     ? matchedExtra.location_code
                     : eloc;
-                  locBreakdowns.push(`${elocDisplay} (${eqty} ชิ้น)`);
+                  locBreakdowns.push(`${elocDisplay} (${eqty.toLocaleString()} ชิ้น)`);
                 }
               } else {
                 locBreakdowns.push(locDisplay);
@@ -132,8 +132,8 @@ export default function ReceiveConfirmModal({
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-extrabold text-emerald-600 text-sm sm:text-base">{line.qty} ชิ้น</div>
-                    <div className="text-[11px] text-slate-500 font-medium">{line.boxes || 1} กล่อง</div>
+                    <div className="font-mono font-extrabold text-emerald-600 text-sm sm:text-base">{(Number(line.qty) || 0).toLocaleString()} ชิ้น</div>
+                    <div className="text-[11px] text-slate-500 font-medium">{(Number(line.boxes) || 1).toLocaleString()} กล่อง</div>
                   </div>
                 </div>
               );
@@ -142,7 +142,7 @@ export default function ReceiveConfirmModal({
 
           <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200 flex justify-between items-center shadow-2xs">
             <span className="font-extrabold text-emerald-900 text-sm">รวมทั้งหมด:</span>
-            <span className="font-extrabold font-mono text-emerald-700 text-lg sm:text-xl">{totalQty} ชิ้น</span>
+            <span className="font-extrabold font-mono text-emerald-700 text-lg sm:text-xl">{(totalQty || 0).toLocaleString()} ชิ้น</span>
           </div>
         </div>
 
@@ -151,7 +151,7 @@ export default function ReceiveConfirmModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-1/3 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 !text-white font-extrabold text-xs sm:text-sm cursor-pointer transition-all shadow-md shadow-rose-600/20"
+            className="w-1/3 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 !text-white font-extrabold text-xs sm:text-sm cursor-pointer transition-all shadow-md shadow-rose-600/20 active:scale-95"
             style={{ color: "#ffffff", backgroundColor: "#e11d48" }}
           >
             ยกเลิก
@@ -162,7 +162,7 @@ export default function ReceiveConfirmModal({
             type="button"
             disabled={isSubmitting}
             onClick={() => handleSubmit(onSubmit)()}
-            className="w-2/3 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 !text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/25 cursor-pointer transition-all disabled:opacity-50"
+            className="w-2/3 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 !text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/25 cursor-pointer transition-all disabled:opacity-50 active:scale-95"
             style={{ color: "#ffffff", backgroundColor: "#059669" }}
           >
             {isSubmitting ? "กำลังบันทึก..." : "ยืนยันและสร้างเอกสาร"}

@@ -1,0 +1,26 @@
+{
+  "skill_name": "stockify-ui",
+  "evals": [
+    {
+      "id": 0,
+      "name": "new-stock-alert-page",
+      "prompt": "ทำหน้าใหม่ที่ /stock-alerts แสดงรายการสินค้าที่สต็อกต่ำกว่าขั้นต่ำ ให้มีการ์ดสรุปด้านบน (จำนวนรายการที่ใกล้หมด / หมดแล้ว) แล้วต่อด้วยตารางรายการ มีปุ่มไปหน้าเบิกของในแต่ละแถว ดึงข้อมูลจาก /api/stock ที่มีอยู่แล้ว",
+      "expected_output": "ไฟล์ page.tsx ที่ใช้สไตล์ตรงกับหน้าอื่นในโปรเจค mobile-first ด้วย sm: ใช้ toLocaleString กับจำนวน ไม่ติดตั้ง icon library เพิ่ม",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "fix-dark-theme-leftovers",
+      "prompt": "หน้าจอบางที่ผู้ใช้บอกว่าพิมพ์แล้วมองไม่เห็นตัวหนังสือ ช่วยหาว่าเกิดจากอะไรแล้วแก้ให้หน่อย",
+      "expected_output": "หา input ธีมมืดที่ตกค้าง (bg-white/5 text-white) แล้วแก้เป็นสไตล์พื้นขาวที่ถูกต้อง",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "confirm-cancel-modal",
+      "prompt": "เพิ่ม modal ยืนยันก่อนยกเลิกใบย้ายสินค้าในหน้า movements/transfer/history ตอนนี้กดยกเลิกแล้วมันยกเลิกเลย อยากให้ถามก่อน แสดงเลขที่เอกสารกับจำนวนที่จะยกเลิกด้วย",
+      "expected_output": "modal ที่ใช้ z-50 + dvh + ปุ่มยกเลิกสี rose + เลขเอกสาร font-mono + จำนวนผ่าน toLocaleString",
+      "files": []
+    }
+  ]
+}

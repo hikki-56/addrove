@@ -90,7 +90,7 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.1] text-white text-xs font-semibold transition-all cursor-pointer shadow-xs focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.08]"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
@@ -104,7 +104,7 @@ function ScrollableSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-full min-w-[160px] bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl z-50 max-h-[148px] overflow-y-auto divide-y divide-slate-800 py-1">
+        <div className="absolute left-0 top-full mt-1.5 w-full min-w-[160px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-slate-100 py-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -115,14 +115,14 @@ function ScrollableSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? "bg-emerald-500/20 text-emerald-300 font-bold"
-                    : "text-slate-200 hover:bg-white/[0.06] hover:text-white"
+                    ? "bg-indigo-50 text-indigo-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <span className="text-emerald-400 text-xs font-bold ml-1.5 shrink-0">✓</span>}
+                {isSelected && <span className="text-indigo-600 text-xs font-bold ml-1.5 shrink-0">✓</span>}
               </button>
             );
           })}
@@ -152,7 +152,6 @@ export default function ShelfQrPage() {
           }
         }
 
-        // Fallback default locations for all 5 warehouses if database has fewer
         if (allLocs.length === 0) {
           for (const wh of WAREHOUSES) {
             const defaults = getDefaultLocationsForWarehouse(wh.id);
@@ -160,7 +159,6 @@ export default function ShelfQrPage() {
           }
         }
 
-        // Build Shelf items instantly
         const items: ShelfQrItem[] = allLocs.map((loc) => {
           const whName = getWarehouseName(loc.warehouse_id);
           const shelfName = (loc as any).shelf_name || `ชั้นวาง ${loc.location_code}`;
@@ -189,19 +187,16 @@ export default function ShelfQrPage() {
     fetchLocations();
   }, []);
 
-  // Filter items by Warehouse first
   const whFilteredItems = shelfItems.filter(
     (item) => selectedWh === "ALL" || item.warehouse_id === selectedWh
   );
 
-  // Dynamic Levels available for current warehouse selection (Sorted numerically: ชั้นที่ 1, ชั้นที่ 2...)
   const availableLevels = Array.from(new Set(whFilteredItems.map((i) => i.level_name))).sort((a, b) => {
     const numA = parseInt(a.replace(/\D/g, ""), 10) || 999;
     const numB = parseInt(b.replace(/\D/g, ""), 10) || 999;
     return numA - numB;
   });
 
-  // Dropdown Options for Warehouse
   const warehouseOptions = useMemo(() => {
     const opts = [{ value: "ALL", label: `โกดังทั้งหมด (${shelfItems.length})` }];
     for (const wh of WAREHOUSES) {
@@ -211,7 +206,6 @@ export default function ShelfQrPage() {
     return opts;
   }, [shelfItems]);
 
-  // Dropdown Options for Shelf Level
   const levelOptions = useMemo(() => {
     const opts = [{ value: "ALL", label: `ทุกชั้น (${whFilteredItems.length})` }];
     for (const lvl of availableLevels) {
@@ -221,7 +215,6 @@ export default function ShelfQrPage() {
     return opts;
   }, [availableLevels, whFilteredItems]);
 
-  // Final Filter by Level and Search Query
   const filteredItems = whFilteredItems.filter((item) => {
     const matchesLevel = selectedLevel === "ALL" || item.level_name === selectedLevel;
     const q = searchQuery.trim().toLowerCase();
@@ -234,13 +227,11 @@ export default function ShelfQrPage() {
     return matchesLevel && matchesSearch;
   });
 
-  // Group items by Level
   const groupedByLevel = availableLevels.map((lvl) => ({
     levelName: lvl,
     items: filteredItems.filter((i) => i.level_name === lvl),
   })).filter((group) => group.items.length > 0);
 
-  // Group filtered items into chunks of 9 for A4 3x3 sticker sheet printing
   const stickerPages: ShelfQrItem[][] = [];
   for (let i = 0; i < filteredItems.length; i += 9) {
     stickerPages.push(filteredItems.slice(i, i + 9));
@@ -250,26 +241,14 @@ export default function ShelfQrPage() {
     window.print();
   };
 
-  const handleDownloadSingle = async (item: ShelfQrItem) => {
-    const dataUrl = generateShelfBarcodeStickerDataUrl(item.location_code);
-    if (!dataUrl) return;
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `บาร์โค้ด-ชั้นวาง-${item.warehouse_name}-${item.location_code}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   const renderItemCard = (item: ShelfQrItem, idx: number) => {
     const arrowDir = getShelfArrowDirection(item.location_code);
 
     return (
       <div
         key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
-        className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-slate-200 shadow-md flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:border-slate-300 select-none"
+        className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:border-slate-300 select-none"
       >
-        {/* Location Code (On Top of Barcode) with Bold Green Arrows on BOTH Sides - Strictly on 1 Line */}
         <h2 className="text-3xl sm:text-4xl md:text-[2.6rem] font-black text-slate-900 tracking-wide font-mono select-none flex items-center justify-center gap-2 sm:gap-3 flex-nowrap w-full whitespace-nowrap overflow-hidden">
           {arrowDir === "down" && (
             <svg className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600 inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
@@ -296,7 +275,6 @@ export default function ShelfQrPage() {
           )}
         </h2>
 
-        {/* Barcode Inner Box (Instant vector SVG, modal disabled) */}
         <div className="w-full flex items-center justify-center">
           <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-slate-300 px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-center shadow-2xs">
             <BarcodeSvg
@@ -317,27 +295,23 @@ export default function ShelfQrPage() {
 
   return (
     <>
-      {/* ======================================================== */}
-      {/* Screen View (Interactive Dashboard)                      */}
-      {/* ======================================================== */}
       <div className="max-w-6xl mx-auto space-y-6 w-full max-w-full pb-12 print:hidden">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
-            <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
-              <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               <span>บาร์โค้ดชั้นวางสินค้า (แบ่งตามระดับชั้นและโกดัง)</span>
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1">
               พิมพ์ป้ายบาร์โค้ดจัดลงกระดาษสติกเกอร์ A4 แนวนอน 9 ช่อง (3×3) รวมทั้งหมด {filteredItems.length} ตำแหน่ง ({totalStickerPages} หน้ากระดาษ)
             </p>
           </div>
 
           <button
             onClick={handlePrint}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -346,13 +320,11 @@ export default function ShelfQrPage() {
           </button>
         </div>
 
-        {/* Filter and Search Bar (Dropdown format) */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
-            {/* Warehouse Dropdown */}
             <div className="lg:col-span-4">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 <span>เลือกโกดัง</span>
@@ -368,10 +340,9 @@ export default function ShelfQrPage() {
               />
             </div>
 
-            {/* Shelf Level Dropdown */}
             <div className="lg:col-span-3">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span>ระดับชั้น</span>
@@ -384,10 +355,9 @@ export default function ShelfQrPage() {
               />
             </div>
 
-            {/* Search Box */}
             <div className="sm:col-span-2 lg:col-span-5">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <span>ค้นหารหัสชั้นวาง</span>
@@ -398,7 +368,7 @@ export default function ShelfQrPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="พิมพ์รหัสชั้นวาง (เช่น 1K14-1A)..."
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.08] text-xs font-medium transition-all shadow-xs"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-medium transition-all shadow-2xs"
                 />
                 <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -408,26 +378,24 @@ export default function ShelfQrPage() {
           </div>
         </div>
 
-        {/* Content Area */}
         {loading ? (
           <div className="py-20 text-center space-y-4">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-slate-400 text-sm">กำลังโหลดข้อมูลชั้นวางสินค้า...</p>
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-slate-500 text-sm font-medium">กำลังโหลดข้อมูลชั้นวางสินค้า...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="py-20 text-center glass-card rounded-2xl p-8 space-y-3">
+          <div className="py-20 text-center bg-white border border-slate-200 shadow-xs rounded-2xl p-8 space-y-3">
             <span className="text-4xl block">🔍</span>
-            <p className="text-slate-300 font-semibold text-base">ไม่พบข้อมูลชั้นวางสินค้า</p>
+            <p className="text-slate-800 font-bold text-base">ไม่พบข้อมูลชั้นวางสินค้า</p>
             <p className="text-slate-500 text-xs">ลองเปลี่ยนคำค้นหา หรือเลือกโกดังอื่น</p>
           </div>
         ) : selectedLevel === "ALL" && groupedByLevel.length > 1 ? (
-          /* Grouped by Level View */
           <div className="space-y-8">
             {groupedByLevel.map((group) => (
               <div key={group.levelName} className="space-y-3.5">
-                <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-                  <h3 className="text-base font-bold text-emerald-400 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600" />
                     <span>{group.levelName}</span>
                     <span className="text-xs text-slate-500 font-normal">({group.items.length} ตำแหน่ง)</span>
                   </h3>

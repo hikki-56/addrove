@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Product } from "@/types/models";
+import { matchesBarcodeLast4 } from "@/lib/barcode-utils";
 
 interface ProductSearchInputProps {
   value?: string;
@@ -120,6 +121,14 @@ export default function ProductSearchInput({
       return aggregatedProducts;
     }
 
+    // กรณีพิมพ์ตัวเลข 4 หลัก ให้ดึงข้อมูลเฉพาะสินค้าที่บาร์โค้ด 4 ตัวท้ายตรงกันเท่านั้น
+    const isFourDigits = /^\d{4}$/.test(trimmedQuery);
+    if (isFourDigits) {
+      return aggregatedProducts.filter((p) =>
+        matchesBarcodeLast4(trimmedQuery, p.barcode, p.sku)
+      );
+    }
+
     return aggregatedProducts.filter((p) => {
       const sku = (p.sku || "").toLowerCase();
       const name = (p.product_name || "").toLowerCase();
@@ -149,6 +158,25 @@ export default function ProductSearchInput({
           type="text"
           value={query}
           onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (displayedProducts.length > 0) {
+                const p = displayedProducts[0];
+                if (onSelectProduct) {
+                  onSelectProduct(p);
+                  setQuery("");
+                  setOpen(false);
+                } else if (onChange) {
+                  onChange(p.product_id, p);
+                  const sup = p.supplier ? `[${p.supplier}] ` : "";
+                  const bar = p.barcode && p.barcode !== p.sku ? ` (${p.barcode})` : "";
+                  setQuery(`${sup}${p.sku}${bar} - ${p.product_name}`);
+                  setOpen(false);
+                }
+              }
+            }
+          }}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -209,7 +237,9 @@ export default function ProductSearchInput({
           )}
 
           <div className="px-3.5 py-1.5 text-[11px] font-medium text-slate-600 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
-            <span>รายการสินค้า (จาก Google Sheet)</span>
+            <span>
+              {/^\d{4}$/.test(query.trim()) ? "ผลลัพธ์ค้นหาจาก 4 ตัวท้ายบาร์โค้ด" : "รายการสินค้า (จาก Google Sheet)"}
+            </span>
             <span className="text-indigo-600 font-mono font-bold">
               {filteredProducts.length > 50
                 ? `แสดง 50 จาก ${filteredProducts.length.toLocaleString()} รายการ`

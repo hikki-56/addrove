@@ -132,12 +132,12 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`hidden md:flex flex-shrink-0 flex-col bg-[#0f172a] border-r border-slate-800 text-white select-none shadow-2xl transition-all duration-300 ease-in-out ${
+      className={`hidden md:flex flex-shrink-0 flex-col bg-slate-900 border-r border-slate-800 text-white select-none shadow-2xl transition-all duration-300 ease-in-out ${
         collapsed ? "w-0 overflow-hidden border-r-0 opacity-0 pointer-events-none" : "w-72 opacity-100"
       }`}
     >
       {/* Brand Header */}
-      <div className="flex items-center justify-center px-4 h-20 border-b border-slate-800 bg-[#0f172a]">
+      <div className="flex items-center justify-center px-4 h-20 border-b border-slate-800 bg-slate-900">
         <Link href="/dashboard" className="flex items-center justify-center gap-3 group w-full">
           <img
             src="/logo.png"
@@ -303,7 +303,7 @@ function SectionHeader({
     <button
       type="button"
       onClick={onToggle}
-      className="w-full text-left text-[11px] font-black text-white uppercase tracking-widest px-3 py-2 flex items-center justify-between group hover:text-emerald-300 transition-colors"
+      className="w-full text-left text-[11px] font-black text-white uppercase tracking-widest px-3 py-2 flex items-center justify-between group hover:text-emerald-300 transition-colors cursor-pointer"
     >
       <span className="text-white font-black">{title}</span>
       <svg
@@ -332,10 +332,10 @@ function MinimalNavItem({
   return (
     <Link
       href={item.href}
-      className={`group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-black transition-all duration-150 relative ${
+      className={`group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-black transition-all duration-150 relative cursor-pointer ${
         isActive
           ? "bg-emerald-600/40 text-white font-black border border-emerald-400/60 shadow-md"
-          : "text-white hover:bg-white/15 hover:text-white"
+          : "text-slate-200 hover:bg-slate-800/80 hover:text-white"
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">

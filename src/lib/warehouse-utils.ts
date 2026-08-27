@@ -135,7 +135,7 @@ export function getActiveWarehouse(whParam?: string | null): string {
 
 
 /**
- * Returns user-friendly Thai display name for a warehouse ID.
+ * Returns user-friendly Thai display name for a warehouse ID or raw name.
  */
 export function getWarehouseName(whId: string): string {
   const normalized = normalizeWarehouseId(whId);
@@ -148,6 +148,49 @@ export function getWarehouseName(whId: string): string {
     "wh-06": "สำนักงานใหญ่",
   };
   return names[normalized] || "โกดัง1";
+}
+
+/**
+ * Returns user-friendly Thai display name from any warehouse input.
+ */
+export function getWarehouseDisplayName(raw: string | undefined | null): string {
+  if (!raw) return "-";
+  const str = String(raw).trim();
+  if (str === "-" || str === "null" || str === "undefined") return "-";
+  if (str.includes("สำนักงานใหญ่")) return "สำนักงานใหญ่";
+  return getWarehouseName(str);
+}
+
+/**
+ * Detects the canonical warehouse ID (wh-01..wh-06) from a shelf / location code or name.
+ * E.g. "1K11-2A" -> "wh-01", "2K11-2A" -> "wh-02", "3A-01" -> "wh-03", "WH4-A1" -> "wh-04", etc.
+ */
+export function detectWarehouseFromLocation(loc: string | null | undefined): string | null {
+  if (!loc) return null;
+  const s = String(loc).trim().toLowerCase();
+  if (!s || s === "-" || s === "null" || s === "undefined" || s === "a1" || s === "a01" || s === "ตำแหน่งเริ่มต้น") {
+    return null;
+  }
+
+  // 1. Explicit warehouse tag inside location string, e.g. "loc-wh-02-A1", "wh-01", "wh02", "wh1"
+  const whMatch = s.match(/(?:wh-?0?|warehouse-?0?|โกดัง\s*)([1-6])/i);
+  if (whMatch) {
+    return `wh-0${whMatch[1]}`;
+  }
+
+  // 2. HQ / สำนักงานใหญ่
+  if (s.includes("hq") || s.includes("สำนักงานใหญ่") || s.includes("wh-06") || s.includes("wh6")) {
+    return "wh-06";
+  }
+
+  // 3. Leading digit shelf codes, e.g. "1K11-2A", "1A-01", "2K11-2A", "3B-05", "4C-12", "5D-01"
+  const cleanLoc = s.replace(/^loc-/, "").replace(/^#/, "").trim();
+  const leadingNumMatch = cleanLoc.match(/^([1-6])([a-z0-9\-_/]+)/i);
+  if (leadingNumMatch) {
+    return `wh-0${leadingNumMatch[1]}`;
+  }
+
+  return null;
 }
 
 /**

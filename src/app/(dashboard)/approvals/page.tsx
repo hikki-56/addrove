@@ -57,9 +57,7 @@ function toExpressWhCode(targetSheet: string): string {
 }
 
 export default function ApprovalsPage() {
-  const [activeTab, setActiveTab] = useState<"PENDING" | "POSTED">("PENDING");
   const [pendingDocs, setPendingDocs] = useState<ApprovalDoc[]>([]);
-  const [approvedDocs, setApprovedDocs] = useState<ApprovalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,23 +68,14 @@ export default function ApprovalsPage() {
     if (!isSilent) setLoading(true);
     try {
       const ts = Date.now();
-      const [pendingRes, postedRes] = await Promise.all([
-        fetch(`/api/approvals?status=PENDING&_t=${ts}`, { cache: "no-store" }),
-        fetch(`/api/approvals?status=POSTED&_t=${ts}`, { cache: "no-store" }),
-      ]);
-
-      const pendingJson = await pendingRes.json();
-      const postedJson = await postedRes.json();
+      const res = await fetch(`/api/approvals?status=PENDING&_t=${ts}`, { cache: "no-store" });
+      const pendingJson = await res.json();
 
       if (pendingJson.success && Array.isArray(pendingJson.data)) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("stockify_pending_receives");
         }
         setPendingDocs(pendingJson.data);
-      }
-
-      if (postedJson.success && Array.isArray(postedJson.data)) {
-        setApprovedDocs(postedJson.data);
       }
     } catch (e) {
       console.error("Failed to fetch approvals:", e);
@@ -103,12 +92,7 @@ export default function ApprovalsPage() {
 
   const handleApprove = async (doc: ApprovalDoc) => {
     // --- OPTIMISTIC UI: Instant response in 0.05s ---
-    const approvedItem: ApprovalDoc = {
-      ...doc,
-      status: "POSTED",
-    };
     setPendingDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
-    setApprovedDocs((prev) => [approvedItem, ...prev]);
 
     if (typeof window !== "undefined") {
       try {
@@ -167,13 +151,11 @@ export default function ApprovalsPage() {
       if (!json.success) {
         // Rollback
         setPendingDocs((prev) => [doc, ...prev.filter((d) => d.document_id !== doc.document_id)]);
-        setApprovedDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
         alert(json.message || "เกิดข้อผิดพลาดในการอนุมัติจากเซิร์ฟเวอร์");
       }
     } catch {
       // Rollback
       setPendingDocs((prev) => [doc, ...prev.filter((d) => d.document_id !== doc.document_id)]);
-      setApprovedDocs((prev) => prev.filter((d) => d.document_id !== doc.document_id));
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     }
   };
@@ -208,7 +190,7 @@ export default function ApprovalsPage() {
     }
   };
 
-  const currentDocs = activeTab === "PENDING" ? pendingDocs : approvedDocs;
+  const currentDocs = pendingDocs;
 
   // Filtered docs
   const filteredDocs = useMemo(() => {
@@ -263,39 +245,18 @@ export default function ApprovalsPage() {
       )}
 
       {/* Status View Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-        <button
-          onClick={() => setActiveTab("PENDING")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "PENDING"
-              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-              : "bg-[#111118] text-slate-400 hover:text-slate-200 border border-white/5"
-          }`}
-        >
-          <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <div className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-xs flex items-center gap-2">
+          <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>รออนุมัติ ({pendingDocs.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("POSTED")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "POSTED"
-              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
-              : "bg-[#111118] text-slate-400 hover:text-slate-200 border border-white/5"
-          }`}
-        >
-          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>อนุมัติแล้ว ({approvedDocs.length})</span>
-        </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
       {currentDocs.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#111118] p-3 rounded-2xl border border-white/10 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
           {/* Search Box */}
           <div className="relative flex-1">
             <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,12 +267,12 @@ export default function ApprovalsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาเลขเอกสาร, SKU, ชื่อสินค้า, ผู้จำหน่าย..."
-              className="w-full pl-10 pr-4 py-2 bg-[#16161f] border border-white/10 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 ✕
               </button>
@@ -322,9 +283,9 @@ export default function ApprovalsPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
               onClick={() => setSelectedWarehouse("ALL")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedWarehouse === "ALL"
-                  ? "bg-emerald-600 text-white shadow-xs"
+                  ? "bg-indigo-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
               }`}
             >
@@ -334,9 +295,9 @@ export default function ApprovalsPage() {
               <button
                 key={wh}
                 onClick={() => setSelectedWarehouse(wh)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                   selectedWarehouse === wh
-                    ? "bg-emerald-600 text-white shadow-xs"
+                    ? "bg-indigo-600 text-white shadow-xs"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
                 }`}
               >
@@ -349,35 +310,33 @@ export default function ApprovalsPage() {
 
       {/* Main Content Area */}
       {loading ? (
-        <div className="rounded-2xl p-16 text-center border border-white/10 bg-[#111118] shadow-sm">
-          <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400 text-sm font-medium">กำลังโหลดรายการเอกสาร...</p>
+        <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-xs">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 text-sm font-medium">กำลังโหลดรายการเอกสาร...</p>
         </div>
       ) : currentDocs.length === 0 ? (
-        <div className="rounded-2xl p-16 text-center border border-emerald-500/20 bg-[#111118] shadow-sm">
-          <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-emerald-400">
+        <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-xs">
+          <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4 text-emerald-600">
             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-base font-bold text-slate-100 mb-1">
-            {activeTab === "PENDING" ? "ไม่มีรายการรออนุมัติ" : "ไม่มีรายการอนุมัติแล้ว"}
+          <h3 className="text-base font-bold text-slate-900 mb-1">
+            ไม่มีรายการรออนุมัติ
           </h3>
-          <p className="text-slate-400 text-xs sm:text-sm">
-            {activeTab === "PENDING"
-              ? "รายการรับสินค้าเข้าคลังทั้งหมดได้รับการตรวจสอบและอนุมัติเรียบร้อยแล้ว"
-              : "ยังไม่มีรายการที่ได้รับการอนุมัติ"}
+          <p className="text-slate-500 text-xs sm:text-sm">
+            รายการรับสินค้าเข้าคลังทั้งหมดได้รับการตรวจสอบและอนุมัติเรียบร้อยแล้ว
           </p>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center border border-white/10 bg-[#111118] shadow-sm">
-          <p className="text-slate-400 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา &quot;{searchQuery}&quot;</p>
+        <div className="rounded-2xl p-12 text-center border border-slate-200 bg-white shadow-xs">
+          <p className="text-slate-500 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา &quot;{searchQuery}&quot;</p>
           <button
             onClick={() => {
               setSearchQuery("");
               setSelectedWarehouse("ALL");
             }}
-            className="mt-3 px-3 py-1.5 text-xs text-emerald-400 hover:underline font-semibold"
+            className="mt-3 px-3 py-1.5 text-xs text-indigo-600 hover:underline font-bold cursor-pointer"
           >
             ล้างตัวกรองทั้งหมด
           </button>
@@ -393,59 +352,59 @@ export default function ApprovalsPage() {
             return (
               <div
                 key={`${doc.document_id}-${idx}`}
-                className={`rounded-2xl p-5 border border-white/10 bg-[#111118] shadow-sm space-y-4 relative border-l-4 ${
+                className={`rounded-2xl p-4 sm:p-5 border border-slate-200 bg-white shadow-xs space-y-4 relative border-l-4 ${
                   isApprovedDoc ? "border-l-emerald-500" : "border-l-amber-500"
                 }`}
               >
                 {/* Card Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3.5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
                   <div className="flex flex-wrap items-center gap-4">
                     {/* Document Number */}
                     <div className="flex items-center gap-1.5 text-xs font-mono font-black text-slate-900">
-                      <svg className="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       <span>{doc.document_no}</span>
                     </div>
 
                     {isProcessingDoc && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-500/20 text-orange-700 border border-orange-200">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                         ต้องตรวจสอบรายการค้างดำเนินการ
                       </span>
                     )}
 
                     {/* Target Warehouse */}
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                      <svg className="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4" />
                       </svg>
-                      <span>เป้าหมาย: <strong className="text-slate-950 font-black">{doc.target_sheet}</strong></span>
+                      <span>เป้าหมาย: <strong className="text-slate-900 font-black">{doc.target_sheet}</strong></span>
                     </div>
                   </div>
 
                   {/* Creator and Date Info */}
-                  <div className="flex items-center gap-4 text-xs font-mono text-slate-700">
+                  <div className="flex items-center gap-4 text-xs font-mono text-slate-600">
                     <div className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      <span>ผู้บันทึก: <strong className="text-slate-900 font-bold">{formattedUser}</strong></span>
+                      <span>ผู้บันทึก: <strong className="text-slate-800 font-bold">{formattedUser}</strong></span>
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span>วันที่: <strong className="text-slate-900 font-semibold">{docDate}</strong></span>
+                      <span>วันที่: <strong className="text-slate-800 font-semibold">{docDate}</strong></span>
                     </div>
                   </div>
                 </div>
 
                 {/* Items Table */}
-                <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#16161f]">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-[#111118] text-slate-400 border-b border-white/10">
+                      <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
                         <th className="py-2.5 px-3 font-semibold">รหัสสินค้า</th>
                         <th className="py-2.5 px-3 font-semibold">ตำแหน่ง</th>
                         <th className="py-2.5 px-3 font-semibold">ผู้จำหน่าย</th>
@@ -454,63 +413,63 @@ export default function ApprovalsPage() {
                         <th className="py-2.5 px-3 font-semibold text-center">จำนวน</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {doc.rows.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-white/[0.03] transition-colors text-slate-300">
-                          {/* รหัสสินค้า */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
-                            {row[0] || "-"}
-                          </td>
+                    <tbody className="divide-y divide-slate-100">
+                      {doc.rows.map((row, idx) => {
+                        const qtyNum = !isNaN(Number(row[4])) && String(row[4]).trim() !== "" ? Number(row[4]) : 1;
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors text-slate-700">
+                            {/* รหัสสินค้า */}
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                              {row[0] || "-"}
+                            </td>
 
-                          {/* ตำแหน่ง */}
-                          <td className="py-2.5 px-3">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-mono font-bold text-xs border border-emerald-500/30">
-                              📍 {row[1] || "-"}
-                            </span>
-                          </td>
+                            {/* ตำแหน่ง */}
+                            <td className="py-2.5 px-3">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-mono font-bold text-xs border border-emerald-200">
+                                📍 {row[1] || "-"}
+                              </span>
+                            </td>
 
-                          {/* ผู้จำหน่าย */}
-                          <td className="py-2.5 px-3 text-slate-300 font-semibold">
-                            {formatSupplierName(row[6])}
-                          </td>
+                            {/* ผู้จำหน่าย */}
+                            <td className="py-2.5 px-3 text-slate-600 font-medium">
+                              {formatSupplierName(row[6])}
+                            </td>
 
-                          {/* บาร์โค้ด */}
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-200">
-                            {row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-")}
-                          </td>
+                            {/* บาร์โค้ด */}
+                            <td className="py-2.5 px-3 font-mono text-slate-700">
+                              {row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-")}
+                            </td>
 
-                          {/* ชื่อสินค้า */}
-                          <td className="py-2.5 px-3 font-bold text-slate-200 max-w-xs truncate">
-                            {row[3] || "-"}
-                          </td>
+                            {/* ชื่อสินค้า */}
+                            <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs truncate">
+                              {row[3] || "-"}
+                            </td>
 
-                          {/* จำนวน */}
-                          <td className="py-2.5 px-3 text-center font-mono font-extrabold text-emerald-400 text-sm">
-                            {!isNaN(Number(row[4])) && String(row[4]).trim() !== ""
-                              ? Number(row[4])
-                              : 1}
-                          </td>
-                        </tr>
-                      ))}
+                            {/* จำนวน */}
+                            <td className="py-2.5 px-3 text-center font-mono font-extrabold text-slate-900 text-sm">
+                              {qtyNum.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Footer Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                  <div className="text-xs text-slate-400 font-mono">
-                    จำนวน <strong className="text-slate-200">{doc.rows?.length || 0}</strong> รายการในเอกสารนี้
+                  <div className="text-xs text-slate-500 font-mono">
+                    จำนวน <strong className="text-slate-800">{doc.rows?.length || 0}</strong> รายการในเอกสารนี้
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-
                     {!isApprovedDoc && !isProcessingDoc && (
                       <>
                         {/* Reject Button */}
                         <button
                           onClick={() => handleReject(doc.document_id)}
                           disabled={actionLoading === doc.document_id}
-                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-xs transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -522,7 +481,7 @@ export default function ApprovalsPage() {
                         <button
                           onClick={() => handleApprove(doc)}
                           disabled={actionLoading === doc.document_id}
-                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+                          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
                         >
                           {actionLoading === doc.document_id ? (
                             <>

@@ -401,3 +401,55 @@ export function areBarcodesMatching(
   return false;
 }
 
+/**
+ * Checks if a search query is a 4-digit number and matches the last 4 digits of a barcode (or fallback SKU).
+ * Returns true only if the query is exactly 4 digits and matches the last 4 digits/characters of the product barcode.
+ */
+export function matchesBarcodeLast4(
+  query?: string,
+  barcode?: string,
+  sku?: string
+): boolean {
+  if (!query) return false;
+  const trimmed = query.trim().toLowerCase();
+  if (!/^\d{4}$/.test(trimmed)) return false;
+
+  const rawBarcode = (barcode || "").trim();
+  const rawSku = (sku || "").trim();
+
+  const isInvalid = (val?: string) => {
+    if (!val) return true;
+    const clean = val.trim().toLowerCase();
+    return (
+      clean === "" ||
+      clean === "-" ||
+      clean === "null" ||
+      clean === "undefined" ||
+      clean === "trf" ||
+      clean === "trf-item" ||
+      clean.startsWith("trf-") ||
+      clean.startsWith("mov-") ||
+      clean.startsWith("iss-")
+    );
+  };
+
+  if (!isInvalid(rawBarcode)) {
+    const cleanBarcode = rawBarcode.replace(/[\s\-_#]/g, "").toLowerCase();
+    return (
+      cleanBarcode.endsWith(trimmed) ||
+      rawBarcode.toLowerCase().endsWith(trimmed)
+    );
+  }
+
+  if (!isInvalid(rawSku)) {
+    const cleanSku = rawSku.replace(/[\s\-_#]/g, "").toLowerCase();
+    return (
+      cleanSku.endsWith(trimmed) ||
+      rawSku.toLowerCase().endsWith(trimmed)
+    );
+  }
+
+  return false;
+}
+
+

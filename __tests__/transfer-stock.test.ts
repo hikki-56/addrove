@@ -652,6 +652,73 @@ describe("transferStock Use Cases & Authorization Rules", () => {
     ).rejects.toThrow(StockNotFoundError);
   });
 
+  test("14b. createTransfer succeeds for a SKU that holds warehouse stock but is absent from the PRODUCTS master sheet", async () => {
+    // Regression: warehouse sheets can carry stock for a SKU that was never
+    // registered in PRODUCTS. The client sends the sku/barcode/name it read from
+    // that same warehouse row, so the transfer must go through on those instead of
+    // failing with "ไม่พบข้อมูลสินค้าสำหรับรหัส prod-<sku>". Issue and move already
+    // allow this; transfer used to be the only flow that rejected it.
+    repo.products.findById = async () => null;
+    repo.products.findBySku = async () => null;
+    repo.products.findByBarcode = async () => null;
+
+    // Stock lives in the warehouse sheet under the synthesized product_id, mirroring
+    // the real case: 8,000 on hand in the source warehouse.
+    repo.summaryList.push({
+      summary_id: "s-unreg",
+      product_id: "prod-0สถล-024",
+      warehouse_id: "wh-1",
+      location_id: "L1",
+      quantity: 8000,
+      updated_at: "",
+    } as never);
+
+    const input = CreateTransferSchema.parse({
+      product_id: "prod-0สถล-024",
+      sku: "0สถล-024",
+      barcode: "90002892",
+      product_name: "2699#JW-สายถักSTL 24นิ้ว",
+      from_warehouse_id: "wh-1",
+      to_warehouse_id: "wh-2",
+      qty: 400,
+      moved_by: "พนักงาน",
+      document_date: "2026-08-27",
+      idempotency_key: "idem-unregistered-sku",
+    });
+
+    const doc = await createTransfer(
+      { repo },
+      { ...input, user_id: "admin-1", role: "ADMIN" }
+    );
+
+    expect(doc.status).toBe("PENDING");
+    const note = JSON.parse(doc.note);
+    expect(note.sku).toBe("0สถล-024");
+    expect(note.barcode).toBe("90002892");
+    expect(note.product_name).toBe("2699#JW-สายถักSTL 24นิ้ว");
+    expect(note.qty).toBe(400);
+  });
+
+  test("14c. createTransfer still rejects an unknown product when the caller sends no sku or barcode", async () => {
+    repo.products.findById = async () => null;
+    repo.products.findBySku = async () => null;
+    repo.products.findByBarcode = async () => null;
+
+    const input = CreateTransferSchema.parse({
+      product_id: "prod-ไม่มีจริง-999",
+      from_warehouse_id: "wh-1",
+      to_warehouse_id: "wh-2",
+      qty: 5,
+      moved_by: "สมชาย",
+      document_date: "2026-08-27",
+      idempotency_key: "idem-no-identifying-data",
+    });
+
+    await expect(
+      createTransfer({ repo }, { ...input, user_id: "admin-1", role: "ADMIN" })
+    ).rejects.toThrow(StockNotFoundError);
+  });
+
   test("15. syncServerTransferNotifications correctly extracts barcode and product details from snapshot", () => {
     const storage: Record<string, string> = {};
     const originalWindow = (global as any).window;

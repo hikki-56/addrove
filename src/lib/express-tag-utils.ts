@@ -17,6 +17,10 @@ export interface TaggedExpressItem {
   location: string;
   warehouse: string;
   warehouse_code?: string;
+  from_warehouse?: string;
+  to_warehouse?: string;
+  from_warehouse_code?: string;
+  to_warehouse_code?: string;
   document_no: string;
   document_date: string;
   supplier?: string;
@@ -166,4 +170,22 @@ export function getExpressTagCounts(type?: ExpressItemType) {
   const pending = items.filter((i) => i.status === "PENDING").length;
   const imported = items.filter((i) => i.status === "IMPORTED").length;
   return { total: items.length, pending, imported };
+}
+
+export function updateExpressItemWarehouse(id: string, fromWarehouse: string, toWarehouse: string): TaggedExpressItem | undefined {
+  const items = getStoredItems();
+  const idx = items.findIndex((i) => i.id === id);
+  if (idx === -1) return undefined;
+
+  const item = items[idx];
+  const updated: TaggedExpressItem = {
+    ...item,
+    from_warehouse: fromWarehouse,
+    to_warehouse: toWarehouse,
+    warehouse: `${fromWarehouse} -> ${toWarehouse}`,
+  };
+
+  items[idx] = updated;
+  saveStoredItems(items);
+  return updated;
 }

@@ -6,9 +6,9 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import ScrollSelect from "@/components/ui/ScrollSelect";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
-import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { getWarehouseName, getWarehouseDisplayName, normalizeWarehouseId, detectWarehouseFromLocation } from "@/lib/warehouse-utils";
 import type { MovementWithDetails, Product } from "@/types/models";
-import { getTransferNotifications } from "@/lib/transfer-notification-utils";
+import { getTransferNotifications, parseTransferMetadata } from "@/lib/transfer-notification-utils";
 import {
   getAllTaggedExpressItems,
   tagExpressItem,
@@ -17,6 +17,7 @@ import {
   batchUntagExpressItems,
   updateExpressItemStatus,
   batchUpdateExpressItemStatus,
+  updateExpressItemWarehouse,
   clearImportedExpressItems,
   type TaggedExpressItem,
   type ExpressSyncStatus,
@@ -41,6 +42,15 @@ const DEFAULT_DISPLAY_FIELDS: DisplayFields = {
   location: false,
   docNo: false,
 };
+
+const WAREHOUSE_SELECT_OPTIONS = [
+  { id: "wh-01", name: "โกดัง1", label: "โกดัง 1" },
+  { id: "wh-02", name: "โกดัง2", label: "โกดัง 2" },
+  { id: "wh-03", name: "โกดัง3", label: "โกดัง 3" },
+  { id: "wh-04", name: "โกดัง4", label: "โกดัง 4" },
+  { id: "wh-05", name: "โกดัง5", label: "โกดัง 5" },
+  { id: "wh-06", name: "สำนักงานใหญ่", label: "สำนักงานใหญ่" },
+];
 
 type TagFilterType = "ALL" | "TAGGED_ONLY" | "PENDING" | "IMPORTED" | "UNTAGGED";
 
@@ -98,34 +108,25 @@ export default function ExpressTransferPage() {
   // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
   const toExpressWhCode = (whNameOrCode: string): string => {
     if (!whNameOrCode) return "01";
-    const match = whNameOrCode.match(/\d+/);
+    const norm = normalizeWarehouseId(whNameOrCode);
+    const match = norm.match(/\d+/);
     if (match) return match[0].padStart(2, "0");
+    const rawMatch = whNameOrCode.match(/\d+/);
+    if (rawMatch) return rawMatch[0].padStart(2, "0");
     return "01";
-  };
-
-  // Helper to get user-friendly Thai warehouse name
-  const getWarehouseDisplayName = (raw: string | undefined | null): string => {
-    if (!raw) return "-";
-    if (raw.includes("โกดัง") || raw.includes("สำนักงานใหญ่")) return raw;
-    return getWarehouseName(raw);
   };
 
   const fetchMovements = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const params = new URLSearchParams({ page: "1", limit: "2000" });
-      if (dateFrom) params.set("date_from", dateFrom);
-      if (dateTo) params.set("date_to", dateTo);
-
-      const [movRes, trfRes, prodRes, statusRes] = await Promise.all([
-        fetch(`/api/movements?${params.toString()}&_t=${Date.now()}`, { cache: "no-store" }),
-        fetch(`/api/movements/transfer?_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/products?limit=5000&_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/express-import/status?type=TRANSFER&_t=${Date.now()}`, { cache: "no-store" }).catch(() => null),
+      const ts = Date.now();
+      const [expTrfRes, prodRes, statusRes] = await Promise.all([
+        fetch(`/api/express-import/transfer?_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=TRANSFER&_t=${ts}`, { cache: "no-store" }).catch(() => null),
       ]);
 
-      const json = await movRes.json();
-      const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
+      const expTrfJson = expTrfRes ? await expTrfRes.json().catch(() => null) : null;
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
       const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
 
@@ -136,134 +137,160 @@ export default function ExpressTransferPage() {
         : [];
       setCatalogProducts(prods);
 
-      // Extract local transfer notifications
-      const localNotifications = getTransferNotifications();
-      const notifMap = new Map<string, any>();
-      localNotifications.forEach((n) => {
-        if (n.doc_no) notifMap.set(n.doc_no.trim().toLowerCase(), n);
-        if (n.id) notifMap.set(n.id.trim().toLowerCase(), n);
-      });
-
-      // Build transfer docs map for fast from/to warehouse resolution & destination location
-      const trfDocMap = new Map<string, {
-        from_warehouse_name: string;
-        to_warehouse_name: string;
-        to_location_id?: string;
-        from_location_id?: string;
-        note?: string;
-      }>();
-
-      if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
-        trfJson.data.forEach((t: any) => {
-          let meta: Record<string, any> = {};
-          try {
-            if (t.note && typeof t.note === "string" && t.note.startsWith("{")) {
-              meta = JSON.parse(t.note);
-            }
-          } catch {}
-          const fromWh = meta.from_warehouse_name || meta.from_warehouse_id || t.from_warehouse_name || "โกดัง 1";
-          const toWh = meta.to_warehouse_name || meta.to_warehouse_id || t.to_warehouse_name || "";
-          const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
-          const docId = (t.document_id || t.id || "").trim().toLowerCase();
-          const notif = (docNo && notifMap.get(docNo)) || (docId && notifMap.get(docId));
-
-          const toLoc =
-            meta.to_location_id ||
-            meta.to_location ||
-            meta.completed_location_id ||
-            meta.destination_location ||
-            t.to_location_id ||
-            t.to_location ||
-            t.completed_location_id ||
-            notif?.to_location_id ||
-            "";
-
-          const fromLoc =
-            meta.from_location_id ||
-            meta.from_location ||
-            meta.source_allocations?.[0]?.location_id ||
-            t.from_location_id ||
-            t.from_location ||
-            notif?.from_location_id ||
-            "";
-
-          const info = {
-            from_warehouse_name: fromWh,
-            to_warehouse_name: toWh,
-            to_location_id: toLoc,
-            from_location_id: fromLoc,
-            note: t.note,
-          };
-          if (docNo) trfDocMap.set(docNo, info);
-          if (docId) trfDocMap.set(docId, info);
-        });
-      }
-
-      if (json.success && Array.isArray(json.data?.data)) {
-        // Filter for transfer movements
-        const transferMovements = json.data.data
-          .filter(
-            (m: MovementWithDetails) =>
-              m.movement_type === "TRANSFER_OUT" ||
-              m.movement_type === "TRANSFER_IN" ||
-              m.movement_type === "MOVE_OUT" ||
-              m.movement_type === "MOVE_IN" ||
-              (m.document_type as any) === "TRANSFER" ||
-              (m.document_type as any) === "MOVE"
-          )
-          .map((m: MovementWithDetails) => {
-            const docNo = m.document_no || m.document_id || "";
-            const trfInfo = docNo ? trfDocMap.get(docNo.trim().toLowerCase()) : undefined;
-            const notif = docNo ? notifMap.get(docNo.trim().toLowerCase()) : undefined;
-            const toLoc = (m as any).to_location_id || trfInfo?.to_location_id || notif?.to_location_id || "";
-
-            return {
-              ...m,
-              from_warehouse_name: (m as any).from_warehouse_name || trfInfo?.from_warehouse_name || m.warehouse_name || "โกดัง 1",
-              to_warehouse_name: (m as any).to_warehouse_name || trfInfo?.to_warehouse_name || "",
-              to_location_id: toLoc,
-            };
-          });
-        setMovements(transferMovements);
+      if (expTrfJson && expTrfJson.success && Array.isArray(expTrfJson.data)) {
+        const incoming = expTrfJson.data;
+        setMovements(incoming);
 
         // If server returned express statuses, synchronize into tagged map
         if (statusJson?.success && statusJson?.data) {
           const serverStatusMap: Record<string, { status: ExpressSyncStatus; type: string }> = statusJson.data;
           const currentTagged = getAllTaggedExpressItems("TRANSFER");
           const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
-          let hasChanges = false;
+          const toUpdate: Array<Omit<TaggedExpressItem, "tagged_at" | "status"> & { status?: ExpressSyncStatus }> = [];
 
-          transferMovements.forEach((m: any) => {
-            const docKey = (m.document_no || "").trim().toLowerCase();
-            const docIdKey = (m.document_id || "").trim().toLowerCase();
+          incoming.forEach((item: any) => {
+            const docKey = (item.document_no || "").trim().toLowerCase();
+            const docIdKey = (item.document_id || "").trim().toLowerCase();
             const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
-            if (srv) {
-              const uniqueId = `trf_${m.movement_id || m.document_id}_${m.product_id || ""}_0`;
+            const docExpressStatus = srv?.status || (item.status === "IMPORTED" ? "IMPORTED" : undefined);
+
+            if (docExpressStatus) {
+              const uniqueId = item.id || `trf_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;
               const existing = localMap.get(uniqueId);
-              if (!existing || existing.status !== srv.status) {
-                tagExpressItem({
+              if (!existing || existing.status !== docExpressStatus) {
+                toUpdate.push({
                   id: uniqueId,
                   type: "TRANSFER",
-                  tag: existing?.tag || "โอนย้ายรอนำเข้า Express",
-                  sku: m.product_id || "",
-                  barcode: m.barcode || m.product_id || "",
-                  product_name: m.product_name || "สินค้า",
-                  warehouse: m.warehouse_name || "โกดัง 1",
-                  warehouse_code: toExpressWhCode(m.warehouse_name || "โกดัง 1"),
-                  quantity: Math.abs(Number(m.qty_change) || 1),
-                  document_no: m.document_no || "TRF",
-                  document_date: (m.created_at || "").slice(0, 10),
-                  location: m.location_id || "-",
-                  status: srv.status,
+                  tag: existing?.tag || "ย้ายสินค้ารอนำเข้า Express",
+                  sku: item.sku,
+                  barcode: item.barcode,
+                  product_name: item.product_name,
+                  warehouse: item.from_warehouse_name || item.warehouse_name || "โกดัง1",
+                  warehouse_code: toExpressWhCode(item.from_warehouse_name || item.warehouse_name),
+                  quantity: Math.abs(Number(item.quantity) || 1),
+                  document_no: item.document_no,
+                  document_date: item.created_at,
+                  location: item.location || "-",
+                  status: docExpressStatus,
                 });
-                hasChanges = true;
               }
             }
           });
 
-          if (hasChanges) {
-            refreshTaggedMap();
+          if (toUpdate.length > 0) {
+            batchTagExpressItems(toUpdate);
           }
+        }
+      } else {
+        // Fallback: fetch from /api/movements and /api/movements/transfer
+        const params = new URLSearchParams({ page: "1", limit: "2000" });
+        if (dateFrom) params.set("date_from", dateFrom);
+        if (dateTo) params.set("date_to", dateTo);
+
+        const [movRes, trfRes] = await Promise.all([
+          fetch(`/api/movements?${params.toString()}&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+          fetch(`/api/movements/transfer?_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        ]);
+
+        const movJson = movRes ? await movRes.json().catch(() => null) : null;
+        const trfJson = trfRes ? await trfRes.json().catch(() => null) : null;
+
+        const localNotifications = getTransferNotifications();
+        const notifMap = new Map<string, any>();
+        localNotifications.forEach((n) => {
+          if (n.doc_no) notifMap.set(n.doc_no.trim().toLowerCase(), n);
+          if (n.id) notifMap.set(n.id.trim().toLowerCase(), n);
+        });
+
+        const trfDocMap = new Map<string, {
+          from_warehouse_name: string;
+          from_warehouse_id: string;
+          to_warehouse_name: string;
+          to_warehouse_id: string;
+          to_location_id?: string;
+          from_location_id?: string;
+          note?: string;
+        }>();
+
+        if (trfJson && trfJson.success && Array.isArray(trfJson.data)) {
+          trfJson.data.forEach((t: any) => {
+            const meta = parseTransferMetadata(t.note);
+            const docNo = (t.document_no || t.doc_no || meta.doc_no || "").trim().toLowerCase();
+            const docId = (t.document_id || t.id || "").trim().toLowerCase();
+            const notif = (docNo && notifMap.get(docNo)) || (docId && notifMap.get(docId));
+
+            const toLoc =
+              meta.to_location_id ||
+              meta.to_location ||
+              meta.completed_location_id ||
+              t.to_location_id ||
+              notif?.to_location_id ||
+              "";
+
+            const fromLoc =
+              meta.from_location_id ||
+              meta.from_location ||
+              meta.source_allocations?.[0]?.location_id ||
+              t.from_location_id ||
+              notif?.from_location_id ||
+              "";
+
+            const fromWhId = normalizeWarehouseId(meta.from_warehouse_id || notif?.from_warehouse_id || (fromLoc ? detectWarehouseFromLocation(fromLoc) : null) || t.from_warehouse_id || "wh-01");
+            const toWhId = normalizeWarehouseId(meta.to_warehouse_id || notif?.to_warehouse_id || (toLoc ? detectWarehouseFromLocation(toLoc) : null) || t.to_warehouse_id || (fromWhId === "wh-01" ? "wh-02" : "wh-01"));
+
+            const info = {
+              from_warehouse_name: getWarehouseName(fromWhId),
+              from_warehouse_id: fromWhId,
+              to_warehouse_name: getWarehouseName(toWhId),
+              to_warehouse_id: toWhId,
+              to_location_id: toLoc,
+              from_location_id: fromLoc,
+              note: t.note,
+            };
+            if (docNo) trfDocMap.set(docNo, info);
+            if (docId) trfDocMap.set(docId, info);
+          });
+        }
+
+        if (movJson?.success && Array.isArray(movJson.data?.data)) {
+          const seen = new Set<string>();
+          const transferMovements: any[] = [];
+
+          movJson.data.data
+            .filter(
+              (m: MovementWithDetails) =>
+                m.movement_type === "TRANSFER_OUT" ||
+                m.movement_type === "TRANSFER_IN" ||
+                (m.document_type as any) === "TRANSFER"
+            )
+            .forEach((m: MovementWithDetails) => {
+              const docNo = m.document_no || m.document_id || "";
+              const docKey = docNo.trim().toLowerCase();
+              if (docKey && seen.has(docKey)) return;
+              if (docKey) seen.add(docKey);
+
+              const trfInfo = docKey ? trfDocMap.get(docKey) : undefined;
+              const notif = docKey ? notifMap.get(docKey) : undefined;
+              const toLoc = (m as any).to_location_id || trfInfo?.to_location_id || notif?.to_location_id || "";
+              const fromLoc = (m as any).from_location_id || trfInfo?.from_location_id || notif?.from_location_id || "";
+
+              const fromWhId = trfInfo?.from_warehouse_id || notif?.from_warehouse_id || normalizeWarehouseId(m.warehouse_id || m.warehouse_name || "wh-01");
+              const toWhId = trfInfo?.to_warehouse_id || notif?.to_warehouse_id || (fromWhId === "wh-01" ? "wh-02" : "wh-01");
+
+              transferMovements.push({
+                ...m,
+                from_warehouse_name: getWarehouseName(fromWhId),
+                from_warehouse_id: fromWhId,
+                to_warehouse_name: getWarehouseName(toWhId),
+                to_warehouse_id: toWhId,
+                to_location_id: toLoc,
+                from_location_id: fromLoc,
+                location: toLoc || (m as any).location_id || "-",
+                quantity: Math.abs(Number(m.qty_change) || 1),
+              });
+            });
+
+          setMovements(transferMovements);
         }
       }
     } catch (e) {
@@ -277,7 +304,7 @@ export default function ExpressTransferPage() {
     fetchMovements();
     const interval = setInterval(() => {
       fetchMovements(true);
-    }, 6000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [fetchMovements]);
 
@@ -314,7 +341,9 @@ export default function ExpressTransferPage() {
       warehouse_name: string;
       warehouse_id: string;
       from_warehouse_name?: string;
+      from_warehouse_id?: string;
       to_warehouse_name?: string;
+      to_warehouse_id?: string;
       created_at: string;
       created_by_name: string;
       sku: string;
@@ -377,15 +406,6 @@ export default function ExpressTransferPage() {
 
     movements.forEach((m: any, idx) => {
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
-      if (
-        selectedWarehouse !== "ALL" &&
-        m.warehouse_name !== selectedWarehouse &&
-        m.warehouse_id !== selectedWarehouse &&
-        m.from_warehouse_name !== selectedWarehouse &&
-        m.to_warehouse_name !== selectedWarehouse
-      ) {
-        return;
-      }
 
       const rawBarcode = m.barcode || "";
       const sku = m.sku || "";
@@ -398,7 +418,7 @@ export default function ExpressTransferPage() {
       const finalBarcode = barcode || to8DigitBarcode(rawBarcode, sku, prodName) || (prodName.match(/^(\d{3,18})/) ? (prodName.match(/^(\d{3,18})/)?.[1]?.length ?? 0 >= 7 ? prodName.match(/^(\d{3,18})/)![1] : "9000" + prodName.match(/^(\d{3,18})/)![1].padStart(4, "0")) : "");
 
       // 1. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง)
-      let realLocation = "";
+      let realLocation = (m.location && m.location !== "-" && m.location !== "A1") ? m.location : "";
       const destScannedLoc = (
         (m as any).to_location_id ||
         (m as any).to_location ||
@@ -478,27 +498,62 @@ export default function ExpressTransferPage() {
         }
       }
 
-      // 3. Fallback: extract shelf tag #SHELF from product name, SKU, or note
+      // 5. Final fallback
       if (!realLocation) {
         realLocation =
           extractShelfFromText(prodName) ||
           extractShelfFromText(m.product_name) ||
           extractShelfFromText(sku) ||
-          extractShelfFromText(m.note);
+          extractShelfFromText(m.note) ||
+          "-";
       }
 
-      const qty = Math.abs(Number(m.qty_change) || 1);
-      const uniqueId = `trf_${m.movement_id || m.document_id || idx}_${sku}_${idx}`;
+      const uniqueId = m.id || `trf_${m.movement_id || m.document_id || idx}_${sku || idx}`;
+      const docNoKey = (m.document_no || "").trim().toLowerCase();
+
+      // Cleanly resolve source & destination warehouses
+      let fromWhName = m.from_warehouse_name || m.warehouse_name || "โกดัง1";
+      let toWhName = m.to_warehouse_name || "";
+
+      // Check if user explicitly selected/saved warehouse override in taggedItemsMap
+      const tagged =
+        taggedItemsMap.get(uniqueId) ||
+        (docNoKey ? Array.from(taggedItemsMap.values()).find((t) => t.document_no?.toLowerCase() === docNoKey) : undefined);
+
+      if (tagged?.from_warehouse) {
+        fromWhName = tagged.from_warehouse;
+      }
+      if (tagged?.to_warehouse) {
+        toWhName = tagged.to_warehouse;
+      }
+
+      let fromWhId = normalizeWarehouseId(m.from_warehouse_id || fromWhName);
+      let toWhId = toWhName ? normalizeWarehouseId(m.to_warehouse_id || toWhName) : (fromWhId === "wh-01" ? "wh-02" : "wh-01");
+
+      // --- Override: TRF-20260825-000067 ปลายทาง = สำนักงานใหญ่ ---
+      if ((m.document_no || "").trim() === "TRF-20260825-000067") {
+        fromWhId = "wh-01";
+        toWhId = "wh-06";
+      }
+
+      if (!toWhName) {
+        toWhName = getWarehouseName(toWhId);
+      }
+      fromWhName = getWarehouseName(fromWhId);
+
+      const qty = Math.abs(Number(m.quantity || m.qty_change) || 1);
 
       list.push({
         id: uniqueId,
-        movement_id: m.movement_id,
-        document_id: m.document_id,
+        movement_id: m.movement_id || `mov-${m.document_id || idx}`,
+        document_id: m.document_id || m.document_no,
         document_no: m.document_no || "TRF",
-        warehouse_name: m.from_warehouse_name || m.warehouse_name || m.warehouse_id || "คลังสินค้า",
-        warehouse_id: m.warehouse_id || "",
-        from_warehouse_name: m.from_warehouse_name || m.warehouse_name || "คลังสินค้า",
-        to_warehouse_name: m.to_warehouse_name || "",
+        warehouse_name: fromWhName,
+        warehouse_id: fromWhId,
+        from_warehouse_name: fromWhName,
+        from_warehouse_id: fromWhId,
+        to_warehouse_name: toWhName,
+        to_warehouse_id: toWhId,
         created_at: m.created_at ? m.created_at.slice(0, 10) : "-",
         created_by_name: m.created_by_name || "ผู้ใช้งาน",
         sku: sku || finalBarcode,
@@ -506,12 +561,12 @@ export default function ExpressTransferPage() {
         quantity: qty,
         location: realLocation,
         barcode: finalBarcode || rawBarcode || sku,
-        movement_type: m.movement_type,
+        movement_type: m.movement_type || "TRANSFER",
       });
     });
 
     return list;
-  }, [movements, selectedDocNo, selectedWarehouse, catalogProducts]);
+  }, [movements, selectedDocNo, catalogProducts, taggedItemsMap]);
 
   // Available distinct years from dataset
   // Helper to parse date into { year, month, day }
@@ -580,12 +635,12 @@ export default function ExpressTransferPage() {
 
   const availableWarehouses = useMemo(() => {
     const set = new Set<string>();
-    movements.forEach((m) => {
-      const wh = m.warehouse_name || m.warehouse_id;
-      if (wh) set.add(wh);
+    allItems.forEach((m) => {
+      if (m.from_warehouse_name) set.add(getWarehouseDisplayName(m.from_warehouse_name));
+      if (m.to_warehouse_name) set.add(getWarehouseDisplayName(m.to_warehouse_name));
     });
-    return Array.from(set);
-  }, [movements]);
+    return Array.from(set).filter((w) => w && w !== "-");
+  }, [allItems]);
 
   const resetDateFilter = () => {
     setSelectedYear("ALL");
@@ -630,9 +685,22 @@ export default function ExpressTransferPage() {
     ...availableYears.map((yr) => ({ value: yr, label: `ปี ${yr}` })),
   ], [availableYears]);
 
-  // Filter items by search query, Tag filter, & Day/Month/Year date filter
+  // Filter items by search query, Warehouse, Tag filter, & Day/Month/Year date filter
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
+      // Warehouse filter
+      if (selectedWarehouse !== "ALL") {
+        const sel = selectedWarehouse.toLowerCase();
+        const fromWh = getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name).toLowerCase();
+        const toWh = getWarehouseDisplayName(item.to_warehouse_name).toLowerCase();
+        const fromId = normalizeWarehouseId(item.from_warehouse_id || item.warehouse_id);
+        const toId = item.to_warehouse_id ? normalizeWarehouseId(item.to_warehouse_id) : "";
+        const selId = normalizeWarehouseId(selectedWarehouse);
+
+        const match = fromWh.includes(sel) || toWh.includes(sel) || fromId === selId || toId === selId;
+        if (!match) return false;
+      }
+
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
       const effectiveStatus: ExpressSyncStatus = tagged?.status || "PENDING";
@@ -670,7 +738,7 @@ export default function ExpressTransferPage() {
         (tagged && tagged.tag.toLowerCase().includes(q))
       );
     });
-  }, [allItems, searchQuery, tagFilter, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
+  }, [allItems, searchQuery, selectedWarehouse, tagFilter, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
 
   const availableDocNos = useMemo(() => {
     const set = new Set<string>();
@@ -845,20 +913,68 @@ export default function ExpressTransferPage() {
     syncStatusToSheet(itemsToSync);
   };
 
+  // Update specific row's warehouse route (source or destination)
+  const handleUpdateRowWarehouse = useCallback(
+    (item: (typeof allItems)[0], newFromWh: string, newToWh: string) => {
+      const fromName = getWarehouseDisplayName(newFromWh);
+      const toName = getWarehouseDisplayName(newToWh);
+      const fromWhCode = toExpressWhCode(fromName);
+      const toWhCode = toExpressWhCode(toName);
+
+      tagExpressItem({
+        id: item.id,
+        type: "TRANSFER",
+        tag: "ย้ายสินค้ารอนำเข้า Express",
+        sku: item.sku,
+        barcode: item.barcode,
+        product_name: item.product_name,
+        warehouse: `${fromName} -> ${toName}`,
+        from_warehouse: fromName,
+        to_warehouse: toName,
+        from_warehouse_code: fromWhCode,
+        to_warehouse_code: toWhCode,
+        warehouse_code: fromWhCode,
+        quantity: item.quantity,
+        document_no: item.document_no,
+        document_date: item.created_at,
+        location: item.location,
+      });
+
+      refreshTaggedMap();
+
+      // Fire-and-forget sync to status endpoint
+      syncStatusToSheet([
+        {
+          document_no: item.document_no,
+          sku: item.sku,
+          status: (taggedItemsMap.get(item.id)?.status || "PENDING") as ExpressSyncStatus,
+          type: "TRANSFER" as const,
+        },
+      ]);
+    },
+    [refreshTaggedMap, taggedItemsMap]
+  );
+
   // Generate Tab-delimited row for an item
   const getItemExpressRowString = useCallback(
     (item: (typeof allItems)[0]) => {
       const parts: string[] = [];
+      const fromWhCode = toExpressWhCode(item.from_warehouse_name || item.warehouse_name);
+      const toWhCode = toExpressWhCode(item.to_warehouse_name || "");
+
       if (displayFields.barcode) parts.push(item.barcode);
       if (displayFields.productName) parts.push(item.product_name.replace(/\t/g, " "));
-      if (displayFields.warehouse) parts.push(toExpressWhCode(item.warehouse_name));
+      if (displayFields.warehouse) {
+        parts.push(toWhCode ? `${fromWhCode}\t${toWhCode}` : fromWhCode);
+      }
       if (displayFields.quantity) parts.push(String(item.quantity));
       if (displayFields.sku) parts.push(item.sku);
       if (displayFields.location) parts.push(item.location);
       if (displayFields.docNo) parts.push(item.document_no);
 
       if (parts.length === 0) {
-        return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.warehouse_name)}\t${item.quantity}`;
+        const whStr = toWhCode ? `${fromWhCode}\t${toWhCode}` : fromWhCode;
+        return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${whStr}\t${item.quantity}`;
       }
       return parts.join("\t");
     },
@@ -906,13 +1022,16 @@ export default function ExpressTransferPage() {
     const headers: string[] = [];
     if (displayFields.barcode) headers.push("บาร์โค้ด");
     if (displayFields.productName) headers.push("ชื่อสินค้า");
-    if (displayFields.warehouse) headers.push("โกดัง");
+    if (displayFields.warehouse) {
+      headers.push("โกดังต้นทาง");
+      headers.push("โกดังปลายทาง");
+    }
     if (displayFields.quantity) headers.push("จำนวน");
     if (displayFields.sku) headers.push("รหัสสินค้า");
     if (displayFields.location) headers.push("ตำแหน่ง");
     if (displayFields.docNo) headers.push("เลขที่เอกสาร");
 
-    const headerLine = (headers.length > 0 ? headers.join("\t") : "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน") + "\n";
+    const headerLine = (headers.length > 0 ? headers.join("\t") : "บาร์โค้ด\tชื่อสินค้า\tโกดังต้นทาง\tโกดังปลายทาง\tจำนวน") + "\n";
     const body = filteredItems.map((item) => getItemExpressRowString(item)).join("\n");
 
     const blob = new Blob([headerLine + body], { type: "text/plain;charset=utf-8" });
@@ -1250,19 +1369,33 @@ export default function ExpressTransferPage() {
                           </div>
                         </td>
 
-                        {/* 6. คลังสินค้า */}
+                        {/* 6. คลังสินค้า (สามารถกดเปลี่ยนโกดังต้นทาง-ปลายทางได้ทันที) */}
                         <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          {item.to_warehouse_name ? (
-                            <div className="inline-flex items-center gap-1.5 text-slate-800 font-medium">
-                              <span>{getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name)}</span>
-                              <span className="text-slate-400 font-bold">➔</span>
-                              <span className="font-bold text-slate-900">{getWarehouseDisplayName(item.to_warehouse_name)}</span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-800 font-semibold">
-                              {getWarehouseDisplayName(item.warehouse_name)}
-                            </span>
-                          )}
+                          <div className="inline-flex items-center gap-1 text-slate-800 font-medium">
+                            <select
+                              value={getWarehouseName(item.from_warehouse_name || item.warehouse_name)}
+                              onChange={(e) => handleUpdateRowWarehouse(item, e.target.value, item.to_warehouse_name || "สำนักงานใหญ่")}
+                              className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-slate-400 transition-colors"
+                              title="เลือกโกดังต้นทาง"
+                            >
+                              {WAREHOUSE_SELECT_OPTIONS.map((w) => (
+                                <option key={w.id} value={w.name}>{w.label}</option>
+                              ))}
+                            </select>
+
+                            <span className="text-slate-400 font-bold px-0.5">➔</span>
+
+                            <select
+                              value={getWarehouseName(item.to_warehouse_name || "สำนักงานใหญ่")}
+                              onChange={(e) => handleUpdateRowWarehouse(item, item.from_warehouse_name || item.warehouse_name, e.target.value)}
+                              className="bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-950 text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-purple-400 transition-colors"
+                              title="เลือกโกดังปลายทาง"
+                            >
+                              {WAREHOUSE_SELECT_OPTIONS.map((w) => (
+                                <option key={w.id} value={w.name}>{w.label}</option>
+                              ))}
+                            </select>
+                          </div>
                         </td>
 
                         {/* 7. ตำแหน่ง */}

@@ -32,7 +32,7 @@ import {
 import { hasWarehouseAccess } from "@/lib/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
 import { appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
-import { normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { normalizeWarehouseId, getWarehouseName } from "@/lib/warehouse-utils";
 export {
   CreateTransferSchema,
   SubmitTransferSchema,
@@ -101,8 +101,40 @@ export async function createTransfer(
       if (!prod && input.barcode) {
         prod = await repo.products.findByBarcode(input.barcode.trim());
       }
+      if (!prod && input.sku) {
+        const inputSku = input.sku.trim();
+        prod =
+          (await repo.products.findBySku(inputSku)) ||
+          (await repo.products.findById(inputSku));
+      }
       if (!prod) {
-        throw new StockNotFoundError(`ไม่พบข้อมูลสินค้าสำหรับรหัส "${input.product_id}"`);
+        // The PRODUCTS master sheet is not the source of truth for stock: a SKU can
+        // hold real stock in a warehouse sheet without ever being registered there.
+        // Issue and move already transfer such items, so failing here made transfer
+        // the odd one out. Fall back to the snapshot the client sends alongside the
+        // id (it comes from the same warehouse row the balance is read from), and
+        // only give up when there is nothing to identify the product with at all.
+        const fallbackSku = (input.sku || "").trim();
+        const fallbackBarcode = (input.barcode || "").trim();
+        // Only the caller-supplied sku/barcode count as identification. Deriving one
+        // from product_id would let any unknown id through, and the balance check
+        // below is what ultimately proves the SKU is real stock in the source warehouse.
+        if (!fallbackSku && !fallbackBarcode) {
+          throw new StockNotFoundError(`ไม่พบข้อมูลสินค้าสำหรับรหัส "${input.product_id}"`);
+        }
+        prod = {
+          product_id: cleanProdId || `prod-${fallbackSku}`,
+          sku: fallbackSku || fallbackBarcode,
+          barcode: fallbackBarcode || fallbackSku,
+          product_name: (input.product_name || "").trim() || `สินค้า ${fallbackSku || fallbackBarcode}`,
+          category: "ทั่วไป",
+          base_unit: "ชิ้น",
+          minimum_stock: 0,
+          description: "",
+          active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
       }
 
       const rawFromLoc = input.from_location_id || "";
@@ -737,16 +769,19 @@ export async function completeTransfer(
           meta.assigned_to_name = userName || executorId;
         }
       }
-      meta.express_tag = "เบิกสินค้าเข้า Express";
+      meta.from_warehouse_name = getWarehouseName(meta.from_warehouse_id);
+      meta.to_warehouse_name = getWarehouseName(meta.to_warehouse_id);
+      meta.express_tag = "ย้ายสินค้าเข้า Express";
       meta.express_status = "PENDING";
 
-      // Automatically record into Google Sheets Tab: "เบิกสินค้าเข้าExpress" (fire-and-forget)
+      // Automatically record into Google Sheets Tab: "ย้ายสินค้าเข้าExpress" & "เบิกสินค้าเข้าExpress"
       try {
-        const expressRow = [
+        const routeName = `${meta.from_warehouse_name} -> ${meta.to_warehouse_name}`;
+        const expressTransferRow = [
           prodObj.sku || "",
-          finalFromLocId || "A1",
+          finalToLocId || finalFromLocId || "A1",
           doc.document_no || doc.document_id,
-          getWarehouseSheetName(meta.from_warehouse_id) || meta.from_warehouse_id || "โกดัง1",
+          routeName,
           new Date().toISOString().slice(0, 10),
           prodObj.product_name || prodObj.sku || "",
           "รอนำเข้า Express",
@@ -754,11 +789,11 @@ export async function completeTransfer(
           prodObj.barcode || prodObj.sku || "",
         ];
         // Do NOT await — fire-and-forget so approval doesn't block waiting for Sheets API
-        appendRows(SHEETS.EXPRESS_ISSUE, [expressRow]).catch((err) => {
-          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE failed:", err);
+        appendRows(SHEETS.EXPRESS_TRANSFER, [expressTransferRow]).catch((err) => {
+          console.warn("[completeTransfer] appendRows to EXPRESS_TRANSFER failed:", err);
         });
       } catch (sheetErr) {
-        console.warn("[completeTransfer] Auto-append to เบิกสินค้าเข้าExpress sheet warning:", sheetErr);
+        console.warn("[completeTransfer] Auto-append to ย้ายสินค้าเข้าExpress sheet warning:", sheetErr);
       }
 
       return { ...doc, status: "COMPLETED", note: JSON.stringify(meta) };

@@ -82,14 +82,14 @@ function PinScreen() {
         if (next >= 5) {
           setLocked(true);
           setLockSeconds(300);
-          setError("PIN ผิดเกิน 5 ครั้ง — ล็อค 5 นาที");
+          setError("กรุณารอ 5 นาที — PIN ผิดเกิน 5 ครั้ง");
         } else {
-          setError(json.message || `รหัส PIN ไม่ถูกต้อง (${next}/5 ครั้ง)`);
+          setError(json.message || `กรุณากรอกรหัส PIN ให้ถูกต้อง (${next}/5 ครั้ง)`);
         }
         setSubmitting(false);
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      setError("กรุณาลองใหม่อีกครั้ง เกิดข้อผิดพลาดในการเชื่อมต่อ");
       setPin("");
       setSubmitting(false);
     }
@@ -148,11 +148,11 @@ function PinScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-violet-600/8 rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/4 rounded-full blur-[150px]" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-[100px]" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[150px]" />
       </div>
 
       {/* Employee PIN Login Card */}
@@ -165,12 +165,12 @@ function PinScreen() {
           <p className="text-slate-500 text-xs mt-0.5">ระบบสำหรับพนักงาน</p>
         </div>
 
-        <div className="glass-card rounded-2xl p-6 sm:p-7 border border-white/[0.09] shadow-2xl bg-[#111118]">
+        <div className="rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-2xl bg-white">
 
           {/* Title */}
           <div className="text-center mb-5">
-            <h2 className="text-slate-100 font-bold text-base mb-1">กรอกรหัส PIN</h2>
-            <p className="text-slate-400 text-xs">กดรหัส PIN 4 หลักบนปุ่มด้านล่างเพื่อเข้าสู่ระบบ</p>
+            <h2 className="text-slate-900 font-bold text-base mb-1">กรอกรหัส PIN</h2>
+            <p className="text-slate-500 text-xs">กดรหัส PIN 4 หลักบนปุ่มด้านล่างเพื่อเข้าสู่ระบบ</p>
           </div>
 
           {/* 4 PIN Square Boxes Display (Vibrant Emerald Green Theme) */}
@@ -182,12 +182,12 @@ function PinScreen() {
                   key={i}
                   className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all duration-150 ${
                     isFilled
-                      ? "border-emerald-500 bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                      : "border-white/[0.15] bg-white/[0.03]"
+                      ? "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-500/20"
+                      : "border-slate-200 bg-slate-50"
                   } ${submitting ? "opacity-60 animate-pulse" : ""}`}
                 >
                   {isFilled && (
-                    <span className="w-4 h-4 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399] inline-block" />
+                    <span className="w-4 h-4 rounded-full bg-emerald-600 shadow-xs inline-block" />
                   )}
                 </div>
               );
@@ -197,32 +197,32 @@ function PinScreen() {
           {/* Error / Success / lock message */}
           <div className="min-h-[32px] flex items-center justify-center mb-3">
             {submitting ? (
-              <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
-                <span className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin inline-block" />
+              <p className="text-emerald-600 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
+                <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin inline-block" />
                 กำลังเข้าสู่ระบบ...
               </p>
             ) : successMessage ? (
-              <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
+              <p className="text-emerald-600 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 {successMessage}
               </p>
             ) : error ? (
-              <p className="text-red-400 text-xs font-medium flex items-center gap-1.5 text-center px-2">
+              <p className="text-rose-600 text-xs font-medium flex items-center gap-1.5 text-center px-2">
                 <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd"
                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
                     clipRule="evenodd" />
                 </svg>
                 {locked
-                  ? `🔒 ล็อค — ลองใหม่ใน ${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, "0")}`
+                  ? `🔒 กรุณารอ ${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, "0")} นาที — ระบบถูกล็อค`
                   : error}
               </p>
             ) : null}
           </div>
 
-          {/* Web On-Screen Numpad Grid - Clean Standard HTML Buttons for 100% Compatibility */}
+          {/* Web On-Screen Numpad Grid */}
           <div className="grid grid-cols-3 gap-3">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
               <button
@@ -230,9 +230,9 @@ function PinScreen() {
                 key={k}
                 id={`pin-key-${k}`}
                 onClick={() => handleNumClick(k)}
-                className="py-4 rounded-2xl bg-white/[0.06] border border-white/[0.12] text-slate-100 font-semibold
-                           text-2xl hover:bg-indigo-500/20 active:bg-indigo-600 active:text-white active:scale-95
-                           transition-all duration-100 cursor-pointer flex items-center justify-center shadow-md select-none touch-manipulation"
+                className="py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 font-bold
+                           text-2xl hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:bg-indigo-600 active:text-white active:scale-95
+                           transition-all duration-100 cursor-pointer flex items-center justify-center shadow-xs select-none touch-manipulation"
               >
                 {k}
               </button>
@@ -241,9 +241,9 @@ function PinScreen() {
               type="button"
               id="pin-key-clear"
               onClick={handleClear}
-              className="py-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-slate-400 text-xs font-semibold
-                         hover:bg-white/[0.08] active:bg-slate-700 active:text-white active:scale-95 transition-all duration-100
-                         cursor-pointer flex items-center justify-center shadow-md select-none touch-manipulation"
+              className="py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs font-bold
+                         hover:bg-slate-100 hover:text-slate-700 active:bg-slate-200 active:scale-95 transition-all duration-100
+                         cursor-pointer flex items-center justify-center shadow-xs select-none touch-manipulation"
             >
               CLR
             </button>
@@ -251,9 +251,9 @@ function PinScreen() {
               type="button"
               id="pin-key-0"
               onClick={() => handleNumClick("0")}
-              className="py-4 rounded-2xl bg-white/[0.06] border border-white/[0.12] text-slate-100 font-semibold
-                         text-2xl hover:bg-indigo-500/20 active:bg-indigo-600 active:text-white active:scale-95
-                         transition-all duration-100 cursor-pointer flex items-center justify-center shadow-md select-none touch-manipulation"
+              className="py-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 font-bold
+                         text-2xl hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:bg-indigo-600 active:text-white active:scale-95
+                         transition-all duration-100 cursor-pointer flex items-center justify-center shadow-xs select-none touch-manipulation"
             >
               0
             </button>
@@ -261,11 +261,11 @@ function PinScreen() {
               type="button"
               id="pin-key-del"
               onClick={() => handleNumClick("del")}
-              className="py-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-amber-400 font-semibold
-                         hover:bg-amber-500/15 active:bg-amber-600 active:text-white active:scale-95 transition-all duration-100
-                         cursor-pointer flex items-center justify-center shadow-md select-none touch-manipulation"
+              className="py-4 rounded-2xl bg-slate-50 border border-slate-200 text-amber-600 font-bold
+                         hover:bg-amber-50 hover:border-amber-300 active:bg-amber-600 active:text-white active:scale-95 transition-all duration-100
+                         cursor-pointer flex items-center justify-center shadow-xs select-none touch-manipulation"
             >
-              <svg className="w-6 h-6 text-amber-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-amber-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v12a2 2 0 01-2 2H10.828a2 2 0 01-1.414-.586L3 12z" />
               </svg>
             </button>
@@ -273,7 +273,7 @@ function PinScreen() {
 
           {/* Loading indicator */}
           {submitting && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-indigo-400 text-xs font-medium">
+            <div className="mt-4 flex items-center justify-center gap-2 text-indigo-600 text-xs font-semibold">
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -284,7 +284,7 @@ function PinScreen() {
 
         </div>
 
-        <p className="text-center text-slate-600 text-xs mt-5">
+        <p className="text-center text-slate-500 text-xs mt-5">
           © {new Date().getFullYear()} Stockify — Warehouse Management System
         </p>
       </div>
@@ -297,9 +297,9 @@ export default function EmployeeLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <svg className="animate-spin h-7 w-7 text-indigo-400" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-7 w-7 text-indigo-600" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>

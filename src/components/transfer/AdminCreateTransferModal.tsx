@@ -148,24 +148,24 @@ export default function AdminCreateTransferModal({
   const toLocations = locations.filter((l) => l.warehouse_id === toWhId);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl text-slate-100 animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl text-slate-900 animate-fadeIn">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 className="text-sm sm:text-lg font-bold text-slate-100 flex items-center gap-2">
-            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs sm:text-sm font-bold">📋</span>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs sm:text-sm font-bold border border-indigo-100">📋</span>
             <span className="truncate">สร้างใบสั่งย้ายสินค้า (Admin Assign)</span>
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-lg sm:text-xl font-bold p-1 cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 text-lg sm:text-xl font-bold p-1 cursor-pointer transition-colors"
           >
             ✕
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
             ⚠️ {error}
           </div>
         )}
@@ -173,11 +173,11 @@ export default function AdminCreateTransferModal({
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Select Product */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-300">1. สินค้าที่ต้องการย้าย *</label>
+            <label className="font-bold text-slate-700">1. สินค้าที่ต้องการย้าย *</label>
             <select
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-black/40 border border-slate-700 text-slate-200 focus:border-indigo-500 outline-none"
+              className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs sm:text-sm font-medium"
               required
             >
               <option value="">-- เลือกรายการสินค้า --</option>
@@ -192,7 +192,7 @@ export default function AdminCreateTransferModal({
           {/* Qty & Assigned Staff */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-semibold text-slate-300">2. จำนวนที่ย้าย *</label>
+              <label className="font-bold text-slate-700">2. จำนวนที่ย้าย * ({qty.toLocaleString()})</label>
               <input
                 type="number"
                 min={1}
@@ -200,17 +200,17 @@ export default function AdminCreateTransferModal({
                 onFocus={(e) => (e.target as HTMLInputElement).select()}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
                 onChange={(e) => setQty(Number(e.target.value))}
-                className="w-full p-2.5 rounded-xl bg-black/40 border border-slate-700 text-slate-200 focus:border-indigo-500 outline-none"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-mono text-xs sm:text-sm"
                 required
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-amber-300">3. มอบหมายพนักงาน *</label>
+              <label className="font-bold text-amber-700">3. มอบหมายพนักงาน *</label>
               <select
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/50 text-indigo-200 font-semibold focus:border-indigo-400 outline-none"
+                className="w-full p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 text-slate-900 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs sm:text-sm"
                 required
               >
                 <option value="">-- เลือกพนักงานผู้รับงาน --</option>
@@ -224,13 +224,13 @@ export default function AdminCreateTransferModal({
           </div>
 
           {/* From Warehouse & Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <div className="space-y-1">
-              <label className="font-semibold text-rose-300">คลังต้นทาง *</label>
+              <label className="font-bold text-rose-700">คลังต้นทาง *</label>
               <select
                 value={fromWhId}
                 onChange={(e) => setFromWhId(e.target.value)}
-                className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
+                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 font-medium"
               >
                 {warehouses.map((w, idx) => (
                   <option key={`from-wh-${w.warehouse_id || idx}-${idx}`} value={w.warehouse_id}>
@@ -240,11 +240,11 @@ export default function AdminCreateTransferModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-semibold text-slate-400">ตำแหน่งต้นทาง</label>
+              <label className="font-bold text-slate-700">ตำแหน่งต้นทาง</label>
               <select
                 value={fromLocId}
                 onChange={(e) => setFromLocId(e.target.value)}
-                className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
+                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 font-medium"
               >
                 <option value="">A1 (อัตโนมัติ)</option>
                 {fromLocations.map((l, idx) => (
@@ -257,13 +257,13 @@ export default function AdminCreateTransferModal({
           </div>
 
           {/* To Warehouse & Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <div className="space-y-1">
-              <label className="font-semibold text-emerald-300">คลังปลายทาง *</label>
+              <label className="font-bold text-emerald-700">คลังปลายทาง *</label>
               <select
                 value={toWhId}
                 onChange={(e) => setToWhId(e.target.value)}
-                className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
+                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 font-medium"
               >
                 {warehouses.map((w, idx) => (
                   <option key={`to-wh-${w.warehouse_id || idx}-${idx}`} value={w.warehouse_id}>
@@ -273,11 +273,11 @@ export default function AdminCreateTransferModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-semibold text-slate-400">ตำแหน่งปลายทาง</label>
+              <label className="font-bold text-slate-700">ตำแหน่งปลายทาง</label>
               <select
                 value={toLocId}
                 onChange={(e) => setToLocId(e.target.value)}
-                className="w-full p-2 rounded-lg bg-black/40 border border-slate-700 text-slate-200"
+                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 font-medium"
               >
                 <option value="">A1 (อัตโนมัติ)</option>
                 {toLocations.map((l, idx) => (
@@ -291,29 +291,29 @@ export default function AdminCreateTransferModal({
 
           {/* Note */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-400">คำสั่งเพิ่มเติมถึงพนักงาน (Optional)</label>
+            <label className="font-bold text-slate-700">คำสั่งเพิ่มเติมถึงพนักงาน (ไม่บังคับ)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="เช่น ย้ายใส่ชั้นว่างแถวหน้าสุด"
-              className="w-full p-2.5 rounded-xl bg-black/40 border border-slate-700 text-slate-200 focus:border-indigo-500 outline-none"
+              className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs sm:text-sm font-medium"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer active:scale-95"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-colors cursor-pointer active:scale-95"
             >
               {isSubmitting ? "กำลังส่งใบสั่งย้าย..." : "🚀 สั่งงานและส่งการแจ้งเตือน"}
             </button>

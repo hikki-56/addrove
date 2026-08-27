@@ -74,7 +74,7 @@ export default function ReceiveLinesTable({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-tight whitespace-nowrap">รายการ</div>
-            <div className="text-sm sm:text-xl font-extrabold text-slate-900 leading-tight mt-0.5">{totalLines}</div>
+            <div className="text-sm sm:text-xl font-extrabold text-slate-900 leading-tight mt-0.5">{totalLines.toLocaleString()}</div>
           </div>
         </div>
 
@@ -87,7 +87,7 @@ export default function ReceiveLinesTable({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-tight whitespace-nowrap">กล่องรวม</div>
-            <div className="text-sm sm:text-xl font-extrabold text-slate-900 leading-tight mt-0.5">{totalBoxes}</div>
+            <div className="text-sm sm:text-xl font-extrabold text-slate-900 leading-tight mt-0.5">{totalBoxes.toLocaleString()}</div>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export default function ReceiveLinesTable({
           <div className="min-w-0 flex-1">
             <div className="text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-tight whitespace-nowrap">จำนวนรวม</div>
             <div className="text-sm sm:text-xl font-extrabold text-emerald-600 leading-tight mt-0.5">
-              {totalQty} <span className="text-[10px] sm:text-sm font-bold text-emerald-600">ชิ้น</span>
+              {totalQty.toLocaleString()} <span className="text-[10px] sm:text-sm font-bold text-emerald-600">ชิ้น</span>
             </div>
           </div>
         </div>

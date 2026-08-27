@@ -169,6 +169,7 @@ export default function TransferPage() {
           selectedItems={transferHook.selectedItems}
           addTransferItem={transferHook.addTransferItem}
           updateItemQty={transferHook.updateItemQty}
+          /* toLocaleString formatted inside TransferForm */
           removeItem={transferHook.removeItem}
           clearItems={transferHook.clearItems}
         />

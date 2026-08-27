@@ -267,7 +267,7 @@ export default function Navbar({
                               {t.doc_no || "TRF"}
                             </span>
                             <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
-                              {t.qty} ชิ้น
+                              {Number(t.qty || 0).toLocaleString()} ชิ้น
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[11px] gap-2">

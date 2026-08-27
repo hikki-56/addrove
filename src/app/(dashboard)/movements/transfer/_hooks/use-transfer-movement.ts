@@ -659,11 +659,22 @@ export function useTransferMovement({
       return;
     }
 
+    const is4Digit = /^\d{4}$/.test(scannedNorm);
+    const digitsBarcode = targetBarcode.replace(/\D/g, "");
+    const digitsSku = targetSku.replace(/\D/g, "");
+
+    const isBarcode4Match = Boolean(
+      is4Digit && (
+        (normBarcode && (normBarcode.endsWith(scannedNorm) || digitsBarcode.endsWith(scannedNorm))) ||
+        (!normBarcode && normSku && (normSku.endsWith(scannedNorm) || digitsSku.endsWith(scannedNorm)))
+      )
+    );
+
     const isBarcodeMatch = Boolean(normBarcode && scannedNorm === normBarcode);
     const isSkuMatch = Boolean(normSku && scannedNorm === normSku);
     const isPidMatch = Boolean(normPid && (scannedNorm === normPid || scannedNorm === `prod${normPid}`));
 
-    const isMatch = isBarcodeMatch || isSkuMatch || isPidMatch;
+    const isMatch = isBarcodeMatch || isSkuMatch || isPidMatch || isBarcode4Match;
 
     // Check if task is missing barcode & product info completely
     if (!targetBarcode && !targetSku && !targetPid) {

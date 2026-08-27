@@ -79,7 +79,7 @@ export default function MoveForm({
       className="space-y-4"
     >
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
           {error}
         </div>
       )}
@@ -205,7 +205,7 @@ export default function MoveForm({
                 {maxAvailableQty !== null && maxAvailableQty !== undefined && (
                   <div className="absolute inset-y-0 right-1.5 sm:right-2 flex items-center pointer-events-none">
                     <span className="text-[10px] sm:text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 sm:px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs font-sans">
-                      คงเหลือ: {maxAvailableQty} ชิ้น
+                      คงเหลือ: {maxAvailableQty.toLocaleString()} ชิ้น
                     </span>
                   </div>
                 )}
@@ -232,7 +232,7 @@ export default function MoveForm({
             <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2 text-xs">
               <div className="flex items-center justify-between text-slate-500">
                 <span className="font-semibold">สินค้าที่เลือก:</span>
-                <span className="text-amber-600 font-extrabold text-xs sm:text-sm">จำนวน: {watchQty} ชิ้น</span>
+                <span className="text-amber-600 font-extrabold text-xs sm:text-sm">จำนวน: {watchQty.toLocaleString()} ชิ้น</span>
               </div>
               <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
                 [{displaySku}]{hasDistinctName ? ` ${displayName}` : ""}

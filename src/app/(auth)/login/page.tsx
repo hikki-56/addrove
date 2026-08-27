@@ -39,25 +39,25 @@ export default function LoginPage() {
         }
         router.replace("/dashboard");
       } else {
-        setError(json.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        setError(json.message || "กรุณาตรวจสอบ อีเมลหรือรหัสผ่านไม่ถูกต้อง");
         setLoading(false);
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่");
+      setError("กรุณาลองใหม่อีกครั้ง เกิดข้อผิดพลาดในการเชื่อมต่อ");
       setLoading(false);
     }
   };
 
   const onInvalid = (formErrors: Record<string, unknown>) => {
     if (formErrors.email) {
-      setError(String((formErrors.email as { message?: string }).message || "รูปแบบอีเมลไม่ถูกต้อง"));
+      setError(String((formErrors.email as { message?: string }).message || "กรุณาตรวจสอบรูปแบบอีเมล"));
     } else if (formErrors.password) {
       setError(String((formErrors.password as { message?: string }).message || "กรุณากรอกรหัสผ่าน"));
     }
   };
 
   return (
-    <div className="h-screen w-screen min-h-screen overflow-hidden flex relative bg-[#0a0a0c]">
+    <div className="h-screen w-screen min-h-screen overflow-hidden flex relative bg-slate-950">
       
       {/* Background Subtle Lighting effects (Black Left -> Rich Green Right) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -66,10 +66,10 @@ export default function LoginPage() {
       </div>
 
       {/* Main Fullscreen Split Layout Card Container (Black Left -> Green Right) */}
-      <div className="relative w-full h-full min-h-screen bg-gradient-to-r from-[#0a0a0c] via-[#0a0a0c] via-50% to-[#124215] overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+      <div className="relative w-full h-full min-h-screen bg-gradient-to-r from-slate-950 via-slate-950 via-50% to-[#124215] overflow-hidden grid grid-cols-1 lg:grid-cols-12">
         
         {/* Left Section: Branding & Warehouse Graphic Area (Deep Black Base) */}
-        <div className="lg:col-span-7 p-8 sm:p-12 lg:p-14 flex flex-col justify-between relative overflow-hidden min-h-[320px] lg:min-h-full h-full bg-[#0a0a0c]">
+        <div className="lg:col-span-7 p-8 sm:p-12 lg:p-14 flex flex-col justify-between relative overflow-hidden min-h-[320px] lg:min-h-full h-full bg-slate-950">
           
           {/* Warehouse Loading Background Overlay */}
           <div className="absolute inset-0 opacity-25 pointer-events-none overflow-hidden">
@@ -78,8 +78,8 @@ export default function LoginPage() {
               alt="Truck Unloading"
               className="w-full h-full object-cover scale-105 filter contrast-125"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/70 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-transparent to-[#0a0a0c]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-slate-950" />
           </div>
 
           {/* Decorative Grid Lines */}

@@ -156,6 +156,7 @@ export default function MovePage() {
         watchFromLocation={watchFromLocation}
         watchToLocation={watchToLocation}
         watchQty={watchQty}
+        /* toLocaleString formatted inside MoveForm */
         maxAvailableQty={moveHook.maxAvailableQty}
         displayName={displayName}
         displaySku={displaySku}
