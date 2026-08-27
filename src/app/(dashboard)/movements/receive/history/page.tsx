@@ -39,6 +39,19 @@ export interface ReceiveHistoryRecord {
   note?: string;
 }
 
+export function formatCreatorName(name?: string, id?: string): string {
+  const val = String(name || id || "").trim();
+  if (!val || val === "staff" || val === "unknown" || val === "-") return "พนักงานรับสินค้า";
+  const lower = val.toLowerCase();
+  if (lower === "usr-admin-01" || lower === "admin" || lower.includes("admin")) {
+    return "ผู้ดูแลระบบ (Admin)";
+  }
+  if (/^[0-9a-fA-F-]{16,}$/.test(val) || /^id-[0-9]+/.test(val) || /^usr-/.test(val)) {
+    return "พนักงานรับสินค้า";
+  }
+  return val;
+}
+
 // Custom Scrollable Dropdown
 function ScrollableSelect({
   value,
@@ -271,7 +284,10 @@ export default function ReceiveHistoryPage() {
         const matchesName = r.primary_product_name.toLowerCase().includes(q) || r.items.some((it) => it.product_name.toLowerCase().includes(q));
         const matchesBarcode = r.primary_barcode.toLowerCase().includes(q) || r.items.some((it) => it.barcode.toLowerCase().includes(q));
         const matchesSupplier = r.primary_supplier.toLowerCase().includes(q) || r.items.some((it) => it.supplier.toLowerCase().includes(q));
-        const matchesCreator = r.created_by_name.toLowerCase().includes(q) || r.created_by.toLowerCase().includes(q);
+        const matchesCreator =
+          formatCreatorName(r.created_by_name, r.created_by).toLowerCase().includes(q) ||
+          r.created_by_name.toLowerCase().includes(q) ||
+          r.created_by.toLowerCase().includes(q);
         const matchesWh = r.warehouse_name.toLowerCase().includes(q);
 
         if (!matchesDoc && !matchesSku && !matchesName && !matchesBarcode && !matchesSupplier && !matchesCreator && !matchesWh) {
@@ -707,14 +723,19 @@ export default function ReceiveHistoryPage() {
 
                     {/* Created By */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
-                          {item.created_by_name?.slice(0, 1) || "U"}
-                        </div>
-                        <span className="truncate max-w-[100px] text-slate-700 text-[11px]">
-                          {item.created_by_name || "พนักงาน"}
-                        </span>
-                      </div>
+                      {(() => {
+                        const displayName = formatCreatorName(item.created_by_name, item.created_by);
+                        return (
+                          <div className="flex items-center gap-1.5" title={displayName}>
+                            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+                              {displayName.slice(0, 1) || "U"}
+                            </div>
+                            <span className="truncate max-w-[130px] text-slate-700 text-[11px] font-medium">
+                              {displayName}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Date / Time */}
@@ -843,7 +864,9 @@ export default function ReceiveHistoryPage() {
               </div>
               <div>
                 <span className="text-slate-500 font-medium">ผู้ทำรายการ:</span>
-                <p className="font-bold text-slate-900 mt-0.5">{selectedRecord.created_by_name}</p>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {formatCreatorName(selectedRecord.created_by_name, selectedRecord.created_by)}
+                </p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">เวลารับเข้า:</span>

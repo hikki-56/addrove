@@ -94,16 +94,19 @@ export default function TransferStaffWorkflowModal({
   const barcode = rawBarcode || selectedTask.sku || "";
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] bg-white overflow-y-auto overscroll-contain flex flex-col min-h-dvh w-screen">
-      <div className="w-full max-w-lg mx-auto min-h-dvh flex flex-col justify-between p-3.5 sm:p-6 space-y-4 min-w-0 bg-white">
+    <div
+      className="fixed inset-0 z-[99999] bg-white overflow-y-auto overscroll-y-contain flex flex-col w-full h-[100dvh]"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
+      <div className="w-full max-w-lg mx-auto min-h-full flex flex-col justify-between p-3.5 sm:p-6 pb-28 sm:pb-10 space-y-4 min-w-0 bg-white">
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="px-2 sm:px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-mono font-bold text-xs sm:text-sm border border-indigo-200 shrink-0">
+              <span className="px-2.5 sm:px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-mono font-bold text-sm border border-indigo-200 shrink-0">
                 {selectedTask.doc_no}
               </span>
-              <span className="text-xs sm:text-sm text-slate-600 font-medium truncate max-w-[140px] sm:max-w-[280px]">
+              <span className="text-sm text-slate-600 font-medium truncate max-w-[160px] sm:max-w-[280px]">
                 ผู้สร้าง: <strong className="text-slate-900 font-semibold">{selectedTask.created_by_name || selectedTask.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
               </span>
             </div>
@@ -111,7 +114,7 @@ export default function TransferStaffWorkflowModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-base transition-all active:scale-95 shrink-0"
+              className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-lg transition-all active:scale-95 shrink-0"
               title="ปิดหน้าต่าง"
             >
               ✕
@@ -119,11 +122,11 @@ export default function TransferStaffWorkflowModal({
           </div>
 
           {/* Step Indicator */}
-          <div className="relative flex items-center justify-between px-6 sm:px-10 py-2">
+          <div className="relative flex items-center justify-between px-6 sm:px-12 py-3">
             {/* Connector Line */}
-            <div className="absolute left-12 right-12 top-[20px] h-0.5 bg-slate-200 -z-0">
+            <div className="absolute left-14 right-14 top-[28px] h-1 bg-slate-200 rounded-full -z-0">
               <div
-                className="h-full bg-emerald-500 transition-all duration-300"
+                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                 style={{
                   width: staffStep === 1 ? "0%" : "100%",
                 }}
@@ -131,25 +134,21 @@ export default function TransferStaffWorkflowModal({
             </div>
 
             {/* Step 1 */}
-            <div className="flex flex-col items-center gap-1 z-10">
+            <div className="flex flex-col items-center gap-1.5 z-10">
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-200 ${
                   staffStep === 1
-                    ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100"
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
                     : staffStep > 1
                     ? "bg-emerald-600 text-white"
-                    : "bg-white text-slate-400 border border-slate-200"
+                    : "bg-slate-100 text-slate-600 border border-slate-300"
                 }`}
               >
                 {staffStep > 1 ? "✓" : "1"}
               </div>
               <span
-                className={`text-xs transition-colors ${
-                  staffStep === 1
-                    ? "text-emerald-700 font-bold"
-                    : staffStep > 1
-                    ? "text-emerald-600 font-medium"
-                    : "text-slate-400 font-normal"
+                className={`text-sm font-bold transition-colors ${
+                  staffStep >= 1 ? "text-emerald-800 font-extrabold" : "text-slate-600"
                 }`}
               >
                 สแกนสินค้า
@@ -157,77 +156,51 @@ export default function TransferStaffWorkflowModal({
             </div>
 
             {/* Step 3 (แสดงเป็นขั้นตอนปลายทาง) */}
-            <div className="flex flex-col items-center gap-1 z-10">
+            <div className="flex flex-col items-center gap-1.5 z-10">
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-200 ${
                   staffStep >= 3
-                    ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-100"
-                    : "bg-white text-slate-400 border border-slate-200"
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
+                    : "bg-slate-100 text-slate-600 border border-slate-300"
                 }`}
               >
                 {staffStep > 3 ? "✓" : "2"}
               </div>
               <span
-                className={`text-xs transition-colors ${
-                  staffStep >= 3
-                    ? "text-emerald-700 font-bold"
-                    : "text-slate-400 font-normal"
+                className={`text-sm font-bold transition-colors ${
+                  staffStep >= 3 ? "text-emerald-800 font-extrabold" : "text-slate-600"
                 }`}
               >
-                ปลายทาง
+                ตำแหน่งปลายทาง
               </span>
             </div>
           </div>
 
-          {/* Product & Route Summary Card */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-xs space-y-2.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1 flex-1 min-w-0">
-                {/* Barcode */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shrink-0">
-                    บาร์โค้ด
-                  </span>
-                  <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
-                    {barcode || selectedTask.sku}
-                  </span>
-                </div>
-                {/* SKU */}
-                <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
-                  <span>SKU:</span>
-                  <strong className="text-slate-700 font-semibold">{selectedTask.sku}</strong>
-                </div>
-                {/* Product Name */}
-                <div className="text-xs sm:text-sm text-slate-800 font-medium leading-normal line-clamp-2">
-                  {selectedTask.product_name}
-                </div>
-              </div>
-
-              <div className="shrink-0 text-right">
-                <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-bold text-sm sm:text-base inline-block">
-                  {selectedTask.qty.toLocaleString()} <span className="font-sans font-normal text-xs text-emerald-600">ชิ้น</span>
-                </span>
-              </div>
+          {/* Product & Route Summary Card (Readable formula from issue-flow.md) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3 shadow-xs">
+            <p className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">{selectedTask.product_name}</p>
+            <div className="flex items-center gap-3 flex-wrap font-mono text-sm">
+              <span className="font-bold text-slate-700">SKU: <strong className="text-slate-900">{selectedTask.sku}</strong></span>
+              {barcode && barcode !== selectedTask.sku && (
+                <span className="font-bold text-slate-700">บาร์โค้ด: <strong className="text-slate-900">{barcode}</strong></span>
+              )}
             </div>
 
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2 text-xs font-semibold">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                  {selectedTask.from_warehouse_name}
-                </span>
-                <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-                <span className="text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
-                  {selectedTask.to_warehouse_name}
-                </span>
-              </div>
+            <div className="flex items-baseline gap-2 pt-2 border-t border-slate-200">
+              <span className="text-sm font-bold text-slate-600">ต้องหยิบ</span>
+              <span className="text-3xl font-mono font-bold text-slate-900">{selectedTask.qty.toLocaleString()}</span>
+              <span className="text-sm font-bold text-slate-600">ชิ้น</span>
             </div>
+
+            <p className="text-sm text-slate-600">
+              จาก <span className="font-bold text-slate-900">{selectedTask.from_warehouse_name}</span>
+              {" "}ไป <span className="font-bold text-slate-900">{selectedTask.to_warehouse_name}</span>
+            </p>
           </div>
 
           {/* Error Banner */}
           {staffStep !== 4 && staffError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs sm:text-sm font-semibold leading-relaxed animate-in fade-in">
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold leading-relaxed animate-in fade-in">
               {staffError}
             </div>
           )}
@@ -235,8 +208,8 @@ export default function TransferStaffWorkflowModal({
         {/* Step 1: Scan Product Barcode */}
         {staffStep === 1 && (
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-bold text-slate-700">สแกนบาร์โค้ดสินค้าบนตัวสินค้า:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-base font-bold text-slate-900">สแกนบาร์โค้ดสินค้าบนตัวสินค้า:</span>
             </div>
 
             <BarcodeScanInput
@@ -249,21 +222,34 @@ export default function TransferStaffWorkflowModal({
           </div>
         )}
 
-        {/* Step 2: Source Locations & Quantities (คอมเมนต์ไว้ชั่วคราว) */}
+        {/* Step 2: Source Locations & Quantities */}
         {/*
         {staffStep === 2 && (
           <div className="space-y-3.5 pt-1">
-            
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-700">ตำแหน่งต้นทาง ({selectedTask.from_warehouse_name})</span>
-                <span className={isCompleteAlloc ? "text-emerald-600" : "text-indigo-600 font-mono"}>
-                  {totalPickedQty.toLocaleString()} / {selectedTask.qty.toLocaleString()} ชิ้น
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <p className="text-sm font-bold text-slate-600">
+                ตำแหน่งต้นทาง ({selectedTask.from_warehouse_name})
+              </p>
+
+              {remainingNeeded > 0 ? (
+                <p className="text-base font-bold text-slate-900">
+                  ยังขาดอีก{" "}
+                  <span className="text-3xl font-mono font-bold text-indigo-700 align-middle">
+                    {remainingNeeded.toLocaleString()}
+                  </span>{" "}
+                  ชิ้น
+                </p>
+              ) : (
+                <p className="text-xl font-bold text-emerald-700">หยิบครบแล้ว</p>
+              )}
+
+              <p className="text-sm text-slate-600 font-mono">
+                หยิบแล้ว {totalPickedQty.toLocaleString()} จาก {selectedTask.qty.toLocaleString()} ชิ้น
+              </p>
+
+              <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${isCompleteAlloc ? "bg-emerald-500" : "bg-indigo-600"}`}
+                  className={`h-full transition-all duration-300 ${isCompleteAlloc ? "bg-emerald-600" : "bg-indigo-600"}`}
                   style={{ width: `${Math.min(100, (totalPickedQty / selectedTask.qty) * 100)}%` }}
                 />
               </div>
@@ -272,40 +258,31 @@ export default function TransferStaffWorkflowModal({
             {sourceAllocations.length > 0 && (
               <div className="space-y-2 max-h-[40dvh] overflow-y-auto pr-0.5">
                 {sourceAllocations.map((alloc, idx) => (
-                  <div key={`alloc-${idx}`} className="p-3 bg-white rounded-2xl border border-indigo-100 shadow-xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
+                  <div key={`alloc-${idx}`} className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-full bg-indigo-600 text-white text-base font-bold flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono font-bold text-slate-900 text-lg truncate">
                           {alloc.location_name || alloc.location_id}
-                        </span>
+                        </p>
                         {typeof alloc.max_qty === "number" && (
-                          <span className="text-[11px] font-medium text-slate-500">
-                            (มี {alloc.max_qty.toLocaleString()})
-                          </span>
+                          <p className="text-sm font-bold text-slate-600">
+                            ชั้นนี้มี {alloc.max_qty.toLocaleString()} ชิ้น
+                          </p>
                         )}
                       </div>
-
-                      {onRemoveSourceAllocation && (
-                        <button
-                          type="button"
-                          onClick={() => onRemoveSourceAllocation(idx)}
-                          className="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-0.5 rounded hover:bg-rose-50 cursor-pointer"
-                        >
-                          ลบ
-                        </button>
-                      )}
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                      <span className="text-xs text-slate-500 font-medium">จำนวนที่หยิบ:</span>
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      <span className="text-sm text-slate-700 font-bold">จำนวนที่หยิบ:</span>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, Math.max(1, alloc.qty - 100))}
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer text-xs active:scale-95"
+                          className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
+                          aria-label="ลดจำนวน"
                         >
                           -
                         </button>
@@ -317,29 +294,40 @@ export default function TransferStaffWorkflowModal({
                           onFocus={(e) => (e.target as HTMLInputElement).select()}
                           onClick={(e) => (e.target as HTMLInputElement).select()}
                           onChange={(e) => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, parseInt(e.target.value) || 0)}
-                          className="w-20 text-center font-mono font-bold text-sm bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1 text-indigo-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-24 text-center font-mono font-bold text-lg bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <button
                           type="button"
                           onClick={() => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, Math.min(alloc.max_qty || (alloc.qty + 100), alloc.qty + 100))}
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer text-xs active:scale-95"
+                          className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
+                          aria-label="เพิ่มจำนวน"
                         >
                           +
                         </button>
-                        <span className="text-xs text-slate-400 font-medium ml-1">ชิ้น</span>
+                        <span className="text-sm text-slate-600 font-bold ml-1">ชิ้น</span>
                       </div>
                     </div>
+
+                    {onRemoveSourceAllocation && (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveSourceAllocation(idx)}
+                        className="w-full py-3 rounded-xl border border-rose-200 text-rose-700 font-bold text-sm hover:bg-rose-50 cursor-pointer transition-all"
+                      >
+                        เอาชั้นนี้ออกจากรายการ
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
             {remainingNeeded > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <label className="block text-xs font-bold text-slate-700">
+              <div className="space-y-2 pt-1">
+                <label className="block text-base font-bold text-slate-900">
                   {sourceAllocations.length === 0
                     ? "สแกนตำแหน่งต้นทาง:"
-                    : `➕ สแกนตำแหน่งที่ ${sourceAllocations.length + 1} (ขาดอีก ${remainingNeeded.toLocaleString()} ชิ้น):`}
+                    : `สแกนตำแหน่งที่ ${sourceAllocations.length + 1} (ยังขาดอีก ${remainingNeeded.toLocaleString()} ชิ้น):`}
                 </label>
                 <BarcodeScanInput
                   value={staffScanSourceLocationInput}
@@ -355,9 +343,12 @@ export default function TransferStaffWorkflowModal({
               <button
                 type="button"
                 onClick={onProceedToDestStep}
-                className="w-full py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer transition-all active:scale-98"
+                className="w-full py-4 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 cursor-pointer transition-all active:scale-95"
               >
-                <span>ถัดไป: สแกนตำแหน่งปลายทาง ➔</span>
+                <span>ถัดไป: สแกนตำแหน่งปลายทาง</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               </button>
             )}
           </div>
@@ -367,8 +358,8 @@ export default function TransferStaffWorkflowModal({
         {/* Step 3: Scan Destination Location Barcode & Confirm */}
         {staffStep === 3 && (
           <div className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
+            <div className="space-y-2">
+              <label className="block text-base font-bold text-slate-900">
                 สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
               </label>
               <BarcodeScanInput
@@ -387,11 +378,15 @@ export default function TransferStaffWorkflowModal({
 
             {/* If shelf/destination location has been scanned -> Show confirmation UI */}
             {scannedToLocation ? (
-              <div className="p-4 rounded-2xl bg-emerald-50/90 border-2 border-emerald-500 shadow-sm space-y-3 animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/90 border-2 border-emerald-600 shadow-sm space-y-3 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">✓</span>
-                    <span className="text-xs font-bold text-emerald-900">สแกนชั้นวางปลายทางสำเร็จ:</span>
+                    <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-sm font-bold shadow-2xs">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span className="text-sm font-bold text-emerald-950">สแกนชั้นวางปลายทางสำเร็จ:</span>
                   </div>
                   <button
                     type="button"
@@ -400,23 +395,26 @@ export default function TransferStaffWorkflowModal({
                       setStaffScanDestLocationInput("");
                       setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
                     }}
-                    className="text-xs text-emerald-700 hover:text-emerald-900 underline font-semibold cursor-pointer"
+                    className="text-sm text-emerald-800 hover:text-emerald-950 underline font-bold cursor-pointer"
                   >
-                    สแกนใหม่ / เปลี่ยนตำแหน่ง
+                    สแกนใหม่
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">📍</span>
+                <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-emerald-200 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-6 h-6 text-emerald-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                     <div>
-                      <div className="text-[11px] text-slate-500 font-medium">ตำแหน่งปลายทาง</div>
-                      <div className="font-mono font-black text-xl text-emerald-950 tracking-wider">
+                      <div className="text-xs text-slate-600 font-bold">ตำแหน่งปลายทาง</div>
+                      <div className="font-mono font-black text-2xl text-emerald-950 tracking-wider">
                         {scannedToLocation}
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <span className="text-sm font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200">
                     {selectedTask.to_warehouse_name}
                   </span>
                 </div>
@@ -426,11 +424,11 @@ export default function TransferStaffWorkflowModal({
                   type="button"
                   disabled={isSubmittingTransfer}
                   onClick={onSubmitTransfer}
-                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-emerald-600/30 cursor-pointer transition-all disabled:opacity-50"
+                  className="w-full py-4 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer transition-all disabled:opacity-50"
                 >
                   {isSubmittingTransfer ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       <span>กำลังบันทึกข้อมูล...</span>
                     </>
                   ) : (
@@ -438,7 +436,7 @@ export default function TransferStaffWorkflowModal({
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span>กดยืนยันการเบิก (ส่งให้ Admin อนุมัติ)</span>
+                      <span>ยืนยันการเบิก (ส่งให้ Admin อนุมัติ)</span>
                     </>
                   )}
                 </button>
@@ -449,20 +447,20 @@ export default function TransferStaffWorkflowModal({
 
         {/* Step 4: Submission to Admin Completion */}
         {staffStep === 4 && (
-          <div className="p-6 text-center space-y-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl animate-in zoom-in-95">
-            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="p-6 text-center space-y-4 bg-emerald-50 border border-emerald-200 rounded-3xl animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h4 className="text-sm sm:text-base font-bold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว</h4>
-            <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+            <h4 className="text-lg sm:text-xl font-extrabold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว</h4>
+            <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
               การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer shadow-xs active:scale-95 transition-all"
+              className="w-full py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-base cursor-pointer shadow-md active:scale-95 transition-all"
             >
               ปิดหน้าต่าง / กลับสู่รายการ
             </button>

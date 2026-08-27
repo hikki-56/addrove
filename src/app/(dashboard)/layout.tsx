@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!mounted || status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -58,20 +58,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className={`flex h-screen bg-[#f4f6f8] text-slate-900 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
+    <div className={`flex h-[100dvh] max-h-[100dvh] bg-[#f4f6f8] text-slate-900 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
       <Sidebar
         role={user.role}
         userName={user.name ?? undefined}
         collapsed={collapsed}
         onToggle={toggleSidebar}
       />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden w-full max-w-full">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden w-full max-w-full">
         <Navbar
           user={user}
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={collapsed}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 w-full max-w-full bg-[#f4f6f8]">
+        <main
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain overflow-x-hidden px-3 pt-3 pb-36 sm:px-4 sm:pt-4 sm:pb-16 md:px-6 md:pt-6 md:pb-10 w-full max-w-full bg-[#f4f6f8]"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           {children}
         </main>
       </div>

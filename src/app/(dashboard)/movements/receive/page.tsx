@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -75,7 +76,7 @@ export default function ReceivePage() {
   }
 
   return (
-    <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto px-2 sm:px-4 md:px-6 space-y-5 sm:space-y-6">
+    <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto px-2 sm:px-4 md:px-6 pb-20 sm:pb-8 space-y-5 sm:space-y-6">
       {/* Header Info - Clean White Card with Warehouse Illustration */}
       <div className="relative rounded-3xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="p-4 sm:p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -130,7 +131,7 @@ export default function ReceivePage() {
 
 
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
           {error}
         </div>
       )}

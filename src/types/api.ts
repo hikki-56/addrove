@@ -127,6 +127,7 @@ export const ReceiveDocumentSchema = z.object({
   document_date: z.string().min(1, "กรุณาเลือกวันที่"),
   note: z.string().max(500).default(""),
   idempotency_key: z.string().min(1),
+  created_by_name: z.string().optional(),
   lines: z.array(ReceiveLineSchema).min(1, "กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ"),
 });
 export type ReceiveDocumentInput = z.infer<typeof ReceiveDocumentSchema>;

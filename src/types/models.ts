@@ -102,6 +102,7 @@ export interface Document {
   status: DocumentStatus;
   note: string;
   created_by: UserId;
+  created_by_name?: string;
   created_at: string;
   assigned_to_user_id?: UserId;
   assigned_to_name?: string;

@@ -24,7 +24,7 @@ export { ReceiveStockSchema, ReceiveLineSchema, type ReceiveStockInput, type Rec
  */
 export async function receiveStock(
   deps: StockUseCaseDeps,
-  input: ReceiveStockInput & { user_id: string; role?: string; correlation_id?: string }
+  input: ReceiveStockInput & { user_id: string; role?: string; correlation_id?: string; user_name?: string; created_by_name?: string }
 ): Promise<Document> {
   const repo = deps.repo;
 
@@ -155,9 +155,15 @@ export async function receiveStock(
     }
   }
 
+  const creatorName =
+    input.created_by_name ||
+    input.user_name ||
+    (input.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "พนักงานรับสินค้า");
+
   const notePayload = JSON.stringify({
     warehouse_id: input.warehouse_id,
     target_sheet: warehouseName,
+    created_by_name: creatorName,
     product_id: expandedLines[0]?.product_id || input.lines[0]?.product_id,
     qty: expandedLines.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0),
     location_id: expandedLines[0]?.location_id || input.lines[0]?.location_id || "",
@@ -175,6 +181,7 @@ export async function receiveStock(
     status: "PENDING",
     note: notePayload,
     created_by: input.user_id,
+    created_by_name: creatorName,
   });
 
   return doc;

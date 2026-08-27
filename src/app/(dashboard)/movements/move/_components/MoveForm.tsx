@@ -71,7 +71,6 @@ export default function MoveForm({
           onErrorPrompt("กรุณายิงสแกนสินค้าก่อน");
         } else if (step === 2 && !watchToLocation) {
           onErrorPrompt("กรุณาสแกนตำแหน่งปลายทางก่อน");
-        } else {
           const firstMsg = Object.values(formErrors)[0]?.message;
           onErrorPrompt(typeof firstMsg === "string" ? firstMsg : "กรุณากรอกข้อมูลให้ครบถ้วน");
         }
@@ -79,12 +78,12 @@ export default function MoveForm({
       className="space-y-4"
     >
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl p-6 space-y-4 border border-slate-200/80 shadow-xl">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 space-y-4 border border-slate-200/80 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,8 +92,8 @@ export default function MoveForm({
             <span className="font-extrabold text-slate-800 text-lg sm:text-xl">{activeWhName}</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
+            <svg className="w-5 h-5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <span className="text-slate-600 text-sm sm:text-base font-semibold">
               {form.watch("document_date")
@@ -115,62 +114,67 @@ export default function MoveForm({
         {step === 1 && (
           <div className="space-y-4">
             {(selectedProduct || watchProduct) ? (
-              <div className="py-3.5 px-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 space-y-2.5 relative shadow-sm">
-                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
-                  <span className="text-xs font-extrabold text-emerald-700">✓ สินค้าที่ยิงสแกนได้</span>
+              <div className="py-4 px-4 sm:px-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 relative shadow-xs">
+                <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2.5">
+                  <span className="text-sm font-extrabold text-emerald-800">✓ สินค้าที่ยิงสแกนได้</span>
                   <button
                     type="button"
                     onClick={() => {
                       setValue("product_id", "");
                       setValue("qty", 1);
                     }}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-bold px-2 py-0.5 rounded bg-rose-100 hover:bg-rose-200 transition-all cursor-pointer"
+                    className="text-sm text-rose-700 hover:text-rose-900 font-bold px-3 py-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 transition-all cursor-pointer"
                   >
-                    ✕ เปลี่ยนสินค้า / สแกนใหม่
+                    ✕ สแกนใหม่
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">รหัสสินค้า:</span>
-                    <span className="font-mono font-bold text-slate-900 text-sm sm:text-base">
-                      {displaySku || watchProduct}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">บาร์โค้ด:</span>
-                    <span className="font-mono font-bold text-slate-900 text-sm sm:text-base">
-                      {displayBarcode || "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">ตำแหน่งปัจจุบัน:</span>
-                    <span className="font-mono font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200 text-xs sm:text-sm">
-                      {selectedProduct?.location && selectedProduct.location !== "-" ? selectedProduct.location : (watchFromLocation || "ยังไม่ระบุ")}
-                    </span>
+                <div className="space-y-2">
+                  {hasDistinctName && (
+                    <div>
+                      <span className="text-xs sm:text-sm font-bold text-slate-600">ชื่อสินค้า: </span>
+                      <span className="font-bold text-slate-900 text-base sm:text-lg">{displayName}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-bold text-slate-600">รหัสสินค้า:</span>
+                      <span className="font-mono font-bold text-slate-900 text-base sm:text-lg">
+                        {displaySku || watchProduct}
+                      </span>
+                    </div>
+                    {displayBarcode && displayBarcode !== "-" && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-bold text-slate-600">บาร์โค้ด:</span>
+                        <span className="font-mono font-bold text-slate-900 text-base sm:text-lg">
+                          {displayBarcode}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-bold text-slate-600">ตำแหน่งปัจจุบัน:</span>
+                      <span className="font-mono font-extrabold text-blue-800 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200 text-sm sm:text-base">
+                        {selectedProduct?.location && selectedProduct.location !== "-" ? selectedProduct.location : (watchFromLocation || "ยังไม่ระบุ")}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                {hasDistinctName && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">ชื่อสินค้า:</span>
-                    <span className="font-bold text-slate-800 text-sm sm:text-base">{displayName}</span>
-                  </div>
-                )}
               </div>
             ) : (
-              <div className="py-4 px-4 text-center space-y-1 bg-white border border-slate-200/90 rounded-2xl shadow-sm">
-                <p className="text-sm font-bold text-slate-800">⚡ พร้อมยิงสแกนสินค้า</p>
-                <p className="text-xs text-slate-500 font-medium">ยิงสแกนบาร์โค้ดสินค้าที่ช่องสแกนด้านบน</p>
+              <div className="py-5 px-4 text-center space-y-1.5 bg-white border border-slate-200 rounded-2xl shadow-xs">
+                <p className="text-base font-bold text-slate-900">ยิงสแกนบาร์โค้ดสินค้าที่ต้องการย้าย</p>
+                <p className="text-sm text-slate-600 font-medium">ยิงสแกนบาร์โค้ดสินค้าที่ช่องสแกนด้านบน</p>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                จำนวนที่ต้องการจัดวาง / ย้าย *
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                จำนวนที่ต้องการจัดวาง / ย้าย (ชิ้น) *
               </label>
               <div className="relative flex items-center">
                 <input
                   type="number"
                   min="1"
+                  inputMode="numeric"
                   placeholder="ระบุจำนวน..."
                   onFocus={(e) => (e.target as HTMLInputElement).select()}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
@@ -196,15 +200,15 @@ export default function MoveForm({
                       }
                     }
                   }}
-                  className={`w-full py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-sm sm:text-base font-mono font-bold outline-none ${
+                  className={`w-full py-3.5 sm:py-4 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-base sm:text-xl font-mono font-bold outline-none ${
                     maxAvailableQty !== null && maxAvailableQty !== undefined
-                      ? "pl-3 sm:pl-4 pr-28 sm:pr-36"
-                      : "px-3 sm:px-4"
+                      ? "pl-4 pr-32 sm:pr-40"
+                      : "px-4"
                   }`}
                 />
                 {maxAvailableQty !== null && maxAvailableQty !== undefined && (
-                  <div className="absolute inset-y-0 right-1.5 sm:right-2 flex items-center pointer-events-none">
-                    <span className="text-[10px] sm:text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 sm:px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs font-sans">
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                    <span className="text-xs sm:text-sm font-extrabold text-indigo-800 bg-indigo-50 px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs font-sans">
                       คงเหลือ: {maxAvailableQty.toLocaleString()} ชิ้น
                     </span>
                   </div>
@@ -215,10 +219,10 @@ export default function MoveForm({
             <button
               type="button"
               onClick={onNextStep1}
-              className="w-full py-3 sm:py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95"
+              className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-base cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95"
             >
               <span>ถัดไป: สแกนตำแหน่งปลายทาง</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
@@ -229,56 +233,78 @@ export default function MoveForm({
         {step === 2 && (
           <div className="space-y-4">
             <input type="hidden" {...register("to_location_id")} />
-            <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-500">
-                <span className="font-semibold">สินค้าที่เลือก:</span>
-                <span className="text-amber-600 font-extrabold text-xs sm:text-sm">จำนวน: {watchQty.toLocaleString()} ชิ้น</span>
+
+            {/* Selected Product Summary Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="font-bold text-sm">สินค้าที่ต้องการจัดตำแหน่ง:</span>
+                <span className="text-amber-800 font-extrabold text-sm sm:text-base font-mono">
+                  จำนวน: {watchQty.toLocaleString()} ชิ้น
+                </span>
               </div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
+              <div className="text-sm sm:text-base font-bold text-slate-900 font-mono">
                 [{displaySku}]{hasDistinctName ? ` ${displayName}` : ""}
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 pt-1 border-t border-slate-100 text-slate-600 flex-wrap">
-                <span className="font-bold text-slate-500">จากตำแหน่ง:</span>
-                <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+            </div>
+
+            {/* The 2-row From -> To location block (from move-flow.md) */}
+            <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200 shadow-xs overflow-hidden">
+              {/* Source (หยิบจาก) */}
+              <div className="p-4 space-y-1">
+                <p className="text-sm font-bold text-slate-600">หยิบจากตำแหน่ง</p>
+                <p className="text-2xl font-mono font-bold text-slate-900">
                   {selectedFromLoc?.location_code || watchFromLocation || selectedProduct?.location || "ไม่ระบุ"}
-                </span>
-                <span className="text-slate-400">➔</span>
-                <span className="font-bold text-slate-500">ไปตำแหน่ง:</span>
-                <span className="font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  {selectedToLoc?.location_code || watchToLocation || "รอสแกน..."}
-                </span>
+                </p>
+              </div>
+
+              {/* Down Arrow Divider */}
+              <div className="flex justify-center py-1.5 bg-slate-50">
+                <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </div>
+
+              {/* Destination (ไปวางที่) */}
+              <div className="p-4 space-y-1 bg-indigo-50/70">
+                <p className="text-sm font-bold text-indigo-700">ไปวางที่ตำแหน่ง</p>
+                <p className="text-2xl font-mono font-bold text-indigo-950">
+                  {selectedToLoc?.location_code || watchToLocation || "ยังไม่ได้สแกน"}
+                </p>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                2. สแกนบาร์โค้ด / QR Code ตำแหน่งปลายทาง *
-              </label>
+            {/* Step 2 Section Header with circle number */}
+            <div className="flex items-center gap-3 pt-1">
+              <span className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold text-lg flex items-center justify-center shrink-0">
+                2
+              </span>
+              <p className="text-base font-bold text-slate-900">สแกนป้ายตำแหน่งที่จะไปวาง</p>
             </div>
 
+            {/* Destination Scan Feedback Status */}
             {selectedToLoc || watchToLocation ? (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-emerald-800 font-bold">✓ ตำแหน่งปลายทางที่ยิงสแกนได้:</span>
-                  <span className="px-3.5 py-1 rounded-lg bg-emerald-600 text-white font-mono font-bold text-sm shadow-md">
+                  <span className="text-sm text-emerald-800 font-bold">✓ ตำแหน่งปลายทางที่ยิงสแกนได้:</span>
+                  <span className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-mono font-bold text-base shadow-sm">
                     {selectedToLoc?.location_code || watchToLocation}
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="py-4 px-4 text-center space-y-1 bg-white border border-slate-200/90 rounded-2xl shadow-sm">
-                <p className="text-sm font-bold text-slate-800">⚡ พร้อมยิงสแกนตำแหน่งปลายทาง</p>
-                <p className="text-xs text-slate-500 font-medium">ยิงป้าย QR Code / บาร์โค้ดประจำชั้นวางหรือตำแหน่งปลายทางที่ช่องสแกนด้านบน</p>
+              <div className="py-5 px-4 text-center space-y-1.5 bg-white border border-slate-200 rounded-2xl shadow-xs">
+                <p className="text-base font-bold text-slate-900">ยิงป้าย QR ที่ชั้นวางปลายทาง</p>
+                <p className="text-sm text-slate-600 font-medium">ป้ายติดอยู่ที่หน้าชั้น</p>
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="w-1/3 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all border border-slate-300 shadow-sm cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                className="w-1/3 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm sm:text-base transition-all border border-slate-300 shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-95"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 <span>ย้อนกลับ</span>
@@ -288,9 +314,12 @@ export default function MoveForm({
                 type="submit"
                 disabled={isSubmitting}
                 id="move-submit"
-                className="w-2/3 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all text-sm cursor-pointer shadow-lg shadow-emerald-600/20 active:scale-95"
+                className="w-2/3 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all text-sm sm:text-base cursor-pointer shadow-lg shadow-emerald-600/20 active:scale-95 flex flex-col items-center justify-center"
               >
-                {isSubmitting ? "กำลังบันทึก..." : "ยืนยันจัดตำแหน่งสินค้า"}
+                <span>ย้าย {watchQty.toLocaleString()} ชิ้น</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-emerald-100">
+                  {selectedFromLoc?.location_code || watchFromLocation || selectedProduct?.location || "?"} → {selectedToLoc?.location_code || watchToLocation || "..."}
+                </span>
               </button>
             </div>
           </div>

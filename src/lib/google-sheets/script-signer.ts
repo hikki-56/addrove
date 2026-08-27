@@ -181,6 +181,8 @@ export const ALLOWED_SHEETS = [
   "สำนักงานใหญ่",
   "เบิกสินค้าเข้าExpress",
   "รับสินค้าเข้าExpress",
+  "นำเข้าสินค้าเข้าExpress",
+  "นำเข้าสินค้าเข้า Express",
   "ย้ายสินค้าเข้าExpress",
   "BOM",
   "BOM_Headers",

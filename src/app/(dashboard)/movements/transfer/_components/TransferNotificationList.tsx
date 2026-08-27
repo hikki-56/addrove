@@ -31,14 +31,14 @@ export default function TransferNotificationList({
   if (notifications.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 sm:p-10 text-center border border-slate-200 shadow-xs space-y-3">
-        <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-600">
+        <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-700">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <div>
-          <div className="text-sm sm:text-base font-bold text-slate-800">ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้</div>
-          <p className="text-xs text-slate-500 font-normal mt-1 max-w-md mx-auto">
+          <div className="text-base sm:text-lg font-bold text-slate-900">ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้</div>
+          <p className="text-sm text-slate-600 font-medium mt-1 max-w-md mx-auto">
             เมื่อมีการสร้างใบเบิกสินค้า ระบบจะแสดงรายการที่ต้องดำเนินการที่นี่ทันที
           </p>
         </div>
@@ -90,14 +90,14 @@ export default function TransferNotificationList({
             ? {
                 title: "เบิกสินค้าสำเร็จ",
                 detail: "ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว",
-                badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                badge: "bg-emerald-50 text-emerald-800 border-emerald-200",
                 dot: "bg-emerald-500",
               }
             : {
                 title: "รอดำเนินการ (ยังไม่เริ่ม)",
                 detail: "สร้างใบงานแล้ว รอพนักงานกดเริ่มงาน",
-                badge: "bg-slate-50 text-slate-600 border-slate-200",
-                dot: "bg-slate-400",
+                badge: "bg-slate-50 text-slate-700 border-slate-200",
+                dot: "bg-slate-500",
               };
 
           return (
@@ -106,46 +106,46 @@ export default function TransferNotificationList({
               onClick={!isAdmin && !isWaitingApproval ? () => onSelectTask(t) : undefined}
               className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs transition-all duration-150 space-y-3.5 relative min-w-0 max-w-full overflow-hidden ${
                 !isAdmin && !isWaitingApproval
-                  ? "cursor-pointer hover:border-emerald-400 hover:shadow-md group"
+                  ? "cursor-pointer hover:border-emerald-500 hover:shadow-md group"
                   : "cursor-default"
               }`}
             >
               {/* Top Row: Staff Assigned & Realtime Live Status Badge */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 shadow-2xs">
                     <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-xs border border-slate-200/70">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 font-mono font-bold text-xs sm:text-sm border border-slate-200">
                         {t.doc_no}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-500 font-normal mt-0.5 flex items-center gap-2 flex-wrap">
-                      <span className="text-slate-400">สร้างเมื่อ: {new Date(t.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.</span>
+                    <div className="text-xs text-slate-600 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                      <span>สร้างเมื่อ: {new Date(t.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Live Current Step Badge */}
-                <div className={`px-2.5 py-1 rounded-full border flex items-center gap-1.5 font-medium text-xs ${stepConfig.badge}`}>
-                  <span className={`h-2 w-2 rounded-full ${stepConfig.dot}`} />
+                <div className={`px-3 py-1 rounded-full border flex items-center gap-1.5 font-bold text-xs sm:text-sm ${stepConfig.badge}`}>
+                  <span className={`h-2.5 w-2.5 rounded-full ${stepConfig.dot}`} />
                   <span>{stepConfig.title}</span>
                   {step > 0 && step < 3 && (
-                    <span className="font-mono text-[11px] opacity-75">({step}/3)</span>
+                    <span className="font-mono text-xs opacity-85">({step}/3)</span>
                   )}
                 </div>
               </div>
 
               {/* Product Info & Quantity Row */}
               <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 flex-1 min-w-0">
+                <div className="space-y-1.5 flex-1 min-w-0">
                   {/* Barcode */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shrink-0">
+                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
                       บาร์โค้ด
                     </span>
                     <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
@@ -154,66 +154,66 @@ export default function TransferNotificationList({
                   </div>
 
                   {/* SKU */}
-                  <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                  <div className="text-sm text-slate-600 font-mono flex items-center gap-2">
                     <span>SKU:</span>
-                    <strong className="text-slate-700 font-semibold">{t.sku}</strong>
+                    <strong className="text-slate-900 font-bold">{t.sku}</strong>
                   </div>
 
                   {/* Product Title */}
-                  <div className={`text-xs sm:text-sm text-slate-800 font-medium leading-normal line-clamp-2 ${!isAdmin && !isWaitingApproval ? "group-hover:text-emerald-700 transition-colors" : ""}`}>
+                  <div className={`text-sm sm:text-base text-slate-900 font-bold leading-normal line-clamp-2 ${!isAdmin && !isWaitingApproval ? "group-hover:text-emerald-800 transition-colors" : ""}`}>
                     {t.product_name}
                   </div>
                 </div>
 
                 {/* Quantity Badge */}
                 <div className="shrink-0 text-right">
-                  <div className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 font-mono font-bold text-sm sm:text-base border border-emerald-200">
-                    {t.qty.toLocaleString()} <span className="font-sans font-medium text-xs text-emerald-600">ชิ้น</span>
+                  <div className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-mono font-bold text-sm sm:text-base border border-emerald-200">
+                    {t.qty.toLocaleString()} <span className="font-sans font-bold text-xs sm:text-sm text-emerald-700">ชิ้น</span>
                   </div>
                 </div>
               </div>
 
               {/* Warehouse Route Bar */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-                <div className="flex items-center gap-2 font-semibold">
-                  <span className="text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2.5 text-xs sm:text-sm">
+                <div className="flex items-center gap-2 font-bold">
+                  <span className="text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
                     {t.from_warehouse_name}
                   </span>
-                  <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                   <span className="text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
                     {t.to_warehouse_name}
                   </span>
                 </div>
-                <div className="text-[11px] sm:text-xs text-slate-500 font-normal">
+                <div className="text-xs text-slate-600 font-medium">
                   {stepConfig.detail}
                 </div>
               </div>
 
               {/* Scanned Locations info if available */}
               {(t.from_location_id || t.to_location_id || (t.source_allocations && t.source_allocations.length > 0)) && (
-                <div className="p-2.5 rounded-xl bg-slate-50/70 border border-slate-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-slate-500 font-medium">ตำแหน่งที่สแกนจริง:</span>
+                    <span className="text-slate-600 font-bold">ตำแหน่งที่สแกนจริง:</span>
                     {t.source_allocations && t.source_allocations.length > 0 ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         {t.source_allocations.map((a, idx) => (
-                          <span key={idx} className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-mono text-[11px] text-slate-700 font-semibold">
-                            ต้นทาง: {a.location_name || a.location_id} ({a.qty} ชิ้น)
+                          <span key={idx} className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 font-mono text-xs text-slate-800 font-bold">
+                            ต้นทาง: {a.location_name || a.location_id} ({a.qty.toLocaleString()} ชิ้น)
                           </span>
                         ))}
                       </div>
                     ) : t.from_location_id ? (
-                      <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-mono text-[11px] text-slate-700 font-semibold">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 font-mono text-xs text-slate-800 font-bold">
                         ต้นทาง: {t.from_location_id}
                       </span>
                     ) : null}
-                    <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                     {t.to_location_id && (
-                      <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 font-mono text-[11px] text-emerald-800 font-semibold">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-200 font-mono text-xs text-emerald-800 font-bold">
                         ปลายทาง: {t.to_location_id}
                       </span>
                     )}
@@ -222,28 +222,28 @@ export default function TransferNotificationList({
               )}
 
               {/* Action Buttons Row */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100">
                 {isWaitingApproval ? (
                   isAdmin && onApproveTask ? (
                     <div className="w-full flex flex-wrap items-center justify-between gap-3">
-                      <div className="space-y-1 flex-1 min-w-[200px]">
-                        <div className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      <div className="space-y-1.5 flex-1 min-w-[200px]">
+                        <div className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
                           <span>พนักงานเบิกสินค้าเรียบร้อยแล้ว รอ Admin อนุมัติ</span>
                         </div>
                         {/* Creator & Performer info */}
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/70 font-medium">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 font-medium">
                             <span className="text-slate-500">ผู้สร้างใบเบิก:</span>
-                            <strong className="text-slate-900 font-semibold">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
+                            <strong className="text-slate-900 font-bold">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                           </span>
                           {(t.moved_by || t.assigned_to_name) && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200/70 font-medium">
-                              <span className="text-indigo-600">ผู้เบิกสินค้า:</span>
-                              <strong className="text-indigo-950 font-semibold">{t.moved_by || t.assigned_to_name}</strong>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-medium">
+                              <span className="text-indigo-600 font-bold">ผู้เบิกสินค้า:</span>
+                              <strong className="text-indigo-950 font-bold">{t.moved_by || t.assigned_to_name}</strong>
                             </span>
                           )}
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-500 border border-slate-200/60 font-mono">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 font-mono">
                             เวลาเบิก: {new Date(t.last_active_at || t.created_at).toLocaleString("th-TH", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} น.
                           </span>
                         </div>
@@ -253,7 +253,7 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isCancelling || isApproving}
                           onClick={(e) => (onRejectTask ? onRejectTask(e, t) : onCancelTask?.(e, t))}
-                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                          className="px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-sm font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                         >
                           {isCancelling ? "กำลังปฏิเสธ..." : "ปฏิเสธ"}
                         </button>
@@ -261,19 +261,19 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isApproving || isCancelling}
                           onClick={() => onApproveTask?.(t)}
-                          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
+                          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-2"
                         >
                           {isApproving ? (
                             <>
-                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                               <span>กำลังบันทึก...</span>
                             </>
                           ) : (
                             <>
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                               </svg>
-                              <span>อนุมัติการเบิก (บันทึกเข้าระบบ)</span>
+                              <span>อนุมัติการเบิก</span>
                             </>
                           )}
                         </button>
@@ -282,13 +282,13 @@ export default function TransferNotificationList({
                   ) : (
                     <div className="w-full flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-xs text-amber-800 font-medium bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        <div className="text-xs sm:text-sm text-amber-900 font-bold bg-amber-50 px-3 py-1 rounded-lg border border-amber-200 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
                           <span>เบิกสินค้าแล้ว (ส่งให้ Admin อนุมัติเรียบร้อยแล้ว)</span>
                         </div>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/70 text-[11px] font-medium">
-                          <span>📝 ผู้สร้าง:</span>
-                          <strong className="text-slate-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium">
+                          <span>ผู้สร้าง:</span>
+                          <strong className="text-slate-900 font-bold">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                         </span>
                       </div>
                       {isAdmin && onCancelTask && (
@@ -296,16 +296,16 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isCancelling}
                           onClick={(e) => onCancelTask(e, t)}
-                          className="px-3 py-1 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-medium transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1"
+                          className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-sm font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
                         >
                           {isCancelling ? (
                             <>
-                              <div className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                              <div className="w-3.5 h-3.5 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
                               <span>กำลังยกเลิก...</span>
                             </>
                           ) : (
                             <>
-                              <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                               <span>ยกเลิกรายการ</span>
@@ -317,10 +317,10 @@ export default function TransferNotificationList({
                   )
                 ) : (
                   <div className="w-full flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/60 font-medium text-[11px]">
-                        <span>📝 ผู้สร้าง:</span>
-                        <strong className="text-slate-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
+                    <div className="flex items-center gap-2 flex-wrap text-xs sm:text-sm text-slate-600">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 font-medium text-xs">
+                        <span>ผู้สร้าง:</span>
+                        <strong className="text-slate-900 font-bold">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
                       </span>
                     </div>
 
@@ -330,16 +330,16 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isCancelling}
                           onClick={(e) => onCancelTask(e, t)}
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
+                          className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-sm font-bold transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
                         >
                           {isCancelling ? (
                             <>
-                              <div className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                              <div className="w-3.5 h-3.5 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
                               <span>กำลังยกเลิก...</span>
                             </>
                           ) : (
                             <>
-                              <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                               <span>ยกเลิก</span>
@@ -351,10 +351,10 @@ export default function TransferNotificationList({
                       <button
                         type="button"
                         onClick={() => onSelectTask(t)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
                       >
                         <span>{step === 0 ? "เริ่มเบิกสินค้า / สแกน" : "สแกนต่อ"}</span>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </button>

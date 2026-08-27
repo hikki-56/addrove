@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai, Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
@@ -17,9 +17,17 @@ const notoSansThai = Noto_Sans_Thai({
 
 const inter = Inter({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-inter",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Stockify — ระบบจัดการสต็อกสินค้าและตำแหน่งจัดเก็บ",

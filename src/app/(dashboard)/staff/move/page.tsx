@@ -72,25 +72,25 @@ export default function StaffMovePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
       {/* Staff Header Card */}
       <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-5 flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+            <span className="w-3 h-3 rounded-full bg-blue-500" />
             <h1 className="font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight">
               สแกนจัดตำแหน่งสินค้า
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            คลัง: <span className="font-bold text-slate-800">{activeWhName}</span> • ย้ายตำแหน่ง/จัดเข้าเชลฟ์
+          <p className="text-sm text-slate-600 font-medium mt-1">
+            คลัง: <span className="font-bold text-slate-900">{activeWhName}</span> • ย้ายตำแหน่ง/จัดเข้าเชลฟ์
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => refreshData()}
-          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
+          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
         >
           <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -100,22 +100,22 @@ export default function StaffMovePage() {
       </div>
 
       {/* 2-Step Guided Progress Indicator */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
-        <div className="flex items-center justify-between max-w-xs mx-auto px-4 pt-1">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+        <div className="flex items-center justify-between max-w-sm mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 1
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
             </div>
             <span
-              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
-                step >= 1 ? "text-blue-600" : "text-slate-400"
+              className={`text-sm font-bold text-center leading-tight pt-1 ${
+                step >= 1 ? "text-blue-700 font-extrabold" : "text-slate-600"
               }`}
             >
               {step > 1 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
@@ -123,25 +123,25 @@ export default function StaffMovePage() {
           </div>
 
           <div
-            className={`h-0.5 w-16 -mt-5 transition-all duration-300 ${
-              step > 1 ? "bg-blue-500" : "bg-slate-200 opacity-80"
+            className={`h-1 w-16 -mt-6 transition-all duration-300 rounded-full ${
+              step > 1 ? "bg-blue-500" : "bg-slate-200"
             }`}
           />
 
           {/* Step 2 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 2
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
               }`}
             >
               2
             </div>
             <span
-              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
-                step >= 2 ? "text-blue-600" : "text-slate-400"
+              className={`text-sm font-bold text-center leading-tight pt-1 ${
+                step >= 2 ? "text-blue-700 font-extrabold" : "text-slate-600"
               }`}
             >
               ตำแหน่งปลายทาง

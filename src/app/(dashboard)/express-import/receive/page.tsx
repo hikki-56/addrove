@@ -35,26 +35,6 @@ interface ApprovalDoc {
   rows: Array<[string, string, string, string, number, string, string, string]>;
 }
 
-export interface DisplayFields {
-  barcode: boolean;
-  productName: boolean;
-  warehouse: boolean;
-  quantity: boolean;
-  sku: boolean;
-  location: boolean;
-  docNo: boolean;
-}
-
-const DEFAULT_DISPLAY_FIELDS: DisplayFields = {
-  barcode: true,
-  productName: true,
-  warehouse: true,
-  quantity: true,
-  sku: false,
-  location: false,
-  docNo: false,
-};
-
 type TagFilterType = "ALL" | "TAGGED_ONLY" | "PENDING" | "IMPORTED" | "UNTAGGED";
 
 export default function ExpressReceivePage() {
@@ -67,7 +47,7 @@ export default function ExpressReceivePage() {
     }
   }, [status, user, router]);
 
-  const [docs, setDocs] = useState<ApprovalDoc[]>([]);
+  const [apiItems, setApiItems] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocId, setSelectedDocId] = useState<string>("ALL");
@@ -80,12 +60,11 @@ export default function ExpressReceivePage() {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [copiedItemSku, setCopiedItemSku] = useState<string | null>(null);
-  const [displayFields, setDisplayFields] = useState<DisplayFields>(DEFAULT_DISPLAY_FIELDS);
 
   // Tagging State
   const [taggedItemsMap, setTaggedItemsMap] = useState<Map<string, TaggedExpressItem>>(new Map());
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  const [customTagInput, setCustomTagInput] = useState<string>("รอนำเข้า Express");
+  const [customTagInput, setCustomTagInput] = useState<string>("นำเข้าสินค้าเข้าExpress");
   const [showTagModal, setShowTagModal] = useState<boolean>(false);
 
   // Sync tagged items from localStorage
@@ -125,17 +104,29 @@ export default function ExpressReceivePage() {
     if (!isSilent) setLoading(true);
     try {
       const ts = Date.now();
-      const [postedRes, pendingRes, prodRes, statusRes] = await Promise.all([
-        fetch(`/api/approvals?status=POSTED&_t=${ts}`, { cache: "no-store" }),
-        fetch(`/api/approvals?status=PENDING&_t=${ts}`, { cache: "no-store" }),
+      const [recRes, prodRes, statusRes] = await Promise.all([
+        fetch(`/api/express-import/receive?_t=${ts}`, { cache: "no-store" }).catch(() => null),
         fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
         fetch(`/api/express-import/status?type=RECEIVE&_t=${ts}`, { cache: "no-store" }).catch(() => null),
       ]);
 
-      const postedJson = await postedRes.json();
-      const pendingJson = await pendingRes.json();
+      const recJson = recRes ? await recRes.json().catch(() => null) : null;
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
       const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
+
+      if (recJson?.success && Array.isArray(recJson.data)) {
+        const incoming: any[] = recJson.data;
+        setApiItems((prev) => {
+          if (
+            prev.length === incoming.length &&
+            prev[0]?.id === incoming[0]?.id &&
+            prev[prev.length - 1]?.id === incoming[incoming.length - 1]?.id
+          ) {
+            return prev;
+          }
+          return incoming;
+        });
+      }
 
       const products: Product[] = Array.isArray(prodJson?.data)
         ? prodJson.data
@@ -144,65 +135,44 @@ export default function ExpressReceivePage() {
         : [];
       setCatalogProducts(products);
 
-      const combined: ApprovalDoc[] = [];
-      if (postedJson.success && Array.isArray(postedJson.data)) {
-        combined.push(...postedJson.data);
-      }
-      if (pendingJson.success && Array.isArray(pendingJson.data)) {
-        combined.push(...pendingJson.data);
-      }
-
-      // Deduplicate by document_id
-      const map = new Map<string, ApprovalDoc>();
-      combined.forEach((d) => {
-        if (!map.has(d.document_id)) {
-          map.set(d.document_id, d);
-        }
-      });
-      setDocs(Array.from(map.values()));
-
-      // If server returned express statuses, synchronize into tagged map
-      if (statusJson?.success && statusJson?.data) {
+      // If server returned express statuses, synchronize into tagged map in a SINGLE batch
+      if (statusJson?.success && statusJson?.data && recJson?.success && Array.isArray(recJson.data)) {
         const serverStatusMap: Record<string, { status: ExpressSyncStatus; type: string }> = statusJson.data;
         const currentTagged = getAllTaggedExpressItems("RECEIVE");
         const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
-        let hasChanges = false;
+        const toUpdate: Array<Omit<TaggedExpressItem, "tagged_at" | "status"> & { status?: ExpressSyncStatus }> = [];
 
-        map.forEach((doc) => {
-          const docKey = (doc.document_no || "").trim().toLowerCase();
-          const docIdKey = doc.document_id.trim().toLowerCase();
+        recJson.data.forEach((item: any) => {
+          const docKey = (item.document_no || "").trim().toLowerCase();
+          const docIdKey = (item.document_id || "").trim().toLowerCase();
           const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
-          const docExpressStatus = srv?.status || (doc.express_status as ExpressSyncStatus) || (doc.status === "IMPORTED" ? "IMPORTED" : undefined);
+          const docExpressStatus = srv?.status || (item.status as ExpressSyncStatus);
 
           if (docExpressStatus) {
-            doc.rows?.forEach((row, rowIdx) => {
-              const sku = String(row[0] ?? "").trim();
-              const uniqueId = `rec_${doc.document_id}_${sku}_${rowIdx}`;
-              const existing = localMap.get(uniqueId);
-              if (!existing || existing.status !== docExpressStatus) {
-                tagExpressItem({
-                  id: uniqueId,
-                  type: "RECEIVE",
-                  tag: existing?.tag || "รอนำเข้า Express",
-                  sku,
-                  barcode: String(row[2] ?? "").trim(),
-                  product_name: String(row[3] ?? "").trim() || sku,
-                  warehouse: doc.target_sheet || "โกดัง1",
-                  warehouse_code: toExpressWhCode(doc.target_sheet || "โกดัง1"),
-                  quantity: parseFloat(String(row[4] ?? "1").replace(/,/g, "")) || 1,
-                  document_no: doc.document_no,
-                  document_date: doc.document_date || doc.created_at?.slice(0, 10) || "-",
-                  location: String(row[1] ?? "-").trim() || "-",
-                  status: docExpressStatus,
-                });
-                hasChanges = true;
-              }
-            });
+            const uniqueId = item.id;
+            const existing = localMap.get(uniqueId);
+            if (!existing || existing.status !== docExpressStatus) {
+              toUpdate.push({
+                id: uniqueId,
+                type: "RECEIVE",
+                tag: existing?.tag || "นำเข้าสินค้าเข้าExpress",
+                sku: item.sku,
+                barcode: item.barcode,
+                product_name: item.product_name,
+                warehouse: item.warehouse_name || "โกดัง1",
+                warehouse_code: toExpressWhCode(item.warehouse_name || "โกดัง1"),
+                quantity: item.quantity || 1,
+                document_no: item.document_no,
+                document_date: item.created_at || "-",
+                location: item.location || "-",
+                status: docExpressStatus,
+              });
+            }
           }
         });
 
-        if (hasChanges) {
-          refreshTaggedMap();
+        if (toUpdate.length > 0) {
+          batchTagExpressItems(toUpdate);
         }
       }
     } catch (e) {
@@ -261,71 +231,47 @@ export default function ExpressReceivePage() {
       express_status?: ExpressSyncStatus;
     }> = [];
 
-    docs.forEach((doc) => {
-      if (selectedDocId !== "ALL" && doc.document_id !== selectedDocId) return;
-      if (selectedWarehouse !== "ALL" && doc.target_sheet !== selectedWarehouse) return;
+    const seenIds = new Set<string>();
 
-      doc.rows?.forEach((row, rowIdx) => {
-        const sku = String(row[0] ?? "").trim();
-        let rawLoc = String(row[1] ?? "-").trim() || "-";
-        const rawBarcode = String(row[2] ?? "").trim();
-        const productName = String(row[3] ?? "").trim() || sku;
-        const qtyVal = parseFloat(String(row[4] ?? "1").replace(/,/g, "").trim());
-        const quantity = !isNaN(qtyVal) && qtyVal > 0 ? qtyVal : 1;
-        const targetWarehouse = String(row[5] ?? doc.target_sheet ?? "").trim() || doc.target_sheet;
-        const supplier = String(row[6] ?? "-").trim() || "-";
+    // 1. Ingest items from /api/express-import/receive (from Google Sheets tab & DB)
+    apiItems.forEach((item) => {
+      if (selectedDocId !== "ALL" && item.document_no !== selectedDocId && item.document_id !== selectedDocId) return;
+      if (selectedWarehouse !== "ALL" && item.warehouse_name !== selectedWarehouse && item.warehouse_id !== selectedWarehouse) return;
 
-        // Lookup from catalog products
-        const matchedProd =
-          (sku ? catalogProductsMap.bySku.get(sku.toLowerCase()) : undefined) ||
-          (rawBarcode && rawBarcode !== "-" ? catalogProductsMap.byBarcode.get(rawBarcode.toLowerCase()) : undefined) ||
-          (productName ? catalogProductsMap.byName.get(productName.replace(/[\s\-_#]/g, "").toLowerCase()) : undefined);
+      const uid = item.id || `api_${item.document_no}_${item.sku}`;
+      seenIds.add(uid);
+      seenIds.add(`${(item.document_no || "").toLowerCase()}_${(item.sku || "").toLowerCase()}`);
 
-        let finalLoc = rawLoc;
-        if ((!finalLoc || finalLoc === "-" || finalLoc === "A1") && matchedProd?.location && matchedProd.location !== "-") {
-          finalLoc = matchedProd.location;
-        }
-
-        const barcode =
-          rawBarcode && rawBarcode !== "-" && rawBarcode !== "null" && rawBarcode !== "undefined" && !rawBarcode.toLowerCase().startsWith("rec-")
-            ? rawBarcode
-            : matchedProd?.barcode && matchedProd.barcode !== "-"
-            ? matchedProd.barcode
-            : to8DigitBarcode(rawBarcode, sku, productName) || sku;
-
-        const uniqueId = `rec_${doc.document_id}_${sku}_${rowIdx}`;
-
-        list.push({
-          id: uniqueId,
-          document_id: doc.document_id,
-          document_no: doc.document_no,
-          target_sheet: targetWarehouse,
-          document_date: doc.document_date || doc.created_at?.slice(0, 10) || "-",
-          created_by: doc.created_by || "-",
-          sku,
-          product_name: productName,
-          category: "ทั่วไป",
-          unit: "ชิ้น",
-          quantity,
-          location: finalLoc,
-          supplier,
-          barcode,
-          status: doc.status,
-          express_status: (doc.express_status as ExpressSyncStatus) || (doc.status === "IMPORTED" ? "IMPORTED" : "PENDING"),
-        });
+      list.push({
+        id: uid,
+        document_id: item.document_id || item.document_no || "-",
+        document_no: item.document_no || "-",
+        target_sheet: item.warehouse_name || "โกดัง1",
+        document_date: item.created_at || "-",
+        created_by: item.created_by_name || "-",
+        sku: item.sku,
+        product_name: item.product_name,
+        category: "ทั่วไป",
+        unit: "ชิ้น",
+        quantity: item.quantity,
+        location: item.location || "-",
+        supplier: "-",
+        barcode: item.barcode || item.sku,
+        status: item.status,
+        express_status: (item.status as ExpressSyncStatus) || "PENDING",
       });
     });
 
     return list;
-  }, [docs, selectedDocId, selectedWarehouse, catalogProductsMap]);
+  }, [apiItems, selectedDocId, selectedWarehouse]);
 
   const availableWarehouses = useMemo(() => {
     const set = new Set<string>();
-    docs.forEach((d) => {
-      if (d.target_sheet) set.add(d.target_sheet);
+    apiItems.forEach((i) => {
+      if (i.warehouse_name) set.add(i.warehouse_name);
     });
     return Array.from(set);
-  }, [docs]);
+  }, [apiItems]);
 
   // Helper to parse date into { year, month, day }
   const parseDateParts = (raw: string | undefined | null) => {
@@ -432,12 +378,12 @@ export default function ExpressReceivePage() {
       // Tag filter check
       const tagged = taggedItemsMap.get(item.id);
       const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || "PENDING";
-      const isTagged = true;
+      const isTagged = !!tagged || !!item.express_status;
 
       if (tagFilter === "TAGGED_ONLY" && !isTagged) return false;
       if (tagFilter === "PENDING" && effectiveStatus !== "PENDING") return false;
       if (tagFilter === "IMPORTED" && effectiveStatus !== "IMPORTED") return false;
-      if (tagFilter === "UNTAGGED" && (tagged || isTagged)) return false;
+      if (tagFilter === "UNTAGGED" && isTagged) return false;
 
       // Day / Month / Year date filter check
       if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
@@ -489,7 +435,8 @@ export default function ExpressReceivePage() {
     baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
       const effectiveStatus: ExpressSyncStatus = t?.status || item.express_status || "PENDING";
-      taggedCount++;
+      const isTagged = !!t || !!item.express_status;
+      if (isTagged) taggedCount++;
       if (effectiveStatus === "PENDING") pendingCount++;
       if (effectiveStatus === "IMPORTED") importedCount++;
     });
@@ -512,7 +459,7 @@ export default function ExpressReceivePage() {
       tagExpressItem({
         id: item.id,
         type: "RECEIVE",
-        tag: customTagInput.trim() || "รอนำเข้า Express",
+        tag: customTagInput.trim() || "นำเข้าสินค้าเข้าExpress",
         sku: item.sku,
         barcode: item.barcode,
         product_name: item.product_name,
@@ -548,7 +495,7 @@ export default function ExpressReceivePage() {
       tagExpressItem({
         id: item.id,
         type: "RECEIVE",
-        tag: customTagInput.trim() || "รอนำเข้า Express",
+        tag: customTagInput.trim() || "นำเข้าสินค้าเข้าExpress",
         sku: item.sku,
         barcode: item.barcode,
         product_name: item.product_name,
@@ -573,7 +520,7 @@ export default function ExpressReceivePage() {
     const dtos = itemsToTag.map((i) => ({
       id: i.id,
       type: "RECEIVE" as const,
-      tag: tagText.trim() || "รอนำเข้า Express",
+      tag: tagText.trim() || "นำเข้าสินค้าเข้าExpress",
       sku: i.sku,
       barcode: i.barcode,
       product_name: i.product_name,
@@ -630,10 +577,19 @@ export default function ExpressReceivePage() {
   };
 
   // Express Tab Format: [Barcode] \t [Product Name] \t [Warehouse Code] \t [Quantity]
+  const getItemExpressRowString = useCallback(
+    (item: (typeof allItems)[0]) => {
+      const expressBarcode = item.barcode || item.sku;
+      const whCode = toExpressWhCode(item.target_sheet);
+      const cleanName = item.product_name.replace(/\t/g, " ");
+      return `${expressBarcode}\t${cleanName}\t${whCode}\t${item.quantity}`;
+    },
+    []
+  );
+
+  // Copy single row with TAB separators
   const handleCopyRow = (item: (typeof allItems)[0]) => {
-    const expressBarcode = item.barcode;
-    const whCode = toExpressWhCode(item.target_sheet);
-    const tabString = `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
+    const tabString = getItemExpressRowString(item);
     navigator.clipboard.writeText(tabString);
 
     setCopiedItemId(item.id);
@@ -652,14 +608,7 @@ export default function ExpressReceivePage() {
     const selectedItems = filteredItems.filter((i) => selectedItemIds.has(i.id));
     if (selectedItems.length === 0) return;
 
-    const tsvData = selectedItems
-      .map((item) => {
-        const expressBarcode = item.barcode;
-        const whCode = toExpressWhCode(item.target_sheet);
-        return `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
-      })
-      .join("\n");
-
+    const tsvData = selectedItems.map((item) => getItemExpressRowString(item)).join("\n");
     navigator.clipboard.writeText(tsvData);
     setCopySuccess(`คัดลอกเฉพาะ ${selectedItems.length} รายการที่เลือกเรียบร้อยแล้ว!`);
     setTimeout(() => setCopySuccess(null), 3000);
@@ -669,14 +618,7 @@ export default function ExpressReceivePage() {
   const handleCopyAllExpressData = () => {
     if (filteredItems.length === 0) return;
 
-    const tsvData = filteredItems
-      .map((item) => {
-        const expressBarcode = item.barcode;
-        const whCode = toExpressWhCode(item.target_sheet);
-        return `${expressBarcode}\t${item.product_name}\t${whCode}\t${item.quantity}`;
-      })
-      .join("\n");
-
+    const tsvData = filteredItems.map((item) => getItemExpressRowString(item)).join("\n");
     navigator.clipboard.writeText(tsvData);
     setCopySuccess(`คัดลอกทั้งหมด ${filteredItems.length} รายการแล้ว! นำไปกด Ctrl+V ใน Express ได้เลย`);
     setTimeout(() => setCopySuccess(null), 3000);
@@ -685,16 +627,16 @@ export default function ExpressReceivePage() {
   const handleDownloadExpressTxt = () => {
     if (filteredItems.length === 0) return;
     const headerLine = "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน\n";
-    const body = filteredItems
-      .map((item) => `${item.barcode}\t${item.product_name}\t${toExpressWhCode(item.target_sheet)}\t${item.quantity}`)
-      .join("\n");
+    const body = filteredItems.map((item) => getItemExpressRowString(item)).join("\n");
 
     const blob = new Blob([headerLine + body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `express-receive-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -911,14 +853,53 @@ export default function ExpressReceivePage() {
             <p className="text-slate-600 text-sm font-medium">กำลังโหลดข้อมูลรายการรับสินค้า...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl p-12 sm:p-16 text-center border border-slate-200 bg-white shadow-sm">
             <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">ไม่พบรายการรับสินค้าที่ตรงกับเงื่อนไข</h3>
-            <p className="text-slate-500 text-xs sm:text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาหรือตัวกรองแท็ก</p>
+            <h3 className="text-base font-bold text-slate-800 mb-1">
+              {allItems.length === 0
+                ? "ยังไม่มีรายการรับสินค้าเข้า Express ในระบบ"
+                : "ไม่พบรายการที่ตรงกับเงื่อนไขตัวกรองหรือการค้นหา"}
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto">
+              {allItems.length === 0
+                ? "รายการจะปรากฏเมื่อมีการบันทึกลงในแท็บชีต นำเข้าสินค้าเข้าExpress หรืออนุมัติเอกสารรับสินค้าเข้า Express ในระบบ"
+                : "ลองเปลี่ยนตัวกรองสถานะ Express หรือล้างตัวกรองวันที่/คำค้นหาเพื่อดูรายการอื่น"}
+            </p>
+            {allItems.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                {tagFilter !== "ALL" && (
+                  <button
+                    type="button"
+                    onClick={() => setTagFilter("ALL")}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs cursor-pointer transition-colors"
+                  >
+                    สลับดูรายการทั้งหมด
+                  </button>
+                )}
+                {searchQuery.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer transition-colors"
+                  >
+                    ล้างคำค้นหา
+                  </button>
+                )}
+                {(selectedDay !== "ALL" || selectedMonth !== "ALL" || selectedYear !== "ALL") && (
+                  <button
+                    type="button"
+                    onClick={resetDateFilter}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs cursor-pointer transition-colors"
+                  >
+                    ล้างตัวกรองวันที่
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* Table View */
@@ -927,6 +908,15 @@ export default function ExpressReceivePage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/95 border-b border-slate-200 text-slate-700 text-sm font-bold tracking-normal print:bg-white">
+                    <th className="py-3.5 px-3 text-center w-10 print:hidden">
+                      <input
+                        type="checkbox"
+                        checked={filteredItems.length > 0 && selectedItemIds.size === filteredItems.length}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                        title="เลือกทั้งหมด"
+                      />
+                    </th>
                     <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-slate-700">ลำดับ</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">เลขที่เอกสาร</th>
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
@@ -936,6 +926,7 @@ export default function ExpressReceivePage() {
                     <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
                     <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">สถานะ Express</th>
+                    <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-slate-700">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -961,6 +952,16 @@ export default function ExpressReceivePage() {
                             : "bg-slate-50/40 hover:bg-slate-50/80"
                         }`}
                       >
+                        {/* 0. Checkbox */}
+                        <td className={`py-3 px-3 text-center print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectItem(item.id)}
+                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                          />
+                        </td>
+
                         {/* 1. ลำดับ */}
                         <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-emerald-100" : ""}`}>
                           {idx + 1}
@@ -1041,7 +1042,7 @@ export default function ExpressReceivePage() {
                           </span>
                         </td>
 
-                        {/* 8. สถานะ Express Tag */}
+                        {/* 9. สถานะ Express Tag */}
                         <td className={`py-2.5 px-3 text-center whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
                           <select
                             value={effectiveStatus}
@@ -1056,6 +1057,34 @@ export default function ExpressReceivePage() {
                             <option value="IMPORTED">✅ นำเข้าแล้ว</option>
                           </select>
                         </td>
+
+                        {/* 10. จัดการ (คัดลอกแถว) */}
+                        <td className={`py-2.5 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyRow(item)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                              isRowCopied
+                                ? "bg-emerald-600 text-white shadow-xs"
+                                : "bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200"
+                            }`}
+                            title="คัดลอกทั้งแถวสำหรับ Express"
+                          >
+                            {isRowCopied ? (
+                              <>
+                                <span>✓</span>
+                                <span>คัดลอกแล้ว</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                <span>คัดลอกแถว</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -1065,6 +1094,57 @@ export default function ExpressReceivePage() {
           </div>
         )}
       </div>
+
+      {/* Floating / Sticky Batch Action Bar */}
+      {selectedItemIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex flex-wrap items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-black">
+              {selectedItemIds.size}
+            </span>
+            <span>รายการที่เลือก</span>
+          </div>
+          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+          <button
+            type="button"
+            onClick={handleCopySelectedRows}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span>คัดลอกที่เลือก (TSV)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBatchMarkStatus("IMPORTED")}
+            className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+          >
+            <span>✅ นำเข้าแล้ว</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBatchMarkStatus("PENDING")}
+            className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+          >
+            <span>⏳ รอนำเข้า</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTagModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <span>🏷️ กำหนดแท็ก</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedItemIds(new Set())}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Batch Tag Input Modal (Clean Light Design) */}
       {showTagModal && (

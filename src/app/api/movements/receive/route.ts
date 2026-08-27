@@ -26,13 +26,16 @@ export async function POST(req: NextRequest) {
 
     // 3. Create PENDING receive document for Admin approval
     const repo = getRepository();
+    const creatorName = session.user.name || (session.user.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "พนักงานรับสินค้า");
     const doc = await receiveStock(
       { repo },
       {
         ...parsed.data,
         user_id: session.user.id || "unknown",
         role: session.user.role || "WAREHOUSE_STAFF",
-      }
+        user_name: creatorName,
+        created_by_name: creatorName,
+      } as any
     );
 
     return successResponse(doc, "ส่งรายการรับสินค้าไปรออนุมัติสำเร็จ (สถานะ: รอดำเนินการ)", 201);

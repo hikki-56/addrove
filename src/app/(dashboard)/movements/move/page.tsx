@@ -77,24 +77,24 @@ export default function MovePage() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   return (
-    <div className="max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto px-2 sm:px-4 md:px-6 space-y-5 sm:space-y-6">
+    <div className="max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto px-2 sm:px-4 md:px-6 pb-20 sm:pb-8 space-y-5 sm:space-y-6">
       {/* 2-Step Guided Progress Indicator Header */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-lg space-y-4">
-        <div className="flex items-center justify-between max-w-xs mx-auto px-4 pt-1">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between max-w-sm mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 1
                   ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
-                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
             </div>
             <span
-              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
-                step >= 1 ? "text-emerald-600" : "text-slate-400"
+              className={`text-sm font-bold text-center leading-tight pt-1 ${
+                step >= 1 ? "text-emerald-800 font-extrabold" : "text-slate-600"
               }`}
             >
               {step > 1 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
@@ -102,25 +102,25 @@ export default function MovePage() {
           </div>
 
           <div
-            className={`h-0.5 w-16 -mt-5 transition-all duration-300 ${
-              step > 1 ? "bg-emerald-500" : "bg-slate-200 opacity-80"
+            className={`h-1 w-16 -mt-6 transition-all duration-300 rounded-full ${
+              step > 1 ? "bg-emerald-500" : "bg-slate-200"
             }`}
           />
 
           {/* Step 2 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 2
                   ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
-                  : "bg-slate-100 text-slate-500 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
               }`}
             >
               2
             </div>
             <span
-              className={`text-[11px] font-extrabold text-center leading-tight pt-1 ${
-                step >= 2 ? "text-emerald-600" : "text-slate-400"
+              className={`text-sm font-bold text-center leading-tight pt-1 ${
+                step >= 2 ? "text-emerald-800 font-extrabold" : "text-slate-600"
               }`}
             >
               ตำแหน่งปลายทาง

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { getDocumentStatus } from "@/lib/document-status-store";
+import { getLoginLogs } from "@/lib/services/login-log.service";
 import {
   successResponse,
   unauthorizedResponse,
@@ -17,11 +18,74 @@ export async function GET(req: NextRequest) {
     if (!session) return unauthorizedResponse();
 
     const repo = getRepository();
-    const allDocsResult = await repo.documents.findAll({ page: 1, limit: 99999 });
+    const [allDocsResult, allProducts, allUsers, loginLogs] = await Promise.all([
+      repo.documents.findAll({ page: 1, limit: 99999 }).catch(() => ({ data: [] })),
+      repo.products.findAll().catch(() => []),
+      repo.users.findAll().catch(() => []),
+      getLoginLogs().catch(() => []),
+    ]);
     const allDocuments = allDocsResult.data || [];
 
-    // Fetch PRODUCTS repository to enrich SKU, barcodes and suppliers
-    const allProducts = await repo.products.findAll().catch(() => []);
+    // Build user name mapping dictionary
+    const userNameMap = new Map<string, string>();
+    allUsers.forEach((u: any) => {
+      const name = String(u.full_name || "").trim();
+      if (!name) return;
+      if (u.user_id) userNameMap.set(String(u.user_id).trim().toLowerCase(), name);
+      if (u.email) userNameMap.set(String(u.email).trim().toLowerCase(), name);
+      if (u.username) userNameMap.set(String(u.username).trim().toLowerCase(), name);
+    });
+
+    loginLogs.forEach((log: any) => {
+      const name = String(log.user_name || "").trim();
+      if (!name || /^[0-9a-fA-F-]{16,}$/.test(name) || name === "พนักงานคลังสินค้า") return;
+      if (log.user_id) {
+        const idKey = String(log.user_id).trim().toLowerCase();
+        if (!userNameMap.has(idKey)) userNameMap.set(idKey, name);
+      }
+      if (log.user_email) {
+        const emailKey = String(log.user_email).trim().toLowerCase();
+        if (!userNameMap.has(emailKey)) userNameMap.set(emailKey, name);
+      }
+    });
+
+    function resolveCreatedByName(rawCreatedBy?: string, payload?: any): string {
+      const payloadName = String(
+        payload?.created_by_name ||
+        payload?.moved_by ||
+        payload?.user_name ||
+        ""
+      ).trim();
+      if (payloadName && payloadName !== "พนักงาน" && !/^[0-9a-fA-F-]{16,}$/.test(payloadName) && !payloadName.startsWith("usr-")) {
+        return payloadName;
+      }
+
+      const raw = String(rawCreatedBy || "").trim();
+      if (!raw || raw === "staff") return "ผู้ดูแลระบบ (Admin)";
+
+      const lower = raw.toLowerCase();
+      if (lower === "usr-admin-01" || lower === "admin" || lower.includes("admin")) {
+        return "ผู้ดูแลระบบ (Admin)";
+      }
+
+      if (userNameMap.has(lower)) {
+        return userNameMap.get(lower)!;
+      }
+
+      if (raw.includes("@")) {
+        const prefix = raw.split("@")[0];
+        if (userNameMap.has(prefix.toLowerCase())) {
+          return userNameMap.get(prefix.toLowerCase())!;
+        }
+        return prefix;
+      }
+
+      if (/^[0-9a-fA-F-]{16,}$/.test(raw) || /^id-[0-9]+/.test(raw) || /^usr-/.test(raw)) {
+        return "พนักงานรับสินค้า";
+      }
+
+      return raw;
+    }
     const productBarcodeMap = new Map<string, string>();
     const productSupplierMap = new Map<string, string>();
     const productNameMap = new Map<string, string>();
@@ -183,7 +247,7 @@ export async function GET(req: NextRequest) {
         status: normalizedStatus,
         raw_status: docStatus,
         created_by: doc.created_by || "staff",
-        created_by_name: doc.created_by || "พนักงานรับสินค้า",
+        created_by_name: resolveCreatedByName(doc.created_by, parsedPayload),
         created_at: doc.created_at || new Date().toISOString(),
         total_items: items.length,
         total_qty: totalQty,

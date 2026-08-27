@@ -50,7 +50,7 @@ export const SHEETS = {
   USERS: "Users",
   LOGIN_LOGS: "ประวัติการเข้าระบบ",
   EXPRESS_ISSUE: "เบิกสินค้าเข้าExpress",
-  EXPRESS_RECEIVE: "รับสินค้าเข้าExpress",
+  EXPRESS_RECEIVE: "นำเข้าสินค้าเข้าExpress",
   EXPRESS_TRANSFER: "ย้ายสินค้าเข้าExpress",
   BOM: "BOM",
   BOM_HEADERS: "BOM_Headers",
@@ -93,10 +93,14 @@ export function getPossibleSheetNames(sheetName: string): string[] {
     names.add("เบิกสินค้า Express");
     names.add("นำเข้าExpress_เบิกสินค้า");
   }
-  if (sheetName.includes("รับสินค้า")) {
+  if (sheetName.includes("รับสินค้า") || sheetName.includes("นำเข้าสินค้า")) {
     names.add("รับสินค้าเข้าExpress");
     names.add("รับสินค้าเข้า Express");
     names.add("รับสินค้า เข้า Express");
+    names.add("นำเข้าสินค้าเข้าExpress");
+    names.add("นำเข้าสินค้าเข้า Express");
+    names.add("นำเข้าสินค้า เข้า Express");
+    names.add("นำเข้าExpress_รับสินค้า");
   }
   if (sheetName.includes("ย้ายสินค้า")) {
     names.add("ย้ายสินค้าเข้าExpress");

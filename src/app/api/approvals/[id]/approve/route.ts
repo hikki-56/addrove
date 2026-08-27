@@ -14,6 +14,9 @@ import {
   serverErrorResponse,
 } from "@/lib/api-response";
 import { setDocumentStatus } from "@/lib/document-status-store";
+import { appendRows, SHEETS } from "@/lib/google-sheets/client";
+import { to8DigitBarcode } from "@/lib/barcode-utils";
+import { expressStatusMap } from "@/app/api/express-import/status/route";
 
 export async function POST(
   req: NextRequest,
@@ -213,6 +216,77 @@ export async function POST(
         });
 
         await Promise.all(syncTasks);
+      }
+
+      // Automatically record into Google Sheets Tab: "รับสินค้าเข้าExpress" / "นำเข้าสินค้าเข้าExpress"
+      try {
+        const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
+        const nowIso = new Date().toISOString();
+        const nowDate = doc.document_date || nowIso.slice(0, 10);
+        const expressReceiveRows: any[][] = [];
+
+        for (let idx = 0; idx < createdMovements.length; idx++) {
+          const mov = createdMovements[idx];
+          const prod =
+            (await repo.products.findById(mov.product_id).catch(() => null)) ||
+            (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")).catch(() => null));
+          const rowData = parsedPayload.rows && parsedPayload.rows[idx] ? parsedPayload.rows[idx] : null;
+
+          const skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
+          let rawBarcode = prod?.barcode || (rowData ? String(rowData[2] ?? "") : "");
+          if (!rawBarcode || rawBarcode === "-" || rawBarcode === "ทั่วไป") {
+            rawBarcode = to8DigitBarcode("", skuVal) || skuVal;
+          }
+          const barcodeVal = to8DigitBarcode(rawBarcode, skuVal) || rawBarcode || skuVal;
+          const nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
+          const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "-");
+          const qtyVal = Number(mov.qty_change) || 1;
+
+          // Row format matching User's Express sheet columns:
+          // [รหัสสินค้า, ตำแหน่ง, เลขที่เอกสาร, โกดัง, วันที่เอกสาร, ชื่อสินค้า, สถานะการนำเข้า, จำนวน, บาร์โค้ด]
+          expressReceiveRows.push([
+            skuVal,
+            locVal || "-",
+            doc.document_no || doc.document_id,
+            targetWh || "โกดัง1",
+            nowDate,
+            nameVal,
+            "รอนำเข้า Express",
+            qtyVal,
+            barcodeVal,
+          ]);
+        }
+
+        if (expressReceiveRows.length > 0) {
+          appendRows(SHEETS.EXPRESS_RECEIVE, expressReceiveRows).catch((err) => {
+            console.warn("[approve] appendRows to EXPRESS_RECEIVE failed:", err);
+          });
+        }
+
+        // Update document note with express metadata
+        let currentMeta: Record<string, any> = {};
+        try {
+          if (doc.note && doc.note.startsWith("{")) {
+            currentMeta = JSON.parse(doc.note);
+          }
+        } catch {}
+        currentMeta.express_tag = "นำเข้าสินค้าเข้าExpress";
+        currentMeta.express_status = "PENDING";
+        currentMeta.express_status_text = "รอนำเข้า Express";
+        currentMeta.express_synced_at = nowIso;
+        await repo.documents.updateNote(doc.document_id, JSON.stringify(currentMeta)).catch(() => {});
+
+        // Update in-memory expressStatusMap
+        const entry = {
+          status: "PENDING" as const,
+          type: "RECEIVE",
+          updated_at: nowIso,
+          document_no: doc.document_no || doc.document_id,
+        };
+        if (doc.document_no) expressStatusMap.set(doc.document_no.trim().toLowerCase(), entry);
+        if (doc.document_id) expressStatusMap.set(doc.document_id.trim().toLowerCase(), entry);
+      } catch (sheetErr) {
+        console.warn("[approve] Auto-append to EXPRESS_RECEIVE sheet warning:", sheetErr);
       }
 
       await logAudit(repo.audit, {
