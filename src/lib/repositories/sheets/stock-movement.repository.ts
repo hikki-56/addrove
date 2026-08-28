@@ -126,7 +126,13 @@ export class SheetsStockMovementRepository
       if (r[2]) locationMap.set(r[2], r);
       if (r[7] && r.length >= 12) locationMap.set(r[7], r);
     });
-    const userMap = new Map(userRows.filter((r) => r[0]).map((r) => [r[0], r]));
+    const userMap = new Map<string, string>();
+    userRows.filter((r) => r[0]).forEach((r) => {
+      const fullName = [r[4], r[5]].filter(Boolean).join(" ") || r[1] || r[0];
+      userMap.set(r[0].toLowerCase(), fullName);
+      if (r[1]) userMap.set(r[1].toLowerCase(), fullName);
+      if (r[6]) userMap.set(r[6].toLowerCase(), fullName);
+    });
 
     let movements: MovementWithDetails[] = movRows
       .filter((r) => r[0])
@@ -136,7 +142,8 @@ export class SheetsStockMovementRepository
         const product = productMap.get(mov.product_id);
         const warehouse = warehouseMap.get(mov.warehouse_id);
         const location = locationMap.get(mov.location_id) || locationMap.get(mov.location_id.replace(/^loc-/, ""));
-        const user = userMap.get(mov.created_by);
+        const cleanCreatedBy = String(mov.created_by || "").trim().toLowerCase();
+        const resolvedUserName = userMap.get(cleanCreatedBy) || mov.created_by;
 
         let resolvedLocCode = mov.location_id;
         if (location) {
@@ -151,7 +158,7 @@ export class SheetsStockMovementRepository
           sku: product?.[1] ?? "",
           warehouse_name: warehouse?.[2] ?? "",
           location_code: resolvedLocCode,
-          created_by_name: user?.[1] ?? mov.created_by,
+          created_by_name: resolvedUserName,
         };
       });
 
