@@ -188,13 +188,30 @@ export async function GET(req: NextRequest) {
         const row = sheetRows[idx];
         if (!row || row.length === 0) continue;
         const col0 = String(row[0] ?? "").trim();
-        if (
+        const col0Lower = col0.toLowerCase();
+
+        // Skip any header rows (Thai or English column titles, or generated 'คอลัมน์ X')
+        const isHeader =
           col0 === "รหัสสินค้า" ||
-          col0 === "SKU" ||
+          col0Lower === "sku" ||
           col0 === "วันที่" ||
-          col0 === "Date" ||
-          col0 === "เลขที่เอกสาร"
-        ) {
+          col0Lower === "date" ||
+          col0 === "ลำดับ" ||
+          col0.startsWith("คอลัมน์") ||
+          col0Lower.startsWith("column") ||
+          row.some((cell) => {
+            const c = String(cell ?? "").trim().toLowerCase();
+            return (
+              c === "เลขที่เอกสาร" ||
+              c === "วันที่เอกสาร" ||
+              c === "ชื่อแท็ก" ||
+              c === "ชื่อสินค้า" ||
+              c === "สถานะการนำเข้า" ||
+              c.startsWith("คอลัมน์")
+            );
+          });
+
+        if (isHeader) {
           continue;
         }
 

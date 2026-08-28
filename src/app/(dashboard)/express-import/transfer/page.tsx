@@ -138,7 +138,19 @@ export default function ExpressTransferPage() {
       setCatalogProducts(prods);
 
       if (expTrfJson && expTrfJson.success && Array.isArray(expTrfJson.data)) {
-        const incoming = expTrfJson.data;
+        const incoming = expTrfJson.data.filter((item: any) => {
+          const docNo = String(item.document_no || "").trim();
+          const sku = String(item.sku || "").trim();
+          const date = String(item.created_at || "").trim();
+          const name = String(item.product_name || "").trim();
+          return !(
+            docNo === "เลขที่เอกสาร" ||
+            date === "วันที่เอกสาร" ||
+            sku.startsWith("คอลัมน์") ||
+            sku === "รหัสสินค้า" ||
+            name === "ชื่อแท็ก"
+          );
+        });
         setMovements(incoming);
 
         // If server returned express statuses, synchronize into tagged map
@@ -405,6 +417,20 @@ export default function ExpressTransferPage() {
     };
 
     movements.forEach((m: any, idx) => {
+      const docNo = String(m.document_no || "").trim();
+      const rawSkuVal = String(m.sku || "").trim();
+      const date = String(m.created_at || "").trim();
+      const name = String(m.product_name || "").trim();
+      if (
+        docNo === "เลขที่เอกสาร" ||
+        date === "วันที่เอกสาร" ||
+        rawSkuVal.startsWith("คอลัมน์") ||
+        rawSkuVal === "รหัสสินค้า" ||
+        name === "ชื่อแท็ก"
+      ) {
+        return;
+      }
+
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
 
       const rawBarcode = m.barcode || "";

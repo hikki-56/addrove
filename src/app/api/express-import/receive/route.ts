@@ -161,7 +161,30 @@ export async function GET(req: NextRequest) {
         if (!row || row.length === 0) continue;
 
         const col0 = String(row[0] ?? "").trim();
-        if (col0 === "รหัสสินค้า" || col0 === "SKU" || col0 === "วันที่" || col0 === "Date" || col0 === "ลำดับ") {
+        const col0Lower = col0.toLowerCase();
+
+        // Skip any header rows (Thai or English column titles, or generated 'คอลัมน์ X')
+        const isHeader =
+          col0 === "รหัสสินค้า" ||
+          col0Lower === "sku" ||
+          col0 === "วันที่" ||
+          col0Lower === "date" ||
+          col0 === "ลำดับ" ||
+          col0.startsWith("คอลัมน์") ||
+          col0Lower.startsWith("column") ||
+          row.some((cell) => {
+            const c = String(cell ?? "").trim().toLowerCase();
+            return (
+              c === "เลขที่เอกสาร" ||
+              c === "วันที่เอกสาร" ||
+              c === "ชื่อแท็ก" ||
+              c === "ชื่อสินค้า" ||
+              c === "สถานะการนำเข้า" ||
+              c.startsWith("คอลัมน์")
+            );
+          });
+
+        if (isHeader) {
           continue;
         }
 
@@ -190,6 +213,19 @@ export async function GET(req: NextRequest) {
         }
 
         if (!rawSku && !rawBcode && !rawName) continue;
+
+        // Skip if parsed fields are literal header words
+        if (
+          docNo === "เลขที่เอกสาร" ||
+          docDate === "วันที่เอกสาร" ||
+          rawSku.startsWith("คอลัมน์") ||
+          rawSku === "รหัสสินค้า" ||
+          rawName === "ชื่อแท็ก" ||
+          rawLoc === "ตำแหน่ง"
+        ) {
+          continue;
+        }
+
         if (!docNo) docNo = `RCV-SH-${i + 1}`;
 
         const docNoKey = docNo.toLowerCase();

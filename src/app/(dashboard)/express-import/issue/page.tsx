@@ -142,7 +142,19 @@ export default function ExpressIssuePage() {
       }
 
       if (issueJson && issueJson.success && Array.isArray(issueJson.data)) {
-        const incomingMovements: any[] = issueJson.data;
+        const incomingMovements: any[] = issueJson.data.filter((m: any) => {
+          const docNo = String(m.document_no || "").trim();
+          const sku = String(m.sku || "").trim();
+          const date = String(m.created_at || "").trim();
+          const name = String(m.product_name || "").trim();
+          return !(
+            docNo === "เลขที่เอกสาร" ||
+            date === "วันที่เอกสาร" ||
+            sku.startsWith("คอลัมน์") ||
+            sku === "รหัสสินค้า" ||
+            name === "ชื่อแท็ก"
+          );
+        });
         setMovements((prev) => {
           if (
             prev.length === incomingMovements.length &&
@@ -307,6 +319,20 @@ export default function ExpressIssuePage() {
     };
 
     movements.forEach((m: any, idx) => {
+      const docNo = String(m.document_no || "").trim();
+      const rawSkuVal = String(m.sku || "").trim();
+      const date = String(m.created_at || "").trim();
+      const name = String(m.product_name || "").trim();
+      if (
+        docNo === "เลขที่เอกสาร" ||
+        date === "วันที่เอกสาร" ||
+        rawSkuVal.startsWith("คอลัมน์") ||
+        rawSkuVal === "รหัสสินค้า" ||
+        name === "ชื่อแท็ก"
+      ) {
+        return;
+      }
+
       if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
       if (
         selectedWarehouse !== "ALL" &&

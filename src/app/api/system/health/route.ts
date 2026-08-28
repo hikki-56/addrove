@@ -118,7 +118,7 @@ export async function GET() {
         ...(process.env.NODE_ENV !== "production" &&
           appsScriptError && { error: appsScriptError }),
       },
-      version: "0.1.0",
+      version: "0.2.0",
     },
     { status: isHealthy ? 200 : 503 }
   );

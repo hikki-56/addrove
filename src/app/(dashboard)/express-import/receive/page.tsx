@@ -115,7 +115,19 @@ export default function ExpressReceivePage() {
       const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
 
       if (recJson?.success && Array.isArray(recJson.data)) {
-        const incoming: any[] = recJson.data;
+        const incoming: any[] = recJson.data.filter((item: any) => {
+          const docNo = String(item.document_no || "").trim();
+          const sku = String(item.sku || "").trim();
+          const date = String(item.created_at || "").trim();
+          const name = String(item.product_name || "").trim();
+          return !(
+            docNo === "เลขที่เอกสาร" ||
+            date === "วันที่เอกสาร" ||
+            sku.startsWith("คอลัมน์") ||
+            sku === "รหัสสินค้า" ||
+            name === "ชื่อแท็ก"
+          );
+        });
         setApiItems((prev) => {
           if (
             prev.length === incoming.length &&
@@ -235,6 +247,20 @@ export default function ExpressReceivePage() {
 
     // 1. Ingest items from /api/express-import/receive (from Google Sheets tab & DB)
     apiItems.forEach((item) => {
+      const docNo = String(item.document_no || "").trim();
+      const sku = String(item.sku || "").trim();
+      const date = String(item.created_at || "").trim();
+      const name = String(item.product_name || "").trim();
+      if (
+        docNo === "เลขที่เอกสาร" ||
+        date === "วันที่เอกสาร" ||
+        sku.startsWith("คอลัมน์") ||
+        sku === "รหัสสินค้า" ||
+        name === "ชื่อแท็ก"
+      ) {
+        return;
+      }
+
       if (selectedDocId !== "ALL" && item.document_no !== selectedDocId && item.document_id !== selectedDocId) return;
       if (selectedWarehouse !== "ALL" && item.warehouse_name !== selectedWarehouse && item.warehouse_id !== selectedWarehouse) return;
 
