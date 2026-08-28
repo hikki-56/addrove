@@ -385,6 +385,16 @@ html.light .bg-slate-900 * {
   color: #ffffff !important;
 }
 
+/* Counter badges with white/light backgrounds inside colored buttons */
+html.light button .bg-white,
+html.light button .bg-white *,
+html.light .bg-emerald-600 .bg-white,
+html.light .bg-emerald-600 .bg-white *,
+html.light button.text-white .bg-white,
+html.light button.text-white .bg-white * {
+  color: #064e3b !important;
+}
+
 html.light main .text-slate-200,
 html.light main .text-gray-200 {
   color: #1e293b !important;
