@@ -7,7 +7,7 @@ import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { navItems, getNavItems } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName, syncServerTransferNotifications, fetchAndSyncTransferNotifications } from "@/lib/transfer-notification-utils";
-import { getActiveWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
+import { useWarehouseData } from "@/hooks/use-warehouse-data";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
@@ -74,16 +74,7 @@ export default function Navbar({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [staffWhName, setStaffWhName] = useState("");
-  const [activeWhId, setActiveWhId] = useState("wh-01");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const activeWh = getActiveWarehouse();
-      setActiveWhId(activeWh);
-      setStaffWhName(getWarehouseName(activeWh));
-    }
-  }, []);
+  const { activeWhId } = useWarehouseData({ autoFetch: false });
 
   // Fetch pending approval count for Admin
   useEffect(() => {
@@ -107,14 +98,10 @@ export default function Navbar({
   // Fetch transfer notifications for all users
   useEffect(() => {
     const updateCount = () => {
-      const activeWh = getActiveWarehouse();
-      setActiveWhId(activeWh);
-      setStaffWhName(getWarehouseName(activeWh));
-
       const staffFilter = isAdmin ? undefined : user.name;
       const list = isAdmin
         ? getPendingTransferNotifications()
-        : getPendingTransferNotifications(staffFilter, activeWh);
+        : getPendingTransferNotifications(staffFilter, activeWhId);
 
       setPendingTransferCount(list.length);
       setNotificationsList(list);
@@ -128,10 +115,7 @@ export default function Navbar({
     fetchServerTransfers();
     const interval = setInterval(fetchServerTransfers, 5000);
 
-    const handleWhChange = (e: any) => {
-      const newWh = e.detail?.warehouseId || getActiveWarehouse();
-      setActiveWhId(newWh);
-      setStaffWhName(getWarehouseName(newWh));
+    const handleWhChange = () => {
       updateCount();
     };
 
@@ -146,7 +130,7 @@ export default function Navbar({
       window.removeEventListener("stockify-warehouse-changed", handleWhChange);
       window.removeEventListener("storage", updateCount);
     };
-  }, [isAdmin, user.name]);
+  }, [isAdmin, user.name, activeWhId]);
 
   const breadcrumb = pathBreadcrumbs[pathname] || { parent: "หน้าหลัก", title: "Stockify" };
 

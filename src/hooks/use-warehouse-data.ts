@@ -47,6 +47,34 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
     const normalized = normalizeWarehouseId(newWhId);
     setActiveWhIdState(normalized);
     setActiveWarehouse(normalized);
+
+    // URL คือเจ้าของความจริงตาม getActiveWarehouse() — ต้องอัปเดตด้วย
+    // ไม่งั้นค่าเดิมใน URL จะย้อนสถานะกลับ
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("warehouse_id") || url.searchParams.has("wh")) {
+        url.searchParams.delete("wh");
+        url.searchParams.set("warehouse_id", normalized);
+        window.history.replaceState(null, "", url.toString());
+      }
+      // บอกส่วนอื่นทันที ไม่ต้องรอ poll 5 วินาที
+      window.dispatchEvent(new CustomEvent("stockify-warehouse-changed", { detail: { warehouseId: normalized } }));
+    }
+  }, []);
+
+  // Listen to warehouse change events from other components/hooks
+  useEffect(() => {
+    const handleWhChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ warehouseId?: string }>;
+      const wh = customEvent.detail?.warehouseId;
+      if (wh) {
+        setActiveWhIdState(normalizeWarehouseId(wh));
+      }
+    };
+    window.addEventListener("stockify-warehouse-changed", handleWhChanged);
+    return () => {
+      window.removeEventListener("stockify-warehouse-changed", handleWhChanged);
+    };
   }, []);
 
   const refreshData = useCallback(async () => {

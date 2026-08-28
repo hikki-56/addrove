@@ -31,17 +31,18 @@ export default function BarcodeScanInput({
   const refToUse = inputRef || internalRef;
 
   useEffect(() => {
-    if (autoFocus && refToUse.current) {
+    if (!isProcessing && autoFocus && refToUse.current) {
       refToUse.current.focus();
     }
-  }, [autoFocus, refToUse]);
+  }, [isProcessing, autoFocus, refToUse]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const trimmed = value.trim();
-      if (trimmed) {
-        onScanSubmit(trimmed);
+      // Read from DOM directly — hardware barcode scanners type faster than React async state re-render
+      const raw = (e.currentTarget.value ?? value).trim();
+      if (raw) {
+        onScanSubmit(raw);
       }
     }
   };
@@ -64,8 +65,11 @@ export default function BarcodeScanInput({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={disabled || isProcessing}
-          className="w-full pl-10 sm:pl-13 pr-10 sm:pr-12 py-3 sm:py-4 bg-transparent text-slate-900 font-bold placeholder-slate-400 text-xs sm:text-base outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          readOnly={disabled || isProcessing}
+          aria-busy={isProcessing}
+          className={`w-full pl-10 sm:pl-13 pr-10 sm:pr-12 py-3 sm:py-4 bg-transparent text-slate-900 font-bold placeholder-slate-400 text-xs sm:text-base outline-none read-only:cursor-default disabled:opacity-50 disabled:cursor-not-allowed ${
+            isProcessing ? "opacity-50" : ""
+          }`}
         />
 
         <div className="absolute inset-y-0 right-1.5 sm:right-2 flex items-center pr-1 gap-1">
