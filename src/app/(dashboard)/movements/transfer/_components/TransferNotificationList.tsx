@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import type { TransferNotification } from "@/lib/transfer-notification-utils";
+import type { Product } from "@/types/models";
 
 export interface TransferNotificationListProps {
   notifications: TransferNotification[];
   isAdmin: boolean;
+  products?: Product[];
   onSelectTask: (task: TransferNotification) => void;
   onCancelTask?: (e: React.MouseEvent, task: TransferNotification) => void;
   onApproveTask?: (task: TransferNotification) => void;
@@ -16,9 +18,30 @@ export interface TransferNotificationListProps {
   approvingId?: string | null;
 }
 
+function formatThaiDateTime(dateStr?: string | null): string {
+  if (!dateStr) return "-";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const datePart = d.toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    const timePart = d.toLocaleTimeString("th-TH", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${datePart} ${timePart} น.`;
+  } catch {
+    return String(dateStr);
+  }
+}
+
 export default function TransferNotificationList({
   notifications,
   isAdmin,
+  products,
   onSelectTask,
   onCancelTask,
   onApproveTask,
@@ -28,6 +51,117 @@ export default function TransferNotificationList({
   cancellingId = null,
   approvingId = null,
 }: TransferNotificationListProps) {
+  const [skuLocationMap, setSkuLocationMap] = useState<Record<string, string>>({});
+
+  // Auto-fetch current warehouse location for items in notifications if missing
+  useEffect(() => {
+    const missingItems = notifications.filter((t) => {
+      const taskLoc = (t.from_location_id || t.location_code || "").trim();
+      const hasTaskLoc = taskLoc && taskLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(taskLoc) && taskLoc !== "A1";
+      if (hasTaskLoc) return false;
+
+      const normSku = (t.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+      if (normSku && skuLocationMap[normSku]) return false;
+
+      const inProducts = products?.some((p) => {
+        const pSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+        return pSku === normSku && p.location && p.location !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(p.location);
+      });
+      return !inProducts;
+    });
+
+    if (missingItems.length === 0) return;
+
+    const uniqueKeys = Array.from(new Set(missingItems.map((t) => (t.sku || t.product_id || "").trim()).filter(Boolean)));
+    uniqueKeys.forEach(async (term) => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(term)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const normTerm = term.toLowerCase().replace(/^prod-/, "");
+          const matched = json.data.find((p: Product) => {
+            const pSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+            const pId = (p.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+            return pSku === normTerm || pId === normTerm;
+          });
+          if (matched) {
+            const foundLoc = (matched.location || matched.locations_breakdown?.[0]?.location || "").trim();
+            if (foundLoc && foundLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(foundLoc) && foundLoc !== "A1") {
+              setSkuLocationMap((prev) => ({ ...prev, [normTerm]: foundLoc.replace(/^loc-/, "") }));
+            }
+          }
+        }
+      } catch {}
+    });
+  }, [notifications, products, skuLocationMap]);
+
+  const resolveProductLocation = (t: TransferNotification): string => {
+    // 1. Direct from task from_location_id or location_code
+    const rawTaskLoc = (t.from_location_id || t.location_code || "").trim();
+    if (
+      rawTaskLoc &&
+      rawTaskLoc !== "-" &&
+      rawTaskLoc !== "null" &&
+      rawTaskLoc !== "undefined" &&
+      !/^loc-?(a0?1|b0?1)?$/i.test(rawTaskLoc) &&
+      rawTaskLoc !== "A1" &&
+      rawTaskLoc !== "ตำแหน่งเริ่มต้น"
+    ) {
+      return rawTaskLoc.replace(/^loc-/, "");
+    }
+
+    const normSku = (t.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+    const normPid = (t.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+
+    // 2. From products prop
+    if (products && products.length > 0) {
+      const matched = products.find((p) => {
+        const pSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+        const pId = (p.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+        const pBcode = (p.barcode || "").trim().toLowerCase();
+        if (normSku && (pSku === normSku || pId === normSku)) return true;
+        if (normPid && (pId === normPid || pSku === normPid)) return true;
+        if (t.barcode && pBcode === t.barcode.trim().toLowerCase()) return true;
+        return false;
+      });
+
+      if (matched) {
+        // Match specific source warehouse in locations_breakdown
+        if (matched.locations_breakdown && matched.locations_breakdown.length > 0) {
+          const normFromWh = (t.from_warehouse_id || "").toLowerCase();
+          const normFromWhName = (t.from_warehouse_name || "").toLowerCase();
+          const found = matched.locations_breakdown.find((b) => {
+            const bId = (b.warehouse_id || "").toLowerCase();
+            const bName = (b.warehouse_name || "").toLowerCase();
+            return (
+              (normFromWh && bId === normFromWh) ||
+              (normFromWhName && bName === normFromWhName)
+            );
+          });
+          const bLoc = (found?.location || "").trim();
+          if (bLoc && bLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(bLoc) && bLoc !== "A1") {
+            return bLoc.replace(/^loc-/, "");
+          }
+        }
+
+        // Direct product location
+        const pLoc = (matched.location || "").trim();
+        if (pLoc && pLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(pLoc) && pLoc !== "A1") {
+          return pLoc.replace(/^loc-/, "");
+        }
+      }
+    }
+
+    // 3. From fetched skuLocationMap
+    if (normSku && skuLocationMap[normSku]) {
+      return skuLocationMap[normSku];
+    }
+    if (normPid && skuLocationMap[normPid]) {
+      return skuLocationMap[normPid];
+    }
+
+    return "";
+  };
   if (notifications.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 sm:p-10 text-center border border-slate-200 shadow-xs space-y-3">
@@ -125,7 +259,7 @@ export default function TransferNotificationList({
                       </span>
                     </div>
                     <div className="text-xs text-slate-600 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
-                      <span>สร้างเมื่อ: {new Date(t.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.</span>
+                      <span>สร้างเมื่อ: {formatThaiDateTime(t.created_at)}</span>
                     </div>
                   </div>
                 </div>
@@ -162,6 +296,12 @@ export default function TransferNotificationList({
                   {/* Product Title */}
                   <div className={`text-sm sm:text-base text-slate-900 font-bold leading-normal line-clamp-2 ${!isAdmin && !isWaitingApproval ? "group-hover:text-emerald-800 transition-colors" : ""}`}>
                     {t.product_name}
+                  </div>
+
+                  {/* Current Location (ถ้ายังไม่มีตำแหน่งให้แสดงว่างไว้) */}
+                  <div className="text-xs sm:text-sm font-mono flex items-center gap-2 pt-0.5">
+                    <span className="text-slate-500 font-bold">ตำแหน่ง:</span>
+                    <strong className="text-slate-900 font-black">{resolveProductLocation(t)}</strong>
                   </div>
                 </div>
 
@@ -244,7 +384,7 @@ export default function TransferNotificationList({
                             </span>
                           )}
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 font-mono">
-                            เวลาเบิก: {new Date(t.last_active_at || t.created_at).toLocaleString("th-TH", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} น.
+                            เวลาเบิก: {formatThaiDateTime(t.last_active_at || t.created_at)}
                           </span>
                         </div>
                       </div>

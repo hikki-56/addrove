@@ -383,6 +383,7 @@ function PinScreen() {
                          hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 active:scale-95
                          transition-all duration-100 cursor-pointer flex flex-col items-center justify-center gap-0.5
                          select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="ล้างรหัส PIN ทั้งหมด"
               title="ล้างรหัส PIN ทั้งหมด"
             >
               <svg

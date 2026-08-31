@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 export interface ProductionMaterialItem {
   rm_sku: string;
@@ -115,7 +116,7 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-1 px-2.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 text-xs font-bold transition-all cursor-pointer shadow-2xs focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+        className="w-full flex items-center justify-between gap-1 px-2.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 text-xs font-bold transition-all cursor-pointer shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
@@ -187,6 +188,8 @@ export default function ProductionHistoryPage() {
   const [selectedOrder, setSelectedOrder] = useState<ProductionOrderRecord | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEscapeKey(!!selectedOrder, () => setSelectedOrder(null));
 
   const loadIdRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -554,9 +557,10 @@ export default function ProductionHistoryPage() {
         <div className="flex flex-wrap items-end gap-3.5">
           {/* Main Search Input */}
           <div className="flex-[2_1_260px] min-w-[240px]">
-            <label className="block text-xs font-black text-slate-700 mb-1.5">ค้นหาข้อมูล</label>
+            <label htmlFor="prod-hist-search" className="block text-xs font-black text-slate-700 mb-1.5">ค้นหาข้อมูล</label>
             <div className="relative">
               <input
+                id="prod-hist-search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
@@ -588,14 +592,15 @@ export default function ProductionHistoryPage() {
 
           {/* Status Filter */}
           <div className="flex-[1_1_160px] min-w-[140px]">
-            <label className="block text-xs font-black text-slate-700 mb-1.5">สถานะ</label>
+            <label htmlFor="prod-hist-status" className="block text-xs font-black text-slate-700 mb-1.5">สถานะ</label>
             <select
+              id="prod-hist-status"
               value={selectedStatus}
               onChange={(e) => {
                 setSelectedStatus(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-bold focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-all cursor-pointer shadow-2xs"
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer shadow-2xs"
             >
               <option value="ALL">ทุกสถานะ</option>
               <option value="COMPLETED">เสร็จสมบูรณ์</option>
@@ -607,7 +612,7 @@ export default function ProductionHistoryPage() {
 
           {/* วันที่ (Day / Month / Year Dropdowns) */}
           <div className="flex-[1.5_1_220px] min-w-[210px]">
-            <label className="block text-xs font-black text-slate-700 mb-1.5 flex items-center justify-between">
+            <div className="block text-xs font-black text-slate-700 mb-1.5 flex items-center justify-between">
               <span>วันที่</span>
               <button
                 type="button"
@@ -623,7 +628,7 @@ export default function ProductionHistoryPage() {
               >
                 วันนี้
               </button>
-            </label>
+            </div>
             <div className="flex items-center gap-1.5">
               {/* Day */}
               <ScrollableSelect
@@ -996,9 +1001,9 @@ export default function ProductionHistoryPage() {
 
               {/* Status Update Controls */}
               <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <label className="block text-xs sm:text-sm font-black text-slate-800">
+                <div className="block text-xs sm:text-sm font-black text-slate-800">
                   เปลี่ยนสถานะคำสั่งผลิต:
-                </label>
+                </div>
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <button
                     type="button"

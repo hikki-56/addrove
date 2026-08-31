@@ -90,11 +90,12 @@ export default function TransferForm({
         {/* Warehouse From & To */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
           <div className="space-y-1.5">
-            <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+            <label htmlFor="transfer-from-wh" className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
               โกดังต้นทาง <span className="text-rose-600">*</span>
             </label>
             <div className="relative">
               <select
+                id="transfer-from-wh"
                 {...register("from_warehouse_id")}
                 className="w-full px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 text-base sm:text-lg font-bold focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 shadow-sm transition-all cursor-pointer appearance-none pr-10"
               >
@@ -116,11 +117,12 @@ export default function TransferForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+            <label htmlFor="transfer-to-wh" className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
               โกดังปลายทาง <span className="text-rose-600">*</span>
             </label>
             <div className="relative">
               <select
+                id="transfer-to-wh"
                 {...register("to_warehouse_id")}
                 className="w-full px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 text-base sm:text-lg font-bold focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 shadow-sm transition-all cursor-pointer appearance-none pr-10"
               >
@@ -146,9 +148,9 @@ export default function TransferForm({
 
         {/* Product Selection */}
         <div className="space-y-1.5">
-          <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+          <div className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
             เลือกสินค้าที่จะเบิก <span className="text-rose-600">*</span>
-          </label>
+          </div>
           <ProductSearchInput
             size="lg"
             products={products}
@@ -294,9 +296,9 @@ export default function TransferForm({
 
         {/* Creator Info Display */}
         <div className="space-y-1.5">
-          <label className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
+          <div className="block text-sm sm:text-base font-extrabold text-slate-800 tracking-wide">
             ผู้สร้างรายการ
-          </label>
+          </div>
           <div className="flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl bg-slate-100/90 border-2 border-slate-200 text-slate-900 text-base sm:text-lg font-bold shadow-2xs select-none">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-extrabold text-sm shrink-0">

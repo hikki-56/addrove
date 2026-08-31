@@ -45,6 +45,7 @@ export interface SelectedTransferItem {
   barcode?: string;
   stock_qty?: number;
   qty: number;
+  location?: string;
 }
 
 export function findMatchingProduct(t: Partial<TransferNotification> | null | undefined, products: Product[]): Product | undefined {
@@ -320,6 +321,7 @@ export function useTransferMovement({
           barcode: prod.barcode,
           qty: stockQty > 0 ? 1 : 1,
           stock_qty: stockQty,
+          location: prod.location || "",
         },
       ];
     });
@@ -1199,6 +1201,7 @@ export function useTransferMovement({
                 sku: item.sku,
                 barcode: item.barcode,
                 product_name: item.product_name,
+                from_location_id: item.location || "",
                 qty: Math.max(1, item.qty || 1),
                 moved_by: "",
                 assigned_to_user_id: "",
@@ -1224,6 +1227,8 @@ export function useTransferMovement({
               sku: item.sku || item.product_id,
               product_name: item.product_name || `สินค้า ${item.product_id}`,
               barcode: item.barcode || "",
+              from_location_id: item.location || "",
+              location_code: item.location || "",
               qty: item.qty,
               from_warehouse_id: data.from_warehouse_id,
               from_warehouse_name: fromWhName,

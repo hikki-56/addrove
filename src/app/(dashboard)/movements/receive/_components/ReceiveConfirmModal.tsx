@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { UseFormReturn } from "react-hook-form";
 import type { ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
@@ -24,6 +25,8 @@ export default function ReceiveConfirmModal({
   activeWhName,
   onSubmit,
 }: ReceiveConfirmModalProps) {
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const { watch, handleSubmit, formState: { isSubmitting } } = form;

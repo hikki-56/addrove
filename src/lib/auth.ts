@@ -37,8 +37,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // All users get access to all warehouses
-          const warehouseAccess: string[] = ["*"];
+          let warehouseAccess: string[] = ["*"];
+          if (user.role !== "ADMIN" && user.warehouse_access) {
+            try {
+              if (Array.isArray(user.warehouse_access)) {
+                warehouseAccess = user.warehouse_access;
+              } else if (typeof user.warehouse_access === "string") {
+                const parsed = JSON.parse(user.warehouse_access);
+                if (Array.isArray(parsed)) warehouseAccess = parsed;
+                else if (typeof parsed === "string") warehouseAccess = [parsed];
+              }
+            } catch {
+              warehouseAccess = typeof user.warehouse_access === "string" && user.warehouse_access.trim() !== ""
+                ? [user.warehouse_access.trim()]
+                : ["*"];
+            }
+          }
 
           return {
             id: user.user_id,

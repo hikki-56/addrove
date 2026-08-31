@@ -122,7 +122,7 @@ export default function AdminLoginPage() {
           <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-4" suppressHydrationWarning>
             {/* Email Field */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="admin-email" className="block text-xs font-bold text-slate-700 mb-1.5">
                 อีเมลผู้ดูแลระบบ
               </label>
               <div className="relative">
@@ -153,7 +153,7 @@ export default function AdminLoginPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label htmlFor="admin-password" className="block text-xs font-medium text-slate-700 mb-1.5">
                 รหัสผ่าน
               </label>
               <div className="relative">

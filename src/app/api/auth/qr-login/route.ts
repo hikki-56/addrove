@@ -33,8 +33,12 @@ function checkPinMatch(user: User, inputPin: string): boolean {
     }
   }
 
-  // Fallback: Support direct plaintext 4-digit PIN comparison
-  return rawPin === inputPin;
+  // Fallback: Support direct plaintext 4-digit PIN comparison (temporary until all sheet rows are hashed)
+  if (rawPin === inputPin) {
+    console.warn(`[SECURITY WARNING] User ${user.user_id} (${user.email || user.full_name}) logged in using plaintext PIN. Please run scripts/migrate-plaintext-pins.ts`);
+    return true;
+  }
+  return false;
 }
 
 export async function POST(req: Request) {

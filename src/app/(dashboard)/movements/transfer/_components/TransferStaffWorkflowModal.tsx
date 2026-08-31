@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import { createPortal } from "react-dom";
 import { type TransferNotification, updateTransferTaskProgress } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
@@ -85,6 +86,8 @@ export default function TransferStaffWorkflowModal({
     }
   }, [selectedTask?.id, staffStep]);
 
+  useEscapeKey(!!selectedTask && mounted, onClose);
+
   if (!selectedTask || !mounted) return null;
 
   const totalPickedQty = sourceAllocations.reduce((sum, a) => sum + (a.qty || 0), 0);
@@ -114,6 +117,7 @@ export default function TransferStaffWorkflowModal({
             <button
               type="button"
               onClick={onClose}
+              aria-label="ปิดหน้าต่าง"
               className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer font-bold text-lg transition-all active:scale-95 shrink-0"
               title="ปิดหน้าต่าง"
             >
@@ -183,6 +187,9 @@ export default function TransferStaffWorkflowModal({
               <span className="font-bold text-slate-700">SKU: <strong className="text-slate-900">{selectedTask.sku}</strong></span>
               {barcode && barcode !== selectedTask.sku && (
                 <span className="font-bold text-slate-700">บาร์โค้ด: <strong className="text-slate-900">{barcode}</strong></span>
+              )}
+              {selectedTask.from_location_id && selectedTask.from_location_id !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(selectedTask.from_location_id) && (
+                <span className="font-bold text-slate-700">ตำแหน่ง: <strong className="text-slate-900">{selectedTask.from_location_id.replace(/^loc-/, "")}</strong></span>
               )}
             </div>
 
@@ -324,11 +331,11 @@ export default function TransferStaffWorkflowModal({
 
             {remainingNeeded > 0 && (
               <div className="space-y-2 pt-1">
-                <label className="block text-base font-bold text-slate-900">
+                <div className="block text-base font-bold text-slate-900">
                   {sourceAllocations.length === 0
                     ? "สแกนตำแหน่งต้นทาง:"
                     : `สแกนตำแหน่งที่ ${sourceAllocations.length + 1} (ยังขาดอีก ${remainingNeeded.toLocaleString()} ชิ้น):`}
-                </label>
+                </div>
                 <BarcodeScanInput
                   value={staffScanSourceLocationInput}
                   onChange={setStaffScanSourceLocationInput}
@@ -359,9 +366,9 @@ export default function TransferStaffWorkflowModal({
         {staffStep === 3 && (
           <div className="space-y-4 pt-1">
             <div className="space-y-2">
-              <label className="block text-base font-bold text-slate-900">
+              <div className="block text-base font-bold text-slate-900">
                 สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
-              </label>
+              </div>
               <BarcodeScanInput
                 value={staffScanDestLocationInput}
                 onChange={(val) => {

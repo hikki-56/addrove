@@ -8,6 +8,7 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import { navItems, getNavItems } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName, fetchAndSyncTransferNotifications } from "@/lib/transfer-notification-utils";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
@@ -66,6 +67,8 @@ export default function Navbar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingTransferCount, setPendingTransferCount] = useState(0);
   const pathname = usePathname();
+
+  useEscapeKey(mobileOpen, () => setMobileOpen(false));
 
   const user = tabUser || initialUser;
   const isAdmin = user.role === "ADMIN";

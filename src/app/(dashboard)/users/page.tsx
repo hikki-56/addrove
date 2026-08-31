@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { User, UserRole } from "@/types/models";
 
 const WAREHOUSE_OPTIONS = [
@@ -38,6 +39,9 @@ export default function UsersPage() {
   const [editPassword, setEditPassword] = useState("");
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+
+  useEscapeKey(showAddModal, () => setShowAddModal(false));
+  useEscapeKey(!!editingUser, () => setEditingUser(null));
 
   const loadUsers = () => {
     setLoading(true);
@@ -381,8 +385,9 @@ export default function UsersPage() {
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                <label htmlFor="add-fullname" className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
                 <input
+                  id="add-fullname"
                   type="text"
                   required
                   value={addFullName}
@@ -393,8 +398,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">อีเมล (สำหรับเข้าสู่ระบบ)</label>
+                <label htmlFor="add-email" className="block text-xs font-semibold text-slate-700 mb-1">อีเมล (สำหรับเข้าสู่ระบบ)</label>
                 <input
+                  id="add-email"
                   type="email"
                   required
                   value={addEmail}
@@ -405,8 +411,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                <label htmlFor="add-password" className="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
                 <input
+                  id="add-password"
                   type="password"
                   required
                   minLength={6}
@@ -418,8 +425,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
+                <label htmlFor="add-role" className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
                 <select
+                  id="add-role"
                   value={addRole}
                   onChange={(e) => setAddRole(e.target.value as UserRole)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm cursor-pointer"
@@ -432,7 +440,7 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</label>
+                <div className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -497,8 +505,9 @@ export default function UsersPage() {
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                <label htmlFor="edit-fullname" className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
                 <input
+                  id="edit-fullname"
                   type="text"
                   required
                   value={editFullName}
@@ -508,8 +517,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">อีเมล (แก้ไขไม่ได้)</label>
+                <label htmlFor="edit-email" className="block text-xs font-semibold text-slate-500 mb-1">อีเมล (แก้ไขไม่ได้)</label>
                 <input
+                  id="edit-email"
                   type="email"
                   disabled
                   value={editingUser.email}
@@ -518,8 +528,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">เปลี่ยนรหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
+                <label htmlFor="edit-password" className="block text-xs font-semibold text-slate-700 mb-1">เปลี่ยนรหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
                 <input
+                  id="edit-password"
                   type="password"
                   minLength={6}
                   value={editPassword}
@@ -530,8 +541,9 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
+                <label htmlFor="edit-role" className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
                 <select
+                  id="edit-role"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value as UserRole)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm cursor-pointer"
@@ -544,7 +556,7 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</label>
+                <div className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"

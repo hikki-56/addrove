@@ -110,7 +110,7 @@ export default function NewProductPage() {
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4 w-full">
           {/* Warehouse Selection */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">จัดเก็บเข้าโกดัง *</label>
+            <div className="block text-xs font-semibold text-slate-700 mb-1.5">จัดเก็บเข้าโกดัง *</div>
             <CustomSelect
               value={watchWarehouse || "wh-1"}
               onChange={(val) => setValue("warehouse_id", val, { shouldValidate: true })}
@@ -122,8 +122,9 @@ export default function NewProductPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
+              <label htmlFor="prod-sku" className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
               <input
+                id="prod-sku"
                 {...register("sku")}
                 placeholder="เช่น PROD-001"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
@@ -132,8 +133,9 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">บาร์โค้ด (Barcode)</label>
+              <label htmlFor="prod-barcode" className="block text-xs font-semibold text-slate-700 mb-1.5">บาร์โค้ด (Barcode)</label>
               <input
+                id="prod-barcode"
                 {...register("barcode")}
                 placeholder="เช่น 885000000001"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
@@ -143,8 +145,9 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
+            <label htmlFor="prod-name" className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
             <input
+              id="prod-name"
               {...register("product_name")}
               placeholder="กรอกชื่อสินค้าภาษาไทย"
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-medium transition-all"
@@ -154,8 +157,9 @@ export default function NewProductPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">หมวดหมู่สินค้า *</label>
+              <label htmlFor="prod-category" className="block text-xs font-semibold text-slate-700 mb-1.5">หมวดหมู่สินค้า *</label>
               <input
+                id="prod-category"
                 {...register("category")}
                 placeholder="เช่น เครื่องดื่ม / ของใช้"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
@@ -164,8 +168,9 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">หน่วยนับ *</label>
+              <label htmlFor="prod-base-unit" className="block text-xs font-semibold text-slate-700 mb-1.5">หน่วยนับ *</label>
               <input
+                id="prod-base-unit"
                 {...register("base_unit")}
                 placeholder="เช่น ชิ้น / กล่อง / แพ็ก"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
@@ -176,8 +181,9 @@ export default function NewProductPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนสินค้าเริ่มต้นในโกดัง</label>
+              <label htmlFor="prod-initial-qty" className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนสินค้าเริ่มต้นในโกดัง</label>
               <input
+                id="prod-initial-qty"
                 type="number"
                 min="0"
                 {...register("initial_quantity", { valueAsNumber: true })}
@@ -189,8 +195,9 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนแจ้งเตือนขั้นต่ำ (Min Stock)</label>
+              <label htmlFor="prod-min-stock" className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนแจ้งเตือนขั้นต่ำ (Min Stock)</label>
               <input
+                id="prod-min-stock"
                 type="number"
                 min="0"
                 {...register("minimum_stock", { valueAsNumber: true })}
@@ -202,8 +209,9 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
+            <label htmlFor="prod-desc" className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
             <textarea
+              id="prod-desc"
               {...register("description")}
               rows={3}
               placeholder="กรอกรายละเอียดสินค้า เช่น เอเจนต์ซี ผู้ส่งมอบ หรือข้อความบันทึก"

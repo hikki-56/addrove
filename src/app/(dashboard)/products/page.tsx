@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { Product, Warehouse } from "@/types/models";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +29,8 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
+
+  useEscapeKey(!!editingProduct, () => setEditingProduct(null));
 
   const router = useRouter();
 
@@ -677,8 +680,9 @@ export default function ProductsPage() {
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
+                  <label htmlFor="edit-prod-sku" className="block font-bold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
                   <input
+                    id="edit-prod-sku"
                     type="text"
                     required
                     value={editingProduct.sku}
@@ -687,8 +691,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Barcode</label>
+                  <label htmlFor="edit-prod-barcode" className="block font-bold text-slate-700 mb-1.5">Barcode</label>
                   <input
+                    id="edit-prod-barcode"
                     type="text"
                     value={editingProduct.barcode || ""}
                     onChange={(e) => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
@@ -698,8 +703,9 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
+                <label htmlFor="edit-prod-name" className="block font-bold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
                 <input
+                  id="edit-prod-name"
                   type="text"
                   required
                   value={editingProduct.product_name}
@@ -710,8 +716,9 @@ export default function ProductsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">หมวดหมู่ *</label>
+                  <label htmlFor="edit-prod-cat" className="block font-bold text-slate-700 mb-1.5">หมวดหมู่ *</label>
                   <input
+                    id="edit-prod-cat"
                     type="text"
                     required
                     value={editingProduct.category}
@@ -720,8 +727,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">หน่วยนับ *</label>
+                  <label htmlFor="edit-prod-unit" className="block font-bold text-slate-700 mb-1.5">หน่วยนับ *</label>
                   <input
+                    id="edit-prod-unit"
                     type="text"
                     required
                     value={editingProduct.base_unit}
@@ -730,8 +738,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">จำนวนขั้นต่ำ *</label>
+                  <label htmlFor="edit-prod-min-stock" className="block font-bold text-slate-700 mb-1.5">จำนวนขั้นต่ำ *</label>
                   <input
+                    id="edit-prod-min-stock"
                     type="number"
                     min="0"
                     required
@@ -743,8 +752,9 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">ตำแหน่ง</label>
+                <label htmlFor="edit-prod-loc" className="block font-bold text-slate-700 mb-1.5">ตำแหน่ง</label>
                 <input
+                  id="edit-prod-loc"
                   type="text"
                   value={editingProduct.description ? editingProduct.description.replace(/^ตำแหน่ง:\s*/, "") : ""}
                   onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}

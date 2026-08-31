@@ -77,7 +77,7 @@ describe("Atomic Stock Operations Concurrency", () => {
     });
 
     const promises = Array.from({ length: 5 }, () => 
-      completeTransfer(deps, doc.document_id, "B", "user-1").catch(err => err)
+      completeTransfer(deps, doc.document_id, "B", "loc-A", "user-1", "ADMIN").catch(err => err)
     );
 
     await Promise.all(promises);

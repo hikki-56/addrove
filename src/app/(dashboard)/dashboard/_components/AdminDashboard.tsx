@@ -105,16 +105,16 @@ export default function AdminDashboard() {
         const products = Array.isArray(prodRes.data)
           ? prodRes.data
           : Array.isArray(prodRes.data?.items)
-          ? prodRes.data.items
-          : [];
+            ? prodRes.data.items
+            : [];
         const balances = Array.isArray(stockRes.data) ? stockRes.data : [];
         const movements = Array.isArray(movRes.data?.data)
           ? movRes.data.data
           : Array.isArray(movRes.data?.items)
-          ? movRes.data.items
-          : Array.isArray(movRes.data)
-          ? movRes.data
-          : [];
+            ? movRes.data.items
+            : Array.isArray(movRes.data)
+              ? movRes.data
+              : [];
         const rawTransfers = Array.isArray(trfRes.data) ? trfRes.data : [];
         const rawProduction = Array.isArray(prdRes.data) ? prdRes.data : [];
         const expressItems = getAllTaggedExpressItems();
@@ -143,8 +143,8 @@ export default function AdminDashboard() {
           const breakdown = p.locations_breakdown || p.locations;
           if (Array.isArray(breakdown) && breakdown.length > 0) {
             breakdown.forEach((loc: any) => {
-              const lIdx = getWhIndex(loc.warehouse_id) !== -1 
-                ? getWhIndex(loc.warehouse_id) 
+              const lIdx = getWhIndex(loc.warehouse_id) !== -1
+                ? getWhIndex(loc.warehouse_id)
                 : getWhIndex(loc.warehouse_name);
               const lq = Number(loc.quantity ?? loc.qty ?? 0) || 0;
               if (lIdx >= 1 && lIdx <= 6 && lq > 0) {
@@ -152,8 +152,8 @@ export default function AdminDashboard() {
               }
             });
           } else {
-            const idx = getWhIndex(p.warehouse_id) !== -1 
-              ? getWhIndex(p.warehouse_id) 
+            const idx = getWhIndex(p.warehouse_id) !== -1
+              ? getWhIndex(p.warehouse_id)
               : getWhIndex(p.warehouse_name);
             const q = Number(p.quantity ?? p.qty ?? 0) || 0;
             if (idx >= 1 && idx <= 6 && q > 0) {
@@ -167,8 +167,8 @@ export default function AdminDashboard() {
           balances.forEach((item: any) => {
             if (Array.isArray(item.by_warehouse) && item.by_warehouse.length > 0) {
               item.by_warehouse.forEach((entry: any) => {
-                const idx = getWhIndex(entry.warehouse_id) !== -1 
-                  ? getWhIndex(entry.warehouse_id) 
+                const idx = getWhIndex(entry.warehouse_id) !== -1
+                  ? getWhIndex(entry.warehouse_id)
                   : getWhIndex(entry.warehouse_name);
                 const entryQ = Number(entry.quantity ?? entry.qty ?? entry.total) || 0;
                 if (idx >= 1 && idx <= 6 && entryQ > 0) {
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
           const rawProdId = String(meta.product_id || doc.product_id || "").trim();
           const rawSku = String(meta.sku || doc.sku || (rawProdId.startsWith("prod-") ? rawProdId.replace(/^prod-/, "") : "")).trim();
           const matchedProd = (rawSku ? prodMapBySku.get(rawSku.toLowerCase()) : undefined) ||
-                              (rawProdId ? prodMapById.get(rawProdId.toLowerCase()) : undefined);
+            (rawProdId ? prodMapById.get(rawProdId.toLowerCase()) : undefined);
 
           const sku = rawSku || matchedProd?.sku || "-";
           const productName = getDisplayProductName({
@@ -801,33 +801,30 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => setActivityFilterDate("ALL")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                  activityFilterDate === "ALL"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${activityFilterDate === "ALL"
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 ทั้งหมด
               </button>
               <button
                 type="button"
                 onClick={() => setActivityFilterDate("TODAY")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                  activityFilterDate === "TODAY"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${activityFilterDate === "TODAY"
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 วันนี้
               </button>
               <button
                 type="button"
                 onClick={() => setActivityFilterDate("YESTERDAY")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                  activityFilterDate === "YESTERDAY"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${activityFilterDate === "YESTERDAY"
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 เมื่อวานนี้
               </button>
@@ -839,8 +836,8 @@ export default function AdminDashboard() {
                   aria-label="เลือกวันที่ต้องการดู"
                   value={
                     activityFilterDate !== "ALL" &&
-                    activityFilterDate !== "TODAY" &&
-                    activityFilterDate !== "YESTERDAY"
+                      activityFilterDate !== "TODAY" &&
+                      activityFilterDate !== "YESTERDAY"
                       ? activityFilterDate
                       : ""
                   }
@@ -941,19 +938,19 @@ export default function AdminDashboard() {
                 activityFilterActor !== "ALL" ||
                 activityFilterAction !== "ALL" ||
                 activitySearch) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivityFilterDate("ALL");
-                    setActivityFilterActor("ALL");
-                    setActivityFilterAction("ALL");
-                    setActivitySearch("");
-                  }}
-                  className="mt-2 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all cursor-pointer border border-indigo-200 shadow-2xs"
-                >
-                  ล้างตัวกรองทั้งหมด
-                </button>
-              )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivityFilterDate("ALL");
+                      setActivityFilterActor("ALL");
+                      setActivityFilterAction("ALL");
+                      setActivitySearch("");
+                    }}
+                    className="mt-2 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all cursor-pointer border border-indigo-200 shadow-2xs"
+                  >
+                    ล้างตัวกรองทั้งหมด
+                  </button>
+                )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -1027,19 +1024,18 @@ export default function AdminDashboard() {
                             {/* Quantity */}
                             <td className="py-3 px-3 text-right whitespace-nowrap font-mono">
                               <span
-                                className={`font-black text-xs ${
-                                  item.actionType === "RECEIVE"
+                                className={`font-black text-xs ${item.actionType === "RECEIVE"
                                     ? "text-emerald-700"
                                     : item.actionType === "ISSUE"
-                                    ? "text-rose-700"
-                                    : "text-slate-900"
-                                }`}
+                                      ? "text-rose-700"
+                                      : "text-slate-900"
+                                  }`}
                               >
                                 {item.actionType === "RECEIVE"
                                   ? `+${item.qty.toLocaleString()}`
                                   : item.actionType === "ISSUE"
-                                  ? `-${item.qty.toLocaleString()}`
-                                  : item.qty.toLocaleString()}
+                                    ? `-${item.qty.toLocaleString()}`
+                                    : item.qty.toLocaleString()}
                               </span>
                               <span className="text-[11px] text-slate-500 font-sans ml-1">
                                 {item.unit}
@@ -1081,19 +1077,18 @@ export default function AdminDashboard() {
                             {renderActionBadge(item.actionType, item.actionLabel)}
                           </div>
                           <span
-                            className={`font-mono font-black text-xs ${
-                              item.actionType === "RECEIVE"
+                            className={`font-mono font-black text-xs ${item.actionType === "RECEIVE"
                                 ? "text-emerald-700"
                                 : item.actionType === "ISSUE"
-                                ? "text-rose-700"
-                                : "text-slate-900"
-                            }`}
+                                  ? "text-rose-700"
+                                  : "text-slate-900"
+                              }`}
                           >
                             {item.actionType === "RECEIVE"
                               ? `+${item.qty.toLocaleString()}`
                               : item.actionType === "ISSUE"
-                              ? `-${item.qty.toLocaleString()}`
-                              : item.qty.toLocaleString()}{" "}
+                                ? `-${item.qty.toLocaleString()}`
+                                : item.qty.toLocaleString()}{" "}
                             {item.unit}
                           </span>
                         </div>

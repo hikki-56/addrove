@@ -323,12 +323,12 @@ export default function ShelfQrPage() {
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
             <div className="lg:col-span-4">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <div className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 <span>เลือกโกดัง</span>
-              </label>
+              </div>
               <ScrollableSelect
                 value={selectedWh}
                 options={warehouseOptions}
@@ -341,12 +341,12 @@ export default function ShelfQrPage() {
             </div>
 
             <div className="lg:col-span-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <div className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span>ระดับชั้น</span>
-              </label>
+              </div>
               <ScrollableSelect
                 value={selectedLevel}
                 options={levelOptions}
@@ -356,7 +356,7 @@ export default function ShelfQrPage() {
             </div>
 
             <div className="sm:col-span-2 lg:col-span-5">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <label htmlFor="shelf-search-input" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -364,6 +364,7 @@ export default function ShelfQrPage() {
               </label>
               <div className="relative">
                 <input
+                  id="shelf-search-input"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

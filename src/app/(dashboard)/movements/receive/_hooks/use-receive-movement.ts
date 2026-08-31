@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
+import { useTabAuth } from "@/context/TabAuthContext";
 
 export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v1";
 
@@ -31,6 +32,7 @@ export function useReceiveMovement({
   setProducts,
   refreshWarehouseData,
 }: UseReceiveMovementOptions) {
+  const { user } = useTabAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -523,6 +525,8 @@ export function useReceiveMovement({
         body: JSON.stringify({
           ...data,
           lines: cleanedLines,
+          created_by_name: user?.name || undefined,
+          user_name: user?.name || undefined,
         }),
       });
       const json = await res.json();

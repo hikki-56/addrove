@@ -80,6 +80,7 @@ export default function BarcodeScanInput({
                 onChange("");
                 if (refToUse.current) refToUse.current.focus();
               }}
+              aria-label="ล้างข้อมูล"
               className="p-1 sm:p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               title="ล้างข้อมูล"
             >
@@ -94,6 +95,7 @@ export default function BarcodeScanInput({
               type="button"
               onClick={onOpenScannerModal}
               disabled={disabled || isProcessing}
+              aria-label="เปิดกล้องสแกน"
               className="p-1.5 sm:p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               title="เปิดกล้องสแกน"
             >

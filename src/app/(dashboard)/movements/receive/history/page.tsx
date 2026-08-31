@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 export interface ReceiveItemDetail {
   sku: string;
@@ -155,6 +156,8 @@ export default function ReceiveHistoryPage() {
 
   // Detail Modal state
   const [selectedRecord, setSelectedRecord] = useState<ReceiveHistoryRecord | null>(null);
+
+  useEscapeKey(!!selectedRecord, () => setSelectedRecord(null));
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   // Dropdown options
@@ -517,7 +520,7 @@ export default function ReceiveHistoryPage() {
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
         {/* Search Box */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="rcv-hist-search" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
             <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -525,6 +528,7 @@ export default function ReceiveHistoryPage() {
           </label>
           <div className="relative">
             <input
+              id="rcv-hist-search"
               type="text"
               value={searchQuery}
               onChange={(e) => {
@@ -560,7 +564,7 @@ export default function ReceiveHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           {/* Status Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</div>
             <ScrollableSelect
               value={selectedStatus}
               options={statusOptions}
@@ -574,7 +578,7 @@ export default function ReceiveHistoryPage() {
 
           {/* Warehouse Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">โกดังรับเข้า</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">โกดังรับเข้า</div>
             <ScrollableSelect
               value={selectedWh}
               options={warehouseOptions}
@@ -588,7 +592,7 @@ export default function ReceiveHistoryPage() {
 
           {/* Date Range Preset */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
             <ScrollableSelect
               value={selectedDateRange}
               options={dateRangeOptions}

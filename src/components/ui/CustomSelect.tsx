@@ -75,32 +75,34 @@ export default function CustomSelect({
       {/* Custom Dropdown List */}
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1.5 z-50 w-full max-w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden py-1 max-h-56 overflow-y-auto scale-in duration-100">
-          <div
+          <button
+            type="button"
             onClick={() => {
               onChange("");
               setOpen(false);
             }}
-            className={`px-3.5 py-2 text-xs sm:text-sm cursor-pointer transition-colors ${
+            className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm cursor-pointer transition-colors ${
               !value ? "bg-indigo-50 text-indigo-700 font-bold" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
             }`}
           >
             {placeholder}
-          </div>
+          </button>
           {options.map((opt) => (
-            <div
+            <button
+              type="button"
               key={opt.value}
               onClick={() => {
                 onChange(opt.value);
                 setOpen(false);
               }}
-              className={`px-3.5 py-2 text-xs sm:text-sm cursor-pointer transition-colors truncate ${
+              className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm cursor-pointer transition-colors truncate ${
                 opt.value === value
                   ? "bg-indigo-50 text-indigo-700 font-bold border-l-2 border-indigo-600"
                   : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               {opt.label}
-            </div>
+            </button>
           ))}
         </div>
       )}

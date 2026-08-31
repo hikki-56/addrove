@@ -39,7 +39,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   return (
     <html lang="th" className={`${notoSansThai.variable} ${inter.variable} light`} data-theme="light" suppressHydrationWarning>
       <body className="font-thai antialiased" suppressHydrationWarning>

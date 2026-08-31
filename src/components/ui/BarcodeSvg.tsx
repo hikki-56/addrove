@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import JsBarcode from "jsbarcode";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 interface BarcodeSvgProps {
   value: string;
@@ -28,6 +29,8 @@ function BarcodeSvgComponent({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const zoomCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
+
+  useEscapeKey(isZoomed, () => setIsZoomed(false));
   const cleanValue = (to8DigitBarcode(value) || value || "").trim();
   // CODE128 requires printable ASCII (32-126)
   const isAscii = /^[\x20-\x7E]+$/.test(cleanValue);

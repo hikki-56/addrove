@@ -29,7 +29,7 @@ export default function StaffDashboard() {
     const urlWh =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("warehouse_id") ||
-          new URLSearchParams(window.location.search).get("wh")
+        new URLSearchParams(window.location.search).get("wh")
         : null;
     const wh = getActiveWarehouse(urlWh);
     setActiveWh(wh);
@@ -71,7 +71,7 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center py-8 px-4 w-full">
       <div className="w-full max-w-md space-y-6 text-center">
-        
+
         {/* Warehouse Header Title */}
         <div className="flex items-center justify-center gap-3 py-1">
           <img
@@ -86,7 +86,7 @@ export default function StaffDashboard() {
 
         {/* 4 Centered Square Buttons (2x2 Grid) */}
         <div className="grid grid-cols-2 gap-4 w-full pt-2">
-          
+
           {/* Square 1: รับสินค้าเข้าคลัง */}
           <Link
             href={`/movements/receive?warehouse_id=${activeWh}`}

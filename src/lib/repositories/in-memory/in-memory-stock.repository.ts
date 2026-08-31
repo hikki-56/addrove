@@ -331,19 +331,21 @@ export class InMemoryStockMovementRepository implements IStockMovementRepository
   }
 
   async getBalance(productId: string, warehouseId: string, locationId: string): Promise<number> {
+    const normWh = (id: string) => id?.replace(/^wh-0*/, "wh-") || id;
     return this.movements
       .filter(
         (m) =>
           m.product_id === productId &&
-          m.warehouse_id === warehouseId &&
+          normWh(m.warehouse_id) === normWh(warehouseId) &&
           m.location_id === locationId
       )
       .reduce((sum, m) => sum + m.qty_change, 0);
   }
 
   async getWarehouseBalance(productId: string, warehouseId: string): Promise<number> {
+    const normWh = (id: string) => id?.replace(/^wh-0*/, "wh-") || id;
     return this.movements
-      .filter((m) => m.product_id === productId && m.warehouse_id === warehouseId)
+      .filter((m) => m.product_id === productId && normWh(m.warehouse_id) === normWh(warehouseId))
       .reduce((sum, m) => sum + m.qty_change, 0);
   }
 

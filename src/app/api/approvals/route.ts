@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       document_date: string;
       status: string;
       created_by: string;
+      created_by_name?: string;
       created_at: string;
       target_sheet: string;
       express_status?: string;
@@ -44,7 +45,11 @@ export async function GET(req: NextRequest) {
     }> = [];
 
     // Fetch PRODUCTS repository to build SKU -> Barcode and SKU -> Supplier map
-    const allProducts = await repo.products.findAll().catch(() => []);
+    const [allProducts, allUsers] = await Promise.all([
+      repo.products.findAll().catch(() => []),
+      repo.users.findAll().catch(() => []),
+    ]);
+
     const productBarcodeMap = new Map<string, string>();
     const productSupplierMap = new Map<string, string>();
     allProducts.forEach((p: any) => {
@@ -53,6 +58,16 @@ export async function GET(req: NextRequest) {
       }
       const s = p.supplier || (p.description ? p.description.replace(/^ผู้จำหน่าย:\s*/, "") : "");
       if (s && p.sku) productSupplierMap.set(p.sku.toLowerCase(), s);
+    });
+
+    const userMap = new Map<string, string>();
+    allUsers.forEach((u: any) => {
+      const name = u.full_name || u.username || (u.email ? u.email.split("@")[0] : "");
+      if (name) {
+        if (u.user_id) userMap.set(String(u.user_id).toLowerCase(), name);
+        if (u.email) userMap.set(String(u.email).toLowerCase(), name);
+        if (u.username) userMap.set(String(u.username).toLowerCase(), name);
+      }
     });
 
     for (const doc of allDocuments) {
@@ -76,7 +91,7 @@ export async function GET(req: NextRequest) {
         (targetStatus === "REJECTED" && (docStatus === "REJECTED" || docStatus === "REJECT" || docStatus === "CANCELLED"));
 
       if (matchesStatus) {
-        let parsedPayload: { warehouse_id?: string; target_sheet?: string; rows?: any[][]; express_status?: string } = { warehouse_id: "wh-1", target_sheet: "โกดัง1", rows: [] };
+        let parsedPayload: { warehouse_id?: string; target_sheet?: string; rows?: any[][]; express_status?: string; created_by_name?: string } = { warehouse_id: "wh-1", target_sheet: "โกดัง1", rows: [] };
         try {
           if (doc.note && doc.note.startsWith("{")) {
             parsedPayload = JSON.parse(doc.note);
@@ -121,13 +136,23 @@ export async function GET(req: NextRequest) {
         const memStatus = (docKey && expressStatusMap.get(docKey)?.status) || (docIdKey && expressStatusMap.get(docIdKey)?.status);
         const effectiveExpressStatus = memStatus || parsedPayload.express_status || "PENDING";
 
+        const rawCreatedBy = (doc.created_by || "").trim();
+        const creatorNameFromPayload = parsedPayload.created_by_name || (parsedPayload as any).user_name || (parsedPayload as any).moved_by;
+        const creatorNameFromDoc = (doc as any).created_by_name;
+        const creatorNameFromUser = rawCreatedBy ? userMap.get(rawCreatedBy.toLowerCase()) : "";
+        const isUuidOrId = /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(rawCreatedBy) || /^id-[0-9]+/i.test(rawCreatedBy) || /^usr-/i.test(rawCreatedBy);
+        const fallbackName = rawCreatedBy && !isUuidOrId ? rawCreatedBy : "พนักงานรับสินค้า";
+
+        const resolvedCreator = (creatorNameFromPayload || creatorNameFromDoc || creatorNameFromUser || fallbackName).trim();
+
         resultDocs.push({
           document_id: doc.document_id,
           document_no: doc.document_no || "",
           warehouse_id: parsedPayload.warehouse_id || "wh-1",
           document_date: doc.document_date || "",
           status: docStatus,
-          created_by: doc.created_by || "Staff",
+          created_by: resolvedCreator,
+          created_by_name: resolvedCreator,
           created_at: doc.created_at || new Date().toISOString(),
           target_sheet: parsedPayload.target_sheet || "โกดัง1",
           express_status: effectiveExpressStatus,

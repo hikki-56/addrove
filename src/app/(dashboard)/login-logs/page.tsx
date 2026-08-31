@@ -459,7 +459,7 @@ export default function LoginNotificationsPage() {
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
         {/* Search Box */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="login-search-input" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
             <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -467,6 +467,7 @@ export default function LoginNotificationsPage() {
           </label>
           <div className="relative">
             <input
+              id="login-search-input"
               type="text"
               value={search}
               onChange={(e) => {
@@ -502,7 +503,7 @@ export default function LoginNotificationsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           {/* Role Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">บทบาท</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">บทบาท</div>
             <ScrollableSelect
               value={selectedRole}
               options={roleOptions}
@@ -516,7 +517,7 @@ export default function LoginNotificationsPage() {
 
           {/* Login Method Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">วิธีการเข้าใช้งาน</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">วิธีการเข้าใช้งาน</div>
             <ScrollableSelect
               value={selectedMethod}
               options={methodOptions}
@@ -530,7 +531,7 @@ export default function LoginNotificationsPage() {
 
           {/* Date Range Preset */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
             <ScrollableSelect
               value={selectedDateRange}
               options={dateRangeOptions}

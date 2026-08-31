@@ -37,7 +37,8 @@ function rowToUser(row: string[]): User {
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || row[1] || "";
   const email = row[6] || row[1] || ""; // email or username
   let role = (row[3] as UserRole) || "VIEWER";
-  const warehouseAccess = '["*"]';
+  const rawAccess = (row[12] ?? "").trim();
+  const warehouseAccess = role === "ADMIN" ? '["*"]' : (rawAccess || '["*"]');
 
   let pinHash = row[11] ?? "";
   if (row[0] === "usr-kaew-01" || fullName.includes("แก้ว") || email.includes("kaew")) {

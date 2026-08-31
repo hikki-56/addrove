@@ -17,22 +17,13 @@ function requireSecret(name: string, value: string | undefined): string {
 }
 
 export function getAuthSecret(): string {
-  const s = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "stockify-secret-key-super-secure-2026";
-  const trimmed = s.trim();
-  return trimmed.length < MIN_SECRET_LENGTH ? trimmed.padEnd(MIN_SECRET_LENGTH, "0") : trimmed;
+  return requireSecret("AUTH_SECRET", process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET);
 }
 
 export function getQrTokenSecret(): string {
   const qrSecret = normalizeSecret(process.env.QR_TOKEN_SECRET);
   const authSecret = normalizeSecret(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET);
-  const base = (qrSecret || authSecret || "default-dev-qr-secret-key-32-chars-long").trim();
-  return base.length < MIN_SECRET_LENGTH ? base.padEnd(MIN_SECRET_LENGTH, "0") : base;
-}
-
-export function getGoogleScriptSigningSecret(): string {
-  const s = normalizeSecret(process.env.GOOGLE_SCRIPT_SIGNING_SECRET) || "633878d53d2786642ccacc79f1e6f0b6639a06fcd8381d408caf963dd3a98b21";
-  const trimmed = s.trim();
-  return trimmed.length < MIN_SECRET_LENGTH ? trimmed.padEnd(MIN_SECRET_LENGTH, "0") : trimmed;
+  return requireSecret("QR_TOKEN_SECRET", qrSecret || authSecret);
 }
 
 export function validateEnvironment(): { valid: boolean; errors: string[] } {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
@@ -75,6 +76,8 @@ export default function ExpressIssuePage() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [customTagInput, setCustomTagInput] = useState<string>("เบิกสินค้าเข้า Express");
   const [showTagModal, setShowTagModal] = useState<boolean>(false);
+
+  useEscapeKey(showTagModal, () => setShowTagModal(false));
 
   // Sync tagged items from localStorage
   const refreshTaggedMap = useCallback(() => {
@@ -1094,6 +1097,7 @@ export default function ExpressIssuePage() {
               <button
                 type="button"
                 onClick={resetDateFilter}
+                aria-label="ล้างตัวกรองวันที่"
                 className="px-2.5 py-2 min-h-[42px] text-sm text-rose-600 hover:bg-rose-50 rounded-xl font-bold cursor-pointer flex-shrink-0 border border-rose-200"
                 title="ล้างตัวกรองวันที่"
               >

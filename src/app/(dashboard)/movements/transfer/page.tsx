@@ -177,6 +177,7 @@ export default function TransferPage() {
         <TransferNotificationList
           notifications={waitingApprovalTasks}
           isAdmin={canApprove}
+          products={transferHook.fromWhProducts.length > 0 ? transferHook.fromWhProducts : products}
           onSelectTask={(task) => {
             if (!canApprove && task.status !== "WAITING_APPROVAL") {
               setSelectedTask(task);
@@ -196,6 +197,7 @@ export default function TransferPage() {
         <TransferNotificationList
           notifications={pendingTasks}
           isAdmin={isAdmin}
+          products={transferHook.fromWhProducts.length > 0 ? transferHook.fromWhProducts : products}
           onSelectTask={(task) => {
             setSelectedTask(task);
             setStaffStep(task.current_step && task.current_step >= 1 && task.current_step <= 3 ? task.current_step : 1);

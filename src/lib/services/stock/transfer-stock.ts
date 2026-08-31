@@ -137,7 +137,7 @@ export async function createTransfer(
         };
       }
 
-      const rawFromLoc = input.from_location_id || "";
+      const rawFromLoc = input.from_location_id || prod.location || "";
       const rawToLoc = input.to_location_id || "";
 
       const finalFromLocId = rawFromLoc.trim();
@@ -810,7 +810,7 @@ export async function cancelTransfer(
   warehouseAccess?: string | string[]
 ): Promise<Document> {
   if (userRole === "VIEWER" || userRole === "STAFF" || userRole === "WAREHOUSE_STAFF") {
-    throw new UnauthorizedStockOperationError("พนักงานไม่มีสิทธิ์ในการยกเลิกหรือลบใบเบิกสินค้า (เฉพาะผู้ดูแลระบบ)");
+    throw new UnauthorizedStockOperationError("พนักงานไม่มีสิทธิ์ในการยกเลิกหรือลบใบย้ายสินค้า (เฉพาะผู้ดูแลระบบ)");
   }
 
   const doc =

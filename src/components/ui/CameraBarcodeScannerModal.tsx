@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 interface CameraBarcodeScannerModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export default function CameraBarcodeScannerModal({
   const [manualCode, setManualCode] = useState<string>("");
   const [isScanningLive, setIsScanningLive] = useState<boolean>(false);
   const [isContinuous, setIsContinuous] = useState<boolean>(true);
+
+  useEscapeKey(isOpen, onClose);
 
   const isContinuousRef = useRef<boolean>(true);
   const lastScannedCodeRef = useRef<{ code: string; time: number }>({ code: "", time: 0 });

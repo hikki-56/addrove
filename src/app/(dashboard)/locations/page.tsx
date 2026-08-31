@@ -258,8 +258,9 @@ export default function LocationsPage() {
           <form onSubmit={handleCreateLocation} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">โกดัง (Warehouse) *</label>
+                <label htmlFor="loc-warehouse" className="block text-xs font-semibold text-slate-700 mb-1.5">โกดัง (Warehouse) *</label>
                 <select
+                  id="loc-warehouse"
                   value={locWhId}
                   onChange={(e) => setLocWhId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold cursor-pointer"
@@ -273,8 +274,9 @@ export default function LocationsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสตำแหน่ง (Location Code) *</label>
+                <label htmlFor="loc-code" className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสตำแหน่ง (Location Code) *</label>
                 <input
+                  id="loc-code"
                   value={locCode}
                   onChange={(e) => setLocCode(e.target.value)}
                   placeholder="เช่น LOC-A01"
@@ -282,8 +284,9 @@ export default function LocationsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อตำแหน่ง (Location Name)</label>
+                <label htmlFor="loc-name" className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อตำแหน่ง (Location Name)</label>
                 <input
+                  id="loc-name"
                   value={locName}
                   onChange={(e) => setLocName(e.target.value)}
                   placeholder="เช่น โซน A ล็อค 1"
@@ -293,8 +296,9 @@ export default function LocationsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียด</label>
+              <label htmlFor="loc-desc" className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียด</label>
               <input
+                id="loc-desc"
                 value={locDesc}
                 onChange={(e) => setLocDesc(e.target.value)}
                 placeholder="คำอธิบายตำแหน่ง เช่น แถวหน้าติดประตู"
@@ -336,8 +340,9 @@ export default function LocationsPage() {
           <form onSubmit={handleCreateShelf} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ตำแหน่งจัดเก็บ (Location) *</label>
+                <label htmlFor="shelf-loc" className="block text-xs font-semibold text-slate-700 mb-1.5">ตำแหน่งจัดเก็บ (Location) *</label>
                 <select
+                  id="shelf-loc"
                   value={shelfLocId}
                   onChange={(e) => setShelfLocId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold cursor-pointer"
@@ -351,8 +356,9 @@ export default function LocationsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสชั้น (Shelf Code) *</label>
+                <label htmlFor="shelf-code" className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสชั้น (Shelf Code) *</label>
                 <input
+                  id="shelf-code"
                   value={shelfCode}
                   onChange={(e) => setShelfCode(e.target.value)}
                   placeholder="เช่น SH-A1-01"
@@ -360,8 +366,9 @@ export default function LocationsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อชั้น (Shelf Name) *</label>
+                <label htmlFor="shelf-name" className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อชั้น (Shelf Name) *</label>
                 <input
+                  id="shelf-name"
                   value={shelfName}
                   onChange={(e) => setShelfName(e.target.value)}
                   placeholder="เช่น ชั้นบนสุด A1"
@@ -369,8 +376,9 @@ export default function LocationsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ระดับชั้น (Level)</label>
+                <label htmlFor="shelf-level" className="block text-xs font-semibold text-slate-700 mb-1.5">ระดับชั้น (Level)</label>
                 <input
+                  id="shelf-level"
                   value={shelfLevel}
                   onChange={(e) => setShelfLevel(e.target.value)}
                   placeholder="1, 2, 3..."

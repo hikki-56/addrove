@@ -315,9 +315,9 @@ describe("Concurrency, Distributed Idempotency & Durability Guarantees", () => {
 
     // Run 3 concurrent cancelTransfer calls with matching cancel request
     const settled = await Promise.allSettled([
-      cancelTransfer({ repo }, doc.document_id, "Cancel request", "staff-1", "WAREHOUSE_STAFF", '["wh-1"]'),
-      cancelTransfer({ repo }, doc.document_id, "Cancel request", "staff-1", "WAREHOUSE_STAFF", '["wh-1"]'),
-      cancelTransfer({ repo }, doc.document_id, "Cancel request", "staff-1", "WAREHOUSE_STAFF", '["wh-1"]'),
+      cancelTransfer({ repo }, doc.document_id, "Cancel request", "admin-1", "ADMIN", '["*"]'),
+      cancelTransfer({ repo }, doc.document_id, "Cancel request", "admin-1", "ADMIN", '["*"]'),
+      cancelTransfer({ repo }, doc.document_id, "Cancel request", "admin-1", "ADMIN", '["*"]'),
     ]);
 
     // At least one operation succeeded
@@ -329,7 +329,7 @@ describe("Concurrency, Distributed Idempotency & Durability Guarantees", () => {
     expect(freshDoc?.status).toBe("CANCELLED");
 
     // Replay / subsequent call returns CANCELLED directly without any error
-    const replayDoc = await cancelTransfer({ repo }, doc.document_id, "Cancel request", "staff-1", "WAREHOUSE_STAFF", '["wh-1"]');
+    const replayDoc = await cancelTransfer({ repo }, doc.document_id, "Cancel request", "admin-1", "ADMIN", '["*"]');
     expect(replayDoc.status).toBe("CANCELLED");
   });
 
@@ -349,7 +349,7 @@ describe("Concurrency, Distributed Idempotency & Durability Guarantees", () => {
     // Fire complete and cancel concurrently
     const settled = await Promise.allSettled([
       completeTransfer({ repo }, doc.document_id, "loc-A1", "staff-2", "WAREHOUSE_STAFF", '["wh-2"]'),
-      cancelTransfer({ repo }, doc.document_id, "Cancel concurrent", "staff-1", "WAREHOUSE_STAFF", '["wh-1"]'),
+      cancelTransfer({ repo }, doc.document_id, "Cancel concurrent", "admin-1", "ADMIN", '["*"]'),
     ]);
 
     // Exactly one operation must succeed, and the final document state must be valid

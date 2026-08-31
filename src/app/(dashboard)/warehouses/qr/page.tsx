@@ -199,9 +199,9 @@ export default function WarehouseQrPage() {
 
           {ACTIONS.length > 1 && (
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <div className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 เลือกหน้าที่ต้องการเปิดเมื่อสแกน QR Code:
-              </label>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {ACTIONS.map((action) => (
                   <button

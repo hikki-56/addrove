@@ -167,11 +167,12 @@ export default function MoveForm({
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label htmlFor="move-qty" className="block text-sm font-bold text-slate-700 mb-2">
                 จำนวนที่ต้องการจัดวาง / ย้าย (ชิ้น) *
               </label>
               <div className="relative flex items-center">
                 <input
+                  id="move-qty"
                   type="number"
                   min="1"
                   inputMode="numeric"

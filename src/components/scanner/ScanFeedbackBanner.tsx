@@ -62,6 +62,7 @@ export default function ScanFeedbackBanner({
         <button
           type="button"
           onClick={onDismiss}
+          aria-label="ปิด"
           className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
           title="ปิด"
         >

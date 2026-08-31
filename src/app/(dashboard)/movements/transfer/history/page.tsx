@@ -12,6 +12,7 @@ import {
   purgeInvalidNotifications,
 } from "@/lib/transfer-notification-utils";
 import type { Product, Warehouse } from "@/types/models";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 export interface TransferHistoryRecord {
   id: string;
@@ -248,6 +249,8 @@ export default function TransferHistoryPage() {
   // Detail Modal state
   const [selectedRecord, setSelectedRecord] = useState<TransferHistoryRecord | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  useEscapeKey(!!selectedRecord, () => setSelectedRecord(null));
 
   // Refs for debouncing and stale-load protection
   const loadIdRef = useRef(0);
@@ -913,7 +916,7 @@ export default function TransferHistoryPage() {
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
         {/* Row 1: Search Box (Full Width) */}
         <div className="relative">
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="trf-hist-search" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
             <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -921,6 +924,7 @@ export default function TransferHistoryPage() {
           </label>
           <div className="relative">
             <input
+              id="trf-hist-search"
               type="text"
               value={searchQuery}
               onChange={(e) => {
@@ -956,7 +960,7 @@ export default function TransferHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
           {/* Status Dropdown */}
           <div className="lg:col-span-3">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</div>
             <ScrollableSelect
               value={selectedStatus}
               options={statusOptions}
@@ -970,7 +974,7 @@ export default function TransferHistoryPage() {
 
           {/* From Warehouse Dropdown */}
           <div className="lg:col-span-3">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">โกดังต้นทาง</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">โกดังต้นทาง</div>
             <ScrollableSelect
               value={selectedFromWh}
               options={fromWarehouseOptions}
@@ -984,7 +988,7 @@ export default function TransferHistoryPage() {
 
           {/* To Warehouse Dropdown */}
           <div className="lg:col-span-3">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">โกดังปลายทาง</label>
+            <div className="block text-xs font-bold text-slate-700 mb-1.5">โกดังปลายทาง</div>
             <ScrollableSelect
               value={selectedToWh}
               options={toWarehouseOptions}
@@ -999,7 +1003,7 @@ export default function TransferHistoryPage() {
           {/* Date Range Dropdown */}
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">ช่วงวันที่</label>
+              <div className="block text-xs font-bold text-slate-700">ช่วงวันที่</div>
               {(searchQuery || selectedStatus !== "ALL" || selectedFromWh !== "ALL" || selectedToWh !== "ALL" || selectedDateRange !== "TODAY") && (
                 <button
                   type="button"

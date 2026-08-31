@@ -229,6 +229,15 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
 }
 
+/* ── Keyboard focus indicator — covers ALL interactive elements ──────
+   :where() keeps specificity at 0 so Tailwind focus:ring-* wins.
+   :focus-visible only fires for keyboard navigation, not mouse clicks.
+   WCAG 2.4.7 (AA) — Focus Visible                                    */
+:where(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid #059669;      /* emerald-600 */
+  outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   select, input, button {
     max-width: 100%;

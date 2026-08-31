@@ -368,7 +368,7 @@ describe("transferStock Use Cases & Authorization Rules", () => {
     expect(currentDoc?.status).toBe("PENDING");
   });
 
-  test("5. Source staff can cancel transfer", async () => {
+  test("5. Source staff cannot cancel transfer (Admin only policy)", async () => {
     const input = CreateTransferSchema.parse({
       product_id: "prod-001",
       from_warehouse_id: "wh-1",
@@ -381,17 +381,17 @@ describe("transferStock Use Cases & Authorization Rules", () => {
 
     const doc = await createTransfer({ repo }, { ...input, user_id: "staff-1" });
 
-    // Source staff has access to wh-1
-    const cancelledDoc = await cancelTransfer(
-      { repo },
-      doc.document_id,
-      "Cancel valid",
-      "staff-1",
-      "WAREHOUSE_STAFF",
-      '["wh-1"]'
-    );
-
-    expect(cancelledDoc.status).toBe("CANCELLED");
+    // Source staff has access to wh-1, but policy forbids non-admin cancellation
+    await expect(
+      cancelTransfer(
+        { repo },
+        doc.document_id,
+        "Cancel valid",
+        "staff-1",
+        "WAREHOUSE_STAFF",
+        '["wh-1"]'
+      )
+    ).rejects.toThrow(UnauthorizedStockOperationError);
   });
 
   test("6. Admin can perform all transfer operations across warehouses", async () => {
@@ -535,6 +535,30 @@ describe("transferStock Use Cases & Authorization Rules", () => {
     repo.summaryList.push(
       { summary_id: "s1", product_id: "prod-001", warehouse_id: "wh-1", location_id: "L1", quantity: 50000, updated_at: "" },
       { summary_id: "s2", product_id: "prod-001", warehouse_id: "wh-1", location_id: "L2", quantity: 50000, updated_at: "" }
+    );
+    repo.movementsList.push(
+      {
+        movement_id: "m-init-l1",
+        document_id: "doc-init",
+        product_id: "prod-001",
+        warehouse_id: "wh-01",
+        location_id: "L1",
+        qty_change: 50000,
+        movement_type: "RECEIVE_IN",
+        created_at: new Date().toISOString(),
+        created_by: "admin",
+      },
+      {
+        movement_id: "m-init-l2",
+        document_id: "doc-init",
+        product_id: "prod-001",
+        warehouse_id: "wh-01",
+        location_id: "L2",
+        qty_change: 50000,
+        movement_type: "RECEIVE_IN",
+        created_at: new Date().toISOString(),
+        created_by: "admin",
+      }
     );
 
     const input = CreateTransferSchema.parse({
@@ -918,6 +942,30 @@ describe("transferStock Use Cases & Authorization Rules", () => {
     repo.summaryList.push(
       { summary_id: "sum-multi-l1", product_id: "prod-001", warehouse_id: "wh-1", location_id: "L1", quantity: 50000, updated_at: "" },
       { summary_id: "sum-multi-l2", product_id: "prod-001", warehouse_id: "wh-1", location_id: "L2", quantity: 50000, updated_at: "" }
+    );
+    repo.movementsList.push(
+      {
+        movement_id: "m-multi-l1",
+        document_id: "doc-init",
+        product_id: "prod-001",
+        warehouse_id: "wh-01",
+        location_id: "L1",
+        qty_change: 50000,
+        movement_type: "RECEIVE_IN",
+        created_at: new Date().toISOString(),
+        created_by: "admin",
+      },
+      {
+        movement_id: "m-multi-l2",
+        document_id: "doc-init",
+        product_id: "prod-001",
+        warehouse_id: "wh-01",
+        location_id: "L2",
+        qty_change: 50000,
+        movement_type: "RECEIVE_IN",
+        created_at: new Date().toISOString(),
+        created_by: "admin",
+      }
     );
 
     const input = CreateTransferSchema.parse({
