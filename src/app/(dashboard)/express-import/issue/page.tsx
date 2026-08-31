@@ -180,12 +180,11 @@ export default function ExpressIssuePage() {
             const docKey = (item.document_no || "").trim().toLowerCase();
             const docIdKey = (item.document_id || "").trim().toLowerCase();
             const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
-            const docExpressStatus = srv?.status || (item.status === "IMPORTED" ? "IMPORTED" : undefined);
+            const docExpressStatus: ExpressSyncStatus = srv?.status || (item.status as ExpressSyncStatus) || "PENDING";
 
-            if (docExpressStatus) {
-              const uniqueId = item.id || `iss_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;
-              const existing = localMap.get(uniqueId);
-              if (!existing || existing.status !== docExpressStatus) {
+            const uniqueId = item.id || `iss_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;
+            const existing = localMap.get(uniqueId);
+            if (!existing || existing.status !== docExpressStatus) {
                 toUpdate.push({
                   id: uniqueId,
                   type: "ISSUE",
@@ -202,8 +201,7 @@ export default function ExpressIssuePage() {
                   status: docExpressStatus,
                 });
               }
-            }
-          });
+            });
 
           if (toUpdate.length > 0) {
             batchTagExpressItems(toUpdate);

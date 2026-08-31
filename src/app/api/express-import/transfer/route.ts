@@ -441,11 +441,7 @@ export async function GET(req: NextRequest) {
         const fromWarehouseName = getWarehouseName(fromWarehouseId);
         const toWarehouseName = getWarehouseName(toWarehouseId);
 
-        const isCompleted =
-          doc.status === "COMPLETED" ||
-          doc.status === "APPROVED" ||
-          meta.status === "COMPLETED" ||
-          meta.express_status === "IMPORTED";
+        const isCompleted = meta.express_status === "IMPORTED";
 
         const qty = Math.abs(Number(subItem.qty || subItem.quantity || meta.qty) || 1);
 
