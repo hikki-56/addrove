@@ -35,9 +35,10 @@ export async function GET(req: NextRequest) {
       return forbiddenResponse("คุณไม่มีสิทธิ์ดูสินค้าในโกดังนี้");
     }
 
-    // If cache-busting param is present, clear all sheet cache
+    // If cache-busting param is present, clear only products cache
     if (noCache) {
-      clearSheetCache();
+      clearSheetCache(SHEETS.PRODUCTS);
+      if (warehouseId) clearSheetCache(getWarehouseSheetName(warehouseId));
     }
 
     const repo = getRepository();

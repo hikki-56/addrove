@@ -389,7 +389,6 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
         matchedRow[8] = now;
         await updateRow(sheetName, matchedIndex + 2, matchedRow);
         clearSheetCache(sheetName);
-        clearSheetCache();
         return;
       }
 
@@ -410,7 +409,6 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
 
       await this.syncAdd(warehouseId, productInfo, actualMoveQty, cleanToLoc);
       clearSheetCache(sheetName);
-      clearSheetCache();
     } catch (e) {
       console.error("[SheetsWarehouseSync] syncMove error:", e);
     }

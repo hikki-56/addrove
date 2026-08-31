@@ -242,13 +242,28 @@ interface SheetMemoryCache {
   timestamp: number;
 }
 
-const sheetCache = new Map<string, SheetMemoryCache>();
-const CACHE_TTL_MS = 10 * 1000; // 10s memory cache TTL
+const globalForSheetCache = globalThis as unknown as {
+  sheetCache?: Map<string, SheetMemoryCache>;
+  persistentSheetData?: Map<string, string[][]>;
+};
+
+if (!globalForSheetCache.sheetCache) {
+  globalForSheetCache.sheetCache = new Map<string, SheetMemoryCache>();
+}
+if (!globalForSheetCache.persistentSheetData) {
+  globalForSheetCache.persistentSheetData = new Map<string, string[][]>();
+}
+
+const sheetCache = globalForSheetCache.sheetCache;
+const persistentSheetData = globalForSheetCache.persistentSheetData;
+const CACHE_TTL_MS = 30 * 1000; // 30s memory cache TTL to prevent Google 429 quota exhaustion
 
 export function clearSheetCache(sheetName?: string) {
   if (sheetName) {
+    const clean = sheetName.replace(/^'|'$/g, "").trim().toLowerCase();
     for (const key of sheetCache.keys()) {
-      if (key.startsWith(`${sheetName}:`)) {
+      const keyLower = key.toLowerCase();
+      if (keyLower.startsWith(`${clean}:`) || keyLower === clean) {
         sheetCache.delete(key);
       }
     }
@@ -322,36 +337,48 @@ export async function readSheet(
     const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}!A1:Z5000`;
 
     if (process.env.GOOGLE_API_KEY) {
-      try {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${process.env.GOOGLE_API_KEY}`;
-        const res = await fetch(url, { cache: "no-store" });
-        if (res.ok) {
-          const json = await res.json();
-          let googleRows = (json.values as string[][]) ?? [];
-          if (googleRows.length > 0) {
-            const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
-            const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
-            if (
-              firstCell.includes("_id") ||
-              firstCell.includes("sku") ||
-              firstCell.includes("รหัส") ||
-              firstCell.includes("ลำดับ") ||
-              firstCell.includes("header") ||
-              firstCell.includes("bom") ||
-              firstCell.includes("id") ||
-              secondCell.includes("sku") ||
-              secondCell.includes("รหัส") ||
-              secondCell.includes("barcode")
-            ) {
-              googleRows = googleRows.slice(1);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${process.env.GOOGLE_API_KEY}`;
+          const res = await fetch(url, { cache: "no-store" });
+          if (res.ok) {
+            const json = await res.json();
+            let googleRows = (json.values as string[][]) ?? [];
+            if (googleRows.length > 0) {
+              const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
+              const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
+              if (
+                firstCell.includes("_id") ||
+                firstCell.includes("sku") ||
+                firstCell.includes("รหัส") ||
+                firstCell.includes("ลำดับ") ||
+                firstCell.includes("header") ||
+                firstCell.includes("bom") ||
+                firstCell.includes("id") ||
+                secondCell.includes("sku") ||
+                secondCell.includes("รหัส") ||
+                secondCell.includes("barcode")
+              ) {
+                googleRows = googleRows.slice(1);
+              }
             }
+            return googleRows;
+          } else if (res.status === 429 || res.status === 503) {
+            // Rate limited by Google Sheets - back off and retry
+            const backoff = 500 * Math.pow(2, attempt);
+            await new Promise((resolve) => setTimeout(resolve, backoff));
+            continue;
+          } else {
+            console.warn(`[GoogleSheets API Key] HTTP ${res.status} for ${url}:`, await res.text());
+            break;
           }
-          return googleRows;
-        } else {
-          console.warn(`[GoogleSheets API Key] HTTP ${res.status} for ${url}:`, await res.text());
+        } catch (e) {
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
+          console.warn(`[GoogleSheets API Key] ${sheetName} read failed:`, e);
         }
-      } catch (e) {
-        console.warn(`[GoogleSheets API Key] ${sheetName} read failed:`, e);
       }
     }
 
@@ -384,13 +411,33 @@ export async function readSheet(
 
   try {
     const freshRows = await fetchFreshRows();
-    sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
-    return freshRows;
+    if (freshRows && freshRows.length > 0) {
+      sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
+      persistentSheetData.set(cacheKey, freshRows);
+      persistentSheetData.set(sheetName, freshRows);
+      return freshRows;
+    }
+
+    // If freshRows returned empty but we previously had good data, preserve the good data
+    const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+    if (lastGood && lastGood.length > 0) {
+      console.warn(`[GoogleSheets readSheet] Fresh fetch returned 0 rows for ${sheetName}, preserving ${lastGood.length} existing rows`);
+      sheetCache.set(cacheKey, { data: lastGood, timestamp: Date.now() });
+      return lastGood;
+    }
+
+    sheetCache.set(cacheKey, { data: [], timestamp: Date.now() });
+    return [];
   } catch (error) {
     const cached = sheetCache.get(cacheKey);
-    if (cached) {
-      console.warn(`[GoogleSheets readSheet] Using fallback memory cached rows for ${sheetName} (${cached.data.length} rows)`);
+    if (cached && cached.data.length > 0) {
+      console.warn(`[GoogleSheets readSheet] Using memory cached rows for ${sheetName} (${cached.data.length} rows)`);
       return cached.data;
+    }
+    const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+    if (lastGood && lastGood.length > 0) {
+      console.warn(`[GoogleSheets readSheet] Using persistent fallback rows for ${sheetName} (${lastGood.length} rows)`);
+      return lastGood;
     }
     console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
     return [];
