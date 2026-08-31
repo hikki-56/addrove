@@ -161,7 +161,7 @@ export default function ExpressReceivePage() {
           const docKey = (item.document_no || "").trim().toLowerCase();
           const docIdKey = (item.document_id || "").trim().toLowerCase();
           const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
-          const docExpressStatus = srv?.status || (item.status as ExpressSyncStatus);
+          const docExpressStatus: ExpressSyncStatus = srv?.status || (item.status as ExpressSyncStatus) || "PENDING";
 
           if (docExpressStatus) {
             const uniqueId = item.id;

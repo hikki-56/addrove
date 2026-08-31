@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
       status: "PENDING" | "IMPORTED";
     }> = [];
 
-    const seenDocNos = new Set<string>();
     const seenUniqueKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
@@ -241,7 +240,6 @@ export async function GET(req: NextRequest) {
 
         if (!seenUniqueKeys.has(uniqueKey)) {
           seenUniqueKeys.add(uniqueKey);
-          seenDocNos.add(docNoKey);
 
           items.push({
             id: uniqueKey,
@@ -287,7 +285,6 @@ export async function GET(req: NextRequest) {
 
       const docNo = doc.document_no || doc.document_id || "";
       const docNoKey = docNo.toLowerCase();
-      if (docNoKey && seenDocNos.has(docNoKey)) continue;
 
       const memStatus = expressStatusMap.get(docNoKey)?.status;
       const effectiveStatus: "PENDING" | "IMPORTED" = memStatus || parsedPayload.express_status || "PENDING";
@@ -309,7 +306,6 @@ export async function GET(req: NextRequest) {
 
         if (!seenUniqueKeys.has(uniqueKey)) {
           seenUniqueKeys.add(uniqueKey);
-          if (docNoKey) seenDocNos.add(docNoKey);
 
           items.push({
             id: uniqueKey,
