@@ -285,20 +285,24 @@ export default function TransferNotificationList({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1.5 flex-1 min-w-0">
                   {/* Barcode */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
-                      บาร์โค้ด
-                    </span>
-                    <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
-                      {barcode || t.sku}
-                    </span>
-                  </div>
+                  {(barcode || t.sku) ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
+                        บาร์โค้ด
+                      </span>
+                      <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
+                        {barcode || t.sku}
+                      </span>
+                    </div>
+                  ) : null}
 
                   {/* SKU */}
-                  <div className="text-sm text-slate-600 font-mono flex items-center gap-2">
-                    <span>SKU:</span>
-                    <strong className="text-slate-900 font-bold">{t.sku}</strong>
-                  </div>
+                  {t.sku ? (
+                    <div className="text-sm text-slate-600 font-mono flex items-center gap-2">
+                      <span>SKU:</span>
+                      <strong className="text-slate-900 font-bold">{t.sku}</strong>
+                    </div>
+                  ) : null}
 
                   {/* Product Title */}
                   <div className={`text-sm sm:text-base text-slate-900 font-bold leading-normal line-clamp-2 ${!isAdmin && !isWaitingApproval ? "group-hover:text-emerald-800 transition-colors" : ""}`}>

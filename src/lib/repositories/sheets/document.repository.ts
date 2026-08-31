@@ -217,13 +217,16 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     id: string,
     updates: Partial<Document>
   ): Promise<void> {
-    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+    const memDoc = inMemoryDocs.find((d) => d.document_id === id) || inMemoryDocs.find((d) => d.document_no === id);
     if (memDoc) {
       Object.assign(memDoc, updates);
     }
 
     const sheetRows = await this.getSheetRows();
-    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+    let idx = sheetRows.findIndex((r) => r[0] === id);
+    if (idx === -1) {
+      idx = sheetRows.findIndex((r) => r[1] === id);
+    }
 
     if (idx !== -1) {
       const doc = rowToDocument(sheetRows[idx]);

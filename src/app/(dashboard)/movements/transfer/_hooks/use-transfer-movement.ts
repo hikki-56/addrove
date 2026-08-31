@@ -1203,69 +1203,70 @@ export function useTransferMovement({
       const creatorName = tabUser?.name || "ผู้สร้างรายการ";
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
 
-      // Process all items in parallel concurrently for maximum speed
-      const createResults = await Promise.all(
-        itemsToProcess.map(async (item, i) => {
-          try {
-            const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
-            const res = await fetch("/api/movements/transfer", {
-              method: "POST",
-              headers,
-              body: JSON.stringify({
-                ...data,
-                product_id: item.product_id,
-                sku: item.sku,
-                barcode: item.barcode,
-                product_name: item.product_name,
-                from_location_id: item.location || "",
-                qty: Math.max(1, item.qty || 1),
-                moved_by: "",
-                assigned_to_user_id: "",
-                assigned_to_name: "",
-                created_by: creatorId,
-                created_by_name: creatorName,
-                document_date: docDateVal,
-                idempotency_key: itemKey,
-              }),
-            });
-
-            const json = await res.json();
-            if (!res.ok || !json.success || !json.data) {
-              const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
-              return { error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null };
-            }
-
-            const realDoc = json.data;
-            const notif: TransferNotification = {
-              id: realDoc.document_id,
-              doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
+      // Process items sequentially to ensure strictly unique document numbers and prevent doc_no collision
+      const createResults: Array<{ error: string | null; doc: any; notif: TransferNotification | null }> = [];
+      for (let i = 0; i < itemsToProcess.length; i++) {
+        const item = itemsToProcess[i];
+        try {
+          const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
+          const res = await fetch("/api/movements/transfer", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              ...data,
               product_id: item.product_id,
-              sku: item.sku || item.product_id,
-              product_name: item.product_name || `สินค้า ${item.product_id}`,
-              barcode: item.barcode || "",
+              sku: item.sku,
+              barcode: item.barcode,
+              product_name: item.product_name,
               from_location_id: item.location || "",
-              location_code: item.location || "",
-              qty: item.qty,
-              from_warehouse_id: data.from_warehouse_id,
-              from_warehouse_name: fromWhName,
-              to_warehouse_id: data.to_warehouse_id,
-              to_warehouse_name: toWhName,
-              created_by: tabUser?.id || "admin",
-              created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
-              created_at: realDoc.created_at || new Date().toISOString(),
-              status: "PENDING",
+              qty: Math.max(1, item.qty || 1),
               moved_by: "",
               assigned_to_user_id: "",
               assigned_to_name: "",
-            };
+              created_by: creatorId,
+              created_by_name: creatorName,
+              document_date: docDateVal,
+              idempotency_key: itemKey,
+            }),
+          });
 
-            saveTransferNotification(notif);
-            return { error: null, doc: realDoc, notif };
-          } catch {
-            return { error: `"${item.product_name}": เกิดข้อผิดพลาดในการเชื่อมต่อ`, doc: null, notif: null };
+          const json = await res.json();
+          if (!res.ok || !json.success || !json.data) {
+            const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
+            createResults.push({ error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null });
+            continue;
           }
-        })
-      );
+
+          const realDoc = json.data;
+          const notif: TransferNotification = {
+            id: realDoc.document_id,
+            doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
+            product_id: item.product_id,
+            sku: item.sku || item.product_id,
+            product_name: item.product_name || `สินค้า ${item.product_id}`,
+            barcode: item.barcode || "",
+            from_location_id: item.location || "",
+            location_code: item.location || "",
+            qty: item.qty,
+            from_warehouse_id: data.from_warehouse_id,
+            from_warehouse_name: fromWhName,
+            to_warehouse_id: data.to_warehouse_id,
+            to_warehouse_name: toWhName,
+            created_by: tabUser?.id || "admin",
+            created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
+            created_at: realDoc.created_at || new Date().toISOString(),
+            status: "PENDING",
+            moved_by: "",
+            assigned_to_user_id: "",
+            assigned_to_name: "",
+          };
+
+          saveTransferNotification(notif);
+          createResults.push({ error: null, doc: realDoc, notif });
+        } catch {
+          createResults.push({ error: `"${item.product_name}": เกิดข้อผิดพลาดในการเชื่อมต่อ`, doc: null, notif: null });
+        }
+      }
 
       for (const res of createResults) {
         if (res.error) {
