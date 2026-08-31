@@ -281,8 +281,9 @@ export default function ExpressTransferPage() {
             .forEach((m: MovementWithDetails) => {
               const docNo = m.document_no || m.document_id || "";
               const docKey = docNo.trim().toLowerCase();
-              if (docKey && seen.has(docKey)) return;
-              if (docKey) seen.add(docKey);
+              const itemKey = `${m.movement_id || (m as any).id || docNo}_${m.product_id || (m as any).sku}_${m.movement_type}`;
+              if (seen.has(itemKey)) return;
+              seen.add(itemKey);
 
               const trfInfo = docKey ? trfDocMap.get(docKey) : undefined;
               const notif = docKey ? notifMap.get(docKey) : undefined;

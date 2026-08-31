@@ -534,6 +534,22 @@ export function useTransferMovement({
         document_no: t.doc_no || "TRF",
         document_date: new Date().toISOString().slice(0, 10),
       });
+
+      tagExpressItem({
+        id: `trf_doc_${t.id}_${t.sku}_0`,
+        type: "TRANSFER",
+        tag: "ย้ายสินค้าเข้า Express",
+        status: "PENDING",
+        sku: t.sku,
+        barcode: t.barcode || t.sku || "",
+        product_name: t.product_name || t.sku || "สินค้า",
+        quantity: t.qty,
+        location: t.to_location_id || t.from_location_id || "-",
+        warehouse: t.from_warehouse_name || "โกดัง",
+        warehouse_code: t.from_warehouse_id || "01",
+        document_no: t.doc_no || "TRF",
+        document_date: new Date().toISOString().slice(0, 10),
+      });
     } catch {}
 
     window.dispatchEvent(new Event("stockify-transfer-updated"));

@@ -50,7 +50,6 @@ export async function GET(req: NextRequest) {
       status: "PENDING" | "IMPORTED";
     }> = [];
 
-    const seenDocNos = new Set<string>();
     const seenUniqueKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
@@ -301,7 +300,6 @@ export async function GET(req: NextRequest) {
         const uniqueKey = `sheet_trf_${resolvedDocNo}_${enriched.sku}_${idx}`;
 
         seenUniqueKeys.add(uniqueKey);
-        if (docNoKey) seenDocNos.add(docNoKey);
 
         // Resolve source and destination warehouse
         let fromWarehouseName = "โกดัง1";
@@ -388,87 +386,93 @@ export async function GET(req: NextRequest) {
       const meta = parseTransferMetadata(doc.note);
       const rawDocNo = doc.document_no || meta.doc_no || "";
       const resolvedDocNo = cleanDocNumber(rawDocNo, doc.document_id, doc.created_at);
-      const docNoKey = resolvedDocNo.toLowerCase();
 
-      if (docNoKey && seenDocNos.has(docNoKey)) continue;
+      const itemsList = Array.isArray(meta.items) && meta.items.length > 0
+        ? meta.items
+        : Array.isArray(meta.lines) && meta.lines.length > 0
+        ? meta.lines
+        : [meta];
 
-      const rawSku = meta.sku || meta.product_id?.replace(/^prod-/, "") || "";
-      const rawBarcode = meta.barcode || "";
-      const rawProductName = meta.product_name || rawSku || "สินค้า";
-      const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || "";
-      const fromLoc = meta.from_location_id || meta.from_location || (meta.source_allocations?.[0]?.location_id) || "";
+      itemsList.forEach((subItem: any, subIdx: number) => {
+        const rawSku = subItem.sku || subItem.product_id?.replace(/^prod-/, "") || meta.sku || "";
+        const rawBarcode = subItem.barcode || meta.barcode || "";
+        const rawProductName = subItem.product_name || meta.product_name || rawSku || "สินค้า";
+        const toLoc = subItem.to_location_id || meta.to_location_id || meta.to_location || meta.completed_location_id || "";
+        const fromLoc = subItem.from_location_id || meta.from_location_id || meta.from_location || (meta.source_allocations?.[0]?.location_id) || "";
 
-      const shelfFallback = extractShelf(rawProductName) || extractShelf(rawSku) || extractShelf(doc.note);
-      const effectiveLoc = toLoc || shelfFallback || fromLoc || "-";
+        const shelfFallback = extractShelf(rawProductName) || extractShelf(rawSku) || extractShelf(doc.note);
+        const effectiveLoc = toLoc || shelfFallback || fromLoc || "-";
 
-      const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, effectiveLoc);
-      const uniqueKey = `trf_doc_${doc.document_id}_${enriched.sku}`;
+        const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, effectiveLoc);
+        const uniqueKey = `trf_doc_${doc.document_id}_${enriched.sku}_${subIdx}`;
 
-      if (seenUniqueKeys.has(uniqueKey)) continue;
-      seenUniqueKeys.add(uniqueKey);
-      if (docNoKey) seenDocNos.add(docNoKey);
+        if (seenUniqueKeys.has(uniqueKey)) return;
+        seenUniqueKeys.add(uniqueKey);
 
-      // Resolve Movements pair (TRANSFER_OUT and TRANSFER_IN) for exact warehouse IDs
-      const movPair = movementsByDocId.get(doc.document_id.toLowerCase()) || movementsByDocId.get(resolvedDocNo.toLowerCase());
-      const outWh = movPair?.outMovement?.warehouse_id;
-      const inWh = movPair?.inMovement?.warehouse_id;
+        // Resolve Movements pair (TRANSFER_OUT and TRANSFER_IN) for exact warehouse IDs
+        const movPair = movementsByDocId.get(doc.document_id.toLowerCase()) || movementsByDocId.get(resolvedDocNo.toLowerCase());
+        const outWh = movPair?.outMovement?.warehouse_id;
+        const inWh = movPair?.inMovement?.warehouse_id;
 
-      let fromWarehouseId = meta.from_warehouse_id || outWh || (fromLoc ? detectWarehouseFromLocation(fromLoc) : null) || (doc as any).from_warehouse_id || "wh-01";
-      let toWarehouseId = meta.to_warehouse_id || inWh || (toLoc ? detectWarehouseFromLocation(toLoc) : null) || (doc as any).to_warehouse_id || "wh-02";
+        let fromWarehouseId = meta.from_warehouse_id || outWh || (fromLoc ? detectWarehouseFromLocation(fromLoc) : null) || (doc as any).from_warehouse_id || "wh-01";
+        let toWarehouseId = meta.to_warehouse_id || inWh || (toLoc ? detectWarehouseFromLocation(toLoc) : null) || (doc as any).to_warehouse_id || "wh-02";
 
-      fromWarehouseId = normalizeWarehouseId(fromWarehouseId);
-      toWarehouseId = normalizeWarehouseId(toWarehouseId);
+        fromWarehouseId = normalizeWarehouseId(fromWarehouseId);
+        toWarehouseId = normalizeWarehouseId(toWarehouseId);
 
-      // If from and to became identical by mistake, smartly separate
-      if (fromWarehouseId === toWarehouseId) {
-        if (toLoc && detectWarehouseFromLocation(toLoc)) {
-          toWarehouseId = detectWarehouseFromLocation(toLoc)!;
-        } else if (fromLoc && detectWarehouseFromLocation(fromLoc)) {
-          fromWarehouseId = detectWarehouseFromLocation(fromLoc)!;
-        }
+        // If from and to became identical by mistake, smartly separate
         if (fromWarehouseId === toWarehouseId) {
-          toWarehouseId = fromWarehouseId === "wh-01" ? "wh-02" : "wh-01";
+          if (toLoc && detectWarehouseFromLocation(toLoc)) {
+            toWarehouseId = detectWarehouseFromLocation(toLoc)!;
+          } else if (fromLoc && detectWarehouseFromLocation(fromLoc)) {
+            fromWarehouseId = detectWarehouseFromLocation(fromLoc)!;
+          }
+          if (fromWarehouseId === toWarehouseId) {
+            toWarehouseId = fromWarehouseId === "wh-01" ? "wh-02" : "wh-01";
+          }
         }
-      }
 
-      // --- Override: TRF-20260825-000067 ปลายทาง = สำนักงานใหญ่ ---
-      if (resolvedDocNo === "TRF-20260825-000067") {
-        fromWarehouseId = "wh-01";
-        toWarehouseId = "wh-06";
-      }
+        // --- Override: TRF-20260825-000067 ปลายทาง = สำนักงานใหญ่ ---
+        if (resolvedDocNo === "TRF-20260825-000067") {
+          fromWarehouseId = "wh-01";
+          toWarehouseId = "wh-06";
+        }
 
-      const fromWarehouseName = getWarehouseName(fromWarehouseId);
-      const toWarehouseName = getWarehouseName(toWarehouseId);
+        const fromWarehouseName = getWarehouseName(fromWarehouseId);
+        const toWarehouseName = getWarehouseName(toWarehouseId);
 
-      const isCompleted =
-        doc.status === "COMPLETED" ||
-        doc.status === "APPROVED" ||
-        meta.status === "COMPLETED" ||
-        meta.express_status === "IMPORTED";
+        const isCompleted =
+          doc.status === "COMPLETED" ||
+          doc.status === "APPROVED" ||
+          meta.status === "COMPLETED" ||
+          meta.express_status === "IMPORTED";
 
-      items.push({
-        id: uniqueKey,
-        movement_id: `trf-mov-${doc.document_id}`,
-        document_id: doc.document_id,
-        document_no: resolvedDocNo,
-        warehouse_name: fromWarehouseName,
-        warehouse_id: fromWarehouseId,
-        from_warehouse_name: fromWarehouseName,
-        from_warehouse_id: fromWarehouseId,
-        to_warehouse_name: toWarehouseName,
-        to_warehouse_id: toWarehouseId,
-        created_at: (meta.completed_at || doc.created_at || new Date().toISOString()).slice(0, 10),
-        created_by_name: meta.moved_by || meta.assigned_to_name || "ผู้ใช้งาน",
-        sku: enriched.sku,
-        product_name: enriched.name,
-        quantity: Math.abs(Number(meta.qty) || Number((doc as any).qty) || 1),
-        location: enriched.location,
-        to_location_id: toLoc,
-        from_location_id: fromLoc,
-        barcode: enriched.barcode,
-        movement_type: "TRANSFER",
-        tag: meta.express_tag || "ย้ายสินค้าเข้า Express",
-        status: isCompleted ? "IMPORTED" : "PENDING",
+        const qty = Math.abs(Number(subItem.qty || subItem.quantity || meta.qty) || 1);
+
+        items.push({
+          id: uniqueKey,
+          movement_id: `trf-mov-${doc.document_id}-${subIdx}`,
+          document_id: doc.document_id,
+          document_no: resolvedDocNo,
+          warehouse_name: fromWarehouseName,
+          warehouse_id: fromWarehouseId,
+          from_warehouse_name: fromWarehouseName,
+          from_warehouse_id: fromWarehouseId,
+          to_warehouse_name: toWarehouseName,
+          to_warehouse_id: toWarehouseId,
+          created_at: (meta.completed_at || doc.created_at || new Date().toISOString()).slice(0, 10),
+          created_by_name: meta.moved_by || meta.assigned_to_name || "ผู้ใช้งาน",
+          sku: enriched.sku,
+          product_name: enriched.name,
+          quantity: qty,
+          location: enriched.location,
+          to_location_id: toLoc,
+          from_location_id: fromLoc,
+          barcode: enriched.barcode,
+          movement_type: "TRANSFER",
+          tag: meta.express_tag || "ย้ายสินค้าเข้า Express",
+          status: isCompleted ? "IMPORTED" : "PENDING",
+        });
       });
     }
 

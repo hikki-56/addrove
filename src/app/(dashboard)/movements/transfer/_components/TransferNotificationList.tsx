@@ -147,6 +147,13 @@ export default function TransferNotificationList({
         // Direct product location
         const pLoc = (matched.location || "").trim();
         if (pLoc && pLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(pLoc) && pLoc !== "A1") {
+          const whNumMatch = (t.from_warehouse_name || t.from_warehouse_id || "").match(/[1-9]/);
+          if (whNumMatch && pLoc.includes(",")) {
+            const whNum = whNumMatch[0];
+            const parts = pLoc.split(",").map((s) => s.trim());
+            const matchedPart = parts.find((part) => part.startsWith(whNum) || part.toLowerCase().startsWith(`wh${whNum}`) || part.toLowerCase().startsWith(`loc-${whNum}`));
+            if (matchedPart) return matchedPart.replace(/^loc-/, "");
+          }
           return pLoc.replace(/^loc-/, "");
         }
       }
@@ -298,11 +305,13 @@ export default function TransferNotificationList({
                     {t.product_name}
                   </div>
 
-                  {/* Current Location (ถ้ายังไม่มีตำแหน่งให้แสดงว่างไว้) */}
-                  <div className="text-xs sm:text-sm font-mono flex items-center gap-2 pt-0.5">
-                    <span className="text-slate-500 font-bold">ตำแหน่ง:</span>
-                    <strong className="text-slate-900 font-black">{resolveProductLocation(t)}</strong>
-                  </div>
+                  {/* Current Location (แสดงเฉพาะในรายการที่ต้องไปเบิก ไม่แสดงในแท็บรออนุมัติ) */}
+                  {!isWaitingApproval ? (
+                    <div className="text-xs sm:text-sm font-mono flex items-center gap-2 pt-0.5">
+                      <span className="text-slate-500 font-bold">ตำแหน่ง:</span>
+                      <strong className="text-slate-900 font-black">{resolveProductLocation(t)}</strong>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Quantity Badge */}

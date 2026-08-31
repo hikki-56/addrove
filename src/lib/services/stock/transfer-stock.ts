@@ -776,24 +776,39 @@ export async function completeTransfer(
 
       // Automatically record into Google Sheets Tab: "ย้ายสินค้าเข้าExpress" & "เบิกสินค้าเข้าExpress"
       try {
-        const routeName = `${meta.from_warehouse_name} -> ${meta.to_warehouse_name}`;
-        const expressTransferRow = [
+        const routeName = `${meta.from_warehouse_name || "โกดัง 1"} -> ${meta.to_warehouse_name || "โกดัง 2"}`;
+        const transferDate = new Date().toISOString().slice(0, 10);
+        const expressRow = [
           prodObj.sku || "",
           finalToLocId || finalFromLocId || "A1",
           doc.document_no || doc.document_id,
           routeName,
-          new Date().toISOString().slice(0, 10),
+          transferDate,
+          prodObj.product_name || prodObj.sku || "",
+          "รอนำเข้า Express",
+          meta.qty,
+          prodObj.barcode || prodObj.sku || "",
+        ];
+        const expressIssueRow = [
+          prodObj.sku || "",
+          finalFromLocId || "A1",
+          doc.document_no || doc.document_id,
+          meta.from_warehouse_name || "โกดัง 1",
+          transferDate,
           prodObj.product_name || prodObj.sku || "",
           "รอนำเข้า Express",
           meta.qty,
           prodObj.barcode || prodObj.sku || "",
         ];
         // Do NOT await — fire-and-forget so approval doesn't block waiting for Sheets API
-        appendRows(SHEETS.EXPRESS_TRANSFER, [expressTransferRow]).catch((err) => {
+        appendRows(SHEETS.EXPRESS_TRANSFER, [expressRow]).catch((err) => {
           console.warn("[completeTransfer] appendRows to EXPRESS_TRANSFER failed:", err);
         });
+        appendRows(SHEETS.EXPRESS_ISSUE, [expressIssueRow]).catch((err) => {
+          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE failed:", err);
+        });
       } catch (sheetErr) {
-        console.warn("[completeTransfer] Auto-append to ย้ายสินค้าเข้าExpress sheet warning:", sheetErr);
+        console.warn("[completeTransfer] Auto-append to Express sheets warning:", sheetErr);
       }
 
       return { ...doc, status: "COMPLETED", note: JSON.stringify(meta) };

@@ -215,6 +215,7 @@ export default function TransferPage() {
       {/* Staff Guided 4-Step Execution Modal */}
       <TransferStaffWorkflowModal
         selectedTask={selectedTask}
+        products={transferHook.fromWhProducts.length > 0 ? transferHook.fromWhProducts : products}
         onClose={() => setSelectedTask(null)}
         staffStep={staffStep}
         setStaffStep={setStaffStep}

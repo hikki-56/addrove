@@ -50,7 +50,6 @@ export async function GET(req: NextRequest) {
       status: string;
     }> = [];
 
-    const seenDocNos = new Set<string>();
     const seenUniqueKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
@@ -262,7 +261,6 @@ export async function GET(req: NextRequest) {
         const uniqueKey = `sheet_iss_${resolvedDocNo}_${enriched.sku}_${idx}`;
 
         seenUniqueKeys.add(uniqueKey);
-        if (docNoKey) seenDocNos.add(docNoKey);
 
         // Resolve source and destination warehouse
         let fromWarehouseName = whName || "โกดัง 1";
@@ -371,71 +369,76 @@ export async function GET(req: NextRequest) {
       const meta = parseTransferMetadata(doc.note);
       const rawDocNo = doc.document_no || meta.doc_no || "";
       const resolvedDocNo = cleanDocNumber(rawDocNo, doc.document_id, doc.created_at, "TRF");
-      const docNoKey = resolvedDocNo.toLowerCase();
 
-      if (docNoKey && seenDocNos.has(docNoKey)) continue;
+      const itemsList = Array.isArray(meta.items) && meta.items.length > 0
+        ? meta.items
+        : Array.isArray(meta.lines) && meta.lines.length > 0
+        ? meta.lines
+        : [meta];
 
-      const rawSku = meta.sku || meta.product_id?.replace(/^prod-/, "") || "";
-      const rawBarcode = meta.barcode || "";
-      const rawProductName = meta.product_name || rawSku || "สินค้า";
-      const toLoc = meta.to_location_id || meta.to_location || meta.completed_location_id || "";
-      const fromLoc = meta.from_location_id || meta.from_location || "-";
+      itemsList.forEach((subItem: any, subIdx: number) => {
+        const rawSku = subItem.sku || subItem.product_id?.replace(/^prod-/, "") || meta.sku || "";
+        const rawBarcode = subItem.barcode || meta.barcode || "";
+        const rawProductName = subItem.product_name || meta.product_name || rawSku || "สินค้า";
+        const toLoc = subItem.to_location_id || meta.to_location_id || meta.to_location || meta.completed_location_id || "";
+        const fromLoc = subItem.from_location_id || meta.from_location_id || meta.from_location || "-";
+        const qty = Math.abs(Number(subItem.qty || subItem.quantity || meta.qty) || 1);
 
-      const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, toLoc || fromLoc);
-      const uniqueKey = `iss_trf-mov-${doc.document_id}_${enriched.sku}`;
+        const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, toLoc || fromLoc);
+        const uniqueKey = `iss_trf-mov-${doc.document_id}_${enriched.sku}_${subIdx}`;
 
-      if (seenUniqueKeys.has(uniqueKey)) continue;
-      seenUniqueKeys.add(uniqueKey);
-      if (docNoKey) seenDocNos.add(docNoKey);
+        if (seenUniqueKeys.has(uniqueKey)) return;
+        seenUniqueKeys.add(uniqueKey);
 
-      let fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : (doc as any).from_warehouse_name || "โกดัง 1");
-      let fromWarehouseId = meta.from_warehouse_id || (doc as any).from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
-      let toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : (doc as any).to_warehouse_name || "");
-      let toWarehouseId = meta.to_warehouse_id || (doc as any).to_warehouse_id || "";
+        let fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : (doc as any).from_warehouse_name || "โกดัง 1");
+        let fromWarehouseId = meta.from_warehouse_id || (doc as any).from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
+        let toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : (doc as any).to_warehouse_name || "");
+        let toWarehouseId = meta.to_warehouse_id || (doc as any).to_warehouse_id || "";
 
-      if (!toWarehouseName) {
-        if (/^2[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-2") || toLoc.includes("โกดัง2")) {
-          toWarehouseName = "โกดัง 2";
-          toWarehouseId = "wh-02";
-        } else if (/^1[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-1") || toLoc.includes("โกดัง1")) {
-          toWarehouseName = "โกดัง 1";
-          toWarehouseId = "wh-01";
-        } else if (/^3[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-3") || toLoc.includes("โกดัง3")) {
-          toWarehouseName = "โกดัง 3";
-          toWarehouseId = "wh-03";
-        } else if (/^4[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-4") || toLoc.includes("โกดัง4")) {
-          toWarehouseName = "โกดัง 4";
-          toWarehouseId = "wh-04";
-        } else {
-          const normFrom = normalizeWarehouseId(fromWarehouseName);
-          toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
-          toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+        if (!toWarehouseName) {
+          if (/^2[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-2") || toLoc.includes("โกดัง2")) {
+            toWarehouseName = "โกดัง 2";
+            toWarehouseId = "wh-02";
+          } else if (/^1[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-1") || toLoc.includes("โกดัง1")) {
+            toWarehouseName = "โกดัง 1";
+            toWarehouseId = "wh-01";
+          } else if (/^3[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-3") || toLoc.includes("โกดัง3")) {
+            toWarehouseName = "โกดัง 3";
+            toWarehouseId = "wh-03";
+          } else if (/^4[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-4") || toLoc.includes("โกดัง4")) {
+            toWarehouseName = "โกดัง 4";
+            toWarehouseId = "wh-04";
+          } else {
+            const normFrom = normalizeWarehouseId(fromWarehouseName);
+            toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
+            toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+          }
         }
-      }
 
-      items.push({
-        id: uniqueKey,
-        movement_id: `trf-mov-${doc.document_id}`,
-        document_id: doc.document_id,
-        document_no: resolvedDocNo,
-        warehouse_name: fromWarehouseName,
-        warehouse_id: fromWarehouseId,
-        from_warehouse_name: fromWarehouseName,
-        from_warehouse_id: fromWarehouseId,
-        to_warehouse_name: toWarehouseName,
-        to_warehouse_id: toWarehouseId,
-        created_at: (meta.completed_at || doc.created_at || new Date().toISOString()).slice(0, 10),
-        created_by_name: meta.moved_by || meta.assigned_to_name || "ผู้ใช้งาน",
-        sku: enriched.sku,
-        product_name: enriched.name,
-        quantity: Math.abs(Number(meta.qty) || 1),
-        location: enriched.location,
-        to_location_id: toLoc,
-        from_location_id: fromLoc,
-        barcode: enriched.barcode,
-        movement_type: "TRANSFER_OUT",
-        tag: meta.express_tag || "เบิกสินค้าเข้า Express",
-        status: meta.express_status === "IMPORTED" ? "IMPORTED" : "PENDING",
+        items.push({
+          id: uniqueKey,
+          movement_id: `trf-mov-${doc.document_id}-${subIdx}`,
+          document_id: doc.document_id,
+          document_no: resolvedDocNo,
+          warehouse_name: fromWarehouseName,
+          warehouse_id: fromWarehouseId,
+          from_warehouse_name: fromWarehouseName,
+          from_warehouse_id: fromWarehouseId,
+          to_warehouse_name: toWarehouseName,
+          to_warehouse_id: toWarehouseId,
+          created_at: (meta.completed_at || doc.created_at || new Date().toISOString()).slice(0, 10),
+          created_by_name: meta.moved_by || meta.assigned_to_name || "ผู้ใช้งาน",
+          sku: enriched.sku,
+          product_name: enriched.name,
+          quantity: qty,
+          location: enriched.location,
+          to_location_id: toLoc,
+          from_location_id: fromLoc,
+          barcode: enriched.barcode,
+          movement_type: "TRANSFER_OUT",
+          tag: meta.express_tag || "เบิกสินค้าเข้า Express",
+          status: meta.express_status === "IMPORTED" ? "IMPORTED" : "PENDING",
+        });
       });
     }
 

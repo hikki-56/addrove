@@ -5,9 +5,11 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { createPortal } from "react-dom";
 import { type TransferNotification, updateTransferTaskProgress } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
+import type { Product } from "@/types/models";
 
 export interface TransferStaffWorkflowModalProps {
   selectedTask: TransferNotification | null;
+  products?: Product[];
   onClose: () => void;
   staffStep: number;
   setStaffStep: (step: number) => void;
@@ -38,6 +40,7 @@ export interface TransferStaffWorkflowModalProps {
 
 export default function TransferStaffWorkflowModal({
   selectedTask,
+  products,
   onClose,
   staffStep,
   setStaffStep,
@@ -66,6 +69,110 @@ export default function TransferStaffWorkflowModal({
   onOpenStaffCamera,
 }: TransferStaffWorkflowModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [fetchedLoc, setFetchedLoc] = useState<string>("");
+
+  useEffect(() => {
+    if (!selectedTask) return;
+
+    // Check direct on task
+    const taskLoc = (selectedTask.from_location_id || selectedTask.location_code || "").trim();
+    if (taskLoc && taskLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(taskLoc) && taskLoc !== "A1") {
+      setFetchedLoc(taskLoc.replace(/^loc-/, ""));
+      return;
+    }
+
+    // Check matched in products prop
+    const normSku = (selectedTask.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+    const normPid = (selectedTask.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+    const matched = products?.find((p) => {
+      const pSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+      const pId = (p.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+      return (normSku && (pSku === normSku || pId === normSku)) || (normPid && (pId === normPid || pSku === normPid));
+    });
+
+    if (matched) {
+      if (matched.locations_breakdown && matched.locations_breakdown.length > 0) {
+        const normFromWh = (selectedTask.from_warehouse_id || "").toLowerCase();
+        const normFromWhName = (selectedTask.from_warehouse_name || "").toLowerCase();
+        const found = matched.locations_breakdown.find((b) => {
+          const bId = (b.warehouse_id || "").toLowerCase();
+          const bName = (b.warehouse_name || "").toLowerCase();
+          return (normFromWh && bId === normFromWh) || (normFromWhName && bName === normFromWhName);
+        });
+        const bLoc = (found?.location || "").trim();
+        if (bLoc && bLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(bLoc) && bLoc !== "A1") {
+          setFetchedLoc(bLoc.replace(/^loc-/, ""));
+          return;
+        }
+      }
+      const pLoc = (matched.location || "").trim();
+      if (pLoc && pLoc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(pLoc) && pLoc !== "A1") {
+        const whNumMatch = (selectedTask.from_warehouse_name || selectedTask.from_warehouse_id || "").match(/[1-9]/);
+        if (whNumMatch && pLoc.includes(",")) {
+          const whNum = whNumMatch[0];
+          const parts = pLoc.split(",").map((s) => s.trim());
+          const matchedPart = parts.find((part) => part.startsWith(whNum) || part.toLowerCase().startsWith(`wh${whNum}`) || part.toLowerCase().startsWith(`loc-${whNum}`));
+          if (matchedPart) {
+            setFetchedLoc(matchedPart.replace(/^loc-/, ""));
+            return;
+          }
+        }
+        setFetchedLoc(pLoc.replace(/^loc-/, ""));
+        return;
+      }
+    }
+
+    // Auto-fetch if not found
+    const term = (selectedTask.sku || selectedTask.product_id || "").trim();
+    if (!term) return;
+
+    let active = true;
+    fetch(`/api/products?search=${encodeURIComponent(term)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!active || !json.success || !Array.isArray(json.data)) return;
+        const normTerm = term.toLowerCase().replace(/^prod-/, "");
+        const foundProd = json.data.find((p: Product) => {
+          const pSku = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+          const pId = (p.product_id || "").trim().toLowerCase().replace(/^prod-/, "");
+          return pSku === normTerm || pId === normTerm;
+        });
+        if (foundProd) {
+          if (foundProd.locations_breakdown && foundProd.locations_breakdown.length > 0) {
+            const normFromWh = (selectedTask.from_warehouse_id || "").toLowerCase();
+            const normFromWhName = (selectedTask.from_warehouse_name || "").toLowerCase();
+            const foundBreakdown = foundProd.locations_breakdown.find((b: any) => {
+              const bId = (b.warehouse_id || "").toLowerCase();
+              const bName = (b.warehouse_name || "").toLowerCase();
+              return (normFromWh && bId === normFromWh) || (normFromWhName && bName === normFromWhName);
+            });
+            if (foundBreakdown?.location && foundBreakdown.location !== "-") {
+              setFetchedLoc(foundBreakdown.location.replace(/^loc-/, ""));
+              return;
+            }
+          }
+          const loc = (foundProd.location || "").trim();
+          if (loc && loc !== "-") {
+            const whNumMatch = (selectedTask.from_warehouse_name || selectedTask.from_warehouse_id || "").match(/[1-9]/);
+            if (whNumMatch && loc.includes(",")) {
+              const whNum = whNumMatch[0];
+              const parts = loc.split(",").map((s: string) => s.trim());
+              const matchedPart = parts.find((part: string) => part.startsWith(whNum) || part.toLowerCase().startsWith(`loc-${whNum}`));
+              if (matchedPart) {
+                setFetchedLoc(matchedPart.replace(/^loc-/, ""));
+                return;
+              }
+            }
+            setFetchedLoc(loc.replace(/^loc-/, ""));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [selectedTask, products]);
 
   useEffect(() => {
     setMounted(true);
@@ -188,9 +295,6 @@ export default function TransferStaffWorkflowModal({
               {barcode && barcode !== selectedTask.sku && (
                 <span className="font-bold text-slate-700">บาร์โค้ด: <strong className="text-slate-900">{barcode}</strong></span>
               )}
-              {selectedTask.from_location_id && selectedTask.from_location_id !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(selectedTask.from_location_id) && (
-                <span className="font-bold text-slate-700">ตำแหน่ง: <strong className="text-slate-900">{selectedTask.from_location_id.replace(/^loc-/, "")}</strong></span>
-              )}
             </div>
 
             <div className="flex items-baseline gap-2 pt-2 border-t border-slate-200">
@@ -199,10 +303,18 @@ export default function TransferStaffWorkflowModal({
               <span className="text-sm font-bold text-slate-600">ชิ้น</span>
             </div>
 
-            <p className="text-sm text-slate-600">
-              จาก <span className="font-bold text-slate-900">{selectedTask.from_warehouse_name}</span>
-              {" "}ไป <span className="font-bold text-slate-900">{selectedTask.to_warehouse_name}</span>
+            <p className="text-base text-slate-700 font-medium">
+              จาก <span className="font-bold text-slate-950">{selectedTask.from_warehouse_name}</span>
+              {" "}ไป <span className="font-bold text-slate-950">{selectedTask.to_warehouse_name}</span>
             </p>
+
+            {/* ตำแหน่งปัจจุบัน ใต้ จาก...ไป... ตัวหนังสือใหญ่ชัดเจน */}
+            <div className="flex items-baseline gap-2.5 pt-2.5 border-t border-slate-200">
+              <span className="text-base sm:text-lg font-bold text-slate-700">ตำแหน่งปัจจุบัน:</span>
+              <span className="text-2xl sm:text-3xl font-mono font-black text-slate-950 tracking-wide">
+                {fetchedLoc || ""}
+              </span>
+            </div>
           </div>
 
           {/* Error Banner */}
