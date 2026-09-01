@@ -19,7 +19,7 @@ const PIN_RATE_LIMIT = {
   blockMs: 5 * 60 * 1000,
 };
 
-/** Check PIN against bcrypt hash, or plaintext PIN fallback if entered directly in Google Sheets */
+/** Check PIN against bcrypt hash only — non-hashed rows fail closed (run scripts/migrate-plaintext-pins.ts if any row is not hashed) */
 function checkPinMatch(user: User, inputPin: string): boolean {
   if (!/^\d{4}$/.test(inputPin)) return false;
   const rawPin = user.pin_hash?.trim() || "";
@@ -31,12 +31,6 @@ function checkPinMatch(user: User, inputPin: string): boolean {
     } catch {
       return false;
     }
-  }
-
-  // Fallback: Support direct plaintext 4-digit PIN comparison (temporary until all sheet rows are hashed)
-  if (rawPin === inputPin) {
-    console.warn(`[SECURITY WARNING] User ${user.user_id} (${user.email || user.full_name}) logged in using plaintext PIN. Please run scripts/migrate-plaintext-pins.ts`);
-    return true;
   }
   return false;
 }
