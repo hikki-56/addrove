@@ -45,7 +45,9 @@ async function decodeSessionToken(token: string) {
           role: role as UserRole,
           warehouse_access: Array.isArray((decoded as any).warehouse_access)
             ? (decoded as any).warehouse_access
-            : (typeof (decoded as any).warehouse_access === "string" ? [(decoded as any).warehouse_access] : ["*"]),
+            : (typeof (decoded as any).warehouse_access === "string" && (decoded as any).warehouse_access.trim() !== ""
+                ? [(decoded as any).warehouse_access]
+                : []),
         },
         expires: new Date(expiresAt * 1000).toISOString(),
       };

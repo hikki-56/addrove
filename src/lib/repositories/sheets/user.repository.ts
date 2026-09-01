@@ -38,7 +38,8 @@ function rowToUser(row: string[]): User {
   const email = row[6] || row[1] || ""; // email or username
   let role = (row[3] as UserRole) || "VIEWER";
   const rawAccess = (row[12] ?? "").trim();
-  const warehouseAccess = role === "ADMIN" ? '["*"]' : (rawAccess || '["*"]');
+  // Fail closed: an empty warehouse_access column grants no warehouses (ADMIN still gets all)
+  const warehouseAccess = role === "ADMIN" ? '["*"]' : rawAccess || "[]";
 
   let pinHash = row[11] ?? "";
   if (row[0] === "usr-kaew-01" || fullName.includes("แก้ว") || email.includes("kaew")) {
