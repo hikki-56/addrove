@@ -36,16 +36,12 @@ function rowToUser(row: string[]): User {
   const lastName = row[5] ?? "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || row[1] || "";
   const email = row[6] || row[1] || ""; // email or username
-  let role = (row[3] as UserRole) || "VIEWER";
+  const role = (row[3] as UserRole) || "VIEWER";
   const rawAccess = (row[12] ?? "").trim();
   // Fail closed: an empty warehouse_access column grants no warehouses (ADMIN still gets all)
   const warehouseAccess = role === "ADMIN" ? '["*"]' : rawAccess || "[]";
 
-  let pinHash = row[11] ?? "";
-  if (row[0] === "usr-kaew-01" || fullName.includes("แก้ว") || email.includes("kaew")) {
-    pinHash = "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW"; // Valid Bcrypt Hash for PIN 6666
-    role = "APPROVER";
-  }
+  const pinHash = row[11] ?? "";
 
   return {
     user_id: row[0] ?? "",
@@ -84,57 +80,6 @@ function userToRow(u: User): (string | boolean)[] {
   ];
 }
 
-const DEFAULT_SYSTEM_USERS: User[] = [
-  {
-    user_id: "usr-admin-01",
-    full_name: "ผู้ดูแลระบบ (Admin)",
-    email: "admin@stockify.com",
-    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    role: "ADMIN",
-    warehouse_access: '["*"]',
-    active: true,
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    user_id: "usr-admin-pui",
-    full_name: "ปุ๋ย (Admin)",
-    email: "pui@stockify.com",
-    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    role: "ADMIN",
-    warehouse_access: '["*"]',
-    active: true,
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    user_id: "usr-admin-tak",
-    full_name: "ตั๊ก (Admin)",
-    email: "tak@stockify.com",
-    password_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    pin_hash: "$2b$10$h2cgqlErQLVhPAq3dz.rKullJkLYw9FnyPpMLEqYtAlXXc0333oeC",
-    role: "ADMIN",
-    warehouse_access: '["*"]',
-    active: true,
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    user_id: "usr-kaew-01",
-    full_name: "แก้ว",
-    email: "kaew@stockify.com",
-    password_hash: "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW",
-    pin_hash: "$2b$10$ObMd16yrAZ.hv8p43n0hyO.Im9lsvnNgzvp0oAnA9c2stkVDh6eNW", // PIN: 6666
-    role: "APPROVER",
-    warehouse_access: '["*"]',
-    active: true,
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
-  },
-];
-
 export class SheetsUserRepository implements IUserRepository {
   private async getAllRows(): Promise<string[][]> {
     return readSheet(SHEETS.USERS, "A2:M");
@@ -149,12 +94,8 @@ export class SheetsUserRepository implements IUserRepository {
       console.warn("[SheetsUserRepository] getAllRows error:", err);
     }
 
+    // Sheet rows are the single source of truth — no hardcoded fallback accounts
     const userMap = new Map<string, User>();
-    // Default users
-    for (const u of DEFAULT_SYSTEM_USERS) {
-      userMap.set(u.user_id, u);
-    }
-    // Overlay Google Sheet users
     for (const u of sheetUsers) {
       userMap.set(u.user_id, u);
     }
