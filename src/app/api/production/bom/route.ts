@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bomRepository } from "@/lib/repositories/sheets/bom.repository";
 import { readSheet, getWarehouseSheetName, SHEETS } from "@/lib/google-sheets/client";
+import { getAuthSession } from "@/lib/auth-session";
+import { unauthorizedResponse } from "@/lib/api-response";
 
 function cleanCode(str?: string): string {
   if (!str) return "";
@@ -12,6 +14,9 @@ function cleanCode(str?: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  const session = await getAuthSession(req);
+  if (!session) return unauthorizedResponse();
+
   try {
     const { searchParams } = new URL(req.url);
     const sku = searchParams.get("sku");
