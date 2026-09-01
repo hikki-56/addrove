@@ -3,7 +3,19 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getRepository } from "@/lib/repositories";
 import { getAuthSecret } from "@/lib/server-secrets";
+import {
+  clearFailedAttempts,
+  getClientIp,
+  getRateLimitRetryAfter,
+  recordFailedAttempt,
+} from "@/lib/rate-limit";
 import type { UserRole } from "@/types/models";
+
+const PASSWORD_RATE_LIMIT = {
+  maxFailures: 5,
+  windowMs: 5 * 60 * 1000,
+  blockMs: 15 * 60 * 1000,
+};
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
@@ -14,7 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "อีเมล", type: "email" },
         password: { label: "รหัสผ่าน", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         try {
           if (!credentials?.email || !credentials?.password) {
             return null;
@@ -23,19 +35,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const cleanEmail = (credentials.email as string).trim().toLowerCase();
           const cleanPass = credentials.password as string;
 
+          const rateLimitKey = `password-login:${req ? getClientIp(req as Request) : "unknown"}`;
+          if (getRateLimitRetryAfter(rateLimitKey) > 0) {
+            return null;
+          }
+
           const repo = getRepository();
           const user = await repo.users.findByEmail(cleanEmail);
 
           // Fail closed: User must exist, be active, and have a password hash
           if (!user || !user.active || !user.password_hash) {
+            recordFailedAttempt(rateLimitKey, PASSWORD_RATE_LIMIT);
             return null;
           }
 
           // Strict bcrypt comparison only — no fallback to plaintext or hardcoded values
           const isValid = await bcrypt.compare(cleanPass, user.password_hash).catch(() => false);
           if (!isValid) {
+            recordFailedAttempt(rateLimitKey, PASSWORD_RATE_LIMIT);
             return null;
           }
+          clearFailedAttempts(rateLimitKey);
 
           // Fail closed: no warehouse_access value = no warehouses. ADMIN gets all.
           let warehouseAccess: string[] = [];

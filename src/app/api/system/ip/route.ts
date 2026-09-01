@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthSession } from "@/lib/auth-session";
+import { unauthorizedResponse } from "@/lib/api-response";
 import os from "os";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const session = await getAuthSession(req);
+  if (!session) return unauthorizedResponse();
+
   try {
     const nets = os.networkInterfaces();
-    let localIp = "192.168.1.54"; // fallback
+    let localIp = "";
 
     for (const name of Object.keys(nets)) {
       const netList = nets[name];
@@ -22,14 +27,14 @@ export async function GET() {
       success: true,
       ip: localIp,
       port: 3000,
-      url: `http://${localIp}:3000`,
+      url: localIp ? `http://${localIp}:3000` : "",
     });
   } catch (e) {
     return NextResponse.json({
       success: false,
-      ip: "192.168.1.54",
+      ip: "",
       port: 3000,
-      url: "http://192.168.1.54:3000",
+      url: "",
     });
   }
 }
