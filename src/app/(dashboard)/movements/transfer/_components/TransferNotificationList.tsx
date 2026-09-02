@@ -91,7 +91,7 @@ export default function TransferNotificationList({
             }
           }
         }
-      } catch {}
+      } catch { }
     });
   }, [notifications, products, skuLocationMap]);
 
@@ -201,55 +201,54 @@ export default function TransferNotificationList({
           // Step badge config
           const stepConfig = isWaitingApproval
             ? {
-                title: "เบิกแล้ว (รอ Admin อนุมัติ)",
-                detail: "",
-                badge: "bg-amber-50 text-amber-900 border-amber-300",
-                dot: "bg-amber-500",
-              }
+              title: "เบิกแล้ว (รอ Admin อนุมัติ)",
+              detail: "",
+              badge: "bg-amber-50 text-amber-900 border-amber-300",
+              dot: "bg-amber-500",
+            }
             : step === 1
-            ? {
+              ? {
                 title: "กำลังสแกนสินค้า",
                 detail: "พนักงานกำลังสแกนบาร์โค้ดสินค้าบนตัวสินค้า",
                 badge: "bg-sky-50 text-sky-700 border-sky-200",
                 dot: "bg-sky-500",
               }
-            : step === 2
-            ? {
-                title: "กำลังหยิบสินค้าต้นทาง",
-                detail: `พนักงานกำลังสแกนตำแหน่งและหยิบของใน ${t.from_warehouse_name}`,
-                badge: "bg-amber-50 text-amber-700 border-amber-200",
-                dot: "bg-amber-500",
-              }
-            : step === 3
-            ? {
-                title: "กำลังสแกนตำแหน่งปลายทาง",
-                detail: `พนักงานกำลังนำสินค้าเข้าตำแหน่งปลายทางใน ${t.to_warehouse_name}`,
-                badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
-                dot: "bg-indigo-500",
-              }
-            : step >= 4
-            ? {
-                title: "เบิกสินค้าสำเร็จ",
-                detail: "ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว",
-                badge: "bg-emerald-50 text-emerald-800 border-emerald-200",
-                dot: "bg-emerald-500",
-              }
-            : {
-                title: "รอดำเนินการ (ยังไม่เริ่ม)",
-                detail: "สร้างใบงานแล้ว รอพนักงานกดเริ่มงาน",
-                badge: "bg-slate-50 text-slate-700 border-slate-200",
-                dot: "bg-slate-500",
-              };
+              : step === 2
+                ? {
+                  title: "กำลังหยิบสินค้าต้นทาง",
+                  detail: `พนักงานกำลังสแกนตำแหน่งและหยิบของใน ${t.from_warehouse_name}`,
+                  badge: "bg-amber-50 text-amber-700 border-amber-200",
+                  dot: "bg-amber-500",
+                }
+                : step === 3
+                  ? {
+                    title: "กำลังสแกนตำแหน่งปลายทาง",
+                    detail: `พนักงานกำลังนำสินค้าเข้าตำแหน่งปลายทางใน ${t.to_warehouse_name}`,
+                    badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
+                    dot: "bg-indigo-500",
+                  }
+                  : step >= 4
+                    ? {
+                      title: "เบิกสินค้าสำเร็จ",
+                      detail: "ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว",
+                      badge: "bg-emerald-50 text-emerald-800 border-emerald-200",
+                      dot: "bg-emerald-500",
+                    }
+                    : {
+                      title: "รอดำเนินการ (ยังไม่เริ่ม)",
+                      detail: "สร้างใบงานแล้ว รอพนักงานกดเริ่มงาน",
+                      badge: "bg-slate-50 text-slate-700 border-slate-200",
+                      dot: "bg-slate-500",
+                    };
 
           return (
             <div
               key={t.id}
               onClick={!isAdmin && !isWaitingApproval ? () => onSelectTask(t) : undefined}
-              className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs transition-all duration-150 space-y-3.5 relative min-w-0 max-w-full overflow-hidden ${
-                !isAdmin && !isWaitingApproval
+              className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs transition-all duration-150 space-y-3.5 relative min-w-0 max-w-full overflow-hidden ${!isAdmin && !isWaitingApproval
                   ? "cursor-pointer hover:border-emerald-500 hover:shadow-md group"
                   : "cursor-default"
-              }`}
+                }`}
             >
               {/* Top Row: Staff Assigned & Realtime Live Status Badge */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
@@ -285,24 +284,20 @@ export default function TransferNotificationList({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1.5 flex-1 min-w-0">
                   {/* Barcode */}
-                  {(barcode || t.sku) ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
-                        บาร์โค้ด
-                      </span>
-                      <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
-                        {barcode || t.sku}
-                      </span>
-                    </div>
-                  ) : null}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
+                      บาร์โค้ด
+                    </span>
+                    <span className="font-mono font-bold text-base sm:text-lg text-slate-900 tracking-wide truncate">
+                      {barcode || t.sku}
+                    </span>
+                  </div>
 
                   {/* SKU */}
-                  {t.sku ? (
-                    <div className="text-sm text-slate-600 font-mono flex items-center gap-2">
-                      <span>SKU:</span>
-                      <strong className="text-slate-900 font-bold">{t.sku}</strong>
-                    </div>
-                  ) : null}
+                  <div className="text-sm text-slate-600 font-mono flex items-center gap-2">
+                    <span>SKU:</span>
+                    <strong className="text-slate-900 font-bold">{t.sku}</strong>
+                  </div>
 
                   {/* Product Title */}
                   <div className={`text-sm sm:text-base text-slate-900 font-bold leading-normal line-clamp-2 ${!isAdmin && !isWaitingApproval ? "group-hover:text-emerald-800 transition-colors" : ""}`}>

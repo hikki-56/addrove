@@ -218,7 +218,7 @@ export function useTransferMovement({
           setStaffList(fetched);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isMounted = false;
@@ -260,7 +260,7 @@ export function useTransferMovement({
       .then((json) => {
         if (!isMounted) return;
         const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
-        
+
         // Aggregate quantities across different locations for the same SKU
         const map = new Map<string, Product>();
         for (const p of list) {
@@ -365,19 +365,19 @@ export function useTransferMovement({
   const cleanSearchVal = (watchProduct || "").trim().toLowerCase();
   const selectedProduct = cleanSearchVal
     ? activeProductList.find(
-        (p) =>
-          p.product_id.toLowerCase() === cleanSearchVal ||
-          p.sku.toLowerCase() === cleanSearchVal ||
-          (p.barcode && p.barcode.trim().toLowerCase() === cleanSearchVal) ||
-          p.product_id.toLowerCase() === `prod-${cleanSearchVal}`
-      ) ||
-      activeProductList.find(
-        (p) =>
-          (p.barcode && p.barcode.trim().toLowerCase().includes(cleanSearchVal)) ||
-          (p.sku && p.sku.trim().toLowerCase().includes(cleanSearchVal)) ||
-          (p.product_name && p.product_name.trim().toLowerCase().includes(cleanSearchVal))
-      ) ||
-      null
+      (p) =>
+        p.product_id.toLowerCase() === cleanSearchVal ||
+        p.sku.toLowerCase() === cleanSearchVal ||
+        (p.barcode && p.barcode.trim().toLowerCase() === cleanSearchVal) ||
+        p.product_id.toLowerCase() === `prod-${cleanSearchVal}`
+    ) ||
+    activeProductList.find(
+      (p) =>
+        (p.barcode && p.barcode.trim().toLowerCase().includes(cleanSearchVal)) ||
+        (p.sku && p.sku.trim().toLowerCase().includes(cleanSearchVal)) ||
+        (p.product_name && p.product_name.trim().toLowerCase().includes(cleanSearchVal))
+    ) ||
+    null
     : null;
 
   // Notification sync
@@ -386,12 +386,12 @@ export function useTransferMovement({
       const all = getTransferNotifications();
       const isAdmin = tabUser?.role === "ADMIN" || tabUser?.role === "APPROVER";
       const isStaff = !isAdmin;
-      
+
       // If staff, strictly filter by the active warehouse they scanned into
       const pending = isStaff
         ? getPendingTransferNotifications(tabUser?.name, activeWhId)
         : getPendingTransferNotifications(undefined, undefined);
-        
+
       const waiting = all.filter((t) => t && t.status === "WAITING_APPROVAL");
 
       setPendingTasks((prev) => (areTasksEqual(prev, pending) ? prev : pending));
@@ -477,14 +477,14 @@ export function useTransferMovement({
       const storedToken =
         typeof window !== "undefined"
           ? sessionStorage.getItem("stockify_tab_token") ||
-            localStorage.getItem("stockify_tab_token") ||
-            (function () {
-              try {
-                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
-              } catch {
-                return null;
-              }
-            })()
+          localStorage.getItem("stockify_tab_token") ||
+          (function () {
+            try {
+              return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+            } catch {
+              return null;
+            }
+          })()
           : null;
       if (storedToken) {
         headers["x-tab-token"] = storedToken;
@@ -550,7 +550,7 @@ export function useTransferMovement({
         document_no: t.doc_no || "TRF",
         document_date: new Date().toISOString().slice(0, 10),
       });
-    } catch {}
+    } catch { }
 
     window.dispatchEvent(new Event("stockify-transfer-updated"));
     window.dispatchEvent(new Event("stockify-express-tags-updated"));
@@ -561,14 +561,14 @@ export function useTransferMovement({
       const storedToken =
         typeof window !== "undefined"
           ? sessionStorage.getItem("stockify_tab_token") ||
-            localStorage.getItem("stockify_tab_token") ||
-            (function () {
-              try {
-                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
-              } catch {
-                return null;
-              }
-            })()
+          localStorage.getItem("stockify_tab_token") ||
+          (function () {
+            try {
+              return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+            } catch {
+              return null;
+            }
+          })()
           : null;
 
       if (storedToken) {
@@ -617,7 +617,7 @@ export function useTransferMovement({
       const storedToken =
         typeof window !== "undefined"
           ? sessionStorage.getItem("stockify_tab_token") ||
-            localStorage.getItem("stockify_tab_token")
+          localStorage.getItem("stockify_tab_token")
           : null;
 
       if (storedToken) {
@@ -769,7 +769,7 @@ export function useTransferMovement({
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-      
+
       const cleanLocId = locId.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
       const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
       const cleanShelfCode = shelfCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
@@ -842,7 +842,7 @@ export function useTransferMovement({
           availableLocStock = matchedProductRows[0].quantity;
         }
       }
-    } catch {}
+    } catch { }
 
     if (availableLocStock <= 0) {
       setStaffError(`❌ ตำแหน่ง "${targetLocId}" ไม่มีสินค้าคงเหลือในคลัง`);
@@ -980,7 +980,7 @@ export function useTransferMovement({
           validLocs = data.data.filter((l: Location) => l && l.active !== false);
           setDestLocations(validLocs);
         }
-      } catch {}
+      } catch { }
     }
 
     if (validLocs.length === 0) {
@@ -994,7 +994,7 @@ export function useTransferMovement({
       const locCode = (loc.location_code || "").trim().toLowerCase();
       const locName = (loc.location_name || "").trim().toLowerCase();
       const shelfCode = ((loc as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
-      
+
       const cleanLocId = locId.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
       const cleanLocCode = locCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
       const cleanShelfCode = shelfCode.replace(/^loc-/, "").replace(/^wh-0?[0-9]-?/, "").replace(/[\s\-_#]/g, "");
@@ -1081,14 +1081,14 @@ export function useTransferMovement({
       const storedToken =
         typeof window !== "undefined"
           ? sessionStorage.getItem("stockify_tab_token") ||
-            localStorage.getItem("stockify_tab_token") ||
-            (function () {
-              try {
-                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
-              } catch {
-                return null;
-              }
-            })()
+          localStorage.getItem("stockify_tab_token") ||
+          (function () {
+            try {
+              return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+            } catch {
+              return null;
+            }
+          })()
           : null;
 
       if (storedToken) {
@@ -1182,14 +1182,14 @@ export function useTransferMovement({
       const storedToken =
         typeof window !== "undefined"
           ? sessionStorage.getItem("stockify_tab_token") ||
-            localStorage.getItem("stockify_tab_token") ||
-            (function () {
-              try {
-                return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
-              } catch {
-                return null;
-              }
-            })()
+          localStorage.getItem("stockify_tab_token") ||
+          (function () {
+            try {
+              return JSON.parse(sessionStorage.getItem("stockify_tab_session") || "{}")?.token;
+            } catch {
+              return null;
+            }
+          })()
           : null;
 
       if (storedToken) {
@@ -1203,70 +1203,69 @@ export function useTransferMovement({
       const creatorName = tabUser?.name || "ผู้สร้างรายการ";
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
 
-      // Process items sequentially to ensure strictly unique document numbers and prevent doc_no collision
-      const createResults: Array<{ error: string | null; doc: any; notif: TransferNotification | null }> = [];
-      for (let i = 0; i < itemsToProcess.length; i++) {
-        const item = itemsToProcess[i];
-        try {
-          const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
-          const res = await fetch("/api/movements/transfer", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              ...data,
+      // Process all items in parallel concurrently for maximum speed
+      const createResults = await Promise.all(
+        itemsToProcess.map(async (item, i) => {
+          try {
+            const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
+            const res = await fetch("/api/movements/transfer", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                ...data,
+                product_id: item.product_id,
+                sku: item.sku,
+                barcode: item.barcode,
+                product_name: item.product_name,
+                from_location_id: item.location || "",
+                qty: Math.max(1, item.qty || 1),
+                moved_by: "",
+                assigned_to_user_id: "",
+                assigned_to_name: "",
+                created_by: creatorId,
+                created_by_name: creatorName,
+                document_date: docDateVal,
+                idempotency_key: itemKey,
+              }),
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.success || !json.data) {
+              const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
+              return { error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null };
+            }
+
+            const realDoc = json.data;
+            const notif: TransferNotification = {
+              id: realDoc.document_id,
+              doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
               product_id: item.product_id,
-              sku: item.sku,
-              barcode: item.barcode,
-              product_name: item.product_name,
+              sku: item.sku || item.product_id,
+              product_name: item.product_name || `สินค้า ${item.product_id}`,
+              barcode: item.barcode || "",
               from_location_id: item.location || "",
-              qty: Math.max(1, item.qty || 1),
+              location_code: item.location || "",
+              qty: item.qty,
+              from_warehouse_id: data.from_warehouse_id,
+              from_warehouse_name: fromWhName,
+              to_warehouse_id: data.to_warehouse_id,
+              to_warehouse_name: toWhName,
+              created_by: tabUser?.id || "admin",
+              created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
+              created_at: realDoc.created_at || new Date().toISOString(),
+              status: "PENDING",
               moved_by: "",
               assigned_to_user_id: "",
               assigned_to_name: "",
-              created_by: creatorId,
-              created_by_name: creatorName,
-              document_date: docDateVal,
-              idempotency_key: itemKey,
-            }),
-          });
+            };
 
-          const json = await res.json();
-          if (!res.ok || !json.success || !json.data) {
-            const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
-            createResults.push({ error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null });
-            continue;
+            saveTransferNotification(notif);
+            return { error: null, doc: realDoc, notif };
+          } catch {
+            return { error: `"${item.product_name}": เกิดข้อผิดพลาดในการเชื่อมต่อ`, doc: null, notif: null };
           }
-
-          const realDoc = json.data;
-          const notif: TransferNotification = {
-            id: realDoc.document_id,
-            doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
-            product_id: item.product_id,
-            sku: item.sku || item.product_id,
-            product_name: item.product_name || `สินค้า ${item.product_id}`,
-            barcode: item.barcode || "",
-            from_location_id: item.location || "",
-            location_code: item.location || "",
-            qty: item.qty,
-            from_warehouse_id: data.from_warehouse_id,
-            from_warehouse_name: fromWhName,
-            to_warehouse_id: data.to_warehouse_id,
-            to_warehouse_name: toWhName,
-            created_by: tabUser?.id || "admin",
-            created_by_name: tabUser?.name || (tabUser?.role === "ADMIN" ? "ผู้ดูแลระบบ (Admin)" : "Admin"),
-            created_at: realDoc.created_at || new Date().toISOString(),
-            status: "PENDING",
-            moved_by: "",
-            assigned_to_user_id: "",
-            assigned_to_name: "",
-          };
-
-          saveTransferNotification(notif);
-          createResults.push({ error: null, doc: realDoc, notif });
-        } catch {
-          createResults.push({ error: `"${item.product_name}": เกิดข้อผิดพลาดในการเชื่อมต่อ`, doc: null, notif: null });
-        }
-      }
+        })
+      );
 
       for (const res of createResults) {
         if (res.error) {
