@@ -44,7 +44,11 @@ export async function GET(req: NextRequest) {
       status: "PENDING" | "IMPORTED";
     }> = [];
 
-    const seenUniqueKeys = new Set<string>();
+    // Semantic identity of one line item = (เลขที่เอกสาร, SKU) หลัง normalize
+    // ใช้จับคู่แถวในชีตกับเอกสารในระบบที่เป็น "ข้อมูลชุดเดียวกัน" เพื่อกันการแสดงซ้ำ
+    // (รายการที่โพสต์แล้วถูกเขียนลงชีตอัตโนมัติ แล้ว endpoint นี้ดึงทั้งชีตและเอกสารมา)
+    const semanticKey = (docNo: string, sku: string) => `${cleanCode(docNo)}|${cleanCode(sku)}`;
+    const emittedSemanticKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
     const productCatalogMap = new Map<string, { sku: string; barcode: string; name: string; location: string }>();
@@ -238,28 +242,27 @@ export async function GET(req: NextRequest) {
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
         const uniqueKey = `sheet_rec_${docNoKey}_${enriched.sku}_${i}`;
 
-        if (!seenUniqueKeys.has(uniqueKey)) {
-          seenUniqueKeys.add(uniqueKey);
+        // แถวจากชีตมาก่อน ถือเป็นตัวแทนของรายการนี้ — จด key ไว้เพื่อให้ลูปเอกสารข้ามของซ้ำ
+        emittedSemanticKeys.add(semanticKey(docNoKey, enriched.sku));
 
-          items.push({
-            id: uniqueKey,
-            movement_id: `mov-${docNo}-${i}`,
-            document_id: docNo,
-            document_no: docNo,
-            warehouse_name: getWarehouseName(whName) || whName || "โกดัง 1",
-            warehouse_id: normalizeWarehouseId(whName),
-            created_at: docDate || new Date().toISOString().slice(0, 10),
-            created_by_name: "ระบบรับสินค้า",
-            sku: enriched.sku,
-            product_name: enriched.name,
-            quantity: qtyVal,
-            location: enriched.location,
-            barcode: enriched.barcode,
-            movement_type: "RECEIVE",
-            tag: "นำเข้าสินค้าเข้าExpress",
-            status: isImported ? "IMPORTED" : "PENDING",
-          });
-        }
+        items.push({
+          id: uniqueKey,
+          movement_id: `mov-${docNo}-${i}`,
+          document_id: docNo,
+          document_no: docNo,
+          warehouse_name: getWarehouseName(whName) || whName || "โกดัง 1",
+          warehouse_id: normalizeWarehouseId(whName),
+          created_at: docDate || new Date().toISOString().slice(0, 10),
+          created_by_name: "ระบบรับสินค้า",
+          sku: enriched.sku,
+          product_name: enriched.name,
+          quantity: qtyVal,
+          location: enriched.location,
+          barcode: enriched.barcode,
+          movement_type: "RECEIVE",
+          tag: "นำเข้าสินค้าเข้าExpress",
+          status: isImported ? "IMPORTED" : "PENDING",
+        });
       }
     } catch (sheetErr) {
       console.warn("[GET /api/express-import/receive] Read EXPRESS_RECEIVE sheet warning:", sheetErr);
@@ -304,28 +307,31 @@ export async function GET(req: NextRequest) {
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
         const uniqueKey = `doc_rec_${docNoKey}_${enriched.sku}_${rowIdx}`;
 
-        if (!seenUniqueKeys.has(uniqueKey)) {
-          seenUniqueKeys.add(uniqueKey);
+        // ข้ามถ้าชีตมีรายการ (เลขที่เอกสาร, SKU) นี้อยู่แล้ว หรือ record เอกสารซ้ำกันเอง
+        // เดิมเทียบด้วย uniqueKey ที่ฝัง document_id/ลำดับแถว ทำให้ไม่มีวันตรงกัน
+        // และข้อมูลเดิมปรากฏซ้ำทั้งจากชีตและจากเอกสาร
+        const sKey = semanticKey(docNoKey, enriched.sku);
+        if (emittedSemanticKeys.has(sKey)) return;
+        emittedSemanticKeys.add(sKey);
 
-          items.push({
-            id: uniqueKey,
-            movement_id: `mov-${docNo}-${rowIdx}`,
-            document_id: doc.document_id || docNo,
-            document_no: docNo,
-            warehouse_name: getWarehouseName(targetWh) || targetWh,
-            warehouse_id: normalizeWarehouseId(targetWh),
-            created_at: docDate,
-            created_by_name: doc.created_by_name || doc.created_by || "ระบบรับสินค้า",
-            sku: enriched.sku,
-            product_name: enriched.name,
-            quantity: qtyVal,
-            location: enriched.location,
-            barcode: enriched.barcode,
-            movement_type: "RECEIVE",
-            tag: parsedPayload.express_tag || "นำเข้าสินค้าเข้าExpress",
-            status: effectiveStatus,
-          });
-        }
+        items.push({
+          id: uniqueKey,
+          movement_id: `mov-${docNo}-${rowIdx}`,
+          document_id: doc.document_id || docNo,
+          document_no: docNo,
+          warehouse_name: getWarehouseName(targetWh) || targetWh,
+          warehouse_id: normalizeWarehouseId(targetWh),
+          created_at: docDate,
+          created_by_name: doc.created_by_name || doc.created_by || "ระบบรับสินค้า",
+          sku: enriched.sku,
+          product_name: enriched.name,
+          quantity: qtyVal,
+          location: enriched.location,
+          barcode: enriched.barcode,
+          movement_type: "RECEIVE",
+          tag: parsedPayload.express_tag || "นำเข้าสินค้าเข้าExpress",
+          status: effectiveStatus,
+        });
       });
     }
 

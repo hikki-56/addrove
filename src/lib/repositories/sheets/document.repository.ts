@@ -77,8 +77,8 @@ export class SheetsDocumentRepository implements IDocumentRepository {
    * Get all documents (sheet + in-memory), used for queries (findAll, findById, etc.)
    * NOTE: Do NOT use the returned array indices for updateRow — use getSheetRows() instead.
    */
-  private async getAllRows(): Promise<string[][]> {
-    const rows = await this.getSheetRows();
+  private async getAllRows(options?: { forceFresh?: boolean }): Promise<string[][]> {
+    const rows = await this.getSheetRows(options);
     const existingIds = new Set<string>(rows.map((r) => r[0]));
 
     const combined = [...rows];
@@ -245,14 +245,22 @@ export class SheetsDocumentRepository implements IDocumentRepository {
   }
 
   async generateDocumentNo(type: DocumentType): Promise<string> {
-    const rows = await this.getAllRows();
+    // อ่านแบบสด (ไม่ผ่านแคช 30 วินาที) และใช้ "เลขสูงสุดที่มีอยู่ + 1" ไม่ใช่ "จำนวนเอกสาร + 1"
+    // จำนวนเอกสารเปลี่ยนได้จากการลบ/ข้อมูลเก่า และแคชทำให้สอง request ที่สร้างพร้อมกัน
+    // ได้เลขเดียวกัน → เกิด document_no ซ้ำกันหลาย record ในชีต Documents
+    const rows = await this.getAllRows({ forceFresh: true });
     const prefix = TYPE_PREFIX[type];
-    const existing = rows.filter((r) => r[2] === type).length;
-    const seq = String(existing + 1).padStart(6, "0");
     const dateStr = new Date()
       .toISOString()
       .slice(0, 10)
       .replace(/-/g, "");
+    let maxSeq = 0;
+    for (const r of rows) {
+      if (r[2] !== type) continue;
+      const m = String(r[1] || "").match(/-(\d+)$/);
+      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+    }
+    const seq = String(maxSeq + 1).padStart(6, "0");
     return `${prefix}-${dateStr}-${seq}`;
   }
 }

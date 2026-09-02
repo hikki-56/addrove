@@ -50,7 +50,11 @@ export async function GET(req: NextRequest) {
       status: "PENDING" | "IMPORTED";
     }> = [];
 
-    const seenUniqueKeys = new Set<string>();
+    // Semantic identity of one line item = (เลขที่เอกสาร, SKU) หลัง normalize
+    // ใช้จับคู่แถวในชีตกับเอกสารในระบบที่เป็น "ข้อมูลชุดเดียวกัน" เพื่อกันการแสดงซ้ำ
+    // (completeTransfer เขียนแถวลงชีตอัตโนมัติ แล้ว endpoint นี้ดึงทั้งชีตและเอกสารมา)
+    const semanticKey = (docNo: string, sku: string) => `${cleanCode(docNo)}|${cleanCode(sku)}`;
+    const emittedSemanticKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
     const productCatalogMap = new Map<string, { sku: string; barcode: string; name: string; location: string; locations_breakdown?: any[] }>();
@@ -296,10 +300,10 @@ export async function GET(req: NextRequest) {
 
         const enriched = enrichProduct(sku, barcode, productName, location);
         const resolvedDocNo = cleanDocNumber(docNo, docNo, date);
-        const docNoKey = resolvedDocNo.toLowerCase();
         const uniqueKey = `sheet_trf_${resolvedDocNo}_${enriched.sku}_${idx}`;
 
-        seenUniqueKeys.add(uniqueKey);
+        // แถวจากชีตมาก่อน ถือเป็นตัวแทนของรายการนี้ — จด key ไว้เพื่อให้ลูปเอกสารข้ามของซ้ำ
+        emittedSemanticKeys.add(semanticKey(resolvedDocNo, enriched.sku));
 
         // Resolve source and destination warehouse
         let fromWarehouseName = "โกดัง1";
@@ -406,8 +410,12 @@ export async function GET(req: NextRequest) {
         const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, effectiveLoc);
         const uniqueKey = `trf_doc_${doc.document_id}_${enriched.sku}_${subIdx}`;
 
-        if (seenUniqueKeys.has(uniqueKey)) return;
-        seenUniqueKeys.add(uniqueKey);
+        // ข้ามถ้าชีตมีรายการ (เลขที่เอกสาร, SKU) นี้อยู่แล้ว หรือ record เอกสารซ้ำกันเอง
+        // เดิมเทียบด้วย uniqueKey ที่ฝัง document_id/ลำดับแถว ทำให้ไม่มีวันตรงกัน
+        // และข้อมูลเดิมปรากฏซ้ำทั้งจากชีตและจากเอกสาร
+        const sKey = semanticKey(resolvedDocNo, enriched.sku);
+        if (emittedSemanticKeys.has(sKey)) return;
+        emittedSemanticKeys.add(sKey);
 
         // Resolve Movements pair (TRANSFER_OUT and TRANSFER_IN) for exact warehouse IDs
         const movPair = movementsByDocId.get(doc.document_id.toLowerCase()) || movementsByDocId.get(resolvedDocNo.toLowerCase());
