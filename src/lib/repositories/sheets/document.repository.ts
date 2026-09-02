@@ -67,9 +67,10 @@ export class SheetsDocumentRepository implements IDocumentRepository {
   /**
    * Read raw sheet rows WITHOUT mixing in-memory docs.
    * Returns the actual rows from Google Sheets, preserving real row indices.
+   * Write paths must forceFresh — a stale cached read would write old status back over the sheet.
    */
-  private async getSheetRows(): Promise<string[][]> {
-    return await readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []);
+  private async getSheetRows(options?: { forceFresh?: boolean }): Promise<string[][]> {
+    return await readSheet(SHEETS.DOCUMENTS, "A2:I", options).catch(() => []);
   }
 
   /**
@@ -167,11 +168,17 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       memDoc.status = status;
     }
 
-    // Use raw sheet rows to get correct row index for Google Sheets
-    const sheetRows = await this.getSheetRows();
+    // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
+    const sheetRows = await this.getSheetRows({ forceFresh: true });
     const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
 
-    if (idx !== -1) {
+    if (idx === -1) {
+      // ห้ามแค่ warn แล้วตอบสำเร็จ — ไม่งั้นผู้เรียก (เช่น route อนุมัติ) จะบอกผู้ใช้ว่าสำเร็จ
+      // ทั้งที่สถานะในชีตยังเดิม ทำให้เอกสารติดหน้ารออนุมัติ
+      throw new Error(`อัปเดตสถานะไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
+    }
+
+    {
       const doc = rowToDocument(sheetRows[idx]);
       doc.status = status;
       // สำคัญ: ถ้า memDoc มี note ที่ถูกอัปเดตแล้ว (เช่น moved_by ถูก set โดย submitTransferMove/completeTransfer)
@@ -183,8 +190,6 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
       // Clear cache หลัง write สำเร็จ เพื่อป้องกัน stale read จาก race condition
       clearSheetCache(SHEETS.DOCUMENTS);
-    } else {
-      console.warn(`[SheetsDocumentRepository] updateStatus: document "${id}" not found in Google Sheets rows`);
     }
   }
 
@@ -198,18 +203,20 @@ export class SheetsDocumentRepository implements IDocumentRepository {
       memDoc.note = note;
     }
 
-    // Use raw sheet rows to get correct row index for Google Sheets
-    const sheetRows = await this.getSheetRows();
+    // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
+    const sheetRows = await this.getSheetRows({ forceFresh: true });
     const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
 
-    if (idx !== -1) {
+    if (idx === -1) {
+      throw new Error(`อัปเดต note ไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
+    }
+
+    {
       const doc = rowToDocument(sheetRows[idx]);
       doc.note = note;
       // idx is 0-based from row 2 in sheets, so actual row = idx + 2
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
       clearSheetCache(SHEETS.DOCUMENTS);
-    } else {
-      console.warn(`[SheetsDocumentRepository] updateNote: document "${id}" not found in Google Sheets rows`);
     }
   }
 
@@ -217,24 +224,23 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     id: string,
     updates: Partial<Document>
   ): Promise<void> {
-    const memDoc = inMemoryDocs.find((d) => d.document_id === id) || inMemoryDocs.find((d) => d.document_no === id);
+    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
     if (memDoc) {
       Object.assign(memDoc, updates);
     }
 
-    const sheetRows = await this.getSheetRows();
-    let idx = sheetRows.findIndex((r) => r[0] === id);
+    const sheetRows = await this.getSheetRows({ forceFresh: true });
+    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+
     if (idx === -1) {
-      idx = sheetRows.findIndex((r) => r[1] === id);
+      throw new Error(`อัปเดตเอกสารไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
     }
 
-    if (idx !== -1) {
+    {
       const doc = rowToDocument(sheetRows[idx]);
       Object.assign(doc, updates);
       await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
       clearSheetCache(SHEETS.DOCUMENTS);
-    } else {
-      console.warn(`[SheetsDocumentRepository] updateDoc: document "${id}" not found in Google Sheets rows`);
     }
   }
 

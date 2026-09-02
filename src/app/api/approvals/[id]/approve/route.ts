@@ -121,7 +121,31 @@ export async function POST(
     return await withStockLocks(lockKeys, async () => {
       const existingMovements = await repo.movements.findByDocumentId(doc.document_id);
       if (existingMovements.length > 0) {
-        throw new Error("เอกสารนี้มี StockMovement แล้ว ต้องตรวจสอบก่อนดำเนินการซ้ำ");
+        // เอกสารนี้บันทึกสต๊อกไปแล้ว แต่สถานะในชีตยังเป็น PENDING (เขียนสถานะไม่สำเร็จในรอบก่อน)
+        // สรุปสถานะเป็น POSTED ให้เลย — ไม่เช่นนั้นเอกสารจะติดหน้ารออนุมัติและกดอนุมัติซ้ำไม่ได้ตลอดไป
+        // (ถึงจุดนี้ currentStatus ต้องเป็น PENDING/DRAFT/NEW เท่านั้น เพราะ POSTED ถูกตัดไปแล้วด้านบน)
+        await repo.documents.updateStatus(doc.document_id, "POSTED");
+        setDocumentStatus(doc.document_id, "POSTED");
+        setDocumentStatus(doc.document_no, "POSTED");
+
+        await logAudit(repo.audit, {
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: "STOCK_RECEIVE",
+          resourceType: "Document",
+          resourceId: doc.document_id,
+          warehouseId,
+          outcome: "SUCCESS",
+          metadata: {
+            reconciled: true,
+            existing_movements: existingMovements.length,
+          },
+        });
+
+        return successResponse(
+          { id: doc.document_id, status: "POSTED", reconciled: true },
+          "เอกสารนี้บันทึกเข้าโกดังไว้แล้ว ระบบปรับสถานะเป็นอนุมัติให้เรียบร้อย"
+        );
       }
 
       const movementInputs: Omit<StockMovement, "movement_id" | "created_at">[] = [];
