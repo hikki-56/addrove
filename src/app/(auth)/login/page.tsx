@@ -57,7 +57,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="h-screen w-screen min-h-screen overflow-hidden flex relative bg-slate-950">
+    <div className="min-h-[100dvh] w-full flex relative bg-slate-950 lg:h-screen lg:overflow-hidden">
       
       {/* Background Subtle Lighting effects (Black Left -> Rich Green Right) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -66,10 +66,44 @@ export default function LoginPage() {
       </div>
 
       {/* Main Fullscreen Split Layout Card Container (Black Left -> Green Right) */}
-      <div className="relative w-full h-full min-h-screen bg-gradient-to-r from-slate-950 via-slate-950 via-50% to-[#124215] overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        
-        {/* Left Section: Branding & Warehouse Graphic Area (Deep Black Base) */}
-        <div className="lg:col-span-7 p-8 sm:p-12 lg:p-14 flex flex-col justify-between relative overflow-hidden min-h-[320px] lg:min-h-full h-full bg-slate-950">
+      <div className="relative w-full min-h-[100dvh] lg:h-full bg-gradient-to-r from-slate-950 via-slate-950 via-50% to-[#124215] overflow-hidden flex flex-col lg:grid lg:grid-cols-12">
+
+        {/* Mobile Brand Header (จอ < lg): โลโก้ + ชื่อระบบจัดกลาง บนภาพคลังสินค้าจาง ๆ เป็นพื้นหลัง */}
+        <div className="lg:hidden relative z-10 overflow-hidden shrink-0 bg-slate-950">
+          <div className="absolute inset-0 pointer-events-none">
+            <img
+              src="/truck-unloading.jpg"
+              alt=""
+              className="w-full h-full object-cover object-[center_30%] opacity-20"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/85 to-slate-950" />
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage: "radial-gradient(#84cc16 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+              }}
+            />
+          </div>
+
+          <div className="relative px-5 pt-9 pb-7 flex flex-col items-center text-center">
+            <img
+              src="/logo.png"
+              alt="A'AMAZON Logo"
+              className="h-12 w-auto object-contain max-w-[220px]"
+            />
+            <h1 className="mt-4 text-4xl font-black text-white tracking-wider uppercase drop-shadow-lg">
+              STOCKIFY
+            </h1>
+            <p className="mt-3 text-xs font-semibold text-lime-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping inline-block shrink-0" />
+              ระบบขนย้าย จัดเก็บ และเช็คสต็อกสินค้าเข้าคลัง
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop Brand Panel (จอ lg ขึ้นไป): split-screen แบบเดิม */}
+        <div className="hidden lg:flex lg:col-span-7 lg:p-14 flex-col justify-between relative overflow-hidden bg-slate-950">
           
           {/* Warehouse Loading Background Overlay */}
           <div className="absolute inset-0 opacity-25 pointer-events-none overflow-hidden">
@@ -94,13 +128,13 @@ export default function LoginPage() {
           {/* Top Logo / Brand Info */}
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-2">
-              <img src="/logo.png" alt="A'AMAZON Logo" className="h-10 sm:h-12 w-auto object-contain max-w-[200px]" />
+              <img src="/logo.png" alt="A'AMAZON Logo" className="h-12 w-auto object-contain max-w-[200px]" />
             </div>
           </div>
 
           {/* Center Title & Warehouse Loading Graphic */}
           <div className="relative z-10 my-auto py-4">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-wider uppercase drop-shadow-lg mb-4">
+            <h1 className="text-6xl font-black text-white tracking-wider uppercase drop-shadow-lg mb-4">
               STOCKIFY
             </h1>
 
@@ -109,11 +143,11 @@ export default function LoginPage() {
               <img
                 src="/truck-unloading.jpg"
                 alt="การขนสินค้าจากรถเข้าหน้าโกดัง"
-                className="w-full h-44 sm:h-52 lg:h-60 object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-60 object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4 text-white">
-                <p className="text-xs sm:text-sm font-semibold text-lime-400 flex items-center gap-2">
+                <p className="text-sm font-semibold text-lime-400 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping inline-block" />
                   ระบบขนย้าย จัดเก็บ และเช็คสต็อกสินค้าเข้าคลัง
                 </p>
@@ -127,13 +161,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Right Section: Clean White Card Login Form (Black to Green Gradient Side) */}
-        <div className="lg:col-span-5 p-4 sm:p-8 lg:p-12 flex items-center justify-center h-full bg-gradient-to-r from-[#0a0a0c] via-[#0d260f] to-[#124215]">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 lg:p-10 w-full max-w-md shadow-2xl flex flex-col justify-center relative z-10 my-auto">
-            
-            {/* Top Brand Logo inside Circular Frame */}
-            <div className="flex justify-center mb-6">
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-lime-50 via-white to-emerald-50 border-4 border-lime-500/40 flex items-center justify-center p-4 shadow-xl shadow-lime-950/15 transition-transform hover:scale-105">
+        {/* Form Section: การ์ดล็อกอินจัดกลางแนวตั้งเสมอ (มือถือ: พื้นดำไล่ลงเขียว, เดสก์ท็อป: คอลัมน์ขวา) */}
+        <div className="flex-1 lg:col-span-5 px-4 py-8 sm:p-8 lg:p-12 flex items-center justify-center bg-gradient-to-b lg:bg-gradient-to-r from-[#0a0a0c] via-[#0d260f] to-[#124215]">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 lg:p-10 w-full max-w-md shadow-2xl flex flex-col justify-center relative z-10">
+
+            {/* Top Brand Logo inside Circular Frame (แสดงเฉพาะแท็บเล็ตขึ้นไป — บนมือถือโลโก้อยู่ที่เฮดเดอร์แล้ว) */}
+            <div className="hidden sm:flex justify-center mb-6">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full bg-gradient-to-br from-lime-50 via-white to-emerald-50 border-4 border-lime-500/40 flex items-center justify-center p-3 sm:p-4 shadow-xl shadow-lime-950/15 transition-transform hover:scale-105">
                 <img
                   src="/logo-vertical.png"
                   alt="A'AMAZON Logo"
@@ -175,7 +209,7 @@ export default function LoginPage() {
                     {...register("email")}
                     placeholder="Username / Email"
                     suppressHydrationWarning
-                    className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full px-5 py-3 text-slate-800 text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
+                    className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full px-5 py-3 text-slate-800 text-base sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
                   />
                 </div>
                 {errors.email && <p className="mt-1 ml-4 text-[11px] text-red-500">{(errors.email as any).message}</p>}
@@ -191,7 +225,7 @@ export default function LoginPage() {
                     {...register("password")}
                     placeholder="Password"
                     suppressHydrationWarning
-                    className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full pl-5 pr-12 py-3 text-slate-800 text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
+                    className="w-full bg-[#f4f6f3] border border-slate-200 rounded-full pl-5 pr-12 py-3 text-slate-800 text-base sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition-all shadow-inner"
                   />
                   <button
                     type="button"
@@ -222,7 +256,7 @@ export default function LoginPage() {
                   type="submit"
                   disabled={loading}
                   suppressHydrationWarning
-                  className="w-4/5 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#65a30d] via-[#4d7c0f] to-[#3f6212] hover:from-[#84cc16] hover:to-[#4d7c0f] text-white font-bold text-xs sm:text-sm shadow-md shadow-lime-950/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
+                  className="w-full sm:w-4/5 py-3 px-6 rounded-full bg-gradient-to-r from-[#65a30d] via-[#4d7c0f] to-[#3f6212] hover:from-[#84cc16] hover:to-[#4d7c0f] text-white font-bold text-sm shadow-md shadow-lime-950/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   {loading ? (
                     <>
@@ -241,6 +275,11 @@ export default function LoginPage() {
             </form>
           </div>
         </div>
+
+        {/* Mobile Footer (จอ < lg) */}
+        <p className="lg:hidden relative z-10 shrink-0 pb-5 text-center text-lime-400/60 text-[11px] font-mono">
+          © Stockify — Warehouse Management Platform
+        </p>
 
       </div>
     </div>
