@@ -38,7 +38,7 @@ const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
   "/express-import/issue": { parent: "นำเข้า Express", title: "เบิกสินค้า เข้า Express" },
   "/stock": { parent: "คลังสินค้า", title: "ตรวจสอบสต็อก" },
   "/stock-counts": { parent: "การตรวจนับ", title: "ผลการตรวจนับสต็อก" },
-  "/locations": { parent: "คลังสินค้า", title: "จัดการตำแหน่งจัดเก็บ" },
+  "/locations": { parent: "คลังสินค้า", title: "ตำแหน่งสินค้าในโกดัง" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
   "/movements/receive/history": { parent: "การเคลื่อนไหว", title: "ประวัติรับสินค้าเข้าโกดัง" },
   "/production": { parent: "การเคลื่อนไหว", title: "ผลิตสินค้า" },
