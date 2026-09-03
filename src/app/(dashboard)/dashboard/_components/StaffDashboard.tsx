@@ -12,9 +12,9 @@ import {
   isTransferCompleted,
   cleanProductName,
   purgeInvalidNotifications,
-  fetchAndSyncTransferNotifications,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
+import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 
 export default function StaffDashboard() {
   const { user: tabUser } = useTabAuth();
@@ -41,24 +41,14 @@ export default function StaffDashboard() {
 
     updateNotifications();
 
-    const doSync = async () => {
-      try {
-        await fetchAndSyncTransferNotifications();
-        updateNotifications();
-      } catch (e) {
-        console.error("[StaffDashboard] Sync error:", e);
-      }
-    };
-
-    doSync();
-    const interval = setInterval(doSync, 5000);
+    const unsubscribeSync = subscribeTransferSync(updateNotifications);
 
     window.addEventListener("stockify-transfer-created", updateNotifications);
     window.addEventListener("stockify-transfer-updated", updateNotifications);
     window.addEventListener("storage", updateNotifications);
 
     return () => {
-      clearInterval(interval);
+      unsubscribeSync();
       window.removeEventListener("stockify-transfer-created", updateNotifications);
       window.removeEventListener("stockify-transfer-updated", updateNotifications);
       window.removeEventListener("storage", updateNotifications);

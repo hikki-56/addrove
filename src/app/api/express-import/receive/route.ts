@@ -157,7 +157,9 @@ export async function GET(req: NextRequest) {
 
     // 3. Read Google Sheets tab "รับสินค้าเข้าExpress" / "นำเข้าสินค้าเข้าExpress"
     try {
-      const sheetRows = await readSheet(SHEETS.EXPRESS_RECEIVE, undefined, { forceFresh: true }).catch(() => []);
+      // Polled every few seconds — serve a short-TTL cached read instead of
+      // hitting Google on every request (writes clear the cache anyway).
+      const sheetRows = await readSheet(SHEETS.EXPRESS_RECEIVE, undefined, { maxAgeMs: 10_000 }).catch(() => []);
 
       for (let i = 0; i < sheetRows.length; i++) {
         const row = sheetRows[i];

@@ -15,9 +15,8 @@ import {
   isTransferCompleted,
   getDisplayProductName,
   purgeInvalidNotifications,
-  syncServerTransferNotifications,
-  fetchAndSyncTransferNotifications,
 } from "@/lib/transfer-notification-utils";
+import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
@@ -82,19 +81,14 @@ export default function Sidebar({
   }, [role, userName]);
 
   useEffect(() => {
-    const syncServerTransfers = () => {
-      void fetchAndSyncTransferNotifications().then(() => updateCount());
-    };
-
-    syncServerTransfers();
-    const interval = setInterval(syncServerTransfers, 5000);
+    const unsubscribeSync = subscribeTransferSync(updateCount);
 
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);
     window.addEventListener("stockify-express-tags-updated", updateCount);
     window.addEventListener("storage", updateCount);
     return () => {
-      clearInterval(interval);
+      unsubscribeSync();
       window.removeEventListener("stockify-transfer-created", updateCount);
       window.removeEventListener("stockify-transfer-updated", updateCount);
       window.removeEventListener("stockify-express-tags-updated", updateCount);
@@ -116,7 +110,7 @@ export default function Sidebar({
           .catch(() => {});
       };
       fetchPending();
-      const interval = setInterval(fetchPending, 15000);
+      const interval = setInterval(fetchPending, 30000);
       return () => clearInterval(interval);
     }
   }, [role]);

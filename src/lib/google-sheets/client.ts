@@ -272,6 +272,37 @@ export function clearSheetCache(sheetName?: string) {
   }
 }
 
+const globalForSheetFetch = globalThis as unknown as {
+  inFlightSheetReads?: Map<string, Promise<string[][]>>;
+  resolvedSheetNames?: Map<string, string>;
+};
+if (!globalForSheetFetch.inFlightSheetReads) {
+  globalForSheetFetch.inFlightSheetReads = new Map<string, Promise<string[][]>>();
+}
+if (!globalForSheetFetch.resolvedSheetNames) {
+  globalForSheetFetch.resolvedSheetNames = new Map<string, string>();
+}
+const inFlightSheetReads = globalForSheetFetch.inFlightSheetReads;
+const resolvedSheetNames = globalForSheetFetch.resolvedSheetNames;
+
+// Once a candidate tab name succeeds, remember it so later reads/writes skip
+// the sequential name probing — every probed miss is a billable Sheets API call.
+function sheetNameKey(input: string): string {
+  return input.replace(/^'|'$/g, "").trim().toLowerCase();
+}
+
+function getResolvedSheetName(input: string): string | undefined {
+  return resolvedSheetNames.get(sheetNameKey(input));
+}
+
+function rememberResolvedSheetName(input: string, winner: string): void {
+  resolvedSheetNames.set(sheetNameKey(input), winner);
+}
+
+function forgetResolvedSheetName(input: string): void {
+  resolvedSheetNames.delete(sheetNameKey(input));
+}
+
 function hasServiceAccountCredentials(): boolean {
   return Boolean(
     (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL) &&
@@ -313,7 +344,7 @@ async function assertAppsScriptSuccess(response: Response, operation: string): P
 export async function readSheet(
   sheetName: string,
   range?: string,
-  options?: { forceFresh?: boolean }
+  options?: { forceFresh?: boolean; maxAgeMs?: number }
 ): Promise<string[][]> {
   if (!SPREADSHEET_ID) {
     if (process.env.NODE_ENV === "production") {
@@ -323,15 +354,20 @@ export async function readSheet(
   }
 
   const cacheKey = `${sheetName}:${range || "ALL"}`;
+  const maxAgeMs = options?.forceFresh ? 0 : options?.maxAgeMs ?? CACHE_TTL_MS;
 
-  if (!options?.forceFresh) {
-    const cached = sheetCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return cached.data;
-    }
+  const cached = sheetCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < maxAgeMs) {
+    return cached.data;
   }
 
-  const fetchFreshRows = async (): Promise<string[][]> => {
+  // Coalesce concurrent reads for the same sheet so a burst of polls (or a
+  // cold-cache stampede) triggers a single Google Sheets fetch.
+  const inFlight = inFlightSheetReads.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const fetchPromise = (async (): Promise<string[][]> => {
+    const fetchFreshRows = async (): Promise<string[][]> => {
     const cleanSheet = sheetName.replace(/^'|'$/g, "").trim();
     const safeSheet = cleanSheet.includes(" ") || cleanSheet.includes("-") ? `'${cleanSheet}'` : cleanSheet;
     const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}!A1:Z5000`;
@@ -383,22 +419,40 @@ export async function readSheet(
     }
 
     if (hasServiceAccountCredentials()) {
+      const readViaServiceAccount = async (cand: string): Promise<string[][]> => {
+        const sheets = getSheetsClient();
+        const safeCand = cand.startsWith("'") ? cand : `'${cand.replace(/'/g, "")}'`;
+        const candRange = range ? `${safeCand}!${range}` : `${safeCand}`;
+        const response = await withRetry(() =>
+          sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: candRange,
+          })
+        );
+        let googleRows = (response.data.values as string[][]) ?? [];
+        if (googleRows.length > 0 && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
+          googleRows = googleRows.slice(1);
+        }
+        return googleRows;
+      };
+
+      const resolved = getResolvedSheetName(sheetName);
+      if (resolved) {
+        try {
+          const rows = await readViaServiceAccount(resolved);
+          if (rows.length > 0) return rows;
+          // Resolved tab exists but is empty — re-probe in case the tab moved.
+          forgetResolvedSheetName(sheetName);
+        } catch {
+          forgetResolvedSheetName(sheetName);
+        }
+      }
+
       const candidates = getPossibleSheetNames(sheetName);
       for (const cand of candidates) {
         try {
-          const sheets = getSheetsClient();
-          const safeCand = cand.startsWith("'") ? cand : `'${cand.replace(/'/g, "")}'`;
-          const candRange = range ? `${safeCand}!${range}` : `${safeCand}`;
-          const response = await withRetry(() =>
-            sheets.spreadsheets.values.get({
-              spreadsheetId: SPREADSHEET_ID,
-              range: candRange,
-            })
-          );
-          let googleRows = (response.data.values as string[][]) ?? [];
-          if (googleRows.length > 0 && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
-            googleRows = googleRows.slice(1);
-          }
+          const googleRows = await readViaServiceAccount(cand);
+          if (googleRows.length > 0) rememberResolvedSheetName(sheetName, cand);
           return googleRows;
         } catch (err) {
           // Try next candidate
@@ -407,40 +461,50 @@ export async function readSheet(
     }
 
     return readPublicSheetCsv(sheetName);
-  };
+    };
 
+    try {
+      const freshRows = await fetchFreshRows();
+      if (freshRows && freshRows.length > 0) {
+        sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
+        persistentSheetData.set(cacheKey, freshRows);
+        persistentSheetData.set(sheetName, freshRows);
+        return freshRows;
+      }
+
+      // If freshRows returned empty but we previously had good data, preserve the good data
+      const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+      if (lastGood && lastGood.length > 0) {
+        console.warn(`[GoogleSheets readSheet] Fresh fetch returned 0 rows for ${sheetName}, preserving ${lastGood.length} existing rows`);
+        sheetCache.set(cacheKey, { data: lastGood, timestamp: Date.now() });
+        return lastGood;
+      }
+
+      sheetCache.set(cacheKey, { data: [], timestamp: Date.now() });
+      return [];
+    } catch (error) {
+      const cached = sheetCache.get(cacheKey);
+      if (cached && cached.data.length > 0) {
+        console.warn(`[GoogleSheets readSheet] Using memory cached rows for ${sheetName} (${cached.data.length} rows)`);
+        return cached.data;
+      }
+      const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+      if (lastGood && lastGood.length > 0) {
+        console.warn(`[GoogleSheets readSheet] Using persistent fallback rows for ${sheetName} (${lastGood.length} rows)`);
+        return lastGood;
+      }
+      console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
+      return [];
+    }
+  })();
+
+  inFlightSheetReads.set(cacheKey, fetchPromise);
   try {
-    const freshRows = await fetchFreshRows();
-    if (freshRows && freshRows.length > 0) {
-      sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
-      persistentSheetData.set(cacheKey, freshRows);
-      persistentSheetData.set(sheetName, freshRows);
-      return freshRows;
+    return await fetchPromise;
+  } finally {
+    if (inFlightSheetReads.get(cacheKey) === fetchPromise) {
+      inFlightSheetReads.delete(cacheKey);
     }
-
-    // If freshRows returned empty but we previously had good data, preserve the good data
-    const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
-    if (lastGood && lastGood.length > 0) {
-      console.warn(`[GoogleSheets readSheet] Fresh fetch returned 0 rows for ${sheetName}, preserving ${lastGood.length} existing rows`);
-      sheetCache.set(cacheKey, { data: lastGood, timestamp: Date.now() });
-      return lastGood;
-    }
-
-    sheetCache.set(cacheKey, { data: [], timestamp: Date.now() });
-    return [];
-  } catch (error) {
-    const cached = sheetCache.get(cacheKey);
-    if (cached && cached.data.length > 0) {
-      console.warn(`[GoogleSheets readSheet] Using memory cached rows for ${sheetName} (${cached.data.length} rows)`);
-      return cached.data;
-    }
-    const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
-    if (lastGood && lastGood.length > 0) {
-      console.warn(`[GoogleSheets readSheet] Using persistent fallback rows for ${sheetName} (${lastGood.length} rows)`);
-      return lastGood;
-    }
-    console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
-    return [];
   }
 }
 
@@ -455,18 +519,33 @@ export async function appendRows(
     const sheets = getSheetsClient();
     const possibleSheetNames = getPossibleSheetNames(sheetName);
 
+    const appendToCandidate = (nameCandidate: string) => {
+      const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+      return withRetry(() =>
+        sheets.spreadsheets.values.append({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${safeName}!A1`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values },
+        })
+      );
+    };
+
     let lastAppendErr: unknown = null;
+    const resolved = getResolvedSheetName(sheetName);
+    if (resolved) {
+      try {
+        await appendToCandidate(resolved);
+        return;
+      } catch (candidateErr) {
+        forgetResolvedSheetName(sheetName);
+        lastAppendErr = candidateErr;
+      }
+    }
     for (const nameCandidate of possibleSheetNames) {
       try {
-        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
-        await withRetry(() =>
-          sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${safeName}!A1`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values },
-          })
-        );
+        await appendToCandidate(nameCandidate);
+        rememberResolvedSheetName(sheetName, nameCandidate);
         return;
       } catch (candidateErr) {
         lastAppendErr = candidateErr;
@@ -507,18 +586,33 @@ export async function updateRow(
     const colEnd = columnLetter(values.length);
     const possibleSheetNames = getPossibleSheetNames(sheetName);
 
+    const updateCandidate = (nameCandidate: string) => {
+      const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+      return withRetry(() =>
+        sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${safeName}!A${rowNumber}:${colEnd}${rowNumber}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [values] },
+        })
+      );
+    };
+
     let lastUpdateErr: unknown = null;
+    const resolved = getResolvedSheetName(sheetName);
+    if (resolved) {
+      try {
+        await updateCandidate(resolved);
+        return;
+      } catch (candidateErr) {
+        forgetResolvedSheetName(sheetName);
+        lastUpdateErr = candidateErr;
+      }
+    }
     for (const nameCandidate of possibleSheetNames) {
       try {
-        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
-        await withRetry(() =>
-          sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${safeName}!A${rowNumber}:${colEnd}${rowNumber}`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [values] },
-          })
-        );
+        await updateCandidate(nameCandidate);
+        rememberResolvedSheetName(sheetName, nameCandidate);
         return;
       } catch (candidateErr) {
         lastUpdateErr = candidateErr;
@@ -563,24 +657,38 @@ export async function batchUpdateRows(
     const sheets = getSheetsClient();
     const possibleSheetNames = getPossibleSheetNames(sheetName);
 
+    const batchUpdateCandidate = (nameCandidate: string) => {
+      const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
+      const data = updates.map(({ rowNumber, values }) => ({
+        range: `${safeName}!A${rowNumber}:${columnLetter(values.length)}${rowNumber}`,
+        values: [values],
+      }));
+      return withRetry(() =>
+        sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          requestBody: {
+            valueInputOption: "USER_ENTERED",
+            data,
+          },
+        })
+      );
+    };
+
     let lastBatchErr: unknown = null;
+    const resolved = getResolvedSheetName(sheetName);
+    if (resolved) {
+      try {
+        await batchUpdateCandidate(resolved);
+        return;
+      } catch (candidateErr) {
+        forgetResolvedSheetName(sheetName);
+        lastBatchErr = candidateErr;
+      }
+    }
     for (const nameCandidate of possibleSheetNames) {
       try {
-        const safeName = nameCandidate.startsWith("'") ? nameCandidate : `'${nameCandidate.replace(/'/g, "")}'`;
-        const data = updates.map(({ rowNumber, values }) => ({
-          range: `${safeName}!A${rowNumber}:${columnLetter(values.length)}${rowNumber}`,
-          values: [values],
-        }));
-
-        await withRetry(() =>
-          sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId: SPREADSHEET_ID,
-            requestBody: {
-              valueInputOption: "USER_ENTERED",
-              data,
-            },
-          })
-        );
+        await batchUpdateCandidate(nameCandidate);
+        rememberResolvedSheetName(sheetName, nameCandidate);
         return;
       } catch (candidateErr) {
         lastBatchErr = candidateErr;

@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { navItems, getNavItems } from "@/lib/nav-items";
-import { getPendingTransferNotifications, getDisplayProductName, fetchAndSyncTransferNotifications } from "@/lib/transfer-notification-utils";
+import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
+import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 
@@ -92,12 +93,7 @@ export default function Navbar({
     };
     updateCount();
 
-    const fetchServerTransfers = () => {
-      fetchAndSyncTransferNotifications().then(updateCount);
-    };
-
-    fetchServerTransfers();
-    const interval = setInterval(fetchServerTransfers, 5000);
+    const unsubscribeSync = subscribeTransferSync(updateCount);
 
     const handleWhChange = () => {
       updateCount();
@@ -108,7 +104,7 @@ export default function Navbar({
     window.addEventListener("stockify-warehouse-changed", handleWhChange);
     window.addEventListener("storage", updateCount);
     return () => {
-      clearInterval(interval);
+      unsubscribeSync();
       window.removeEventListener("stockify-transfer-created", updateCount);
       window.removeEventListener("stockify-transfer-updated", updateCount);
       window.removeEventListener("stockify-warehouse-changed", handleWhChange);

@@ -15,11 +15,11 @@ import {
   markTransferCancelled,
   markTransferWaitingApproval,
   markTransferCompleted,
-  fetchAndSyncTransferNotifications,
   clearAllTransferNotifications,
   updateTransferTaskProgress,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
+import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
 import { tagExpressItem } from "@/lib/express-tag-utils";
@@ -399,19 +399,14 @@ export function useTransferMovement({
     };
     updateTasks();
 
-    const fetchServerTransfers = () => {
-      fetchAndSyncTransferNotifications().then(updateTasks);
-    };
-
-    fetchServerTransfers();
-    const interval = setInterval(fetchServerTransfers, 3000);
+    const unsubscribeSync = subscribeTransferSync(updateTasks);
 
     window.addEventListener("stockify-transfer-created", updateTasks);
     window.addEventListener("stockify-transfer-updated", updateTasks);
     window.addEventListener("stockify-warehouse-changed", updateTasks);
     window.addEventListener("storage", updateTasks);
     return () => {
-      clearInterval(interval);
+      unsubscribeSync();
       window.removeEventListener("stockify-transfer-created", updateTasks);
       window.removeEventListener("stockify-transfer-updated", updateTasks);
       window.removeEventListener("stockify-warehouse-changed", updateTasks);
