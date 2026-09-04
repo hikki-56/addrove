@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
+import { isSameJson } from "@/lib/json-equal";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
@@ -138,7 +140,8 @@ export default function ExpressTransferPage() {
         : Array.isArray(prodJson?.data?.data)
         ? prodJson.data.data
         : [];
-      setCatalogProducts(prods);
+      // คง state เดิมเมื่อข้อมูล catalog ไม่เปลี่ยน เพื่อไม่ให้ polling ทั้งหน้า re-render ทุก 8 วิ
+      setCatalogProducts((prev) => (isSameJson(prev, prods) ? prev : prods));
 
       if (expTrfJson && expTrfJson.success && Array.isArray(expTrfJson.data)) {
         const incoming = expTrfJson.data.filter((item: any) => {
@@ -154,7 +157,8 @@ export default function ExpressTransferPage() {
             name === "ชื่อแท็ก"
           );
         });
-        setMovements(incoming);
+        // คง state เดิมเมื่อรายการไม่เปลี่ยน (ลด re-render ตอน polling)
+        setMovements((prev) => (isSameJson(prev, incoming) ? prev : incoming));
 
         // If server returned express statuses, synchronize into tagged map
         if (statusJson?.success && statusJson?.data) {
@@ -304,7 +308,7 @@ export default function ExpressTransferPage() {
               });
             });
 
-          setMovements(transferMovements);
+          setMovements((prev) => (isSameJson(prev, transferMovements) ? prev : transferMovements));
         }
       }
     } catch (e) {
@@ -314,13 +318,7 @@ export default function ExpressTransferPage() {
     }
   }, [dateFrom, dateTo, refreshTaggedMap]);
 
-  useEffect(() => {
-    fetchMovements();
-    const interval = setInterval(() => {
-      fetchMovements(true);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [fetchMovements]);
+  usePollingWhenVisible(fetchMovements, 8000);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {

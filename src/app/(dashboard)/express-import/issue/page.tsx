@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
+import { isSameJson } from "@/lib/json-equal";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
@@ -141,7 +143,8 @@ export default function ExpressIssuePage() {
       // Extract products list for catalog matching
       if (prodJson && (Array.isArray(prodJson?.data) || Array.isArray(prodJson?.data?.data))) {
         const products: Product[] = Array.isArray(prodJson.data) ? prodJson.data : prodJson.data.data;
-        setCatalogProducts(products);
+        // คง state เดิมเมื่อข้อมูล catalog ไม่เปลี่ยน เพื่อไม่ให้ polling ทั้งหน้า re-render ทุก 12 วิ
+        setCatalogProducts((prev) => (isSameJson(prev, products) ? prev : products));
       }
 
       if (issueJson && issueJson.success && Array.isArray(issueJson.data)) {
@@ -215,13 +218,7 @@ export default function ExpressIssuePage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchMovements();
-    const interval = setInterval(() => {
-      fetchMovements(true);
-    }, 12000);
-    return () => clearInterval(interval);
-  }, [fetchMovements]);
+  usePollingWhenVisible(fetchMovements, 12000);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
+import { isSameJson } from "@/lib/json-equal";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
@@ -148,7 +150,8 @@ export default function ExpressReceivePage() {
         : Array.isArray(prodJson?.data?.data)
         ? prodJson.data.data
         : [];
-      setCatalogProducts(products);
+      // คง state เดิมเมื่อข้อมูล catalog ไม่เปลี่ยน เพื่อไม่ให้ polling ทั้งหน้า re-render ทุก 6 วิ
+      setCatalogProducts((prev) => (isSameJson(prev, products) ? prev : products));
 
       // If server returned express statuses, synchronize into tagged map in a SINGLE batch
       if (statusJson?.success && statusJson?.data && recJson?.success && Array.isArray(recJson.data)) {
@@ -197,13 +200,7 @@ export default function ExpressReceivePage() {
     }
   }, [refreshTaggedMap]);
 
-  useEffect(() => {
-    fetchDocs();
-    const interval = setInterval(() => {
-      fetchDocs(true);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [fetchDocs]);
+  usePollingWhenVisible(fetchDocs, 6000);
 
   // Product catalog indexing
   const catalogProductsMap = useMemo(() => {
