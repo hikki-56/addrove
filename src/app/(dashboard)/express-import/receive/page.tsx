@@ -200,7 +200,12 @@ export default function ExpressReceivePage() {
     }
   }, [refreshTaggedMap]);
 
-  usePollingWhenVisible(fetchDocs, 6000);
+  // hook ส่ง initial=true เฉพาะครั้งแรก — ครั้งแรกโชว์ loading, รอบ polling ต้อง refresh เงียบ ๆ
+  // wrapper ต้อง memoize เพราะ hook ใช้ callback เป็น dependency ของ effect
+  const pollingFetch = useCallback((initial?: boolean) => {
+    void fetchDocs(!initial);
+  }, [fetchDocs]);
+  usePollingWhenVisible(pollingFetch, 6000);
 
   // Product catalog indexing
   const catalogProductsMap = useMemo(() => {

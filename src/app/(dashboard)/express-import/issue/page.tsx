@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { isSameJson } from "@/lib/json-equal";
@@ -81,6 +81,13 @@ export default function ExpressIssuePage() {
 
   useEscapeKey(showTagModal, () => setShowTagModal(false));
 
+  // นับรอบของ fetch — response ของรอบเก่าต้องไม่ย่อยสถานะใหม่ (กัน race กับการกดระหว่าง poll)
+  const fetchGenRef = useRef(0);
+  // เอกสารที่เพิ่งกดเปลี่ยนสถานะและ POST ยังไม่ตอบกลับ (docNo lowercase → timestamp)
+  // รอบ sync ระหว่างนี้ห้ามเอาค่าจาก server (ซึ่งยังเป็นค่าเก่า) มาทับค่าที่ผู้ใช้เพิ่งกด
+  const pendingSyncRef = useRef<Map<string, number>>(new Map());
+  const PENDING_SYNC_TTL_MS = 30000;
+
   // Sync tagged items from localStorage
   const refreshTaggedMap = useCallback(() => {
     const tagged = getAllTaggedExpressItems("ISSUE");
@@ -115,18 +122,27 @@ export default function ExpressIssuePage() {
   // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
   const toExpressWhCode = (whNameOrCode: string): string => {
     if (!whNameOrCode) return "01";
-    const match = whNameOrCode.match(/\d+/);
-    if (match) return match[0].padStart(2, "0");
-    return "01";
+    // normalize ก่อนเสมอ — เดิม regex จับเลขจากข้อความดิบ ทำให้ชื่อที่ไม่มีเลข (เช่น สำนักงานใหญ่) ได้โค้ด "01" ผิด
+    const normalized = normalizeWarehouseId(whNameOrCode);
+    const match = normalized.match(/\d+/);
+    return match ? match[0].padStart(2, "0") : "01";
   };
 
   // Helper to get user-friendly Thai warehouse name
   const getWarehouseDisplayName = (raw: string | undefined | null): string => {
     if (!raw) return "-";
-    return getWarehouseName(raw);
+    const str = String(raw).trim();
+    if (!str || str === "-" || str === "null" || str === "undefined") return "-";
+    // ชื่อที่ไม่ตรงรูปแบบโกดังมาตรฐานจะถูก normalize เป็น wh-01 เสมอ —
+    // ถ้าข้อความเดิมไม่ได้หมายถึงโกดัง 1 ให้แสดงข้อความเดิม อย่าหลอกว่าเป็น "โกดัง1"
+    if (normalizeWarehouseId(str) === "wh-01" && !/โกดัง|สำนักงาน|wh[-_\s]*0?1|^1$/.test(str.toLowerCase())) {
+      return str;
+    }
+    return getWarehouseName(str);
   };
 
   const fetchMovements = useCallback(async (isSilent = false) => {
+    const gen = ++fetchGenRef.current;
     if (!isSilent) setLoading(true);
     try {
       const ts = Date.now();
@@ -139,6 +155,9 @@ export default function ExpressIssuePage() {
       const issueJson = await issueRes.json().catch(() => null);
       const prodJson = prodRes ? await prodRes.json().catch(() => null) : null;
       const statusJson = statusRes ? await statusRes.json().catch(() => null) : null;
+
+      // response ของรอบเก่า (ยิงก่อนหน้านี้) มาถึงทีหลัง — ทิ้ง อย่าให้ทับ state และ sync สถานะ
+      if (gen !== fetchGenRef.current) return;
 
       // Extract products list for catalog matching
       if (prodJson && (Array.isArray(prodJson?.data) || Array.isArray(prodJson?.data?.data))) {
@@ -161,16 +180,8 @@ export default function ExpressIssuePage() {
             name === "ชื่อแท็ก"
           );
         });
-        setMovements((prev) => {
-          if (
-            prev.length === incomingMovements.length &&
-            prev[0]?.id === incomingMovements[0]?.id &&
-            prev[prev.length - 1]?.id === incomingMovements[incomingMovements.length - 1]?.id
-          ) {
-            return prev;
-          }
-          return incomingMovements;
-        });
+        // เทียบทั้งชุด — เดิมเทียแค่จำนวน + id แรก/id สุดท้าย ทำให้ from/to ที่แก้แล้วไม่เคยขึ้นจอ
+        setMovements((prev) => (isSameJson(prev, incomingMovements) ? prev : incomingMovements));
 
         // If server returned express statuses, synchronize into tagged map in a SINGLE batch
         if (statusJson?.success && statusJson?.data) {
@@ -178,8 +189,14 @@ export default function ExpressIssuePage() {
           const currentTagged = getAllTaggedExpressItems("ISSUE");
           const localMap = new Map<string, TaggedExpressItem>(currentTagged.map((i) => [i.id, i]));
           const toUpdate: Array<Omit<TaggedExpressItem, "tagged_at" | "status"> & { status?: ExpressSyncStatus }> = [];
+          const nowMs = Date.now();
 
           incomingMovements.forEach((item) => {
+            const docNoLower = (item.document_no || "").trim().toLowerCase();
+            // รายการที่เพิ่งกดและ POST ยังไม่ตอบกลับ — ค่า server ตอนนี้ยังเก่า ห้ามเอามาทับ
+            const pendingAt = pendingSyncRef.current.get(docNoLower);
+            if (pendingAt !== undefined && nowMs - pendingAt < PENDING_SYNC_TTL_MS) return;
+
             const docKey = (item.document_no || "").trim().toLowerCase();
             const docIdKey = (item.document_id || "").trim().toLowerCase();
             const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
@@ -214,11 +231,17 @@ export default function ExpressIssuePage() {
     } catch (e) {
       console.error("Failed to fetch issue movements for Express:", e);
     } finally {
-      if (!isSilent) setLoading(false);
+      if (!isSilent && gen === fetchGenRef.current) setLoading(false);
     }
   }, []);
 
-  usePollingWhenVisible(fetchMovements, 12000);
+  // hook ส่ง initial=true เฉพาะครั้งแรก — ครั้งแรกโชว์ loading, รอบ polling ต้อง refresh เงียบ ๆ
+  // wrapper ต้อง memoize เพราะ hook ใช้ callback เป็น dependency ของ effect
+  // (callback ใหม่ทุก render = effect รีสตาร์ทและยิง "ครั้งแรก" ซ้ำ ๆ จนหน้ากระพริบ)
+  const pollingFetch = useCallback((initial?: boolean) => {
+    void fetchMovements(!initial);
+  }, [fetchMovements]);
+  usePollingWhenVisible(pollingFetch, 12000);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {
@@ -708,14 +731,26 @@ export default function ExpressIssuePage() {
   };
 
   // Helper to sync status to Google Sheets and DB in background
+  // ตลอดช่วงที่ POST ยังไม่ตอบกลับ จะ mark เอกสารไว้ใน pendingSyncRef เพื่อกัน
+  // รอบ polling เอาสถานะเก่าจาก server มาทับค่าที่ผู้ใช้เพิ่งกด (สาเหตุที่สถานะเด้งกลับเป็น "รอนำเข้า")
   const syncStatusToSheet = async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "ISSUE" }>) => {
+    const docKeys = items
+      .map((i) => (i.document_no || "").trim().toLowerCase())
+      .filter(Boolean);
+    docKeys.forEach((k) => pendingSyncRef.current.set(k, Date.now()));
     try {
-      await fetch("/api/express-import/status", {
+      const res = await fetch("/api/express-import/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
       });
+      if (!res.ok) {
+        throw new Error(`status sync HTTP ${res.status}`);
+      }
+      // POST ตอบกลับแล้ว = server รับสถานะแล้ว (memory + doc note) — ปล่อยให้ polling sync ตามปกติ
+      docKeys.forEach((k) => pendingSyncRef.current.delete(k));
     } catch (e) {
+      // คง pendingSync ไว้ — รอบหน้าจะไม่ทับค่าที่ผู้ใช้กด และรายการหมดอายุเองใน 30 วิ
       console.warn("[ExpressIssuePage] Background status sync to sheet failed:", e);
     }
   };
@@ -1226,19 +1261,16 @@ export default function ExpressIssuePage() {
                           </div>
                         </td>
 
-                        {/* 6. คลังสินค้า */}
+                        {/* 6. คลังสินค้า — แสดงต้นทาง ➔ ปลายทางเสมอ
+                            ถ้าไม่มีข้อมูลปลายทางจริง ใช้ "Express" เพราะทุกรายการบนหน้านี้คือของที่จะนำเข้า Express */}
                         <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          {item.to_warehouse_name ? (
-                            <div className="inline-flex items-center gap-1.5 text-slate-800 font-medium">
-                              <span>{getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name)}</span>
-                              <span className="text-slate-400 font-bold">➔</span>
-                              <span className="font-bold text-slate-900">{getWarehouseDisplayName(item.to_warehouse_name)}</span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-800 font-semibold">
-                              {getWarehouseDisplayName(item.warehouse_name)}
+                          <div className="inline-flex items-center gap-1.5 text-slate-800 font-medium">
+                            <span>{getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name)}</span>
+                            <span className="text-slate-400 font-bold">➔</span>
+                            <span className="font-bold text-slate-900">
+                              {item.to_warehouse_name ? getWarehouseDisplayName(item.to_warehouse_name) : "Express"}
                             </span>
-                          )}
+                          </div>
                         </td>
 
                         {/* 7. ตำแหน่ง */}

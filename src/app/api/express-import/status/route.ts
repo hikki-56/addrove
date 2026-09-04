@@ -12,6 +12,17 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// แปลงเลขคอลัมน์ (1-based) เป็นตัวอักษร A, B, ..., Z, AA, ...
+function columnLetter(n: number): string {
+  let s = "";
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s || "A";
+}
+
 interface StatusUpdateItem {
   id?: string;
   document_no: string;
@@ -154,7 +165,10 @@ export async function POST(req: NextRequest) {
       });
 
       try {
-        const sheetRows = await readSheet(targetSheet, undefined, { forceFresh: true }).catch(() => []);
+        // อ่านแบบ keepHeader เพื่อให้ index ตรงกับแถวจริงในชีต (แถวจริง = index + 1)
+        // เดิมอ่านผ่าน readSheet ที่ตัดหัวตารางแบบมีเงื่อนไข ทำให้ rowIndex + 2 เพี้ยน 1 แถว
+        // แล้วเขียนทับแถวข้างเคียงทั้งแถวได้
+        const sheetRows = await readSheet(targetSheet, undefined, { forceFresh: true, keepHeader: true }).catch(() => []);
 
         for (let rowIndex = 0; rowIndex < sheetRows.length; rowIndex++) {
           const row = sheetRows[rowIndex];
@@ -204,15 +218,45 @@ export async function POST(req: NextRequest) {
             }
             updatedRow[statusColIdx] = statusText;
 
-            const sheetRowNumber = rowIndex + 2;
-            await updateRow(targetSheet, sheetRowNumber, updatedRow).catch((err) => {
-              console.warn(`[POST /api/express-import/status] updateRow failed on row ${sheetRowNumber}:`, err);
-            });
+            const sheetRowNumber = rowIndex + 1;
+
+            // ยืนยันก่อนเขียนทุกครั้ง: อ่านแถวกายภาพนั้นกลับมาเทียบเนื้อหา —
+            // ถ้าเนื้อหาไม่ตรงแปลว่าเลขแถวเพี้ยน (เช่นทางอ่านที่ตัดหัวตารางเอง เช่น CSV fallback)
+            // ให้งดเขียนเพื่อไม่ทับแถวข้างเคียงทั้งแถว แล้วรายงาน sheet_synced: false
+            let rowVerified = false;
+            try {
+              const verifyRows = await readSheet(
+                targetSheet,
+                `A${sheetRowNumber}:${columnLetter(updatedRow.length)}${sheetRowNumber}`,
+                { forceFresh: true, keepHeader: true }
+              ).catch(() => [] as string[][]);
+              if (verifyRows.length === 1) {
+                const phys = verifyRows[0];
+                rowVerified =
+                  String(phys[0] ?? "").trim() === String(row[0] ?? "").trim() &&
+                  String(phys[1] ?? "").trim() === String(row[1] ?? "").trim() &&
+                  String(phys[2] ?? "").trim() === String(row[2] ?? "").trim();
+              }
+            } catch (verifyErr) {
+              console.warn(`[POST /api/express-import/status] Row verify failed on row ${sheetRowNumber}:`, verifyErr);
+            }
+
+            let rowUpdated = false;
+            if (rowVerified) {
+              try {
+                await updateRow(targetSheet, sheetRowNumber, updatedRow);
+                rowUpdated = true;
+              } catch (err) {
+                console.warn(`[POST /api/express-import/status] updateRow failed on row ${sheetRowNumber}:`, err);
+              }
+            } else {
+              console.warn(`[POST /api/express-import/status] Skip sheet write for row ${sheetRowNumber} (row content mismatch — avoiding off-by-one overwrite)`);
+            }
 
             results.push({
               document_no: matchedItem.document_no,
               updated: true,
-              sheet_synced: true,
+              sheet_synced: rowUpdated,
             });
           }
         }
@@ -220,6 +264,10 @@ export async function POST(req: NextRequest) {
         console.warn(`[POST /api/express-import/status] Process sheet ${targetSheet} error:`, sheetErr);
       }
     }
+
+    // เขียนชีตสำเร็จครบทุกรายการหรือไม่ — client ใช้ค่านี้ตัดสินว่าจะรอ sync ต่อหรือไม่
+    // (หากไม่มีแถวที่ match เลยถือว่าผ่าน เพราะแถวอาจถูกลบไปแล้ว และสถานะยังอยู่ใน memory + doc note)
+    const allSheetSynced = results.every((r) => r.sheet_synced);
 
     // 3. Update document note in repository
     for (const item of rawItems) {
@@ -230,12 +278,20 @@ export async function POST(req: NextRequest) {
         }
 
         if (doc) {
+          // รักษาเนื้อหา note เดิมไว้เสมอ — note อาจมี from/to ที่ parseTransferMetadata ใช้อ่านทิศโกดัง
+          // เดิมถ้า note ไม่ใช่ JSON จะถูกแทนที่ด้วย JSON ที่มีแต่ express_status ทำให้ข้อมูลทิศโกดังหาย
           let meta: Record<string, any> = {};
-          try {
-            if (doc.note && typeof doc.note === "string" && doc.note.startsWith("{")) {
-              meta = JSON.parse(doc.note);
+          if (doc.note && typeof doc.note === "string" && doc.note.trim()) {
+            if (doc.note.trim().startsWith("{")) {
+              try {
+                meta = JSON.parse(doc.note);
+              } catch {
+                meta = { original_note: doc.note };
+              }
+            } else {
+              meta = { original_note: doc.note };
             }
-          } catch {}
+          }
 
           meta.express_status = item.status;
           meta.express_status_text = item.status === "IMPORTED" ? "นำเข้า Express แล้ว" : "รอนำเข้า Express";
@@ -250,7 +306,7 @@ export async function POST(req: NextRequest) {
     }
 
     return successResponse(
-      { updated_count: rawItems.length, details: results, updated_at: now },
+      { updated_count: rawItems.length, details: results, all_sheet_synced: allSheetSynced, updated_at: now },
       "อัปเดตสถานะ Express ทั้งบนระบบและ Google Sheet เรียบร้อยแล้ว"
     );
   } catch (error) {

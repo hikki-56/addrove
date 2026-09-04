@@ -76,7 +76,7 @@ export function tagExpressItem(item: Omit<TaggedExpressItem, "tagged_at" | "stat
 
   const newItem: TaggedExpressItem = {
     ...item,
-    status: item.status || "PENDING",
+    status: item.status ?? "PENDING",
     tag: item.tag?.trim() || "รอนำเข้า Express",
     tagged_at: now,
   };
@@ -100,9 +100,13 @@ export function batchTagExpressItems(newItems: Array<Omit<TaggedExpressItem, "ta
 
   newItems.forEach((item) => {
     const existing = itemMap.get(item.id);
+    // ใช้ ?? ไม่ใช่ || — caller ที่ไม่ส่ง status หมายถึง "คงค่าเดิม" ไม่ใช่บังคับ PENDING
+    // (เดิม "PENDING" เป็น truthy ทำให้ค่า IMPORTED ที่เพิ่งกดถูกทับเสมอเมื่อ caller ส่ง status มา)
+    const mergedStatus = item.status ?? existing?.status ?? "PENDING";
     itemMap.set(item.id, {
       ...item,
-      status: item.status || existing?.status || "PENDING",
+      status: mergedStatus,
+      imported_at: mergedStatus === "IMPORTED" ? existing?.imported_at || now : undefined,
       tag: item.tag?.trim() || existing?.tag || "รอนำเข้า Express",
       tagged_at: existing?.tagged_at || now,
     });

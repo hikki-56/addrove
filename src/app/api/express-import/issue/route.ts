@@ -150,14 +150,35 @@ export async function GET(req: NextRequest) {
     // 2. Preload documents map (for metadata & clean doc numbers)
     const allDocsMap = new Map<string, any>();
     let allDocsList: any[] = [];
+    // เลขเอกสารบางตัวมีหลาย record (เช่น COMPLETED + WAITING_APPROVAL ใช้เลขซ้ำกัน)
+    // ให้ record ที่ note มีข้อมูล from/to (ผูกโกดังต้นทาง/ปลายทาง) มีสิทธิ์ชนะเสมอ
+    // ไม่อย่างนั้น record ล่าสุดที่ note เปล่าจะทับ ทำให้หน้าเว็บหาปลายทางไม่เจอ
+    const docMetaScore = (d: any): number => {
+      try {
+        const n = d?.note;
+        if (!n || typeof n !== "string" || !n.trim().startsWith("{")) return 0;
+        const m = JSON.parse(n);
+        return m.from_warehouse_id || m.to_warehouse_id ? 2 : 1;
+      } catch {
+        return 0;
+      }
+    };
+    const putDoc = (key: string, doc: any) => {
+      const cur = allDocsMap.get(key);
+      if (!cur || docMetaScore(doc) > docMetaScore(cur)) allDocsMap.set(key, doc);
+    };
     try {
       const allDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
       allDocsList = allDocs.data || [];
       allDocsList.forEach((doc) => {
         const docIdKey = (doc.document_id || "").trim().toLowerCase();
         const docNoKey = (doc.document_no || "").trim().toLowerCase();
-        if (docIdKey) allDocsMap.set(docIdKey, doc);
-        if (docNoKey) allDocsMap.set(docNoKey, doc);
+        const refKey = (doc.reference_no || "").trim().toLowerCase();
+        if (docIdKey) putDoc(docIdKey, doc);
+        if (docNoKey) putDoc(docNoKey, doc);
+        // เลข TRF ในชีตมักเป็น reference_no ของเอกสาร — ไม่ใส่ key นี้แล้วหา docRec ไม่เจอ
+        // แถวจึงไม่มีข้อมูลปลายทางมาแสดง (from/to ใน note ของเอกสาร)
+        if (refKey) putDoc(refKey, doc);
       });
     } catch (e) {
       console.warn("[GET /api/express-import/issue] Preload all docs error:", e);
@@ -186,7 +207,8 @@ export async function GET(req: NextRequest) {
 
     // 3. Read directly from Google Sheets Tab: "เบิกสินค้าเข้าExpress"
     try {
-      const sheetRows = await readSheet(SHEETS.EXPRESS_ISSUE).catch(() => []);
+      // สดพอสมควร (5 วินาที) — เดิมใช้ cache 30 วิ ทำให้ item.status ตามหลังความจริงหลังอัปเดตสถานะ
+      const sheetRows = await readSheet(SHEETS.EXPRESS_ISSUE, undefined, { maxAgeMs: 5000 }).catch(() => []);
       for (let idx = 0; idx < sheetRows.length; idx++) {
         const row = sheetRows[idx];
         if (!row || row.length === 0) continue;
@@ -222,13 +244,19 @@ export async function GET(req: NextRequest) {
         let location = "-";
         let docNo = "";
         let whName = "โกดัง 1";
+        let whCellRaw = ""; // ค่าดิบของคอลัมน์โกดังในชีต — ใช้แยกว่าแถวระบุโกดังเองหรือเป็นค่าว่าง
         let date = new Date().toISOString().slice(0, 10);
         let productName = "";
         let status = "รอนำเข้า Express";
         let qty = 1;
         let barcode = "";
 
-        if (col0.includes("/") || (col0.includes("-") && col0.length === 10 && !isNaN(Date.parse(col0)))) {
+        // แถว layout B ต้องเริ่มด้วยวันที่จริงเท่านั้น — เดิมใช้ col0.includes("/")
+        // ทำให้ SKU ที่มีขีด "/" ถูกตีความเป็นวันที่ แล้วอ่านคอลัมน์เลื่อน โกดังจึงผิดทั้งแถว
+        const looksLikeSheetDate = (s: string): boolean =>
+          /^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s);
+
+        if (looksLikeSheetDate(col0)) {
           // Layout: [Date, DocNo, Barcode, SKU, ProductName, Warehouse, Location, Qty, MovedBy, ApprovedBy, Status]
           date = col0;
           docNo = String(row[1] ?? "").trim();
@@ -236,6 +264,7 @@ export async function GET(req: NextRequest) {
           sku = String(row[3] ?? "").trim();
           productName = String(row[4] ?? "").trim() || sku;
           whName = String(row[5] ?? "").trim() || "โกดัง 1";
+          whCellRaw = String(row[5] ?? "").trim();
           location = String(row[6] ?? "").trim() || "-";
           qty = Math.abs(parseFloat(String(row[7] ?? "1").replace(/,/g, "")) || 1);
           status = String(row[10] ?? row[9] ?? "รอนำเข้า Express").trim();
@@ -245,6 +274,7 @@ export async function GET(req: NextRequest) {
           location = String(row[1] ?? "-").trim() || "-";
           docNo = String(row[2] ?? "").trim() || `TRF-EXPRESS-${idx + 1}`;
           whName = String(row[3] ?? "โกดัง 1").trim() || "โกดัง 1";
+          whCellRaw = String(row[3] ?? "").trim();
           date = String(row[4] ?? "").trim() || date;
           productName = String(row[5] ?? "").trim() || sku;
           status = String(row[6] ?? "รอนำเข้า Express").trim();
@@ -291,16 +321,20 @@ export async function GET(req: NextRequest) {
 
         if (docRec) {
           const meta = parseTransferMetadata(docRec.note);
-          if (meta.from_warehouse_name || meta.from_warehouse_id) {
+          // ค่าจากแถวชีตเป็นตัวจริงของแถวนั้น — ใช้ metadata ของเอกสารเติมเฉพาะช่องที่แถวไม่ได้ระบุ
+          // เดิม meta ทับ from/to ของแถวทิ้งเสมอ ทำให้แถวที่ชีตระบุโกดังไว้กลับแสดงทิศของเอกสาร
+          if (!whCellRaw && (meta.from_warehouse_name || meta.from_warehouse_id)) {
             fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : "โกดัง 1");
             fromWarehouseId = meta.from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
           }
-          if (meta.to_warehouse_name || meta.to_warehouse_id) {
-            toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : "");
-            toWarehouseId = meta.to_warehouse_id || normalizeWarehouseId(toWarehouseName);
-          } else if ((docRec as any).to_warehouse_id || (docRec as any).to_warehouse_name) {
-            toWarehouseName = (docRec as any).to_warehouse_name || ((docRec as any).to_warehouse_id ? getWarehouseName((docRec as any).to_warehouse_id) : "");
-            toWarehouseId = (docRec as any).to_warehouse_id || normalizeWarehouseId(toWarehouseName);
+          if (!toWarehouseName) {
+            if (meta.to_warehouse_name || meta.to_warehouse_id) {
+              toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : "");
+              toWarehouseId = meta.to_warehouse_id || normalizeWarehouseId(toWarehouseName);
+            } else if ((docRec as any).to_warehouse_id || (docRec as any).to_warehouse_name) {
+              toWarehouseName = (docRec as any).to_warehouse_name || ((docRec as any).to_warehouse_id ? getWarehouseName((docRec as any).to_warehouse_id) : "");
+              toWarehouseId = (docRec as any).to_warehouse_id || normalizeWarehouseId(toWarehouseName);
+            }
           }
         }
 
@@ -321,9 +355,10 @@ export async function GET(req: NextRequest) {
             toWarehouseName = "โกดัง 4";
             toWarehouseId = "wh-04";
           } else {
-            const normFrom = normalizeWarehouseId(fromWarehouseName);
-            toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
-            toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+            // ไม่มีข้อมูลปลายทางที่เชื่อถือได้ — ไม่เดา
+            // เดิมเดาตายตัวเป็นคู่โกดัง 1↔2 ทำให้แถวจากโกดังอื่นแสดงปลายทางปลอม (จอโชว์ from ➔ to ผิด)
+            toWarehouseName = "";
+            toWarehouseId = "";
           }
         }
 
@@ -398,10 +433,20 @@ export async function GET(req: NextRequest) {
         if (emittedSemanticKeys.has(sKey)) return;
         emittedSemanticKeys.add(sKey);
 
-        let fromWarehouseName = meta.from_warehouse_name || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : (doc as any).from_warehouse_name || "โกดัง 1");
-        let fromWarehouseId = meta.from_warehouse_id || (doc as any).from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
-        let toWarehouseName = meta.to_warehouse_name || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : (doc as any).to_warehouse_name || "");
-        let toWarehouseId = meta.to_warehouse_id || (doc as any).to_warehouse_id || "";
+        // ระดับรายการ (subItem) มาก่อนระดับเอกสาร — เดิมอ่านแต่ meta ระดับเอกสาร
+        // ทั้งที่ meta.items แต่ละชิ้นอาจมี from/to ต่างกัน
+        let fromWarehouseName = subItem.from_warehouse_name
+          || (subItem.from_warehouse_id ? getWarehouseName(subItem.from_warehouse_id) : "")
+          || meta.from_warehouse_name
+          || (meta.from_warehouse_id ? getWarehouseName(meta.from_warehouse_id) : "")
+          || (doc as any).from_warehouse_name || "โกดัง 1";
+        let fromWarehouseId = subItem.from_warehouse_id || meta.from_warehouse_id || (doc as any).from_warehouse_id || normalizeWarehouseId(fromWarehouseName);
+        let toWarehouseName = subItem.to_warehouse_name
+          || (subItem.to_warehouse_id ? getWarehouseName(subItem.to_warehouse_id) : "")
+          || meta.to_warehouse_name
+          || (meta.to_warehouse_id ? getWarehouseName(meta.to_warehouse_id) : "")
+          || (doc as any).to_warehouse_name || "";
+        let toWarehouseId = subItem.to_warehouse_id || meta.to_warehouse_id || (doc as any).to_warehouse_id || "";
 
         if (!toWarehouseName) {
           if (/^2[A-Z0-9]/i.test(toLoc) || toLoc.includes("wh-2") || toLoc.includes("โกดัง2")) {
@@ -417,9 +462,9 @@ export async function GET(req: NextRequest) {
             toWarehouseName = "โกดัง 4";
             toWarehouseId = "wh-04";
           } else {
-            const normFrom = normalizeWarehouseId(fromWarehouseName);
-            toWarehouseName = normFrom === "wh-01" ? "โกดัง 2" : "โกดัง 1";
-            toWarehouseId = normFrom === "wh-01" ? "wh-02" : "wh-01";
+            // ไม่มีข้อมูลปลายทางที่เชื่อถือได้ — ไม่เดา (เดิมเดาตายตัวเป็นคู่โกดัง 1↔2)
+            toWarehouseName = "";
+            toWarehouseId = "";
           }
         }
 

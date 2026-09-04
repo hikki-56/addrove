@@ -344,7 +344,7 @@ async function assertAppsScriptSuccess(response: Response, operation: string): P
 export async function readSheet(
   sheetName: string,
   range?: string,
-  options?: { forceFresh?: boolean; maxAgeMs?: number }
+  options?: { forceFresh?: boolean; maxAgeMs?: number; keepHeader?: boolean }
 ): Promise<string[][]> {
   if (!SPREADSHEET_ID) {
     if (process.env.NODE_ENV === "production") {
@@ -353,7 +353,10 @@ export async function readSheet(
     return [];
   }
 
-  const cacheKey = `${sheetName}:${range || "ALL"}`;
+  // keepHeader=true ต้องแยก cache เพราะข้อมูลที่ได้ (มีหัวตาราง) ต่างจากปกติ
+  const cacheKey = options?.keepHeader
+    ? `${sheetName}:${range || "ALL"}:raw`
+    : `${sheetName}:${range || "ALL"}`;
   const maxAgeMs = options?.forceFresh ? 0 : options?.maxAgeMs ?? CACHE_TTL_MS;
 
   const cached = sheetCache.get(cacheKey);
@@ -380,7 +383,7 @@ export async function readSheet(
           if (res.ok) {
             const json = await res.json();
             let googleRows = (json.values as string[][]) ?? [];
-            if (googleRows.length > 0) {
+            if (googleRows.length > 0 && !options?.keepHeader) {
               const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
               const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
               if (
@@ -430,7 +433,7 @@ export async function readSheet(
           })
         );
         let googleRows = (response.data.values as string[][]) ?? [];
-        if (googleRows.length > 0 && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
+        if (googleRows.length > 0 && !options?.keepHeader && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
           googleRows = googleRows.slice(1);
         }
         return googleRows;

@@ -135,7 +135,9 @@ export function parseTransferMetadata(note?: string | null): ParsedTransferMetad
   result.base_unit = matchField(["base_unit", "หน่วย"]);
   result.from_warehouse_id = matchField(["from_warehouse_id", "from_wh", "จากโกดัง", "ย้ายจาก"]);
   result.to_warehouse_id = matchField(["to_warehouse_id", "to_wh", "ไปโกดัง", "ปลายทาง"]);
-  result.from_location_id = matchField(["from_location_id", "from_loc", "จากตำแหน่ง", "location_code", "location", "ตำแหน่ง"]);
+  // ห้ามใส่ key generic อย่าง "location"/"ตำแหน่ง" — matchField ใช้ substring match
+  // จึงไปจับ "to_location"/"ไปตำแหน่ง" แล้วดึงค่าปลายทางมาเป็นต้นทาง ทำให้ from/to สลับข้าง
+  result.from_location_id = matchField(["from_location_id", "from_loc", "จากตำแหน่ง", "location_code"]);
   result.to_location_id = matchField(["to_location_id", "to_loc", "ไปตำแหน่ง"]);
   result.moved_by = matchField(["moved_by", "assigned_to_name", "คนไปย้ายสินค้า", "คนเบิก"]);
   result.assigned_to_name = matchField(["assigned_to_name", "moved_by"]);

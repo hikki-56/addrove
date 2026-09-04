@@ -318,7 +318,12 @@ export default function ExpressTransferPage() {
     }
   }, [dateFrom, dateTo, refreshTaggedMap]);
 
-  usePollingWhenVisible(fetchMovements, 8000);
+  // hook ส่ง initial=true เฉพาะครั้งแรก — ครั้งแรกโชว์ loading, รอบ polling ต้อง refresh เงียบ ๆ
+  // wrapper ต้อง memoize เพราะ hook ใช้ callback เป็น dependency ของ effect
+  const pollingFetch = useCallback((initial?: boolean) => {
+    void fetchMovements(!initial);
+  }, [fetchMovements]);
+  usePollingWhenVisible(pollingFetch, 8000);
 
   // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
   const extractShelfFromText = (text: string | undefined | null): string => {
