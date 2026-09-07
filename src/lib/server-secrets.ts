@@ -17,7 +17,13 @@ function requireSecret(name: string, value: string | undefined): string {
 }
 
 export function getAuthSecret(): string {
-  return requireSecret("AUTH_SECRET", process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET);
+  const configuredSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  const previewSecret =
+    process.env.NODE_ENV === "production"
+      ? undefined
+      : "stockify-local-preview-secret-change-for-production";
+
+  return requireSecret("AUTH_SECRET", configuredSecret || previewSecret);
 }
 
 export function getQrTokenSecret(): string {
