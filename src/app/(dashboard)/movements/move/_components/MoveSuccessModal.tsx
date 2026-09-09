@@ -9,8 +9,8 @@ export interface MoveSuccessModalProps {
 export default function MoveSuccessModal({ onReset }: MoveSuccessModalProps) {
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-xl space-y-4">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center mx-auto text-emerald-700 shadow-md">
+      <div className="bg-white rounded-3xl p-10 text-center border border-[#E8ECEA] shadow-xl space-y-4">
+        <div className="w-16 h-16 rounded-full bg-[#DFEDE6] border border-[#8FB3A3] flex items-center justify-center mx-auto text-[#053425] shadow-md">
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
@@ -23,7 +23,7 @@ export default function MoveSuccessModal({ onReset }: MoveSuccessModalProps) {
           <button
             type="button"
             onClick={onReset}
-            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-95 transition-all"
+            className="px-8 py-4 bg-[#06402B] hover:bg-[#053425] text-white rounded-2xl font-bold text-base shadow-lg shadow-[#06402B]/20 cursor-pointer active:scale-95 transition-all"
           >
             จัดตำแหน่งรายการถัดไป
           </button>

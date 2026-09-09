@@ -232,7 +232,7 @@ export default function UsersPage() {
         <button
           id="btn-add-staff"
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 cursor-pointer flex-shrink-0 active:scale-95 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer flex-shrink-0 active:scale-95 transition-all"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -252,7 +252,7 @@ export default function UsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อพนักงาน, อีเมล..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
           />
         </div>
 
@@ -260,7 +260,7 @@ export default function UsersPage() {
           <select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white cursor-pointer transition-all"
+            className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#0F5C3F] focus:bg-white cursor-pointer transition-all"
           >
             <option value="">ทุกบทบาท</option>
             <option value="ADMIN">ผู้ดูแลระบบ (Admin)</option>
@@ -272,11 +272,11 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+              <tr className="bg-slate-50 text-slate-500 border-b border-[#E8ECEA]">
                 <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">ชื่อ-นามสกุล</th>
                 <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">อีเมล</th>
                 <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">บทบาท (Role)</th>
@@ -285,7 +285,7 @@ export default function UsersPage() {
                 <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+            <tbody className="divide-y divide-[#EEF1EF] text-xs sm:text-sm">
               {loading ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-500 font-medium">
@@ -309,7 +309,7 @@ export default function UsersPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       {u.role === "ADMIN" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#053425] border border-[#C9DFD4]">
                           ผู้ดูแลระบบ
                         </span>
                       )}
@@ -319,12 +319,12 @@ export default function UsersPage() {
                         </span>
                       )}
                       {u.role === "WAREHOUSE_STAFF" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]">
                           พนักงานคลัง
                         </span>
                       )}
                       {u.role === "VIEWER" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-[#E8ECEA]">
                           ผู้ชม
                         </span>
                       )}
@@ -336,8 +336,8 @@ export default function UsersPage() {
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                           u.active
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                            ? "bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]"
+                            : "bg-slate-100 text-slate-600 border border-[#E8ECEA]"
                         }`}
                       >
                         {u.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
@@ -347,7 +347,7 @@ export default function UsersPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(u)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-slate-200"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-[#E8ECEA]"
                         >
                           แก้ไข
                         </button>
@@ -356,7 +356,7 @@ export default function UsersPage() {
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
                             u.active
                               ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200"
-                              : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : "bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] border-[#C9DFD4]"
                           }`}
                         >
                           {u.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
@@ -374,7 +374,7 @@ export default function UsersPage() {
       {/* Add Staff Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-slate-200 shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-[#E8ECEA] shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 mb-4">เพิ่มพนักงานใหม่</h3>
 
             {addError && (
@@ -393,7 +393,7 @@ export default function UsersPage() {
                   value={addFullName}
                   onChange={(e) => setAddFullName(e.target.value)}
                   placeholder="เช่น สมชาย ใจดี"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                 />
               </div>
 
@@ -406,7 +406,7 @@ export default function UsersPage() {
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                   placeholder="staff@company.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                 />
               </div>
 
@@ -420,7 +420,7 @@ export default function UsersPage() {
                   value={addPassword}
                   onChange={(e) => setAddPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                 />
               </div>
 
@@ -430,7 +430,7 @@ export default function UsersPage() {
                   id="add-role"
                   value={addRole}
                   onChange={(e) => setAddRole(e.target.value as UserRole)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
                   <option value="APPROVER">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
@@ -447,8 +447,8 @@ export default function UsersPage() {
                     onClick={() => setAddWhAccess(["*"])}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       addWhAccess.includes("*")
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                        ? "bg-[#06402B] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
                     }`}
                   >
                     ทุกโกดัง (*)
@@ -460,8 +460,8 @@ export default function UsersPage() {
                       onClick={() => toggleWhAccess(w.id, addWhAccess, setAddWhAccess)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         !addWhAccess.includes("*") && addWhAccess.includes(w.id)
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                          ? "bg-[#06402B] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
                       }`}
                     >
                       {w.name}
@@ -470,18 +470,18 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#E8ECEA]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={addSaving}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {addSaving ? "กำลังบันทึก..." : "บันทึกพนักงาน"}
                 </button>
@@ -494,7 +494,7 @@ export default function UsersPage() {
       {/* Edit Staff Modal */}
       {editingUser && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-slate-200 shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-[#E8ECEA] shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 mb-4">แก้ไขสิทธิ์พนักงาน</h3>
 
             {editError && (
@@ -512,7 +512,7 @@ export default function UsersPage() {
                   required
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                 />
               </div>
 
@@ -523,7 +523,7 @@ export default function UsersPage() {
                   type="email"
                   disabled
                   value={editingUser.email}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-[#E8ECEA] text-slate-500 text-xs sm:text-sm cursor-not-allowed"
                 />
               </div>
 
@@ -536,7 +536,7 @@ export default function UsersPage() {
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                 />
               </div>
 
@@ -546,7 +546,7 @@ export default function UsersPage() {
                   id="edit-role"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value as UserRole)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
                   <option value="APPROVER">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
@@ -563,8 +563,8 @@ export default function UsersPage() {
                     onClick={() => setEditWhAccess(["*"])}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       editWhAccess.includes("*")
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                        ? "bg-[#06402B] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
                     }`}
                   >
                     ทุกโกดัง (*)
@@ -576,8 +576,8 @@ export default function UsersPage() {
                       onClick={() => toggleWhAccess(w.id, editWhAccess, setEditWhAccess)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         !editWhAccess.includes("*") && editWhAccess.includes(w.id)
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                          ? "bg-[#06402B] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
                       }`}
                     >
                       {w.name}
@@ -586,18 +586,18 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#E8ECEA]">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={editSaving}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {editSaving ? "กำลังอัปเดต..." : "บันทึกการแก้ไข"}
                 </button>

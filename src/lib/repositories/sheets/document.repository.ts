@@ -117,14 +117,17 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     return { data: docs.slice(start, start + filters.limit), total };
   }
 
-  async findById(id: string): Promise<Document | null> {
-    const rows = await this.getAllRows();
+  async findById(id: string, options?: { forceFresh?: boolean }): Promise<Document | null> {
+    // ห้ามอ่านจากแคช 30 วิ เมื่อจะเอาผลไปแก้ note กลับลงชีต (read-modify-write)
+    // ไม่งั้น note ที่เพิ่งถูกเขียนโดย request อื่น (submit/approve/progress พร้อมกัน)
+    // จะโดนเขียนทับด้วยข้อมูลเก่าจน metadata สินค้าหาย
+    const rows = await this.getAllRows(options);
     const row = rows.find((r) => r[0] === id);
     return row ? rowToDocument(row) : null;
   }
 
-  async findByNo(no: string): Promise<Document | null> {
-    const rows = await this.getAllRows();
+  async findByNo(no: string, options?: { forceFresh?: boolean }): Promise<Document | null> {
+    const rows = await this.getAllRows(options);
     const row = rows.find((r) => r[1] === no);
     return row ? rowToDocument(row) : null;
   }

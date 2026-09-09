@@ -7,13 +7,17 @@ import {
 import {
   StockUseCaseDeps,
   findWarehouse,
+  cleanLocCode,
 } from "./shared";
 import {
   StockConflictError,
   StockNotFoundError,
+  StockValidationError,
   InsufficientStockError,
+  InvalidStockLocationError,
 } from "./stock-errors";
 import { executeAtomicOperation } from "./atomic-stock-executor";
+import { logAudit } from "@/lib/audit";
 
 export { MoveStockSchema, type MoveStockInput };
 
@@ -23,6 +27,11 @@ export async function moveStock(
 ): Promise<Document> {
   const fromLoc = (input.from_location_id || "").trim();
   const toLoc = input.to_location_id;
+
+  // Moving to the same location is a no-op that only pollutes the ledger
+  if (fromLoc && cleanLocCode(fromLoc) && cleanLocCode(fromLoc) === cleanLocCode(toLoc)) {
+    throw new StockValidationError("ตำแหน่งต้นทางและปลายทางต้องไม่เหมือนกัน");
+  }
 
   const lockKeys = [
     ...(fromLoc ? [formatStockLockKey(input.warehouse_id, fromLoc, input.product_id)] : []),
@@ -52,6 +61,30 @@ export async function moveStock(
       const warehouse = await findWarehouse(repo, input.warehouse_id);
       if (!warehouse) {
         throw new StockNotFoundError("ไม่พบโกดังที่ระบุ");
+      }
+
+      // 2b. Destination location must exist inside THIS warehouse (skipped when the
+      // location master is unavailable so moves never block on a master-data outage)
+      if (repo.locations) {
+        const allLocations = await repo.locations.findAll().catch(() => []);
+        if (Array.isArray(allLocations) && allLocations.length > 0) {
+          const whLocations = allLocations.filter(
+            (l: any) =>
+              !l?.warehouse_id ||
+              l.warehouse_id === warehouse.warehouse_id ||
+              l.warehouse_id === warehouse.warehouse_id.replace(/^wh-0*(\d+)$/, "wh-$1")
+          );
+          const cleanTarget = cleanLocCode(toLoc);
+          const matchedTo = whLocations.find((l: any) => {
+            const candidates = [cleanLocCode(l.location_id), cleanLocCode(l.location_code), cleanLocCode((l as any).shelf_code)];
+            return candidates.filter(Boolean).some((c) => c === cleanTarget);
+          });
+          if (!matchedTo) {
+            throw new InvalidStockLocationError(
+              `ตำแหน่งปลายทาง ${toLoc} ไม่มีอยู่ในโกดังนี้ กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`
+            );
+          }
+        }
       }
 
       // 3. Check stock balance at from_location_id if specified
@@ -118,16 +151,33 @@ export async function moveStock(
         }))
       );
 
-      // 7. Synchronize move via repository adapter
+      // 7. Synchronize move via repository adapter — a sync failure must be visible
+      // (audit FAILURE), never silently swallowed
       if (repo.warehouseSync) {
         const cleanSku = input.product_id.replace(/^prod-/, "");
-        await repo.warehouseSync.syncMove(
-          warehouse.warehouse_id,
-          cleanSku || input.product_id,
-          input.qty,
-          input.from_location_id,
-          input.to_location_id
-        );
+        try {
+          await repo.warehouseSync.syncMove(
+            warehouse.warehouse_id,
+            cleanSku || input.product_id,
+            input.qty,
+            input.from_location_id,
+            input.to_location_id
+          );
+        } catch (syncErr) {
+          console.error("[MoveStock] Physical sheet sync failed:", syncErr);
+          await logAudit(repo.audit, {
+            idempotencyKey: input.idempotency_key,
+            actorId: input.user_id,
+            actorRole: input.role || "STAFF",
+            action: "STOCK_MOVE_SHEET_SYNC",
+            resourceType: "Document",
+            resourceId: doc.document_id,
+            warehouseId: warehouse.warehouse_id,
+            outcome: "FAILURE",
+            errorCode: "SYNC_FAILED",
+            metadata: { error: syncErr instanceof Error ? syncErr.message : String(syncErr) },
+          }).catch(() => {});
+        }
       }
 
       return doc;

@@ -55,16 +55,16 @@ export interface WarehousePositionMapProps {
 
 const STATUS_STYLES: Record<PosStatus, { cell: string; code: string; qty: string; sub: string }> = {
   empty: {
-    cell: "bg-slate-50 border-slate-200 hover:border-slate-300",
+    cell: "bg-slate-50 border-[#E8ECEA] hover:border-[#D5DDD9]",
     code: "text-slate-400",
     qty: "text-slate-500",
     sub: "text-slate-400",
   },
   partial: {
-    cell: "bg-emerald-50 border-emerald-300 hover:border-emerald-400",
-    code: "text-emerald-700",
-    qty: "text-emerald-900",
-    sub: "text-emerald-700",
+    cell: "bg-[#EAF2EE] border-[#8FB3A3] hover:border-[#5B8A74]",
+    code: "text-[#053425]",
+    qty: "text-[#04231A]",
+    sub: "text-[#053425]",
   },
   full: {
     cell: "bg-rose-50 border-rose-300 hover:border-rose-400",
@@ -99,7 +99,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/products?_t=${Date.now()}`);
+      const res = await fetch(`/api/products`);
       const d = await res.json();
       if (d.success) {
         setAllProducts(d.data || []);
@@ -223,8 +223,8 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
               onClick={() => setMapWhId(normId)}
               className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer active:scale-95 border ${
                 isActive
-                  ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:text-indigo-700"
+                  ? "bg-[#06402B] border-[#06402B] text-white shadow-md shadow-[#06402B]/20"
+                  : "bg-white border-[#E8ECEA] text-slate-700 hover:border-[#8FB3A3] hover:text-[#053425]"
               }`}
             >
               {w.warehouse_name}
@@ -234,7 +234,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
       </div>
 
       {/* Summary + capacity */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+      <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA] shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-extrabold text-slate-900 text-base sm:text-lg">
@@ -253,7 +253,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
             type="button"
             onClick={loadProducts}
             disabled={loading}
-            className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -264,11 +264,11 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
         {layout && (
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-[#E8ECEA]">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> ว่าง {summary.empty.toLocaleString()}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> มีของ {summary.partial.toLocaleString()}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" /> มีของ {summary.partial.toLocaleString()}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> เต็ม {summary.full.toLocaleString()}
@@ -281,7 +281,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
                 inputMode="numeric"
                 value={capacity}
                 onChange={(e) => handleCapacityChange(Number(e.target.value))}
-                className="w-24 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs sm:text-sm font-mono font-bold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-24 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 text-xs sm:text-sm font-mono font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
               />
               ชิ้น
             </label>
@@ -322,15 +322,15 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
               })
             );
             return (
-              <div key={`floor-${fl.floor}`} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <div className="px-4 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div key={`floor-${fl.floor}`} className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+                <div className="px-4 py-3 bg-slate-50/70 border-b border-[#EEF1EF] flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-base flex items-center justify-center">
+                    <span className="w-8 h-8 rounded-xl bg-[#06402B] text-white font-black text-base flex items-center justify-center">
                       {fl.floor}
                     </span>
                     <h3 className="font-extrabold text-slate-900 text-base">ชั้น {fl.floor}</h3>
                     {fl.floor === 1 && fl.locks.length > 0 && (
-                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-[#053425] bg-[#EAF2EE] border border-[#C9DFD4] px-2.5 py-0.5 rounded-full">
                         ↥ ทางขึ้นหน้าตึก
                       </span>
                     )}
@@ -368,14 +368,14 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
       {/* Stock outside the plan */}
       {!loading && !error && others.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-4 py-3 bg-amber-50/70 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+          <div className="px-4 py-3 bg-amber-50/70 border-b border-[#EEF1EF]">
             <h3 className="font-extrabold text-slate-900 text-sm">
               สินค้าที่ตำแหน่งนอกผัง ({others.length.toLocaleString()} รายการ)
             </h3>
             <p className="text-xs text-slate-500 font-medium">รหัสตำแหน่งไม่ตรงรูปแบบล็อก เช่น ยังไม่ระบุ หรือรหัสเก่า</p>
           </div>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-[#EEF1EF]">
             {others.slice(0, 50).map((o, i) => (
               <li key={`other-${i}`} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -392,7 +392,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
             ))}
           </ul>
           {others.length > 50 && (
-            <p className="px-4 py-2.5 text-xs text-slate-400 font-medium border-t border-slate-100">
+            <p className="px-4 py-2.5 text-xs text-slate-400 font-medium border-t border-[#EEF1EF]">
               แสดง 50 รายการแรก จากทั้งหมด {others.length.toLocaleString()} รายการ
             </p>
           )}
@@ -402,10 +402,10 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
       {/* Position detail modal */}
       {selectedCode && selectedParsed && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md border border-slate-200 space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md border border-[#E8ECEA] space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 border-b border-[#EEF1EF] pb-3.5">
               <div>
-                <p className="font-mono font-black text-2xl text-indigo-700">{selectedCode}</p>
+                <p className="font-mono font-black text-2xl text-[#053425]">{selectedCode}</p>
                 <p className="text-sm font-bold text-slate-600 mt-0.5">
                   {selectedParsed
                     ? `ล็อก ${selectedParsed.lock} • ${positionLabel(selectedParsed.side, selectedParsed.level)}`
@@ -436,7 +436,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
                     className={`text-xs px-3 py-1 rounded-full font-bold border ${
                       positionStatus(selectedOcc.qty, capacity) === "full"
                         ? "bg-rose-100 text-rose-800 border-rose-200"
-                        : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                        : "bg-[#DFEDE6] text-[#052B1F] border-[#C9DFD4]"
                     }`}
                   >
                     {statusText(positionStatus(selectedOcc.qty, capacity))}
@@ -446,7 +446,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
                     <span className="ml-1 text-sm font-bold text-slate-400">ชิ้น</span>
                   </span>
                 </div>
-                <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
+                <ul className="divide-y divide-[#EEF1EF] border border-[#E8ECEA] rounded-2xl overflow-hidden">
                   {selectedOcc.items.map((it, i) => (
                     <li key={`item-${i}`} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -484,7 +484,7 @@ function LockCard({
   onSelect: (code: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white flex flex-col">
+    <div className="rounded-xl border border-[#E8ECEA] overflow-hidden bg-white flex flex-col">
       <div className="px-2.5 py-1.5 bg-slate-100/80 flex items-center justify-between">
         <span className="text-xs font-extrabold text-slate-700">ล็อก {lock}</span>
         <span className="font-mono text-xs font-bold text-slate-400">

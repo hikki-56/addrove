@@ -35,20 +35,20 @@ export default function CartDrawer({
       {/* Drawer Panel — full-screen on mobile, side panel on sm+ */}
       <div className="relative w-full sm:max-w-lg bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
         {/* Header */}
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[#E8ECEA] flex items-center justify-between bg-slate-50 shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">🛒</span>
             <div>
               <h3 className="text-base font-bold text-slate-900">ตะกร้าสั่งผลิตสินค้า</h3>
               <p className="text-sm text-slate-600">ตรวจสอบรายการก่อนยืนยันผลิต</p>
             </div>
-            <span className="ml-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm">
+            <span className="ml-1 px-2.5 py-0.5 rounded-full bg-[#DFEDE6] text-[#052B1F] font-bold text-sm">
               {cart.length} รายการ
             </span>
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center font-bold text-base transition-all cursor-pointer"
+            className="w-11 h-11 rounded-xl bg-white border border-[#E8ECEA] text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center font-bold text-base transition-all cursor-pointer"
             aria-label="ปิดตะกร้า"
           >
             ✕
@@ -73,10 +73,10 @@ export default function CartDrawer({
                 {cart.map((item) => (
                   <div
                     key={item.bom.fg_sku}
-                    className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3"
+                    className="p-4 rounded-2xl bg-slate-50 border border-[#E8ECEA] space-y-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center p-1 shrink-0">
+                      <div className="w-14 h-14 rounded-xl bg-white border border-[#E8ECEA] overflow-hidden flex items-center justify-center p-1 shrink-0">
                         <img
                           src={item.bom.image || "/products/A002.jpg"}
                           alt={item.bom.fg_name}
@@ -85,7 +85,7 @@ export default function CartDrawer({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-mono font-bold text-sm">
+                          <span className="px-2 py-0.5 rounded bg-[#DFEDE6] text-[#04231A] font-mono font-bold text-sm">
                             {item.bom.fg_sku}
                           </span>
                         </div>
@@ -93,7 +93,7 @@ export default function CartDrawer({
                           {item.bom.fg_name}
                         </h4>
                         <p className="text-sm text-slate-600 font-medium pt-0.5">
-                          ปลายทาง: <span className="text-emerald-800 font-bold">โกดัง 2</span>
+                          ปลายทาง: <span className="text-[#052B1F] font-bold">โกดัง 2</span>
                         </p>
                       </div>
                       <button
@@ -105,12 +105,12 @@ export default function CartDrawer({
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-200">
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#E8ECEA]">
                       <span className="text-sm font-bold text-slate-700">จำนวนที่ผลิต:</span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => onUpdateQty(item.bom.fg_sku, item.quantity - 1)}
-                          className="w-11 h-11 rounded-xl bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 flex items-center justify-center font-bold text-xl cursor-pointer active:scale-95 transition-all shadow-2xs select-none"
+                          className="w-11 h-11 rounded-xl bg-white border border-[#D5DDD9] text-slate-800 hover:bg-slate-100 flex items-center justify-center font-bold text-xl cursor-pointer active:scale-95 transition-all shadow-2xs select-none"
                           aria-label="ลดจำนวน"
                         >
                           −
@@ -138,11 +138,11 @@ export default function CartDrawer({
                               onUpdateQty(item.bom.fg_sku, 1);
                             }
                           }}
-                          className="font-mono font-bold text-base text-slate-900 w-20 h-11 text-center py-1 px-1 bg-white border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-text select-all"
+                          className="font-mono font-bold text-base text-slate-900 w-20 h-11 text-center py-1 px-1 bg-white border border-[#D5DDD9] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F] cursor-text select-all"
                         />
                         <button
                           onClick={() => onUpdateQty(item.bom.fg_sku, item.quantity + 1)}
-                          className="w-11 h-11 rounded-xl bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 flex items-center justify-center font-bold text-xl cursor-pointer active:scale-95 transition-all shadow-2xs select-none"
+                          className="w-11 h-11 rounded-xl bg-white border border-[#D5DDD9] text-slate-800 hover:bg-slate-100 flex items-center justify-center font-bold text-xl cursor-pointer active:scale-95 transition-all shadow-2xs select-none"
                           aria-label="เพิ่มจำนวน"
                         >
                           +
@@ -193,10 +193,10 @@ export default function CartDrawer({
 
         {/* Footer / Submit */}
         {cart.length > 0 && (
-          <div className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50 space-y-4 shrink-0">
+          <div className="p-5 sm:p-6 border-t border-[#E8ECEA] bg-slate-50 space-y-4 shrink-0">
             <div className="flex items-center justify-between text-sm font-bold text-slate-700">
               <span>ยอดผลิตรวมทั้งหมด:</span>
-              <span className="text-xl font-bold text-emerald-800 font-mono">
+              <span className="text-xl font-bold text-[#052B1F] font-mono">
                 +{totalCartUnits.toLocaleString()} ชิ้น
               </span>
             </div>
@@ -204,7 +204,7 @@ export default function CartDrawer({
             <button
               type="button"
               onClick={onConfirm}
-              className="w-full py-4 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+              className="w-full py-4 px-4 rounded-xl bg-[#06402B] hover:bg-[#053425] active:scale-[0.98] text-white font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#06402B]/20 cursor-pointer"
             >
               <span>ตรวจสอบและยืนยันการสั่งผลิต</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,4 +1,3 @@
-import { executeAtomicStockOperation, AtomicStockRequest, AtomicStockResult } from '@/lib/google-sheets/atomic-operations';
 import { withStockLocks, formatStockLockKey } from '@/lib/locking';
 import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/lib/idempotency';
 import { executeWithJournal } from '@/lib/recovery';
@@ -22,11 +21,30 @@ export interface AtomicOperationConfig {
 
 /**
  * Executes a stock operation with:
- * 1. Local in-memory lock (optimization for single instance)
- * 2. Distributed Apps Script lock (correctness across instances)
- * 3. Atomic idempotency check + mutation (within distributed lock)
- * 4. Operation journal for recovery
- * 5. Audit logging
+ * 1. Local in-memory lock (FIFO mutual exclusion within a single process)
+ * 2. Atomic idempotency check + mutation (within the in-process lock)
+ * 3. Operation journal for recovery
+ * 4. Audit logging
+ *
+ * NOTE — distributed locking is NOT implemented yet:
+ * `withStockLocks` only guarantees mutual exclusion within ONE Node.js
+ * process / serverless instance. Two serverless instances operating on the
+ * same stock location concurrently (with different idempotency keys) can
+ * still race. The unused import of `executeAtomicStockOperation`
+ * (@/lib/google-sheets/atomic-operations) has been removed because the Apps
+ * Script side currently exposes no standalone acquire/release lock API —
+ * its LockService lock lives only inside a single `atomicStockOperation`
+ * request and cannot wrap this local critical section.
+ *
+ * TODO(distributed-lock): to make this correct across instances, pick one of:
+ * (a) add `acquireLock` / `releaseLock` actions (with owner token + expiry)
+ *     to the Apps Script and its client allowlist, then wrap `withStockLocks`
+ *     best-effort: try to acquire with a short timeout, release in `finally`,
+ *     and fall back to the in-process lock with a console.warn on any failure;
+ * (b) push the whole critical section into a single `atomicStockOperation`
+ *     request so Apps Script's LockService covers it end-to-end; or
+ * (c) use a dedicated lock store (Redis/Redlock, or a DB advisory lock) via
+ *     the `ILockProvider` interface in @/lib/locking/lock-provider.
  */
 export async function executeAtomicOperation(config: AtomicOperationConfig): Promise<Document> {
   return withStockLocks(config.lockKeys, async () => {

@@ -79,22 +79,22 @@ export default function MovePage() {
   return (
     <div className="max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto px-2 sm:px-4 md:px-6 pb-20 sm:pb-8 space-y-5 sm:space-y-6">
       {/* 2-Step Guided Progress Indicator Header */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA]/80 shadow-sm space-y-4">
         <div className="flex items-center justify-between max-w-sm mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 1
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
+                  ? "bg-[#06402B] text-white shadow-md shadow-[#06402B]/30 ring-4 ring-[#0F5C3F]/10 scale-105"
+                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
             </div>
             <span
               className={`text-sm font-bold text-center leading-tight pt-1 ${
-                step >= 1 ? "text-emerald-800 font-extrabold" : "text-slate-600"
+                step >= 1 ? "text-[#052B1F] font-extrabold" : "text-slate-600"
               }`}
             >
               {step > 1 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
@@ -103,7 +103,7 @@ export default function MovePage() {
 
           <div
             className={`h-1 w-16 -mt-6 transition-all duration-300 rounded-full ${
-              step > 1 ? "bg-emerald-500" : "bg-slate-200"
+              step > 1 ? "bg-[#0F5C3F]" : "bg-slate-200"
             }`}
           />
 
@@ -112,15 +112,15 @@ export default function MovePage() {
             <div
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 2
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
+                  ? "bg-[#06402B] text-white shadow-md shadow-[#06402B]/30 ring-4 ring-[#0F5C3F]/10 scale-105"
+                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
               }`}
             >
               2
             </div>
             <span
               className={`text-sm font-bold text-center leading-tight pt-1 ${
-                step >= 2 ? "text-emerald-800 font-extrabold" : "text-slate-600"
+                step >= 2 ? "text-[#052B1F] font-extrabold" : "text-slate-600"
               }`}
             >
               ตำแหน่งปลายทาง

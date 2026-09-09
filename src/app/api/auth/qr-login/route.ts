@@ -5,6 +5,7 @@ import { encode } from "next-auth/jwt";
 import { recordLoginLog } from "@/lib/services/login-log.service";
 import type { User } from "@/types/models";
 import { getAuthSecret } from "@/lib/server-secrets";
+import { getAccessibleWarehouseIds } from "@/lib/api-response";
 import { verifyEmployeeQrToken } from "@/lib/qr-token";
 import {
   clearFailedAttempts,
@@ -93,7 +94,14 @@ export async function POST(req: Request) {
       const uniqueMatchedUsers = Array.from(
         new Map(matchedUsers.map((u) => [u.user_id, u])).values()
       );
-      if (uniqueMatchedUsers.length >= 1) targetUser = uniqueMatchedUsers[0];
+      // A PIN that resolves to several employees must not silently pick the first row
+      if (uniqueMatchedUsers.length > 1) {
+        return NextResponse.json(
+          { success: false, message: "พบ PIN นี้ถูกใช้โดยพนักงานหลายคน กรุณาติดต่อผู้ดูแลระบบเพื่อแก้ไข PIN" },
+          { status: 400 }
+        );
+      }
+      if (uniqueMatchedUsers.length === 1) targetUser = uniqueMatchedUsers[0];
     }
 
     if (!targetUser) {
@@ -111,18 +119,10 @@ export async function POST(req: Request) {
     }
     clearFailedAttempts(rateLimitKey);
 
-    // Build session token for the matched employee with fail-closed access parsing
-    let warehouseAccess: string[] = [];
-    try {
-      const parsed = JSON.parse(targetUser.warehouse_access);
-      if (Array.isArray(parsed)) {
-        warehouseAccess = parsed.filter((v): v is string => typeof v === "string");
-      } else if (parsed === "*") {
-        warehouseAccess = targetUser.role === "ADMIN" ? ["*"] : [];
-      }
-    } catch {
-      warehouseAccess = targetUser.role === "ADMIN" ? ["*"] : [];
-    }
+    // Build session token for the matched employee using the same helper the authorize layer
+    // uses, so "*", '["*"]', JSON arrays and comma-separated values behave identically (fail closed)
+    const accessibleWarehouseIds = getAccessibleWarehouseIds(targetUser.warehouse_access);
+    const warehouseAccess = accessibleWarehouseIds === null ? ["*"] : accessibleWarehouseIds;
 
     const expiresInSeconds = 2 * 3600; // 2 Hours session timeout
     const expiresAtMs = Date.now() + expiresInSeconds * 1000;

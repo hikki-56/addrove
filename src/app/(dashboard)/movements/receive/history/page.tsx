@@ -86,7 +86,7 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-emerald-500 focus:bg-white"
+        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-[#E8ECEA] text-slate-800 text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-[#0F5C3F] focus:bg-white"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
@@ -100,7 +100,7 @@ function ScrollableSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-slate-100 py-1">
+        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-[#E8ECEA] rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-[#EEF1EF] py-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -111,14 +111,14 @@ function ScrollableSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? "bg-emerald-50 text-emerald-700 font-bold"
+                    ? "bg-[#EAF2EE] text-[#053425] font-bold"
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <span className="text-emerald-600 text-xs font-bold ml-1.5 shrink-0">✓</span>}
+                {isSelected && <span className="text-[#06402B] text-sm font-bold ml-1.5 shrink-0">✓</span>}
               </button>
             );
           })}
@@ -249,7 +249,7 @@ export default function ReceiveHistoryPage() {
   const loadData = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     try {
-      const res = await fetch(`/api/movements/receive/history?_t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`/api/movements/receive/history`, { cache: "no-store" });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
@@ -354,29 +354,29 @@ export default function ReceiveHistoryPage() {
     switch (status) {
       case "COMPLETED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4] whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] shrink-0" />
             <span>อนุมัติแล้ว</span>
           </span>
         );
       case "WAITING_APPROVAL":
       case "PENDING":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
             <span>รออนุมัติ</span>
           </span>
         );
       case "CANCELLED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
             <span>ยกเลิก</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-[#E8ECEA] whitespace-nowrap">
             <span>{status}</span>
           </span>
         );
@@ -404,8 +404,8 @@ export default function ReceiveHistoryPage() {
     <div className="w-full max-w-full space-y-4 sm:space-y-5">
       {/* Toast Copy Success Notification */}
       {copySuccess && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 animate-bounce">
+          <svg className="w-4 h-4 text-[#5B8A74]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
           <span>คัดลอก {copySuccess} เรียบร้อย</span>
@@ -413,12 +413,12 @@ export default function ReceiveHistoryPage() {
       )}
 
       {/* Page Header */}
-      <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pb-3 border-b border-[#E8ECEA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             ประวัติรับสินค้าเข้าโกดัง
           </h1>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <p className="text-sm text-slate-500 font-normal mt-0.5">
             บันทึกและประวัติรายการรับสินค้าเข้าคลังทั้งหมดในระบบ
           </p>
         </div>
@@ -428,7 +428,7 @@ export default function ReceiveHistoryPage() {
             type="button"
             onClick={() => loadData(true)}
             disabled={isRefreshing}
-            className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-sm font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
           >
             <svg
               className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`}
@@ -443,7 +443,7 @@ export default function ReceiveHistoryPage() {
 
           <Link
             href="/movements/receive"
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-600/30"
+            className="px-3.5 py-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-sm font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-[#06402B]/30"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -455,56 +455,56 @@ export default function ReceiveHistoryPage() {
 
       {/* Summary Statistics Cards (4 Columns) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">รายการรับเข้าทั้งหมด</span>
+            <span className="text-sm font-semibold text-slate-500">รายการรับเข้าทั้งหมด</span>
             <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">รายการทั้งหมดตามตัวกรอง</div>
+          <div className="text-2xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">รายการทั้งหมดตามตัวกรอง</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">จำนวนชิ้นรวม</span>
-            <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <span className="text-sm font-semibold text-slate-500">จำนวนชิ้นรวม</span>
+            <div className="w-6 h-6 rounded-lg bg-[#EAF2EE] flex items-center justify-center text-[#06402B]">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-emerald-600">{stats.totalUnits.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">ชิ้นสินค้าที่รับเข้า</div>
+          <div className="text-2xl font-black text-[#06402B]">{stats.totalUnits.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ชิ้นสินค้าที่รับเข้า</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">อนุมัติแล้ว</span>
+            <span className="text-sm font-semibold text-slate-500">อนุมัติแล้ว</span>
             <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-teal-600">{stats.completed.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">เพิ่มเข้าสต็อกเรียบร้อย</div>
+          <div className="text-2xl font-black text-teal-600">{stats.completed.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">เพิ่มเข้าสต็อกเรียบร้อย</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">รออนุมัติ</span>
+            <span className="text-sm font-semibold text-slate-500">รออนุมัติ</span>
             <div className="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-amber-600">{stats.waitingApproval.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-2xl font-black text-amber-600">{stats.waitingApproval.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">
             {stats.waitingApproval > 0 ? (
               <Link href="/approvals" className="text-amber-700 font-bold hover:underline">
                 ไปหน้าอนุมัติ →
@@ -517,11 +517,11 @@ export default function ReceiveHistoryPage() {
       </div>
 
       {/* Search & Filters Card */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs space-y-4">
         {/* Search Box */}
         <div>
-          <label htmlFor="rcv-hist-search" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <label htmlFor="rcv-hist-search" className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span>ค้นหาข้อมูล</span>
@@ -536,7 +536,7 @@ export default function ReceiveHistoryPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาเลขเอกสาร (RCV-...), บาร์โค้ด, รหัสสินค้า, ชื่อสินค้า, ผู้จำหน่าย, ผู้ตรวจรับ..."
-              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-2xs"
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-800 placeholder-slate-400 text-sm font-medium focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all shadow-2xs"
             />
             <svg
               className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -564,7 +564,7 @@ export default function ReceiveHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           {/* Status Dropdown */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">สถานะ</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">สถานะ</div>
             <ScrollableSelect
               value={selectedStatus}
               options={statusOptions}
@@ -578,7 +578,7 @@ export default function ReceiveHistoryPage() {
 
           {/* Warehouse Dropdown */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">โกดังรับเข้า</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">โกดังรับเข้า</div>
             <ScrollableSelect
               value={selectedWh}
               options={warehouseOptions}
@@ -592,7 +592,7 @@ export default function ReceiveHistoryPage() {
 
           {/* Date Range Preset */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
             <ScrollableSelect
               value={selectedDateRange}
               options={dateRangeOptions}
@@ -603,7 +603,7 @@ export default function ReceiveHistoryPage() {
         </div>
 
         {/* Row 3: Filter Summary & Page Size */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#EEF1EF] text-sm text-slate-500">
           <div>
             พบทั้งหมด <span className="font-bold text-slate-800">{filteredRecords.length.toLocaleString()}</span> รายการ
             {filteredRecords.length !== records.length && (
@@ -621,7 +621,7 @@ export default function ReceiveHistoryPage() {
                   setSelectedWh("ALL");
                   handleDateRangeChange("TODAY");
                 }}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-bold hover:underline cursor-pointer"
+                className="text-sm text-[#06402B] hover:text-[#053425] font-bold hover:underline cursor-pointer"
               >
                 ล้างตัวกรอง
               </button>
@@ -631,12 +631,12 @@ export default function ReceiveHistoryPage() {
       </div>
 
       {/* Main Records Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-[#EEF1EF] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <h2 className="text-sm font-extrabold text-slate-900">รายการประวัติการรับสินค้า</h2>
-            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+            <h2 className="text-base font-extrabold text-slate-900">รายการประวัติการรับสินค้า</h2>
+            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
               {filteredRecords.length} รายการ
             </span>
           </div>
@@ -644,20 +644,20 @@ export default function ReceiveHistoryPage() {
 
         {loading ? (
           <div className="p-8 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-semibold text-slate-500">กำลังโหลดข้อมูลประวัติรับสินค้า...</p>
+            <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-slate-500">กำลังโหลดข้อมูลประวัติรับสินค้า...</p>
           </div>
         ) : paginatedRecords.length === 0 ? (
           <div className="p-12 text-center space-y-2 text-slate-400">
             <span className="text-4xl">📥</span>
-            <h3 className="text-sm font-bold text-slate-700">ไม่พบรายการประวัติการรับสินค้า</h3>
-            <p className="text-xs text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
+            <h3 className="text-base font-bold text-slate-700">ไม่พบรายการประวัติการรับสินค้า</h3>
+            <p className="text-sm text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[800px]">
+            <table className="w-full text-left text-sm min-w-[800px]">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold">
+                <tr className="border-b border-[#EEF1EF] bg-slate-50/70 text-slate-500 font-bold">
                   <th className="py-3 px-4">เลขที่เอกสาร</th>
                   <th className="py-3 px-4">สินค้า</th>
                   <th className="py-3 px-4">โกดังรับเข้า & ตำแหน่ง</th>
@@ -669,7 +669,7 @@ export default function ReceiveHistoryPage() {
                   <th className="py-3 px-4 text-center">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#EEF1EF]">
                 {paginatedRecords.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
                     {/* Document No */}
@@ -677,9 +677,9 @@ export default function ReceiveHistoryPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedRecord(item)}
-                        className="font-mono font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1.5 text-left cursor-pointer"
+                        className="font-mono font-bold text-[#053425] hover:text-[#04231A] hover:underline flex items-center gap-1.5 text-left cursor-pointer"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] group-hover:scale-125 transition-transform" />
                         {item.document_no}
                       </button>
                     </td>
@@ -689,12 +689,12 @@ export default function ReceiveHistoryPage() {
                       <div className="font-bold text-slate-900 truncate" title={item.primary_product_name}>
                         {item.primary_product_name}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
                         <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-700">
                           {item.primary_sku}
                         </span>
                         {item.total_items > 1 && (
-                          <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          <span className="font-bold text-[#06402B] bg-[#EAF2EE] px-1.5 py-0.5 rounded border border-[#C9DFD4]">
                             +{item.total_items - 1} รายการ
                           </span>
                         )}
@@ -703,8 +703,8 @@ export default function ReceiveHistoryPage() {
 
                     {/* Target Warehouse & Shelf */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-bold text-slate-800 text-[11px]">{item.warehouse_name}</div>
-                      <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                      <div className="font-bold text-slate-800 text-xs">{item.warehouse_name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
                         <span>ตำแหน่ง:</span>
                         <span className="font-semibold text-slate-700">{item.primary_location}</span>
                       </div>
@@ -712,15 +712,15 @@ export default function ReceiveHistoryPage() {
 
                     {/* Qty & Unit */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <span className="font-mono font-extrabold text-slate-900 text-xs">
+                      <span className="font-mono font-extrabold text-slate-900 text-sm">
                         {Number(item.total_qty).toLocaleString()}
                       </span>
-                      <span className="text-slate-500 font-sans ml-1 text-[11px]">ชิ้น</span>
+                      <span className="text-slate-500 font-sans ml-1 text-xs">ชิ้น</span>
                     </td>
 
                     {/* Supplier */}
                     <td className="py-3.5 px-4 whitespace-nowrap max-w-[140px]">
-                      <span className="truncate block text-slate-600 text-[11px]" title={item.primary_supplier}>
+                      <span className="truncate block text-slate-600 text-xs" title={item.primary_supplier}>
                         {item.primary_supplier || "-"}
                       </span>
                     </td>
@@ -731,10 +731,10 @@ export default function ReceiveHistoryPage() {
                         const displayName = formatCreatorName(item.created_by_name, item.created_by);
                         return (
                           <div className="flex items-center gap-1.5" title={displayName}>
-                            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#052B1F] flex items-center justify-center font-bold text-[11px] shrink-0">
                               {displayName.slice(0, 1) || "U"}
                             </div>
-                            <span className="truncate max-w-[130px] text-slate-700 text-[11px] font-medium">
+                            <span className="truncate max-w-[130px] text-slate-700 text-xs font-medium">
                               {displayName}
                             </span>
                           </div>
@@ -743,7 +743,7 @@ export default function ReceiveHistoryPage() {
                     </td>
 
                     {/* Date / Time */}
-                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-[11px]">
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-xs">
                       {formatThaiDateTime(item.created_at)}
                     </td>
 
@@ -757,7 +757,7 @@ export default function ReceiveHistoryPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedRecord(item)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 text-[11px] font-bold transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#EAF2EE] hover:text-[#053425] text-slate-600 text-xs font-bold transition-colors cursor-pointer"
                       >
                         ดูข้อมูล
                       </button>
@@ -771,7 +771,7 @@ export default function ReceiveHistoryPage() {
 
         {/* Pagination Bar */}
         {!loading && filteredRecords.length > 0 && (
-          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="p-4 border-t border-[#EEF1EF] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-600">
             <div className="flex items-center gap-2">
               <span>แสดง</span>
               <select
@@ -780,7 +780,7 @@ export default function ReceiveHistoryPage() {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:border-emerald-500"
+                className="px-2 py-1 rounded-lg border border-[#E8ECEA] bg-slate-50 font-semibold focus:outline-none focus:border-[#0F5C3F]"
               >
                 <option value={10}>10</option>
                 <option value={15}>15</option>
@@ -795,7 +795,7 @@ export default function ReceiveHistoryPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
               >
                 ← ก่อนหน้า
               </button>
@@ -808,7 +808,7 @@ export default function ReceiveHistoryPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
               >
                 ถัดไป →
               </button>
@@ -820,24 +820,24 @@ export default function ReceiveHistoryPage() {
       {/* Detail Modal */}
       {selectedRecord && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90dvh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-[#E8ECEA] max-h-[90dvh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+            <div className="flex items-start justify-between pb-4 border-b border-[#EEF1EF]">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <h3 className="text-base font-extrabold text-slate-900">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+                  <h3 className="text-lg font-extrabold text-slate-900">
                     รายละเอียดเอกสารรับสินค้า
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-sm font-bold text-emerald-700">
+                  <span className="font-mono text-base font-bold text-[#053425]">
                     {selectedRecord.document_no}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopy(selectedRecord.document_no, "เลขเอกสาร")}
-                    className="text-[11px] text-slate-500 hover:text-emerald-700 underline font-semibold cursor-pointer"
+                    className="text-xs text-slate-500 hover:text-[#053425] underline font-semibold cursor-pointer"
                   >
                     คัดลอก
                   </button>
@@ -857,7 +857,7 @@ export default function ReceiveHistoryPage() {
             </div>
 
             {/* Document Info Meta Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-[#E8ECEA]/80 text-sm">
               <div>
                 <span className="text-slate-500 font-medium">โกดังรับเข้า:</span>
                 <p className="font-bold text-slate-900 mt-0.5">{selectedRecord.warehouse_name}</p>
@@ -882,7 +882,7 @@ export default function ReceiveHistoryPage() {
               </div>
               <div>
                 <span className="text-slate-500 font-medium">จำนวนชิ้นรวม:</span>
-                <p className="font-extrabold text-emerald-600 mt-0.5">
+                <p className="font-extrabold text-[#06402B] mt-0.5">
                   {Number(selectedRecord.total_qty).toLocaleString()} ชิ้น
                 </p>
               </div>
@@ -890,13 +890,13 @@ export default function ReceiveHistoryPage() {
 
             {/* Line Items Table inside modal */}
             <div>
-              <h4 className="text-xs font-extrabold text-slate-900 mb-2.5">
+              <h4 className="text-sm font-extrabold text-slate-900 mb-2.5">
                 รายการสินค้าในเอกสาร ({selectedRecord.items.length} รายการ)
               </h4>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
+              <div className="border border-[#E8ECEA] rounded-xl overflow-hidden">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                    <tr className="bg-slate-100 text-slate-600 font-bold border-b border-[#E8ECEA]">
                       <th className="py-2.5 px-3">รหัสสินค้า / บาร์โค้ด</th>
                       <th className="py-2.5 px-3">ชื่อสินค้า</th>
                       <th className="py-2.5 px-3">ตำแหน่งชั้น</th>
@@ -904,13 +904,13 @@ export default function ReceiveHistoryPage() {
                       <th className="py-2.5 px-3 text-right">จำนวน</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#EEF1EF]">
                     {selectedRecord.items.map((it, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/70">
                         <td className="py-2.5 px-3 font-mono">
                           <div className="font-bold text-slate-800">{it.sku}</div>
                           {it.barcode && it.barcode !== "-" && it.barcode !== it.sku && (
-                            <div className="text-[10px] text-slate-400">{it.barcode}</div>
+                            <div className="text-[11px] text-slate-400">{it.barcode}</div>
                           )}
                         </td>
                         <td className="py-2.5 px-3 font-semibold text-slate-800">
@@ -933,24 +933,24 @@ export default function ReceiveHistoryPage() {
             </div>
 
             {selectedRecord.note && (
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-sm text-amber-900">
                 <span className="font-bold">หมายเหตุ:</span> {selectedRecord.note}
               </div>
             )}
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EEF1EF]">
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-colors cursor-pointer"
               >
                 พิมพ์เอกสาร
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedRecord(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-colors cursor-pointer"
               >
                 ปิด
               </button>

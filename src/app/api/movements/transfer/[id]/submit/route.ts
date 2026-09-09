@@ -6,6 +6,7 @@ import { submitTransferMove, mapStockErrorToResponse, SubmitTransferSchema, Stoc
 import {
   successResponse,
   unauthorizedResponse,
+  forbiddenResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
 
@@ -19,6 +20,11 @@ export async function POST(
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
     if (!actor) return unauthorizedResponse();
+
+    // Read-only users must not be able to submit (and thereby take over) transfer tasks
+    if (actor.role === "VIEWER") {
+      return forbiddenResponse("ผู้ใช้งานแบบดูอย่างเดียวไม่สามารถส่งงานย้ายสินค้าได้");
+    }
 
     const resolvedParams = await params;
     const docId = resolvedParams.id;

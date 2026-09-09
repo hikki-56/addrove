@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { ILockProvider, defaultLockProvider, StockLockTimeoutError } from "./lock-provider";
+import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 
 export { StockLockTimeoutError };
 
@@ -8,7 +9,14 @@ export function formatStockLockKey(
   locationId = "any",
   productId = "any"
 ): string {
-  const wh = (warehouseId || "wh").trim().toLowerCase();
+  // Canonicalize any warehouse id (wh-1, wh01, โกดัง1, ...) so that wh-1 and wh-01
+  // always produce the same lock key — otherwise approve vs cancel/reverse fired
+  // concurrently would lock different keys and stop excluding each other (BUG-C6).
+  // normalizeWarehouseId returns wh-01..wh-06; compact the zero padding back to a
+  // stable short canonical form (wh-1..wh-6) shared by every caller.
+  const wh = warehouseId
+    ? normalizeWarehouseId(warehouseId).replace(/^wh-0/, "wh-")
+    : "wh";
   const loc = (locationId || "loc").trim().toLowerCase().replace(/^loc-/, "");
   const prod = (productId || "prod").trim().toLowerCase().replace(/^prod-/, "");
   return `warehouse:${wh}:location:${loc}:product:${prod}`;

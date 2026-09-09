@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getRepository, DashboardDataError } from "@/lib/repositories";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse, serverErrorResponse,
-  getAccessibleWarehouseIds, hasWarehouseAccess,
+  errorResponse, getAccessibleWarehouseIds, hasWarehouseAccess,
 } from "@/lib/api-response";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,18 +26,25 @@ export async function GET(req: NextRequest) {
     ) return forbiddenResponse("คุณไม่มีสิทธิ์ดูข้อมูลโกดังนี้");
     const days = parseInt(searchParams.get("days") ?? "7");
     const repo = getRepository();
-    const stats = await repo.dashboard.getStats(warehouseId, days).catch(() => ({
-      total_sku: 0,
-      total_quantity: 0,
-      low_stock_count: 0,
-      out_of_stock_count: 0,
-      received_today: 0,
-      issued_today: 0,
-      recent_movements: [],
-      chart_data: [],
-    }));
+    let stats;
+    try {
+      stats = await repo.dashboard.getStats(warehouseId, days);
+    } catch (err) {
+      if (err instanceof DashboardDataError) {
+        console.error(
+          `[Dashboard API] โหลดข้อมูลไม่สำเร็จ — sheet: ${err.sheet}, operation: ${err.operation}`,
+          err
+        );
+        return errorResponse(
+          "โหลดข้อมูล Dashboard ไม่สำเร็จ: อ่านข้อมูลจาก Google Sheets ไม่ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง",
+          503
+        );
+      }
+      throw err;
+    }
     return successResponse(stats, "โหลดข้อมูล Dashboard สำเร็จ");
   } catch (e) {
+    console.error("[Dashboard API] unexpected error:", e);
     return serverErrorResponse(e);
   }
 }

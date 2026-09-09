@@ -110,12 +110,14 @@ export type LocationAllocation = z.infer<typeof LocationAllocationSchema>;
 
 export const ReceiveLineSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
-  location_id: z.string().default("loc-14A1"),
+  // Empty means "not specified" — the UI must collect a real location; the server
+  // must not guess a hardcoded default shelf on the user's behalf
+  location_id: z.string().default(""),
   primary_qty: z.number().optional(),
   extra_locations: z.array(z.string()).optional().default([]),
   extra_qtys: z.array(z.number()).optional().default([]),
   location_allocations: z.array(LocationAllocationSchema).optional().default([]),
-  qty: z.number().positive("จำนวนต้องมากกว่า 0"),
+  qty: z.number().int("จำนวนต้องเป็นจำนวนเต็ม").positive("จำนวนต้องมากกว่า 0"),
   boxes: z.number().default(1),
   barcode: z.string().default(""),
 });
@@ -123,9 +125,9 @@ export type ReceiveLineInput = z.infer<typeof ReceiveLineSchema>;
 
 export const ReceiveDocumentSchema = z.object({
   warehouse_id: z.string().min(1, "กรุณาเลือกโกดัง"),
-  reference_no: z.string().max(100).default(""),
+  reference_no: z.string().max(100, "รหัสอ้างอิงต้องไม่เกิน 100 ตัวอักษร").default(""),
   document_date: z.string().min(1, "กรุณาเลือกวันที่"),
-  note: z.string().max(500).default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").default(""),
   idempotency_key: z.string().min(1),
   created_by_name: z.string().optional(),
   lines: z.array(ReceiveLineSchema).min(1, "กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ"),
@@ -140,15 +142,15 @@ export type ReceiveStockInput = z.infer<typeof ReceiveStockSchema>;
 export const IssueLineSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
   location_id: z.string().min(1, "กรุณาเลือกตำแหน่ง"),
-  qty: z.number().positive("จำนวนต้องมากกว่า 0"),
+  qty: z.number().int("จำนวนต้องเป็นจำนวนเต็ม").positive("จำนวนต้องมากกว่า 0"),
 });
 export type IssueLineInput = z.infer<typeof IssueLineSchema>;
 
 export const IssueDocumentSchema = z.object({
   warehouse_id: z.string().min(1, "กรุณาเลือกโกดัง"),
-  reference_no: z.string().max(100).default(""),
+  reference_no: z.string().max(100, "รหัสอ้างอิงต้องไม่เกิน 100 ตัวอักษร").default(""),
   document_date: z.string().min(1, "กรุณาเลือกวันที่"),
-  note: z.string().max(500).default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").default(""),
   idempotency_key: z.string().min(1),
   lines: z.array(IssueLineSchema).min(1, "กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ"),
 });
@@ -164,10 +166,10 @@ export const MoveDocumentSchema = z.object({
   product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
   from_location_id: z.string().default(""),
   to_location_id: z.string().min(1, "กรุณาเลือกตำแหน่งปลายทาง"),
-  qty: z.number().positive("จำนวนต้องมากกว่า 0"),
-  reference_no: z.string().max(100).default(""),
+  qty: z.number().int("จำนวนต้องเป็นจำนวนเต็ม").positive("จำนวนต้องมากกว่า 0"),
+  reference_no: z.string().max(100, "รหัสอ้างอิงต้องไม่เกิน 100 ตัวอักษร").default(""),
   document_date: z.string().min(1, "กรุณาเลือกวันที่"),
-  note: z.string().max(500).default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").default(""),
   idempotency_key: z.string().min(1),
 });
 export type MoveDocumentInput = z.infer<typeof MoveDocumentSchema>;
@@ -186,15 +188,15 @@ export const TransferDocumentSchema = z.object({
   from_location_id: z.string().optional().default(""),
   to_warehouse_id: z.string().min(1, "กรุณาเลือกโกดังปลายทาง"),
   to_location_id: z.string().optional().default(""),
-  qty: z.coerce.number().positive("จำนวนต้องมากกว่า 0"),
+  qty: z.coerce.number().int("จำนวนต้องเป็นจำนวนเต็ม").positive("จำนวนต้องมากกว่า 0"),
   moved_by: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : "พนักงาน")),
   assigned_to_user_id: z.string().optional(),
   assigned_to_name: z.string().optional(),
   created_by: z.string().optional(),
   created_by_name: z.string().optional(),
-  reference_no: z.string().max(100).optional().default(""),
+  reference_no: z.string().max(100, "รหัสอ้างอิงต้องไม่เกิน 100 ตัวอักษร").optional().default(""),
   document_date: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : new Date().toISOString().slice(0, 10))),
-  note: z.string().max(500).optional().default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").optional().default(""),
   idempotency_key: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : `idem-trf-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)),
 });
 export type TransferDocumentInput = z.infer<typeof TransferDocumentSchema>;
@@ -205,7 +207,7 @@ export type CreateTransferInput = TransferDocumentInput;
 
 export const TransferAllocationSchema = z.object({
   location_id: z.string().min(1),
-  qty: z.coerce.number().positive("จำนวนต้องมากกว่า 0"),
+  qty: z.coerce.number().int("จำนวนต้องเป็นจำนวนเต็ม").positive("จำนวนต้องมากกว่า 0"),
 });
 export type TransferAllocation = z.infer<typeof TransferAllocationSchema>;
 
@@ -243,7 +245,7 @@ export type CancelTransferInput = z.infer<typeof CancelTransferSchema>;
 // ------ Movement: Reversal ------
 export const ReversalDocumentSchema = z.object({
   original_document_id: z.string().min(1, "กรุณาระบุเอกสารที่ต้องการกลับยอด"),
-  note: z.string().max(500).optional().default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").optional().default(""),
   idempotency_key: z.string().min(1),
 });
 export type ReversalDocumentInput = z.infer<typeof ReversalDocumentSchema>;
@@ -285,6 +287,7 @@ export type ApiResponse<T = unknown> = ApiSuccess<T> | ApiError;
 export const MovementFilterSchema = z.object({
   document_no: z.string().optional(),
   sku: z.string().optional(),
+  product_id: z.string().optional(),
   product_name: z.string().optional(),
   document_type: z.string().optional(),
   warehouse_id: z.string().optional(),

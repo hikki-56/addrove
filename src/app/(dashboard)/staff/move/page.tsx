@@ -74,7 +74,7 @@ export default function StaffMovePage() {
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
       {/* Staff Header Card */}
-      <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-5 flex items-center justify-between gap-4">
+      <div className="rounded-3xl bg-white border border-[#E8ECEA] shadow-sm p-5 flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-blue-500" />
@@ -100,7 +100,7 @@ export default function StaffMovePage() {
       </div>
 
       {/* 2-Step Guided Progress Indicator */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs space-y-3">
         <div className="flex items-center justify-between max-w-sm mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
@@ -108,7 +108,7 @@ export default function StaffMovePage() {
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 1
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
@@ -134,7 +134,7 @@ export default function StaffMovePage() {
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 2
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-slate-300 shadow-sm"
+                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
               }`}
             >
               2

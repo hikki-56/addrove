@@ -1,0 +1,77 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>.wrap{max-width:420px;margin:0 auto;padding:16px 14px 26px}</style></head>
+<body><div class="wrap">
+
+<!-- การ์ดหัว: พนักงาน + โกดังปัจจุบัน -->
+<div class="card" style="padding:16px">
+  <div class="row between">
+    <div style="font-size:19px;font-weight:700">รายการที่ต้องไปเบิกสินค้า</div>
+    <button class="btn btn-secondary" style="height:44px;padding:0 14px;font-size:14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      รีเฟรช</button>
+  </div>
+  <div style="font-size:14px;color:#5B6660;margin-top:6px">พนักงาน: สมชาย ใจดี • <span style="color:#047857;font-weight:700">โกดัง 1</span></div>
+</div>
+
+<!-- การ์ดใบเบิก 1 — รอดำเนินการ -->
+<div class="card" style="padding:16px;margin-top:12px">
+  <div class="row between g8">
+    <span class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0001</span>
+    <span class="badge" style="background:#F1F5F9;color:#334155"><span class="dot" style="background:#64748B"></span>รอดำเนินการ (ยังไม่เริ่ม)</span>
+  </div>
+  <div style="font-size:13px;color:#5B6660;margin-top:4px">สร้างเมื่อ: 4 ก.ย. 2569 09:12 น.</div>
+  <div class="sep"></div>
+  <div class="row g8"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M22 5v14"/></svg>
+    <span class="mono" style="font-size:16px;font-weight:600">8859123456789</span></div>
+  <div class="mono" style="font-size:13px;color:#5B6660;margin-top:3px">SKU: STL-24</div>
+  <div class="row between g10" style="margin-top:8px">
+    <div class="col g4">
+      <div style="font-size:16px;font-weight:700;line-height:1.35">สายถัก STL 24 นิ้ว</div>
+      <div style="font-size:14px;color:#5B6660;margin-top:2px">ตำแหน่ง: <span class="mono" style="font-weight:600;color:#334155">L1-A2</span></div>
+    </div>
+    <div class="qty-chip"><div class="n">400</div><div class="u">ชิ้น</div></div>
+  </div>
+  <div class="subcard row g8" style="padding:9px 12px;margin-top:10px">
+    <span class="chip" style="background:#fff">โกดัง 1</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+    <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">โกดัง 2</span>
+  </div>
+  <div class="sep"></div>
+  <div style="font-size:14px;color:#5B6660">ผู้สร้าง: อารีย์ แก้วใส</div>
+  <button class="btn btn-primary" style="width:100%;height:48px;font-size:16px;margin-top:10px">เริ่มเบิกสินค้า / สแกน
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+</div>
+
+<!-- การ์ดใบเบิก 2 — ทำค้างไว้ -->
+<div class="card" style="padding:16px;margin-top:12px">
+  <div class="row between g8">
+    <span class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0002</span>
+    <span class="badge" style="background:#D1FAE5;color:#047857"><span class="dot" style="background:#10B981"></span>กำลังสแกนสินค้า (1/3)</span>
+  </div>
+  <div style="font-size:13px;color:#5B6660;margin-top:4px">สร้างเมื่อ: 4 ก.ย. 2569 08:40 น.</div>
+  <div class="sep"></div>
+  <div class="row g8"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M22 5v14"/></svg>
+    <span class="mono" style="font-size:16px;font-weight:600">8850000002222</span></div>
+  <div class="mono" style="font-size:13px;color:#5B6660;margin-top:3px">SKU: DRM-200</div>
+  <div class="row between g10" style="margin-top:8px">
+    <div class="col">
+      <div style="font-size:16px;font-weight:700;line-height:1.35">ถังน้ำมัน 200 ลิตร</div>
+      <div style="font-size:14px;color:#5B6660;margin-top:2px">ตำแหน่ง: <span class="mono" style="font-weight:600;color:#334155">L2-B1</span></div>
+    </div>
+    <div class="qty-chip"><div class="n">60</div><div class="u">ชิ้น</div></div>
+  </div>
+  <div class="subcard row g8" style="padding:9px 12px;margin-top:10px">
+    <span class="chip" style="background:#fff">โกดัง 1</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+    <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">โกดัง 3</span>
+  </div>
+  <div class="sep"></div>
+  <div style="font-size:14px;color:#5B6660">ผู้สร้าง: อารีย์ แก้วใส</div>
+  <button class="btn btn-primary" style="width:100%;height:48px;font-size:16px;margin-top:10px">สแกนต่อ
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+</div>
+
+</div></body></html>

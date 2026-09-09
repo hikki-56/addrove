@@ -38,3 +38,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## Documentation
 
 - [Naming Conventions](docs/naming-conventions.md) - Standard file and folder naming rules for Stockify.
+- [Supabase Staging Setup](docs/supabase-staging-setup.md) - Safe staging setup and initial schema migration notes.

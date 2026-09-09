@@ -4,48 +4,49 @@ import React from "react";
 
 export interface ReceiveSuccessCardProps {
   onReset: () => void;
+  /** Server message describing what actually happened (e.g. "sent for approval") */
+  successMessage?: string;
 }
 
-export default function ReceiveSuccessCard({ onReset }: ReceiveSuccessCardProps) {
+export default function ReceiveSuccessCard({ onReset, successMessage }: ReceiveSuccessCardProps) {
   return (
-    <div className="max-w-md mx-auto py-6 sm:py-10 px-4">
-      {/* Success Card with Soft Background */}
-      <div className="bg-white rounded-[36px] p-8 sm:p-10 text-center border border-slate-100 shadow-xl shadow-slate-200/60 space-y-7 relative overflow-hidden">
-        {/* Soft Ambient Background Elements */}
-        <div className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-emerald-50/60 blur-xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-36 h-36 rounded-full bg-emerald-50/60 blur-xl pointer-events-none" />
-
-        {/* Circular Checkmark Icon with Sparkles */}
-        <div className="relative w-36 h-36 mx-auto flex items-center justify-center pt-2">
-          {/* Outer Light Green Halo */}
-          <div className="absolute inset-0 rounded-full bg-[#ecfdf5] scale-100" />
-
-          {/* Decorative Plus / Sparkle Elements */}
-          <span className="absolute top-3 right-6 text-emerald-400/80 font-bold text-sm select-none">+</span>
-          <span className="absolute bottom-4 left-5 text-emerald-400/80 font-bold text-sm select-none">+</span>
-          <span className="absolute top-8 left-3 w-2.5 h-2.5 rounded-full bg-emerald-300/70" />
-          <span className="absolute bottom-6 right-4 w-3 h-3 rounded-full bg-emerald-300/70" />
-          <span className="absolute top-2 left-14 w-2 h-2 rounded-full bg-emerald-400/60" />
-          <span className="absolute bottom-2 right-12 text-[10px] text-emerald-300 font-black select-none">•</span>
-
-          {/* Inner White Circle with Green Checkmark */}
-          <div className="relative w-22 h-22 rounded-full bg-white shadow-lg shadow-emerald-600/10 border border-emerald-100/80 flex items-center justify-center">
-            <svg className="w-11 h-11 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M5 13l4 4L19 7" />
+    <div className="max-w-md mx-auto py-6 sm:py-12 px-4">
+      <div className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] p-8 sm:p-10 text-center space-y-6 scale-in">
+        <div className="w-28 h-28 mx-auto rounded-full bg-[#EAF2EE] border border-[#DFEDE6] flex items-center justify-center">
+          <div className="w-20 h-20 rounded-full bg-[#06402B] flex items-center justify-center shadow-lg shadow-[#06402B]/25">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           </div>
         </div>
 
-        {/* Title & Description */}
-        <div className="space-y-2.5 pb-2">
-          <h2 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight">
-            รับสินค้าสำเร็จ
+        <div className="space-y-2">
+          <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
+            ส่งรายการรับสินค้าแล้ว
           </h2>
-          <p className="text-slate-500 text-sm sm:text-base leading-relaxed">
-            รายการรับสินค้าถูกส่งไปยัง <br />
-            <strong className="text-emerald-700 font-bold">Admin</strong> เรียบร้อยแล้ว
+          <p className="text-[#667085] text-sm sm:text-base">
+            {successMessage || "ส่งรายการรับสินค้าไปรออนุมัติแล้ว"}
           </p>
+          <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-left">
+            <p className="text-amber-800 text-sm font-semibold flex items-start gap-2">
+              <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>เอกสารอยู่สถานะ รออนุมัติ — ยอดสต็อกจะเข้าโกดังหลังผู้ดูแลอนุมัติเท่านั้น</span>
+            </p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onReset}
+          className="w-full py-4 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base shadow-lg shadow-[#06402B]/20 cursor-pointer transition-all active:scale-[.98] flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>เริ่มรับรายการใหม่</span>
+        </button>
       </div>
     </div>
   );

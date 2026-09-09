@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_Thai, Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/lib/auth";
@@ -7,20 +6,6 @@ import { ThemeProvider } from "@/context/ThemeProvider";
 import { TabAuthProvider } from "@/context/TabAuthContext";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-
-const notoSansThai = Noto_Sans_Thai({
-  subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-thai",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -46,7 +31,7 @@ export default async function RootLayout({
     session = null;
   }
   return (
-    <html lang="th" className={`${notoSansThai.variable} ${inter.variable} light`} data-theme="light" suppressHydrationWarning>
+    <html lang="th" className="light" data-theme="light" suppressHydrationWarning>
       <body className="font-thai antialiased" suppressHydrationWarning>
         <SessionProvider session={session}>
           <TabAuthProvider>

@@ -25,7 +25,7 @@ export default function ConfirmProductionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-5">
         <div className="space-y-1">
           <h2 className="text-xl font-bold text-slate-900">
             ยืนยันการสั่งผลิตสินค้า
@@ -36,23 +36,23 @@ export default function ConfirmProductionModal({
         </div>
 
         {/* What will be added (+) */}
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 space-y-2">
-          <p className="text-sm font-bold text-emerald-800 uppercase tracking-wider">
+        <div className="rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] p-4 space-y-2">
+          <p className="text-sm font-bold text-[#052B1F] uppercase tracking-wider">
             + สินค้าสำเร็จรูปที่จะเพิ่มเข้าโกดัง 2
           </p>
           <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
             {cart.map((item) => (
               <div key={item.bom.fg_sku} className="flex items-baseline justify-between text-sm">
-                <span className="font-semibold text-emerald-950 truncate">{item.bom.fg_name}</span>
-                <span className="font-mono font-bold text-emerald-900 shrink-0">
+                <span className="font-semibold text-[#031B14] truncate">{item.bom.fg_name}</span>
+                <span className="font-mono font-bold text-[#04231A] shrink-0">
                   +{item.quantity.toLocaleString()} {item.bom.fg_unit}
                 </span>
               </div>
             ))}
           </div>
-          <div className="pt-2 border-t border-emerald-200 flex justify-between items-baseline font-bold">
-            <span className="text-sm text-emerald-800">ยอดผลิตรวม</span>
-            <span className="text-lg font-mono text-emerald-900">
+          <div className="pt-2 border-t border-[#C9DFD4] flex justify-between items-baseline font-bold">
+            <span className="text-sm text-[#052B1F]">ยอดผลิตรวม</span>
+            <span className="text-lg font-mono text-[#04231A]">
               +{totalCartUnits.toLocaleString()} ชิ้น
             </span>
           </div>
@@ -87,7 +87,7 @@ export default function ConfirmProductionModal({
             type="button"
             disabled={isSubmitting}
             onClick={onConfirm}
-            className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-base transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl bg-[#06402B] hover:bg-[#053425] active:scale-[0.98] text-white font-bold text-base transition-all shadow-lg shadow-[#06402B]/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -99,7 +99,7 @@ export default function ConfirmProductionModal({
             type="button"
             disabled={isSubmitting}
             onClick={onCancel}
-            className="w-full py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all cursor-pointer border border-slate-200 active:scale-95"
+            className="w-full py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all cursor-pointer border border-[#E8ECEA] active:scale-95"
           >
             กลับไปตรวจอีกครั้ง
           </button>

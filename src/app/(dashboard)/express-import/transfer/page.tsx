@@ -124,11 +124,10 @@ export default function ExpressTransferPage() {
   const fetchMovements = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const ts = Date.now();
       const [expTrfRes, prodRes, statusRes] = await Promise.all([
-        fetch(`/api/express-import/transfer?_t=${ts}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/express-import/status?type=TRANSFER&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/transfer`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/products?limit=5000`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=TRANSFER`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const expTrfJson = expTrfRes ? await expTrfRes.json().catch(() => null) : null;
@@ -205,8 +204,8 @@ export default function ExpressTransferPage() {
         if (dateTo) params.set("date_to", dateTo);
 
         const [movRes, trfRes] = await Promise.all([
-          fetch(`/api/movements?${params.toString()}&_t=${ts}`, { cache: "no-store" }).catch(() => null),
-          fetch(`/api/movements/transfer?_t=${ts}`, { cache: "no-store" }).catch(() => null),
+          fetch(`/api/movements?${params.toString()}`, { cache: "no-store" }).catch(() => null),
+          fetch(`/api/movements/transfer`, { cache: "no-store" }).catch(() => null),
         ]);
 
         const movJson = movRes ? await movRes.json().catch(() => null) : null;
@@ -1087,7 +1086,7 @@ export default function ExpressTransferPage() {
   return (
     <div className="w-full max-w-full space-y-5 pb-12">
       {/* Top Header Banner (Clean Light Style) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm print:hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E8ECEA] shadow-sm print:hidden">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 font-bold flex-shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1116,7 +1115,7 @@ export default function ExpressTransferPage() {
           <button
             type="button"
             onClick={handleDownloadExpressTxt}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#D5DDD9] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
             title="ดาวน์โหลดไฟล์ .txt สำหรับ Express"
           >
             <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1128,7 +1127,7 @@ export default function ExpressTransferPage() {
           <button
             type="button"
             onClick={handlePrintBarcodes}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#D5DDD9] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
           >
             <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1164,7 +1163,7 @@ export default function ExpressTransferPage() {
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
             tagFilter === "ALL"
               ? "bg-slate-100 border-slate-400 shadow-sm"
-              : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 shadow-2xs"
+              : "bg-white border-[#E8ECEA] hover:border-[#D5DDD9] hover:bg-slate-50/70 shadow-2xs"
           }`}
         >
           <div className="text-xs font-bold text-slate-600">รายการย้ายทั้งหมด</div>
@@ -1177,7 +1176,7 @@ export default function ExpressTransferPage() {
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
             tagFilter === "PENDING"
               ? "bg-amber-100/70 border-amber-500 shadow-sm"
-              : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs"
+              : "bg-white border-[#E8ECEA] hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs"
           }`}
         >
           <div className="text-xs font-bold text-amber-800">⏳ รอนำเข้า Express</div>
@@ -1189,17 +1188,17 @@ export default function ExpressTransferPage() {
           onClick={() => setTagFilter("IMPORTED")}
           className={`p-4 rounded-2xl border transition-all cursor-pointer ${
             tagFilter === "IMPORTED"
-              ? "bg-emerald-100/70 border-emerald-500 shadow-sm"
-              : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 shadow-2xs"
+              ? "bg-[#DFEDE6]/70 border-[#0F5C3F] shadow-sm"
+              : "bg-white border-[#E8ECEA] hover:border-[#8FB3A3] hover:bg-[#EAF2EE]/40 shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-emerald-800">✅ นำเข้าแล้ว</div>
-          <div className="text-2xl font-black text-emerald-900 mt-1 font-mono">{tagStats.importedCount}</div>
+          <div className="text-xs font-bold text-[#052B1F]">✅ นำเข้าแล้ว</div>
+          <div className="text-2xl font-black text-[#04231A] mt-1 font-mono">{tagStats.importedCount}</div>
         </div>
       </div>
 
       {/* Filter Controls & Search (Clean Light Box) */}
-      <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3.5 shadow-2xs print:hidden">
+      <div className="p-4 bg-white border border-[#E8ECEA] rounded-2xl space-y-3.5 shadow-2xs print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Search Box */}
           <div className="sm:col-span-5 relative">
@@ -1211,7 +1210,7 @@ export default function ExpressTransferPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาบาร์โค้ด, SKU, สินค้า, แท็ก, โกดัง, เลขเอกสาร..."
-              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white transition-all font-medium"
+              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-slate-50 border border-[#D5DDD9] rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white transition-all font-medium"
             />
             {searchQuery && (
               <button
@@ -1289,12 +1288,12 @@ export default function ExpressTransferPage() {
         </div>
 
         {loading ? (
-          <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl p-16 text-center border border-[#E8ECEA] bg-white shadow-sm">
             <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-slate-600 text-sm font-medium">กำลังโหลดข้อมูลรายการย้ายสินค้า...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl p-16 text-center border border-[#E8ECEA] bg-white shadow-sm">
             <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -1305,11 +1304,11 @@ export default function ExpressTransferPage() {
           </div>
         ) : (
           /* Table View */
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden print:border-black">
+          <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden print:border-black">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/95 border-b border-slate-200 text-slate-700 text-sm font-bold tracking-normal print:bg-white">
+                  <tr className="bg-slate-50/95 border-b border-[#E8ECEA] text-slate-700 text-sm font-bold tracking-normal print:bg-white">
                     <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-slate-700">ลำดับ</th>
                     <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">เลขที่เอกสาร</th>
                     <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
@@ -1321,7 +1320,7 @@ export default function ExpressTransferPage() {
                     <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-slate-700">สถานะ Express</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-[#EEF1EF] text-sm">
                   {filteredItems.map((item, idx) => {
                     const barcodeValue = item.barcode || item.sku;
                     const isRowCopied = copiedItemId === item.id;
@@ -1336,19 +1335,19 @@ export default function ExpressTransferPage() {
                         key={`${item.id}-${idx}`}
                         className={`transition-colors border-b ${
                           isImported
-                            ? "!bg-emerald-100 hover:!bg-emerald-200/80 border-emerald-300"
+                            ? "!bg-[#DFEDE6] hover:!bg-[#C9DFD4]/80 border-[#8FB3A3]"
                             : isSelected
-                            ? "bg-purple-50/50 hover:bg-purple-100/50 border-slate-100"
-                            : "hover:bg-slate-50/90 border-slate-100"
+                            ? "bg-purple-50/50 hover:bg-purple-100/50 border-[#EEF1EF]"
+                            : "hover:bg-slate-50/90 border-[#EEF1EF]"
                         }`}
                       >
                         {/* 1. ลำดับ */}
-                        <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           {idx + 1}
                         </td>
 
                         {/* 2. เลขที่เอกสาร */}
-                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <div className="font-mono font-bold text-slate-900 text-sm">
                             {item.document_no}
                           </div>
@@ -1360,7 +1359,7 @@ export default function ExpressTransferPage() {
                         </td>
 
                         {/* 3. บาร์โค้ด (รูปบาร์โค้ด) */}
-                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <div className="flex flex-col items-center justify-center gap-1">
                             <BarcodeSvg
                               value={barcodeValue}
@@ -1376,7 +1375,7 @@ export default function ExpressTransferPage() {
                               title="คัดลอกเฉพาะเลขบาร์โค้ด"
                             >
                               {isBarcodeCopied ? (
-                                <span className="text-emerald-600 font-bold">✓ คัดลอกแล้ว</span>
+                                <span className="text-[#06402B] font-bold">✓ คัดลอกแล้ว</span>
                               ) : (
                                 <>
                                   <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1390,24 +1389,24 @@ export default function ExpressTransferPage() {
                         </td>
 
                         {/* 4. รหัสสินค้า */}
-                        <td className={`py-3 px-3 whitespace-nowrap font-mono font-bold text-slate-900 text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 whitespace-nowrap font-mono font-bold text-slate-900 text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           {item.sku || "-"}
                         </td>
 
                         {/* 5. ชื่อสินค้า */}
-                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <div className="text-slate-900 font-semibold text-sm leading-snug" title={item.product_name}>
                             {item.product_name}
                           </div>
                         </td>
 
                         {/* 6. คลังสินค้า (สามารถกดเปลี่ยนโกดังต้นทาง-ปลายทางได้ทันที) */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <div className="inline-flex items-center gap-1 text-slate-800 font-medium">
                             <select
                               value={getWarehouseName(item.from_warehouse_name || item.warehouse_name)}
                               onChange={(e) => handleUpdateRowWarehouse(item, e.target.value, item.to_warehouse_name || "สำนักงานใหญ่")}
-                              className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-slate-400 transition-colors"
+                              className="bg-white hover:bg-slate-50 border border-[#D5DDD9] text-slate-800 text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-slate-400 transition-colors"
                               title="เลือกโกดังต้นทาง"
                             >
                               {WAREHOUSE_SELECT_OPTIONS.map((w) => (
@@ -1431,27 +1430,27 @@ export default function ExpressTransferPage() {
                         </td>
 
                         {/* 7. ตำแหน่ง */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <span className="font-mono font-bold text-slate-800 text-sm">
                             {item.location && item.location !== "-" ? item.location : "-"}
                           </span>
                         </td>
 
                         {/* 8. จำนวน */}
-                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <span className="font-mono font-bold text-slate-900 text-base">
                             {item.quantity.toLocaleString()} <span className="font-normal text-slate-500 text-xs">ชิ้น</span>
                           </span>
                         </td>
 
                         {/* 8. สถานะ Express */}
-                        <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
+                        <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
                           <select
                             value={effectiveStatus}
                             onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
                               isImported
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                ? "bg-[#EAF2EE] text-[#052B1F] border-[#8FB3A3] hover:bg-[#DFEDE6]"
                                 : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
                             }`}
                           >
@@ -1472,10 +1471,10 @@ export default function ExpressTransferPage() {
       {/* Batch Tag Input Modal (Clean Light Design) */}
       {showTagModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+          <div className="w-full max-w-md bg-white border border-[#E8ECEA] rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span>🏷️ กำหนดชื่อแท็กสำหรับ Express</span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#053425]">
                 {selectedItemIds.size} รายการ
               </span>
             </h3>
@@ -1488,7 +1487,7 @@ export default function ExpressTransferPage() {
               value={customTagInput}
               onChange={(e) => setCustomTagInput(e.target.value)}
               placeholder="ระบุชื่อแท็ก..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-[#D5DDD9] rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white"
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">

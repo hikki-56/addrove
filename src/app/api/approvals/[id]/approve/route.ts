@@ -42,7 +42,10 @@ export async function POST(
     const { id } = await params;
     const decodedId = decodeURIComponent(id).trim();
 
-    setDocumentStatus(decodedId, "POSTED");
+    // หมายเหตุ: ห้ามตั้งสถานะ POSTED ใน memory ณ จุดนี้ — ต้องรอให้เขียน movement/
+    // อัปเดตสถานะในชีตสำเร็จก่อน มิฉะนั้นถ้า approve ล้มเหลว เอกสารจะหายจากคิว
+    // /approvals และประวัติรับเข้าทั้งที่ชีตยังเป็น PENDING (setDocumentStatus
+    // ถูกเรียกเฉพาะหลัง updateStatus(..., "POSTED") สำเร็จเท่านั้น)
 
     const repo = getRepository();
     let doc =
@@ -204,6 +207,12 @@ export async function POST(
       }
 
       await repo.documents.updateStatus(doc.document_id, "POSTED");
+
+      // สถานะเขียนชีตสำเร็จแล้วจึงตั้ง override ใน memory ให้ /approvals กับ
+      // ประวัติรับเข้าเห็น POSTED ทันที (set ทั้ง id และ เลขที่เอกสาร เผื่อผู้เรียก
+      // อ้างอิงเอกสารด้วยค่าใดค่าหนึ่ง)
+      setDocumentStatus(doc.document_id, "POSTED");
+      setDocumentStatus(doc.document_no, "POSTED");
 
       // Synchronize via repository adapter
       // Synchronize via repository adapter concurrently in parallel

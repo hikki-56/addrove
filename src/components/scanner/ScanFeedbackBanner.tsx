@@ -28,13 +28,13 @@ export default function ScanFeedbackBanner({
     <div
       className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300 flex items-start gap-2.5 sm:gap-3 shadow-xs ${
         isSuccess
-          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+          ? "bg-[#EAF2EE] border-[#C9DFD4] text-[#052B1F]"
           : "bg-rose-50 border-rose-200 text-rose-800"
       } ${className}`}
     >
       <div
         className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
-          isSuccess ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+          isSuccess ? "bg-[#DFEDE6] text-[#053425]" : "bg-rose-100 text-rose-700"
         }`}
       >
         {isSuccess ? (
@@ -52,7 +52,7 @@ export default function ScanFeedbackBanner({
         {feedback.title && <div className="font-bold text-sm mb-0.5">{feedback.title}</div>}
         <div className="text-xs sm:text-sm text-slate-700 leading-relaxed break-words">{feedback.message}</div>
         {feedback.scannedCode && (
-          <div className="mt-1 inline-block px-2 py-0.5 rounded-md bg-white text-xs font-mono font-bold text-slate-700 border border-slate-200 shadow-2xs">
+          <div className="mt-1 inline-block px-2 py-0.5 rounded-md bg-white text-xs font-mono font-bold text-slate-700 border border-[#E8ECEA] shadow-2xs">
             Code: {feedback.scannedCode}
           </div>
         )}

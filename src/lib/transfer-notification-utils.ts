@@ -1,4 +1,5 @@
 import { normalizeWarehouseId, getWarehouseName, detectWarehouseFromLocation, getWarehouseDisplayName } from "./warehouse-utils";
+import type { Product } from "@/types/models";
 
 export interface TransferNotification {
   id: string;
@@ -187,6 +188,73 @@ export function parseTransferMetadata(note?: string | null): ParsedTransferMetad
 }
 
 const STORAGE_KEY = "stockify_transfer_notifications";
+
+const A1_PLACEHOLDER_RE = /^loc-?(a0?1|b0?1)?$/i;
+
+export function isUsableLocationCode(loc?: string | null): boolean {
+  const v = (loc || "").trim();
+  if (!v || v === "-" || v === "null" || v === "undefined" || v === "A1" || v === "ตำแหน่งเริ่มต้น") return false;
+  if (A1_PLACEHOLDER_RE.test(v)) return false;
+  return true;
+}
+
+export function normalizeLocationKey(loc?: string | null): string {
+  return (loc || "").trim().toLowerCase().replace(/^loc-/, "").replace(/[\s\-_#]/g, "");
+}
+
+/**
+ * คืนลิสต์ชั้นวางต้นทางที่ "ยังมีสต็อกเหลืออยู่จริง" เท่านั้น (quantity > 0)
+ * เพื่อตัดชั้นวางที่เคยถูกสแกน/หยิบจนหมดไปแล้วออกจากการแสดงผล
+ * - คืน [] เมื่อมีข้อมูลสต็อกแยกชั้นวางของโกดังต้นทางชัดเจน แต่ทุกชั้นวางหมดแล้ว
+ * - คืน null เมื่อไม่มีข้อมูลสต็อกแยกชั้นวางให้สรุปได้ (ผู้เรียกควรใช้ logic สำรองเดิมต่อ)
+ */
+export function getInStockSourceLocations(
+  t: Pick<TransferNotification, "sku" | "product_id" | "barcode" | "from_warehouse_id" | "from_warehouse_name">,
+  products?: Product[]
+): string[] | null {
+  if (!products || products.length === 0) return null;
+
+  const normSkuLike = (v?: string) => (v || "").trim().toLowerCase().replace(/^prod-/, "");
+  const normSku = normSkuLike(t.sku);
+  const normPid = normSkuLike(t.product_id);
+  const tBarcode = (t.barcode || "").trim().toLowerCase();
+
+  const matched = products.find((p) => {
+    const pSku = normSkuLike(p.sku);
+    const pPid = normSkuLike(p.product_id);
+    const pBcode = (p.barcode || "").trim().toLowerCase();
+    if (normSku && (pSku === normSku || pPid === normSku)) return true;
+    if (normPid && (pPid === normPid || pSku === normPid)) return true;
+    return Boolean(tBarcode && pBcode && pBcode === tBarcode);
+  });
+  if (!matched) return null;
+
+  const normFromWh = (t.from_warehouse_id || "").trim().toLowerCase();
+  const normFromWhName = (t.from_warehouse_name || "").trim().toLowerCase();
+  const whEntries = (matched.locations_breakdown || []).filter((b) => {
+    const bId = (b.warehouse_id || "").trim().toLowerCase();
+    const bName = (b.warehouse_name || "").trim().toLowerCase();
+    return (normFromWh && bId === normFromWh) || (normFromWhName && bName === normFromWhName);
+  });
+
+  // ไม่มี breakdown ของโกดังต้นทาง → สรุปไม่ได้ ให้ผู้เรียกใช้ logic สำรองเดิม
+  if (whEntries.length === 0) return null;
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const b of whEntries) {
+    if (!(Number(b.quantity ?? 0) > 0)) continue;
+    if (!isUsableLocationCode(b.location)) continue;
+    const cleanLoc = b.location.replace(/^loc-/, "");
+    for (const part of cleanLoc.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const key = normalizeLocationKey(part);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      result.push(part);
+    }
+  }
+  return result;
+}
 
 export function getDisplayProductName(t?: { product_name?: string; note?: string; sku?: string; product_id?: string }): string {
   if (!t) return "รายการย้ายสินค้า";
@@ -494,6 +562,41 @@ export function markTransferCompleted(id: string, docNo?: string, productId?: st
   }
 }
 
+/**
+ * Rollback ของ markTransferCompleted — ใช้เมื่อ optimistic UI สำเร็จแต่ server ล้มเหลว
+ * ลบ id ออกจาก COMPLETED_KEY และคืนสถานะใน STORAGE_KEY กลับเป็น WAITING_APPROVAL
+ * เพื่อไม่ให้รายการถูก force COMPLETED และกรองทิ้งตอน sync ถัดไป
+ */
+export function unmarkTransferCompleted(id: string) {
+  if (!id || typeof window === "undefined") return;
+  try {
+    const idLower = String(id).trim().toLowerCase();
+    if (!idLower) return;
+
+    const raw = localStorage.getItem(COMPLETED_KEY);
+    if (raw) {
+      const list: unknown = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const filtered = list.filter(
+          (item) => String(item || "").trim().toLowerCase() !== idLower
+        );
+        localStorage.setItem(COMPLETED_KEY, JSON.stringify(filtered));
+      }
+    }
+
+    const existing = getTransferNotifications();
+    const updated = existing.map((t) =>
+      t.id && String(t.id).trim().toLowerCase() === idLower
+        ? { ...t, status: "WAITING_APPROVAL" as const }
+        : t
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    broadcastTransferChange();
+  } catch (e) {
+    console.error("[TransferNotification] Unmark completed error:", e);
+  }
+}
+
 let syncChannel: BroadcastChannel | null = null;
 if (typeof window !== "undefined" && "BroadcastChannel" in window) {
   try {
@@ -606,7 +709,6 @@ export function clearAllTransferNotifications() {
   } catch {}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function syncServerTransferNotifications(serverDocs: Array<Record<string, any>>) {
   if (typeof window === "undefined" || !Array.isArray(serverDocs)) return;
   try {
@@ -731,9 +833,44 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
       const existingTask = updatedMap.get(idLower);
 
       if (existingTask) {
+        // คงค่าข้อมูลสินค้าเดิมไว้เมื่อ server ส่งมาเป็นค่าว่าง/dummy
+        // (note ในชีตโดนเขียนทับจน parse ไม่ได้ — ห้ามให้ sync ลบ sku/barcode ที่เคยแสดงอยู่ทิ้ง)
+        const existingPid = (existingTask.product_id || "").trim();
+        const existingSku = (existingTask.sku || "").trim();
+        const existingBarcode = (existingTask.barcode || "").trim();
+        const existingName = (existingTask.product_name || "").trim();
+        const existingHasProduct =
+          existingPid !== "" && existingPid.toLowerCase() !== "trf-item" && (existingSku !== "" || existingBarcode !== "" || existingName !== "");
+
+        const serverHasProduct = Boolean(serverTask.sku.trim() || (serverTask.barcode || "").trim()) && serverTask.product_id.trim().toLowerCase() !== "trf-item";
+
+        // เก็บ note เดิมไว้ถ้า note จาก server ไม่มีข้อมูลสินค้า (progress-only) แต่ของเดิมเคยมี
+        const serverNoteMeta = parseTransferMetadata(serverTask.note);
+        const existingNoteMeta = parseTransferMetadata(existingTask.note || "");
+        const keepExistingNote = Boolean(
+          existingTask.note && !serverNoteMeta.sku && (existingNoteMeta.sku || existingHasProduct)
+        );
+
+        // ตำแหน่ง/ผู้เบิกที่พนักงานสแกนไว้ตอน submit — server ส่งว่างเมื่อ note โดนทับ ห้ามลบของเดิม
         const merged: TransferNotification = {
           ...serverTask,
-          product_name: getDisplayProductName(serverTask),
+          product_id: !serverHasProduct && existingHasProduct ? existingPid : serverTask.product_id,
+          sku: !serverHasProduct && existingSku ? existingSku : serverTask.sku,
+          barcode: !(serverTask.barcode || "").trim() && existingBarcode ? existingBarcode : serverTask.barcode,
+          product_name:
+            (!serverTask.product_name.trim() || serverTask.product_name === "รายการย้ายสินค้า") && existingName
+              ? existingName
+              : serverTask.product_name,
+          from_location_id: !serverTask.from_location_id ? existingTask.from_location_id : serverTask.from_location_id,
+          to_location_id: !serverTask.to_location_id ? existingTask.to_location_id : serverTask.to_location_id,
+          location_code: !serverTask.location_code ? existingTask.location_code : serverTask.location_code,
+          source_allocations:
+            (!serverTask.source_allocations || serverTask.source_allocations.length === 0) && existingTask.source_allocations
+              ? existingTask.source_allocations
+              : serverTask.source_allocations,
+          moved_by: !serverTask.moved_by.trim() ? existingTask.moved_by : serverTask.moved_by,
+          assigned_to_name: !serverTask.assigned_to_name?.trim() ? existingTask.assigned_to_name : serverTask.assigned_to_name,
+          note: keepExistingNote ? existingTask.note : serverTask.note,
           status: existingTask.status === "COMPLETED" ? "COMPLETED" : serverTask.status,
           current_step: existingTask.current_step !== undefined ? existingTask.current_step : serverTask.current_step,
           current_step_text: existingTask.current_step_text || serverTask.current_step_text,
@@ -816,7 +953,7 @@ export async function fetchAndSyncTransferNotifications(): Promise<void> {
 
       let res: Response | null = null;
       try {
-        res = await fetch(`/api/movements/transfer?_t=${now}`, {
+        res = await fetch(`/api/movements/transfer`, {
           cache: "no-store",
           headers,
         });
@@ -826,7 +963,7 @@ export async function fetchAndSyncTransferNotifications(): Promise<void> {
 
       if (!res || !res.ok) {
         try {
-          res = await fetch(`/api/movements/transfer/assigned?_t=${now}`, {
+          res = await fetch(`/api/movements/transfer/assigned`, {
             cache: "no-store",
             headers,
           });

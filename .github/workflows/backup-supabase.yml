@@ -1,0 +1,47 @@
+name: Backup Supabase staging database
+
+# Free-plan Supabase projects have no automatic backups.
+# This workflow takes a daily logical dump (roles + schema + data)
+# of the stockify-staging database and stores it as a workflow artifact.
+#
+# Required repository secret (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL - direct connection string including the db password,
+#                     e.g. postgresql://postgres:[PASSWORD]@db.imiqvhqjlsvfgzdwaolq.supabase.co:5432/postgres
+#                     Never commit this value.
+
+on:
+  schedule:
+    # 18:30 UTC = 01:30 Thailand time, daily (after warehouse close)
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: backup-supabase
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Dump database (roles, schema, data)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --data-only --use-copy
+          echo "## Backup summary" >> "$GITHUB_STEP_SUMMARY"
+          for f in backup/*.sql; do
+            echo "- ${f}: $(wc -c < "$f") bytes, $(wc -l < "$f") lines" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 30
+          if-no-files-found: error

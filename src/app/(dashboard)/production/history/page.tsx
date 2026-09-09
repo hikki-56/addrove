@@ -44,45 +44,6 @@ export interface ProductionOrderRecord {
   note?: string;
 }
 
-const currentYearNum = new Date().getFullYear();
-
-const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => {
-  const d = String(i + 1).padStart(2, "0");
-  return { value: d, label: String(i + 1) };
-});
-
-const MONTH_OPTIONS = [
-  { value: "01", label: "ม.ค." },
-  { value: "02", label: "ก.พ." },
-  { value: "03", label: "มี.ค." },
-  { value: "04", label: "เม.ย." },
-  { value: "05", label: "พ.ค." },
-  { value: "06", label: "มิ.ย." },
-  { value: "07", label: "ก.ค." },
-  { value: "08", label: "ส.ค." },
-  { value: "09", label: "ก.ย." },
-  { value: "10", label: "ต.ค." },
-  { value: "11", label: "พ.ย." },
-  { value: "12", label: "ธ.ค." },
-];
-
-const YEAR_OPTIONS = [
-  { value: String(currentYearNum + 1), label: String(currentYearNum + 1 + 543) },
-  { value: String(currentYearNum), label: String(currentYearNum + 543) },
-  { value: String(currentYearNum - 1), label: String(currentYearNum - 1 + 543) },
-  { value: String(currentYearNum - 2), label: String(currentYearNum - 2 + 543) },
-  { value: String(currentYearNum - 3), label: String(currentYearNum - 3 + 543) },
-];
-
-const getTodayDateParts = () => {
-  const d = new Date();
-  return {
-    day: String(d.getDate()).padStart(2, "0"),
-    month: String(d.getMonth() + 1).padStart(2, "0"),
-    year: String(d.getFullYear()),
-  };
-};
-
 // Custom Dropdown showing ~4 items at a time with smooth scroll
 function ScrollableSelect({
   value,
@@ -116,7 +77,7 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-1 px-2.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 text-xs font-bold transition-all cursor-pointer shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white"
+        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-[#E8ECEA] text-slate-800 text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-[#0F5C3F] focus:bg-white"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
@@ -125,12 +86,12 @@ function ScrollableSelect({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 w-full min-w-[72px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[144px] overflow-y-auto divide-y divide-slate-100 py-0.5">
+        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-[#E8ECEA] rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-[#EEF1EF] py-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -141,14 +102,14 @@ function ScrollableSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? "bg-emerald-50 text-emerald-700 font-black"
+                    ? "bg-[#EAF2EE] text-[#053425] font-bold"
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
-                <span>{opt.label}</span>
-                {isSelected && <span className="text-emerald-600 text-[11px]">✓</span>}
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="text-[#06402B] text-sm font-bold ml-1.5 shrink-0">✓</span>}
               </button>
             );
           })}
@@ -170,15 +131,16 @@ export default function ProductionHistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
 
-  // Date Dropdown states (Default to Today)
-  const [selectedDay, setSelectedDay] = useState<string>(() => getTodayDateParts().day);
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => getTodayDateParts().month);
-  const [selectedYear, setSelectedYear] = useState<string>(() => getTodayDateParts().year);
-
-  const selectedDate = useMemo(() => {
-    if (!selectedYear || !selectedMonth || !selectedDay) return "";
-    return `${selectedYear}-${selectedMonth}-${selectedDay}`;
-  }, [selectedYear, selectedMonth, selectedDay]);
+  // Date Range states (Default to Today)
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("TODAY");
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [dateTo, setDateTo] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -193,6 +155,78 @@ export default function ProductionHistoryPage() {
 
   const loadIdRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "ALL", label: "สถานะทั้งหมด" },
+      { value: "COMPLETED", label: "เสร็จสมบูรณ์ (Completed)" },
+      { value: "IN_PROGRESS", label: "กำลังผลิต (In Progress)" },
+      { value: "PENDING", label: "รอดำเนินการ (Pending)" },
+      { value: "CANCELLED", label: "ยกเลิก (Cancelled)" },
+    ],
+    []
+  );
+
+  const dateRangeOptions = useMemo(
+    () => [
+      { value: "ALL", label: "ช่วงเวลาทั้งหมด" },
+      { value: "TODAY", label: "วันนี้" },
+      { value: "YESTERDAY", label: "เมื่อวานนี้" },
+      { value: "LAST_7_DAYS", label: "7 วันล่าสุด" },
+      { value: "LAST_30_DAYS", label: "30 วันล่าสุด" },
+      { value: "THIS_MONTH", label: "เดือนนี้" },
+      { value: "LAST_MONTH", label: "เดือนที่แล้ว" },
+    ],
+    []
+  );
+
+  const handleDateRangeChange = (preset: string) => {
+    setSelectedDateRange(preset);
+    setCurrentPage(1);
+
+    const now = new Date();
+    const toYMD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (preset === "TODAY") {
+      const todayStr = toYMD(now);
+      setDateFrom(todayStr);
+      setDateTo(todayStr);
+    } else if (preset === "YESTERDAY") {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = toYMD(y);
+      setDateFrom(yStr);
+      setDateTo(yStr);
+    } else if (preset === "LAST_7_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "LAST_30_DAYS") {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 29);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(now));
+    } else if (preset === "THIS_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else if (preset === "LAST_MONTH") {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setDateFrom(toYMD(start));
+      setDateTo(toYMD(end));
+    } else {
+      setDateFrom("");
+      setDateTo("");
+    }
+  };
 
   // Fetch production orders
   const loadData = useCallback(async (showRefreshing = false) => {
@@ -211,7 +245,7 @@ export default function ProductionHistoryPage() {
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
-      const res = await fetch(`/api/production/orders?_t=${Date.now()}`, {
+      const res = await fetch(`/api/production/orders`, {
         headers,
         cache: "no-store",
       });
@@ -326,26 +360,27 @@ export default function ProductionHistoryPage() {
         if (order.status !== selectedStatus) return false;
       }
 
-      // 3. Single Date Filter
-      if (selectedDate) {
+      // 3. Date Range Filter
+      if (dateFrom || dateTo) {
         const itemDate = (order.created_at || order.document_date || "").slice(0, 10);
-        if (itemDate !== selectedDate) return false;
+        if (dateFrom && itemDate < dateFrom) return false;
+        if (dateTo && itemDate > dateTo) return false;
       }
 
       return true;
     });
-  }, [orders, searchQuery, selectedStatus, selectedDate]);
+  }, [orders, searchQuery, selectedStatus, dateFrom, dateTo]);
 
-  // Statistics
+  // Statistics — คำนวณจากข้อมูลที่ผ่านตัวกรอง (เช่นเดียวกับหน้าประวัติรับสินค้า)
   const stats = useMemo(() => {
-    const total = orders.length;
-    const totalUnits = orders.reduce((sum, o) => sum + (Number(o.total_fg_qty) || 0), 0);
-    const completed = orders.filter((o) => o.status === "COMPLETED").length;
-    const inProgress = orders.filter((o) => o.status === "IN_PROGRESS" || o.status === "PENDING").length;
-    const cancelled = orders.filter((o) => o.status === "CANCELLED").length;
+    const total = filteredOrders.length;
+    const totalUnits = filteredOrders.reduce((sum, o) => sum + (Number(o.total_fg_qty) || 0), 0);
+    const completed = filteredOrders.filter((o) => o.status === "COMPLETED").length;
+    const inProgress = filteredOrders.filter((o) => o.status === "IN_PROGRESS" || o.status === "PENDING").length;
+    const cancelled = filteredOrders.filter((o) => o.status === "CANCELLED").length;
 
     return { total, totalUnits, completed, inProgress, cancelled };
-  }, [orders]);
+  }, [filteredOrders]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
@@ -364,10 +399,7 @@ export default function ProductionHistoryPage() {
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedStatus("ALL");
-    const t = getTodayDateParts();
-    setSelectedDay(t.day);
-    setSelectedMonth(t.month);
-    setSelectedYear(t.year);
+    handleDateRangeChange("TODAY");
     setCurrentPage(1);
   };
 
@@ -427,34 +459,51 @@ export default function ProductionHistoryPage() {
     document.body.removeChild(link);
   };
 
+  const formatThaiDateTime = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("th-TH", {
+        day: "numeric",
+        month: "short",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   // Status Badge Helper
   const renderStatusBadge = (status: ProductionOrderRecord["status"]) => {
     switch (status) {
       case "COMPLETED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4] whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] shrink-0"></span>
             <span>เสร็จสมบูรณ์</span>
           </span>
         );
       case "IN_PROGRESS":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0"></span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
             <span>กำลังผลิต</span>
           </span>
         );
       case "PENDING":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
             <span>รอดำเนินการ</span>
           </span>
         );
       case "CANCELLED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
             <span>ยกเลิก</span>
           </span>
         );
@@ -464,40 +513,51 @@ export default function ProductionHistoryPage() {
   };
 
   return (
-    <div className="w-full max-w-full space-y-6 pb-20">
+    <div className="w-full max-w-full space-y-4 sm:space-y-5">
       {/* Toast Notification */}
       {copySuccess && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-black flex items-center gap-2.5 animate-bounce border border-slate-700">
-          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 animate-bounce">
+          <svg className="w-4 h-4 text-[#5B8A74]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
-          <span>คัดลอก {copySuccess} เรียบร้อยแล้ว</span>
+          <span>คัดลอก {copySuccess} เรียบร้อย</span>
         </div>
       )}
 
       {/* Page Header */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center font-bold text-xl shadow-2xs shrink-0">
-            📜
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              ประวัติการสั่งผลิต
-            </h1>
-            <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
-              บันทึกและประวัติคำสั่งผลิตสินค้าสำเร็จรูปและการใช้วัตถุดิบ (BOM) ทั้งหมด
-            </p>
-          </div>
+      <div className="pb-3 border-b border-[#E8ECEA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            ประวัติการสั่งผลิต
+          </h1>
+          <p className="text-sm text-slate-500 font-normal mt-0.5">
+            บันทึกและประวัติคำสั่งผลิตสินค้าสำเร็จรูปและการใช้วัตถุดิบ (BOM) ทั้งหมด
+          </p>
         </div>
 
-        {/* Action Button */}
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => loadData(true)}
+            disabled={isRefreshing}
+            className="px-3 py-2 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-sm font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+          >
+            <svg
+              className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{isRefreshing ? "กำลังรีเฟรช..." : "รีเฟรช"}</span>
+          </button>
+
           <Link
             href="/production"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+            className="px-3.5 py-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-sm font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-[#06402B]/30"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
             <span>สั่งผลิตสินค้าใหม่</span>
@@ -505,553 +565,545 @@ export default function ProductionHistoryPage() {
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1.5">
+      {/* Summary Statistics Cards (4 Columns) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-bold text-slate-600">คำสั่งผลิตทั้งหมด</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 text-base">
-              📋
+            <span className="text-sm font-semibold text-slate-500">คำสั่งผลิตทั้งหมด</span>
+            <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
-          <div className="text-xs text-slate-400 font-semibold">รายการคำสั่งผลิตทั้งหมด</div>
+          <div className="text-2xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">รายการทั้งหมดตามตัวกรอง</div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-bold text-slate-600">ยอดผลิตสำเร็จรูป</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-700 text-base">
-              📦
+            <span className="text-sm font-semibold text-slate-500">ยอดผลิตสำเร็จรูป</span>
+            <div className="w-6 h-6 rounded-lg bg-[#EAF2EE] flex items-center justify-center text-[#06402B]">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-indigo-600">{stats.totalUnits.toLocaleString()}</div>
-          <div className="text-xs text-slate-400 font-semibold">หน่วยสินค้าสำเร็จรูปรวม</div>
+          <div className="text-2xl font-black text-[#06402B]">{stats.totalUnits.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">หน่วยสินค้าสำเร็จรูปรวม</div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-bold text-slate-600">เสร็จสมบูรณ์</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 text-base">
-              ✅
+            <span className="text-sm font-semibold text-slate-500">เสร็จสมบูรณ์</span>
+            <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600">{stats.completed.toLocaleString()}</div>
-          <div className="text-xs text-slate-400 font-semibold">ตัดสต็อกและเข้าคลังเรียบร้อย</div>
+          <div className="text-2xl font-black text-teal-600">{stats.completed.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ตัดสต็อกและเข้าคลังเรียบร้อย</div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-bold text-slate-600">กำลังดำเนินการ</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700 text-base">
-              ⏳
+            <span className="text-sm font-semibold text-slate-500">กำลังดำเนินการ</span>
+            <div className="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-600">{stats.inProgress.toLocaleString()}</div>
-          <div className="text-xs text-slate-400 font-semibold">อยู่ระหว่างขั้นตอนการผลิต</div>
+          <div className="text-2xl font-black text-amber-600">{stats.inProgress.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">อยู่ระหว่างขั้นตอนการผลิต</div>
         </div>
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-end gap-3.5">
-          {/* Main Search Input */}
-          <div className="flex-[2_1_260px] min-w-[240px]">
-            <label htmlFor="prod-hist-search" className="block text-xs font-black text-slate-700 mb-1.5">ค้นหาข้อมูล</label>
-            <div className="relative">
-              <input
-                id="prod-hist-search"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="เลขคำสั่งผลิต, รหัสสินค้า, ชื่อสินค้า, บาร์โค้ด, ผู้สั่งผลิต..."
-                className="w-full pl-11 pr-10 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm font-bold focus:outline-hidden focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-2xs"
-              />
-              <svg
-                className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer font-bold"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex-[1_1_160px] min-w-[140px]">
-            <label htmlFor="prod-hist-status" className="block text-xs font-black text-slate-700 mb-1.5">สถานะ</label>
-            <select
-              id="prod-hist-status"
-              value={selectedStatus}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs space-y-4">
+        {/* Search Box */}
+        <div>
+          <label htmlFor="prod-hist-search" className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>ค้นหาข้อมูล</span>
+          </label>
+          <div className="relative">
+            <input
+              id="prod-hist-search"
+              type="text"
+              value={searchQuery}
               onChange={(e) => {
-                setSelectedStatus(e.target.value);
+                setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer shadow-2xs"
+              placeholder="ค้นหาเลขคำสั่งผลิต, รหัสสินค้า, ชื่อสินค้า, บาร์โค้ด, ผู้สั่งผลิต..."
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-800 placeholder-slate-400 text-sm font-medium focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all shadow-2xs"
+            />
+            <svg
+              className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <option value="ALL">ทุกสถานะ</option>
-              <option value="COMPLETED">เสร็จสมบูรณ์</option>
-              <option value="IN_PROGRESS">กำลังผลิต</option>
-              <option value="PENDING">รอดำเนินการ</option>
-              <option value="CANCELLED">ยกเลิก</option>
-            </select>
-          </div>
-
-          {/* วันที่ (Day / Month / Year Dropdowns) */}
-          <div className="flex-[1.5_1_220px] min-w-[210px]">
-            <div className="block text-xs font-black text-slate-700 mb-1.5 flex items-center justify-between">
-              <span>วันที่</span>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => {
-                  const t = getTodayDateParts();
-                  setSelectedDay(t.day);
-                  setSelectedMonth(t.month);
-                  setSelectedYear(t.year);
-                  setCurrentPage(1);
-                }}
-                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                title="ตั้งเป็นวันนี้"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 cursor-pointer"
               >
-                วันนี้
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/* Day */}
-              <ScrollableSelect
-                value={selectedDay}
-                options={DAY_OPTIONS}
-                onChange={(val) => {
-                  setSelectedDay(val);
-                  setCurrentPage(1);
-                }}
-                title="เลือกวัน"
-              />
+            )}
+          </div>
+        </div>
 
-              {/* Month */}
-              <ScrollableSelect
-                value={selectedMonth}
-                options={MONTH_OPTIONS}
-                onChange={(val) => {
-                  setSelectedMonth(val);
-                  setCurrentPage(1);
-                }}
-                title="เลือกเดือน"
-              />
-
-              {/* Year */}
-              <ScrollableSelect
-                value={selectedYear}
-                options={YEAR_OPTIONS}
-                onChange={(val) => {
-                  setSelectedYear(val);
-                  setCurrentPage(1);
-                }}
-                title="เลือกปี"
-              />
-            </div>
+        {/* Dropdown Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          {/* Status Filter */}
+          <div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">สถานะ</div>
+            <ScrollableSelect
+              value={selectedStatus}
+              options={statusOptions}
+              onChange={(val) => {
+                setSelectedStatus(val);
+                setCurrentPage(1);
+              }}
+              title="สถานะ"
+            />
           </div>
 
-          {/* Reset Filters */}
-          {(searchQuery || selectedStatus !== "ALL") && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-4 py-2.5 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-            >
-              ล้างตัวกรอง
-            </button>
-          )}
+          {/* Date Range Preset */}
+          <div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
+            <ScrollableSelect
+              value={selectedDateRange}
+              options={dateRangeOptions}
+              onChange={handleDateRangeChange}
+              title="ช่วงเวลา"
+            />
+          </div>
+        </div>
+
+        {/* Filter Summary */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#EEF1EF] text-sm text-slate-500">
+          <div>
+            พบทั้งหมด <span className="font-bold text-slate-800">{filteredOrders.length.toLocaleString()}</span> รายการ
+            {filteredOrders.length !== orders.length && (
+              <span className="ml-1 text-slate-400">(จากทั้งหมด {orders.length.toLocaleString()} รายการ)</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {(searchQuery || selectedStatus !== "ALL" || selectedDateRange !== "TODAY") && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-sm text-[#06402B] hover:text-[#053425] font-bold hover:underline cursor-pointer"
+              >
+                ล้างตัวกรอง
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Orders Table Container */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-[#EEF1EF] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+            <h2 className="text-base font-extrabold text-slate-900">รายการประวัติการสั่งผลิต</h2>
+            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+              {filteredOrders.length} รายการ
+            </span>
+          </div>
+        </div>
+
         {loading ? (
-          <div className="py-28 text-center">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-slate-600 mt-4 font-black">กำลังโหลดข้อมูลประวัติการสั่งผลิต...</p>
+          <div className="p-8 text-center space-y-3">
+            <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-slate-500">กำลังโหลดข้อมูลประวัติการสั่งผลิต...</p>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="py-24 text-center space-y-4">
-            <span className="text-5xl block">📦</span>
-            <p className="text-base font-black text-slate-800">ไม่พบข้อมูลคำสั่งผลิต</p>
-            <p className="text-sm text-slate-500">ลองปรับเปลี่ยนคำค้นหา หรือกดสั่งผลิตสินค้าใหม่</p>
-            <Link
-              href="/production"
-              className="inline-block mt-2 px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-black shadow-md hover:bg-emerald-700 transition-all"
-            >
-              ไปยังหน้าสั่งผลิต
-            </Link>
+          <div className="p-12 text-center space-y-2 text-slate-400">
+            <span className="text-4xl">🏭</span>
+            <h3 className="text-base font-bold text-slate-700">ไม่พบรายการประวัติการสั่งผลิต</h3>
+            <p className="text-sm text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
           </div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-100/90 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center w-12">#</th>
-                    <th className="py-3 px-4 text-center w-20">รูปภาพ</th>
-                    <th className="py-3 px-4 text-center">รหัสสินค้า</th>
-                    <th className="py-3 px-4 text-left">ชื่อสินค้า</th>
-                    <th className="py-3 px-4 text-center">จำนวนผลิต</th>
-                    <th className="py-3 px-4 text-center">สถานะ</th>
-                    <th className="py-3 px-4 text-center whitespace-nowrap">จัดการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/80 text-sm font-semibold text-slate-800">
-                  {paginatedOrders.map((order, idx) => {
-                    const rowNumber = (currentPage - 1) * pageSize + idx + 1;
-                    const firstItem = order.items?.[0];
-                    const extraItemsCount = (order.items?.length || 0) - 1;
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[900px]">
+              <thead>
+                <tr className="border-b border-[#EEF1EF] bg-slate-50/70 text-slate-500 font-bold">
+                  <th className="py-3 px-4">เลขที่คำสั่งผลิต</th>
+                  <th className="py-3 px-4">สินค้า</th>
+                  <th className="py-3 px-4">คลังปลายทาง</th>
+                  <th className="py-3 px-4 text-right">จำนวนผลิต</th>
+                  <th className="py-3 px-4">ผู้สั่งผลิต</th>
+                  <th className="py-3 px-4">วันที่ / เวลา</th>
+                  <th className="py-3 px-4 text-center">สถานะ</th>
+                  <th className="py-3 px-4 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EEF1EF]">
+                {paginatedOrders.map((order, idx) => {
+                  const firstItem = order.items?.[0];
+                  const extraItemsCount = (order.items?.length || 0) - 1;
 
-                    return (
-                      <tr
-                        key={order.order_no + idx}
-                        className="hover:bg-slate-50/90 transition-colors group cursor-pointer"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        {/* Index */}
-                        <td className="py-3 px-4 text-center text-slate-400 font-mono font-bold text-xs">
-                          {rowNumber}
-                        </td>
+                  return (
+                    <tr
+                      key={order.order_no + idx}
+                      className="hover:bg-slate-50/70 transition-colors group"
+                    >
+                      {/* Order No */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(order)}
+                          className="font-mono font-bold text-[#053425] hover:text-[#04231A] hover:underline flex items-center gap-1.5 text-left cursor-pointer"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] group-hover:scale-125 transition-transform" />
+                          {order.order_no}
+                        </button>
+                      </td>
 
-                        {/* รูป (Product Image - Compact & Centered) */}
-                        <td className="py-3 px-4 text-center">
-                          {firstItem ? (
-                            <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center p-1 mx-auto shadow-2xs group-hover:scale-105 transition-transform">
-                              <img
-                                src={firstItem.image || `/products/${firstItem.fg_sku}.jpg`}
-                                alt={firstItem.fg_name}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = "none";
-                                }}
-                              />
+                      {/* Product Name & SKU */}
+                      <td className="py-3.5 px-4 max-w-[260px]">
+                        {firstItem ? (
+                          <>
+                            <div className="font-bold text-slate-900 truncate" title={firstItem.fg_name}>
+                              {firstItem.fg_name}
                             </div>
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </td>
-
-                        {/* รหัสสินค้า (Product Code / SKU) */}
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          {firstItem ? (
-                            <div>
-                              <span className="font-mono font-bold text-sm text-slate-900">
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                              <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-700">
                                 {firstItem.fg_sku}
                               </span>
                               {extraItemsCount > 0 && (
-                                <span className="font-semibold text-[11px] text-slate-500 block mt-0.5">
+                                <span className="font-bold text-[#06402B] bg-[#EAF2EE] px-1.5 py-0.5 rounded border border-[#C9DFD4]">
                                   +{extraItemsCount} รายการ
                                 </span>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </td>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
 
-                        {/* ชื่อสินค้า (Product Name) */}
-                        <td className="py-3 px-4 text-left">
-                          {firstItem ? (
-                            <span className="font-bold text-sm text-slate-800 block max-w-sm sm:max-w-md truncate" title={firstItem.fg_name}>
-                              {firstItem.fg_name}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </td>
+                      {/* Target Warehouse */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-bold text-slate-800 text-xs">
+                          {firstItem?.target_warehouse_name || "-"}
+                        </div>
+                      </td>
 
-                        {/* จำนวนผลิต (Quantity Produced) */}
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          <span className="font-mono font-bold text-sm text-slate-900">
-                            {order.total_fg_qty.toLocaleString()}
+                      {/* Total FG Qty */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <span className="font-mono font-extrabold text-slate-900 text-sm">
+                          {Number(order.total_fg_qty || 0).toLocaleString()}
+                        </span>
+                        <span className="text-slate-500 font-sans ml-1 text-xs">
+                          {firstItem?.fg_unit || "ชิ้น"}
+                        </span>
+                      </td>
+
+                      {/* Created By */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5" title={order.created_by_name}>
+                          <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#052B1F] flex items-center justify-center font-bold text-[11px] shrink-0">
+                            {(order.created_by_name || "A").slice(0, 1)}
+                          </div>
+                          <span className="truncate max-w-[130px] text-slate-700 text-xs font-medium">
+                            {order.created_by_name || "ผู้ดูแลระบบ (Admin)"}
                           </span>
-                          <span className="text-xs font-semibold text-slate-600 ml-1">
-                            {firstItem?.fg_unit || "ชิ้น"}
-                          </span>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* สถานะ (Status) */}
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          {renderStatusBadge(order.status)}
-                        </td>
+                      {/* Date / Time */}
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-xs">
+                        {formatThaiDateTime(order.created_at)}
+                      </td>
 
-                        {/* Action (จัดการ) */}
-                        <td className="py-3 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedOrder(order)}
-                            className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 whitespace-nowrap"
-                          >
-                            <span className="whitespace-nowrap">ดูสูตร</span>
-                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {renderStatusBadge(order.status)}
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(order)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#EAF2EE] hover:text-[#053425] text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          ดูข้อมูล
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {!loading && filteredOrders.length > 0 && (
+          <div className="p-4 border-t border-[#EEF1EF] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-600">
+            <div className="flex items-center gap-2">
+              <span>แสดง</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 rounded-lg border border-[#E8ECEA] bg-slate-50 font-semibold focus:outline-none focus:border-[#0F5C3F]"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span>รายการต่อหน้า (ทั้งหมด {filteredOrders.length} รายการ)</span>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="px-6 py-5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/70">
-              <div className="text-sm text-slate-600 font-bold">
-                แสดง {Math.min((currentPage - 1) * pageSize + 1, filteredOrders.length)} ถึง{" "}
-                {Math.min(currentPage * pageSize, filteredOrders.length)} จากทั้งหมด{" "}
-                <strong className="text-slate-900 font-black">{filteredOrders.length}</strong> รายการ
-              </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+              >
+                ← ก่อนหน้า
+              </button>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={currentPage <= 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-black text-xs sm:text-sm hover:bg-slate-100 disabled:opacity-40 cursor-pointer shadow-2xs"
-                >
-                  ◀ ก่อนหน้า
-                </button>
+              <span className="px-3 py-1.5 font-bold text-slate-800">
+                {currentPage} / {totalPages}
+              </span>
 
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(
-                      (p) =>
-                        p === 1 ||
-                        p === totalPages ||
-                        (p >= currentPage - 1 && p <= currentPage + 1)
-                    )
-                    .map((p, index, array) => {
-                      const prev = array[index - 1];
-                      return (
-                        <React.Fragment key={p}>
-                          {prev && p - prev > 1 && (
-                            <span className="px-1 text-slate-400 text-sm font-bold">...</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handlePageChange(p)}
-                            className={`w-9 h-9 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
-                              currentPage === p
-                                ? "bg-emerald-600 text-white shadow-sm"
-                                : "bg-white border border-slate-200 text-slate-800 hover:bg-slate-100"
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        </React.Fragment>
-                      );
-                    })}
-                </div>
-
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-black text-xs sm:text-sm hover:bg-slate-100 disabled:opacity-40 cursor-pointer shadow-2xs"
-                >
-                  ถัดไป ▶
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+              >
+                ถัดไป →
+              </button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* Order Detail Modal with BOM Breakdown */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90dvh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-[#E8ECEA] max-h-[90dvh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-7 py-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl shadow-xs">
-                  🏭
+            <div className="flex items-start justify-between pb-4 border-b border-[#EEF1EF]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    รายละเอียดคำสั่งผลิต
+                  </h3>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h3 className="text-lg sm:text-xl font-black text-slate-900">
-                      คำสั่งผลิต: {selectedOrder.order_no}
-                    </h3>
-                    {renderStatusBadge(selectedOrder.status)}
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-500 font-bold pt-0.5">
-                    วันที่สร้าง: {new Date(selectedOrder.created_at).toLocaleString("th-TH")} · ผู้สั่ง:{" "}
-                    {selectedOrder.created_by_name}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center font-bold text-sm transition-all cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
-              {/* Finished Goods Summary */}
-              <div className="space-y-3.5">
-                <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <span>📦 สินค้าสำเร็จรูปที่สั่งผลิต (Finished Goods)</span>
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div
-                      key={item.fg_sku + idx}
-                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-3.5 shadow-2xs"
-                    >
-                      <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center p-1.5 shrink-0">
-                        <img
-                          src={item.image || `/products/${item.fg_sku}.jpg`}
-                          alt={item.fg_name}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-xs text-emerald-800">
-                            {item.fg_sku}
-                          </span>
-                          <span className="text-xs text-slate-400 font-mono font-bold">
-                            #{item.fg_barcode}
-                          </span>
-                        </div>
-                        <h5 className="text-sm font-black text-slate-900 truncate mt-1">
-                          {item.fg_name}
-                        </h5>
-                        <p className="text-xs font-bold text-slate-600 mt-0.5">
-                          จำนวน: <strong className="text-emerald-700 font-mono font-black text-sm">{item.quantity}</strong> {item.fg_unit} ➔ โกดัง 2
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bill of Materials (Raw Materials required) */}
-              <div className="space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <span>🧪 รายการตัดสต็อกวัตถุดิบ (Bill of Materials)</span>
-                  </h4>
-                  <span className="text-xs text-slate-500 font-bold">
-                    ปลายทางตัดสต็อก: โกดัง 1 (วัตถุดิบ)
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-base font-bold text-[#053425]">
+                    {selectedOrder.order_no}
                   </span>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-slate-100/90 border-b border-slate-200 text-xs font-black text-slate-700 uppercase">
-                        <th className="py-3 px-4">สำหรับสินค้า</th>
-                        <th className="py-3 px-4">รหัสวัตถุดิบ (RM)</th>
-                        <th className="py-3 px-4">ชื่อวัตถุดิบ</th>
-                        <th className="py-3 px-4 text-center">คลังตัดสต็อก</th>
-                        <th className="py-3 px-4 text-right">จำนวนที่ใช้</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-bold">
-                      {selectedOrder.items?.flatMap((fgItem) =>
-                        fgItem.materials?.map((mat, matIdx) => (
-                          <tr key={fgItem.fg_sku + mat.rm_sku + matIdx} className="hover:bg-slate-50">
-                            <td className="py-3 px-4 font-mono font-bold text-slate-500 text-xs">
-                              {fgItem.fg_sku}
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold text-slate-800 text-sm">
-                              {mat.rm_sku}
-                            </td>
-                            <td className="py-3 px-4 font-black text-slate-900 text-sm">
-                              {mat.rm_name}
-                            </td>
-                            <td className="py-3 px-4 text-center font-bold text-slate-800 text-sm">
-                              {mat.rm_wh === "wh-01" ? "โกดัง 1 (วัตถุดิบ)" : mat.rm_wh}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-base">
-                              {mat.rm_qty_required.toLocaleString()} {mat.rm_unit}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(selectedOrder.order_no, "เลขคำสั่งผลิต")}
+                    className="text-xs text-slate-500 hover:text-[#053425] underline font-semibold cursor-pointer"
+                  >
+                    คัดลอก
+                  </button>
                 </div>
               </div>
 
-              {/* Status Update Controls */}
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <div className="block text-xs sm:text-sm font-black text-slate-800">
-                  เปลี่ยนสถานะคำสั่งผลิต:
-                </div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus || selectedOrder.status === "COMPLETED"}
-                    onClick={() => handleUpdateStatus(selectedOrder.order_no, "COMPLETED")}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm disabled:opacity-40 transition-all cursor-pointer shadow-xs"
-                  >
-                    ✓ ทำเครื่องหมายว่า เสร็จสมบูรณ์
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus || selectedOrder.status === "IN_PROGRESS"}
-                    onClick={() => handleUpdateStatus(selectedOrder.order_no, "IN_PROGRESS")}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm disabled:opacity-40 transition-all cursor-pointer shadow-xs"
-                  >
-                    ⚙ กำลังดำเนินการผลิต
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus || selectedOrder.status === "CANCELLED"}
-                    onClick={() => handleUpdateStatus(selectedOrder.order_no, "CANCELLED")}
-                    className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-800 font-black text-xs sm:text-sm disabled:opacity-40 transition-all cursor-pointer"
-                  >
-                    ✕ ยกเลิกคำสั่งผลิต
-                  </button>
-                </div>
+              <div className="flex items-center gap-3">
+                {renderStatusBadge(selectedOrder.status)}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrder(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-7 py-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            {/* Order Info Meta Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-[#E8ECEA]/80 text-sm">
+              <div>
+                <span className="text-slate-500 font-medium">วันที่สร้าง:</span>
+                <p className="font-bold text-slate-900 mt-0.5">{formatThaiDateTime(selectedOrder.created_at)}</p>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">ผู้สั่งผลิต:</span>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {selectedOrder.created_by_name || "ผู้ดูแลระบบ (Admin)"}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">จำนวนรายการ FG:</span>
+                <p className="font-bold text-slate-900 mt-0.5">{selectedOrder.items.length} รายการ</p>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">จำนวนผลิตรวม:</span>
+                <p className="font-extrabold text-[#06402B] mt-0.5">
+                  {Number(selectedOrder.total_fg_qty || 0).toLocaleString()} ชิ้น
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">วัตถุดิบที่ใช้:</span>
+                <p className="font-bold text-slate-900 mt-0.5">{selectedOrder.total_materials_count} รายการ</p>
+              </div>
+            </div>
+
+            {/* Finished Goods Table */}
+            <div>
+              <h4 className="text-sm font-extrabold text-slate-900 mb-2.5">
+                สินค้าสำเร็จรูปที่สั่งผลิต ({selectedOrder.items.length} รายการ)
+              </h4>
+              <div className="border border-[#E8ECEA] rounded-xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-bold border-b border-[#E8ECEA]">
+                      <th className="py-2.5 px-3">รหัสสินค้า / บาร์โค้ด</th>
+                      <th className="py-2.5 px-3">ชื่อสินค้า</th>
+                      <th className="py-2.5 px-3">คลังปลายทาง</th>
+                      <th className="py-2.5 px-3 text-right">จำนวน</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF1EF]">
+                    {selectedOrder.items?.map((item, idx) => (
+                      <tr key={item.fg_sku + idx} className="hover:bg-slate-50/70">
+                        <td className="py-2.5 px-3 font-mono">
+                          <div className="font-bold text-slate-800">{item.fg_sku}</div>
+                          {item.fg_barcode && item.fg_barcode !== "-" && (
+                            <div className="text-[11px] text-slate-400">{item.fg_barcode}</div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">{item.fg_name}</td>
+                        <td className="py-2.5 px-3 text-slate-600 text-xs">
+                          {item.target_warehouse_name || "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                          {Number(item.quantity || 0).toLocaleString()} {item.fg_unit || "ชิ้น"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bill of Materials (Raw Materials required) */}
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <h4 className="text-sm font-extrabold text-slate-900">
+                  รายการตัดสต็อกวัตถุดิบ (Bill of Materials)
+                </h4>
+                <span className="text-xs text-slate-500 font-semibold">
+                  ปลายทางตัดสต็อก: โกดัง 1 (วัตถุดิบ)
+                </span>
+              </div>
+              <div className="border border-[#E8ECEA] rounded-xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-bold border-b border-[#E8ECEA]">
+                      <th className="py-2.5 px-3">สำหรับสินค้า</th>
+                      <th className="py-2.5 px-3">รหัสวัตถุดิบ (RM)</th>
+                      <th className="py-2.5 px-3">ชื่อวัตถุดิบ</th>
+                      <th className="py-2.5 px-3">คลังตัดสต็อก</th>
+                      <th className="py-2.5 px-3 text-right">จำนวนที่ใช้</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF1EF]">
+                    {selectedOrder.items?.flatMap((fgItem) =>
+                      fgItem.materials?.map((mat, matIdx) => (
+                        <tr key={fgItem.fg_sku + mat.rm_sku + matIdx} className="hover:bg-slate-50/70">
+                          <td className="py-2.5 px-3 font-mono font-semibold text-slate-500">
+                            {fgItem.fg_sku}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+                            {mat.rm_sku}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            {mat.rm_name}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 text-xs">
+                            {mat.rm_wh === "wh-01" ? "โกดัง 1 (วัตถุดิบ)" : mat.rm_wh}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {Number(mat.rm_qty_required || 0).toLocaleString()} {mat.rm_unit}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Status Update Controls */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-[#E8ECEA]/80 space-y-2.5">
+              <div className="block text-sm font-extrabold text-slate-900">
+                เปลี่ยนสถานะคำสั่งผลิต:
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  disabled={isUpdatingStatus || selectedOrder.status === "COMPLETED"}
+                  onClick={() => handleUpdateStatus(selectedOrder.order_no, "COMPLETED")}
+                  className="px-3.5 py-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-sm font-bold disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  ✓ ทำเครื่องหมายว่า เสร็จสมบูรณ์
+                </button>
+                <button
+                  type="button"
+                  disabled={isUpdatingStatus || selectedOrder.status === "IN_PROGRESS"}
+                  onClick={() => handleUpdateStatus(selectedOrder.order_no, "IN_PROGRESS")}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  ⚙ กำลังดำเนินการผลิต
+                </button>
+                <button
+                  type="button"
+                  disabled={isUpdatingStatus || selectedOrder.status === "CANCELLED"}
+                  onClick={() => handleUpdateStatus(selectedOrder.order_no, "CANCELLED")}
+                  className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-800 text-sm font-bold disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  ✕ ยกเลิกคำสั่งผลิต
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EEF1EF]">
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-colors cursor-pointer"
               >
-                <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                <span>พิมพ์ใบสั่งผลิต</span>
+                พิมพ์ใบสั่งผลิต
               </button>
-
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm transition-all cursor-pointer shadow-xs"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-colors cursor-pointer"
               >
-                ปิดหน้าต่าง
+                ปิด
               </button>
             </div>
           </div>

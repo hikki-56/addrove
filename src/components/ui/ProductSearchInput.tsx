@@ -191,7 +191,7 @@ export default function ProductSearchInput({
               isLg
                 ? "px-5 py-4 rounded-2xl text-base sm:text-lg font-bold border-2 pr-12"
                 : "px-3.5 py-2.5 rounded-xl text-sm font-semibold border pr-8"
-            } bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-sm`
+            } bg-white border-[#D5DDD9] text-slate-900 placeholder-slate-500 focus:outline-none focus:border-[#0F5C3F] focus:ring-4 focus:ring-[#0F5C3F]/20 transition-all shadow-sm`
           }
         />
 
@@ -224,12 +224,12 @@ export default function ProductSearchInput({
 
       {/* Auto-complete Dropdown Popup */}
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] w-full max-w-full bg-white border border-slate-300 rounded-xl shadow-2xl overflow-hidden py-1 max-h-72 overflow-y-auto scale-in duration-100 text-slate-900">
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] w-full max-w-full bg-white border border-[#D5DDD9] rounded-xl shadow-2xl overflow-hidden py-1 max-h-72 overflow-y-auto scale-in duration-100 text-slate-900">
           {onQuickAdd && (
             <button
               type="button"
               onClick={onQuickAdd}
-              className="w-full text-left px-3.5 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer border-b border-slate-200 flex items-center gap-1.5 transition-colors"
+              className="w-full text-left px-3.5 py-2 text-xs font-semibold text-[#06402B] bg-[#EAF2EE] hover:bg-[#DFEDE6] cursor-pointer border-b border-[#E8ECEA] flex items-center gap-1.5 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -238,11 +238,11 @@ export default function ProductSearchInput({
             </button>
           )}
 
-          <div className="px-3.5 py-1.5 text-[11px] font-medium text-slate-600 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+          <div className="px-3.5 py-1.5 text-[11px] font-medium text-slate-600 bg-slate-100 border-b border-[#E8ECEA] flex justify-between items-center">
             <span>
               {/^\d{4}$/.test(query.trim()) ? "ผลลัพธ์ค้นหาจาก 4 ตัวท้ายบาร์โค้ด" : "รายการสินค้า (จาก Google Sheet)"}
             </span>
-            <span className="text-indigo-600 font-mono font-bold">
+            <span className="text-[#06402B] font-mono font-bold">
               {filteredProducts.length > 50
                 ? `แสดง 50 จาก ${filteredProducts.length.toLocaleString()} รายการ`
                 : `${filteredProducts.length.toLocaleString()} รายการ`}
@@ -278,11 +278,11 @@ export default function ProductSearchInput({
                       setOpen(false);
                     }
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 text-sm cursor-pointer transition-colors border-b border-slate-100 last:border-0 ${
+                  className={`w-full text-left px-3.5 py-2.5 text-sm cursor-pointer transition-colors border-b border-[#EEF1EF] last:border-0 ${
                     isSelected
-                      ? "bg-emerald-50/80 text-emerald-900 font-semibold border-l-4 border-emerald-500"
+                      ? "bg-[#EAF2EE]/80 text-[#04231A] font-semibold border-l-4 border-[#0F5C3F]"
                       : p.product_id === value || p.sku === value
-                      ? "bg-indigo-50 text-indigo-900 font-semibold border-l-4 border-indigo-600"
+                      ? "bg-[#EAF2EE] text-[#04231A] font-semibold border-l-4 border-[#06402B]"
                       : "text-slate-900 hover:bg-slate-100"
                   }`}
                 >
@@ -314,7 +314,7 @@ export default function ProductSearchInput({
                       </div>
 
                       {isSelected && (
-                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#8FB3A3] shrink-0">
                           ✓ เลือกแล้ว
                         </span>
                       )}

@@ -1,0 +1,114 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css"></head>
+<body><div class="dsk">
+
+<div class="side">
+  <div class="brand"><div class="logo">S</div><div class="name">Stockify</div></div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="18" rx="1"/></svg>หน้าหลัก</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M19 13v6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/></svg>รับสินค้าเข้าโกดัง</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>ประวัติรับสินค้าเข้าโกดัง</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>ผลิตสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3 4 7l4 4M4 7h16m-4 10 4-4-4-4M20 17H4"/></svg>จัดตำแหน่งสินค้า</div>
+  <div class="navitem active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>เบิกสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>ประวัติเบิกสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>สินค้าทั้งหมด</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>ประวัติการเคลื่อนไหว</div>
+</div>
+
+<div class="main">
+  <div class="page-title">เบิกสินค้า</div>
+  <div class="page-sub">สร้างใบเบิก ติดตามคิวงาน และอนุมัติรายการเบิกสินค้า</div>
+
+  <!-- แท็บสวิตช์ -->
+  <div class="tabs" style="max-width:760px;margin-top:16px">
+    <div class="tab active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>สร้างใบเบิกสินค้า</div>
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>รายการที่ต้องไปเบิก<span class="count" style="background:#E11D48">3</span></div>
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>รออนุมัติ<span class="count" style="background:#F59E0B">2</span></div>
+  </div>
+
+  <!-- ฟอร์มสร้างใบเบิก -->
+  <div class="card" style="max-width:760px;margin-top:14px;padding:22px 24px">
+    <div class="row between">
+      <div class="row g8" style="font-size:17px;font-weight:700"><span class="dot" style="background:#059669;width:8px;height:8px"></span>สร้างรายการเบิกสินค้าใหม่</div>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>4 ก.ย. 2569</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
+      <div><span class="label">โกดังต้นทาง <span class="req">*</span></span>
+        <div class="select">โกดัง 1</div></div>
+      <div><span class="label">โกดังปลายทาง <span class="req">*</span></span>
+        <div class="select">โกดัง 2</div></div>
+    </div>
+
+    <div style="margin-top:16px"><span class="label" style="font-size:16px">เลือกสินค้าที่จะเบิก <span class="req">*</span></span>
+      <div class="row input" style="height:48px;gap:10px;background:#fff">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span style="color:#64748B">ค้นหาชื่อสินค้า SKU หรือ บาร์โค้ด แล้วคลิกเพื่อเพิ่ม…</span>
+      </div>
+      <div style="font-size:13px;color:#5B6660;margin-top:5px">แสดงเฉพาะสินค้าใน โกดัง 1 (โกดังต้นทาง)</div>
+    </div>
+
+    <div class="row between" style="margin-top:18px">
+      <div style="font-size:15px;font-weight:700">รายการสินค้าที่จะเบิก (2 รายการ / 1,250 ชิ้น)</div>
+      <span style="font-size:14px;font-weight:700;color:#BE123C;text-decoration:underline">ล้างทั้งหมด</span>
+    </div>
+
+    <!-- รายการที่ 1 -->
+    <div class="subcard" style="padding:14px 16px;margin-top:10px">
+      <div class="row between g8">
+        <div class="row g8"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M22 5v14"/></svg>
+          <span class="mono" style="font-size:16px;font-weight:600">8859123456789</span></div>
+        <button class="btn btn-danger" style="height:40px;padding:0 12px;font-size:13px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>ลบ</button>
+      </div>
+      <div class="mono" style="font-size:13px;color:#5B6660;margin-top:2px">SKU: STL-24</div>
+      <div style="font-size:16px;font-weight:700;margin-top:2px">สายถัก STL 24 นิ้ว</div>
+      <div class="row between" style="margin-top:10px">
+        <div class="row g8">
+          <button class="btn btn-secondary" style="width:48px;height:48px;font-size:20px">−</button>
+          <div class="row" style="width:110px;height:48px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:12px;justify-content:center">
+            <span class="mono" style="font-size:20px;font-weight:600">400</span></div>
+          <button class="btn btn-secondary" style="width:48px;height:48px;font-size:20px">+</button>
+        </div>
+        <div style="font-size:15px;color:#5B6660">คงเหลือ: <b style="color:#0F1722">1,500</b> ชิ้น</div>
+      </div>
+    </div>
+
+    <!-- รายการที่ 2 -->
+    <div class="subcard" style="padding:14px 16px;margin-top:10px">
+      <div class="row between g8">
+        <div class="row g8"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M22 5v14"/></svg>
+          <span class="mono" style="font-size:16px;font-weight:600">8850000003333</span></div>
+        <button class="btn btn-danger" style="height:40px;padding:0 12px;font-size:13px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>ลบ</button>
+      </div>
+      <div class="mono" style="font-size:13px;color:#5B6660;margin-top:2px">SKU: PVC-88</div>
+      <div style="font-size:16px;font-weight:700;margin-top:2px">ผ้าใบ PVC สีน้ำเงิน</div>
+      <div class="row between" style="margin-top:10px">
+        <div class="row g8">
+          <button class="btn btn-secondary" style="width:48px;height:48px;font-size:20px">−</button>
+          <div class="row" style="width:110px;height:48px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:12px;justify-content:center">
+            <span class="mono" style="font-size:20px;font-weight:600">850</span></div>
+          <button class="btn btn-secondary" style="width:48px;height:48px;font-size:20px">+</button>
+        </div>
+        <div style="font-size:15px;color:#5B6660">คงเหลือ: <b style="color:#0F1722">1,200</b> ชิ้น</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px"><span class="label">ผู้สร้างรายการ</span>
+      <div class="subcard row between" style="padding:12px 14px">
+        <div class="row g10">
+          <div style="width:36px;height:36px;border-radius:50%;background:#ECFDF5;color:#047857;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px">อ</div>
+          <span style="font-size:15px;font-weight:700">อารีย์ แก้วใส</span>
+        </div>
+        <span class="chip">คนสร้างเอกสาร</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;height:56px;font-size:17px;margin-top:18px">สร้างรายการเบิกสินค้า (2 รายการ / 1,250 ชิ้น)</button>
+  </div>
+</div>
+
+</div></body></html>

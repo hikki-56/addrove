@@ -15,8 +15,30 @@ interface ScrollSelectProps {
   className?: string;
   maxVisibleItems?: number; // default: 4
   title?: string;
-  activeColor?: "purple" | "rose";
+  activeColor?: "purple" | "rose" | "emerald";
 }
+
+// สี accent ของ trigger/รายการที่เลือก — เก็บไว้เป็นชุดเดียวกันทั้ง component
+const ACCENTS = {
+  purple: {
+    open: "border-purple-600 bg-white ring-2 ring-purple-100",
+    closed: "border-[#D5DDD9] hover:border-purple-400 hover:bg-white",
+    item: "bg-purple-50 text-purple-700",
+    check: "text-purple-600",
+  },
+  rose: {
+    open: "border-rose-600 bg-white ring-2 ring-rose-100",
+    closed: "border-[#D5DDD9] hover:border-rose-400 hover:bg-white",
+    item: "bg-rose-50 text-rose-700",
+    check: "text-rose-600",
+  },
+  emerald: {
+    open: "border-[#06402B] bg-white ring-2 ring-[#DFEDE6]",
+    closed: "border-[#D5DDD9] hover:border-[#5B8A74] hover:bg-white",
+    item: "bg-[#EAF2EE] text-[#053425]",
+    check: "text-[#053425]",
+  },
+} as const;
 
 export default function ScrollSelect({
   value,
@@ -44,11 +66,11 @@ export default function ScrollSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Calculate height for exactly 4 items (each item ~38px)
-  const itemHeight = 38;
+  // Calculate height for exactly 4 items (each item ~46px)
+  const itemHeight = 46;
   const maxHeight = maxVisibleItems * itemHeight + 8;
 
-  const isRose = activeColor === "rose";
+  const accent = ACCENTS[activeColor];
 
   return (
     <div ref={containerRef} className={`relative w-full min-w-0 ${className}`} title={title}>
@@ -56,14 +78,8 @@ export default function ScrollSelect({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full px-3.5 py-2.5 min-h-[42px] bg-slate-50 border rounded-xl text-sm font-bold text-slate-800 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
-          open
-            ? isRose
-              ? "border-rose-600 bg-white ring-2 ring-rose-100"
-              : "border-purple-600 bg-white ring-2 ring-purple-100"
-            : isRose
-            ? "border-slate-300 hover:border-rose-400 hover:bg-white"
-            : "border-slate-300 hover:border-purple-400 hover:bg-white"
+        className={`w-full px-4 py-2.5 min-h-[46px] bg-slate-50 border rounded-xl text-base font-bold text-slate-800 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
+          open ? accent.open : accent.closed
         }`}
       >
         <span className="truncate pr-1 text-left">
@@ -71,7 +87,7 @@ export default function ScrollSelect({
         </span>
         <svg
           className={`w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200 ${
-            open ? (isRose ? "rotate-180 text-rose-600" : "rotate-180 text-purple-600") : ""
+            open ? `rotate-180 ${accent.check}` : ""
           }`}
           fill="none"
           stroke="currentColor"
@@ -85,7 +101,7 @@ export default function ScrollSelect({
       {open && (
         <div
           style={{ maxHeight: `${maxHeight}px` }}
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto py-1 divide-y divide-slate-50 min-w-[120px]"
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#E8ECEA] rounded-xl shadow-xl overflow-y-auto py-1 divide-y divide-slate-50 min-w-[120px]"
         >
           {options.map((opt) => {
             const isSelected = opt.value === value;
@@ -97,17 +113,13 @@ export default function ScrollSelect({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`w-full px-3.5 py-2.5 text-sm font-bold text-left flex items-center justify-between transition-colors cursor-pointer ${
-                  isSelected
-                    ? isRose
-                      ? "bg-rose-50 text-rose-700"
-                      : "bg-purple-50 text-purple-700"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                className={`w-full px-4 py-3 text-base font-bold text-left flex items-center justify-between transition-colors cursor-pointer ${
+                  isSelected ? accent.item : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
                 {isSelected && (
-                  <span className={`font-bold ml-1 text-sm ${isRose ? "text-rose-600" : "text-purple-600"}`}>
+                  <span className={`font-bold ml-1 text-base ${accent.check}`}>
                     ✓
                   </span>
                 )}

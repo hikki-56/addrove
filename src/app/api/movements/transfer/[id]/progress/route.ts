@@ -5,6 +5,7 @@ import { getRepository } from "@/lib/repositories";
 import {
   successResponse,
   unauthorizedResponse,
+  forbiddenResponse,
   serverErrorResponse,
   notFoundResponse,
 } from "@/lib/api-response";
@@ -18,13 +19,22 @@ export async function PATCH(
     const actor = await createActorFromSession(req, session);
     if (!actor) return unauthorizedResponse();
 
+    // Read-only users must not update task progress
+    if (actor.role === "VIEWER") {
+      return forbiddenResponse("ผู้ใช้งานแบบดูอย่างเดียวไม่สามารถอัปเดตขั้นตอนงานได้");
+    }
+
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const step = typeof body.step === "number" ? body.step : parseInt(body.step) || 1;
     const stepText = typeof body.step_text === "string" ? body.step_text : "";
 
     const repo = getRepository();
-    const doc = (await repo.documents.findById(id)) || (await repo.documents.findByNo(id));
+    // อ่านแบบสด (ไม่ผ่านแคช 30 วิ) — เดี๋ยวเอา note ไป merge แล้วเขียนกลับชีต
+    // ถ้าอ่านข้อมูลเก่า จะเขียนทับ metadata ที่ request อื่นเพิ่งเขียนทิ้ง
+    const doc =
+      (await repo.documents.findById(id, { forceFresh: true })) ||
+      (await repo.documents.findByNo(id, { forceFresh: true }));
     if (!doc) {
       return notFoundResponse("ไม่พบใบย้ายสินค้า");
     }
@@ -34,6 +44,9 @@ export async function PATCH(
       try {
         meta = JSON.parse(doc.note);
       } catch {}
+    } else if (doc.note && doc.note.trim()) {
+      // Legacy plain-text note: keep the original content instead of overwriting it with an empty object
+      meta.original_note = doc.note;
     }
 
     meta.current_step = step;

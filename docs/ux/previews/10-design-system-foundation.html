@@ -1,0 +1,199 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<title>Stockify Design System — Foundation (ร่าง v0.1)</title>
+<style>
+.wrap{max-width:880px;margin:0 auto;padding:28px 20px 40px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#6B7280}
+.h1{font-family:'Space Grotesk','Sarabun',sans-serif;font-size:26px;font-weight:700;margin-top:4px}
+.lede{font-size:14px;color:#5B6660;margin-top:6px;line-height:1.7}
+.sect{margin-top:26px}
+.sect-title{font-size:17px;font-weight:700;margin-bottom:3px}
+.sect-sub{font-size:13px;color:#5B6660;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.swatch{border:1px solid rgba(0,0,0,.08);border-radius:14px;overflow:hidden;background:#fff}
+.swatch .chip-c{height:64px;display:flex;align-items:flex-end;padding:8px 10px}
+.swatch .meta{padding:9px 12px 11px}
+.swatch .nm{font-size:13.5px;font-weight:700}
+.swatch .hx{font-family:'IBM Plex Mono',Consolas,monospace;font-size:12px;color:#5B6660;margin-top:2px}
+.swatch .ct{font-size:12px;margin-top:5px;display:flex;gap:6px;align-items:center}
+.ok{color:#047857;font-weight:700}.bad{color:#BE123C;font-weight:700}.warn{color:#92400E;font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag-ok{background:#ECFDF5;color:#047857;border:1px solid #A7F3D0}
+.tag-bad{background:#FFF1F2;color:#BE123C;border:1px solid #FECDD3}
+.tag-warn{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A}
+.type-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid rgba(0,0,0,.08);border-radius:14px;background:#fff;margin-top:10px}
+.type-meta{flex:none;text-align:right}
+.type-meta .f{font-size:12px;font-weight:700;color:#334155}
+.type-meta .s{font-size:11.5px;color:#5B6660;margin-top:2px}
+.ladder{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.lad-row{display:flex;align-items:center;gap:14px}
+.lad-box{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-weight:700;font-size:15px}
+.lad-meta{font-size:13px;color:#334155}
+.lad-meta b{color:#0F1712}
+.scale-row{display:flex;align-items:flex-end;gap:10px}
+.scale-item{text-align:center}
+.scale-bar{background:#059669;border-radius:4px;width:44px;margin:0 auto}
+.scale-lb{font-size:11.5px;color:#5B6660;margin-top:6px;font-weight:600}
+.rad-item{flex:1;text-align:center}
+.rad-box{height:64px;background:#ECFDF5;border:2px solid #10B981;margin:0 auto}
+.foot{margin-top:30px;border:1px dashed #CBD5E1;border-radius:14px;padding:14px 16px;background:#fff}
+.foot .t{font-size:13.5px;font-weight:700;margin-bottom:6px}
+.foot .d{font-size:13px;color:#5B6660;line-height:1.7}
+.qchip{display:inline-block;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;color:#334155;margin:3px 4px 0 0}
+</style></head><body><div class="wrap">
+
+<!-- หัวเอกสาร -->
+<div class="row between">
+  <div>
+    <div class="eyebrow">Stockify Design System · Modern Ops</div>
+    <div class="h1">Foundation — สี ฟอนต์ เป้าสัมผัส</div>
+    <div class="lede">v0.2 (7 ก.ย. 2569) — ทิศทางล็อกแล้ว · อ้างอิง <span class="mono">docs/design/design-system-spec.md</span> · ค่าทั้งหมดมาจากของจริงใน globals.css + mock.css + กฎ stockify-readable</div>
+  </div>
+  <span class="tag tag-ok" style="height:26px">v0.2 — ล็อกทิศทางแล้ว (Q1-Q6)</span>
+</div>
+
+<!-- 1. พื้นและตัวอักษร -->
+<div class="sect">
+  <div class="sect-title">1 · พื้นและตัวอักษร (Surfaces &amp; Text)</div>
+  <div class="sect-sub">คอนทราสต์วัดบนพื้นขาวจริง — ข้อความรองต่ำสุดคือ slate-600 ห้ามลงต่ำกว่านี้กับข้อความที่มีความหมาย</div>
+  <div class="grid3">
+    <div class="swatch"><div class="chip-c" style="background:#F4F6F3;border-bottom:1px solid rgba(0,0,0,.06)"></div><div class="meta"><div class="nm">bg-base</div><div class="hx">#F4F6F3</div><div class="ct">พื้นหลังแอป — ล็อกแล้ว (Q3) ใช้ค่าเดียวทั้งระบบ ✅ วางใน globals.css แล้ว</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#FFFFFF;border-bottom:1px solid rgba(0,0,0,.06)"></div><div class="meta"><div class="nm">surface-1</div><div class="hx">#FFFFFF</div><div class="ct">การ์ด / แผง</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#F8FAFC;border-bottom:1px solid rgba(0,0,0,.06)"></div><div class="meta"><div class="nm">surface-2</div><div class="hx">#F8FAFC</div><div class="ct">ช่องกรอก / พื้นรอง</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#0F172A"></div><div class="meta"><div class="nm">text-primary</div><div class="hx">#0F172A</div><div class="ct"><span class="ok">17.9:1 ✅</span> ข้อความหลัก</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#334155"></div><div class="meta"><div class="nm">text-secondary</div><div class="hx">#334155</div><div class="ct"><span class="ok">10.4:1 ✅</span> เนื้อหาทั่วไป</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#475569"></div><div class="meta"><div class="nm">text-muted</div><div class="hx">#475569</div><div class="ct"><span class="ok">7.6:1 ✅</span> ข้อความรอง — ขั้นต่ำ</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#64748B"></div><div class="meta"><div class="nm">(slate-500)</div><div class="hx">#64748B</div><div class="ct"><span class="warn">4.8:1 ⚠</span> ไม่พอสำหรับสายตาสูงวัย</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#94A3B8"></div><div class="meta"><div class="nm">(slate-400)</div><div class="hx">#94A3B8</div><div class="ct"><span class="bad">2.6:1 ❌</span> เฉพาะไอคอนประดับ/เส้นคั่น</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#CBD5E1"></div><div class="meta"><div class="nm">(slate-300)</div><div class="hx">#CBD5E1</div><div class="ct"><span class="bad">1.5:1 ❌</span> ห้ามใช้กับตัวหนังสือ</div></div></div>
+  </div>
+</div>
+
+<!-- 2. สีหลักและสถานะ -->
+<div class="sect">
+  <div class="sect-title">2 · สีหลักและสีสถานะ (Action &amp; Semantic)</div>
+  <div class="sect-sub">ความหมายสีตายตัวทั้งระบบ — ทุกสถานะต้องมีข้อความ/ไอคอนกำกับ ห้ามใช้จุดสีอย่างเดียว (P4)</div>
+  <div class="grid3">
+    <div class="swatch"><div class="chip-c" style="background:#059669"></div><div class="meta"><div class="nm">action — เขียว (ล็อกแล้ว Q1 ✅)</div><div class="hx">#059669 · hover #047857</div><div class="ct">ปุ่มหลัก / แอ็กชันยืนยัน — วางเป็น <span class="mono">--color-action</span> ใน globals.css แล้ว</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#4F46E5"></div><div class="meta"><div class="nm">accent — indigo</div><div class="hx">#4F46E5</div><div class="ct"><span class="ok">6.3:1 ✅</span> ลิงก์ / ข้อมูลวิเคราะห์ / nav แอดมิน</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#0F1712"></div><div class="meta"><div class="nm">ink</div><div class="hx">#0F1712</div><div class="ct">เฉพาะหน้าบ้าน/ป้ายพิมพ์ — ห้ามในหน้าทำงาน</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#ECFDF5"></div><div class="meta"><div class="nm">status-normal</div><div class="hx">#ECFDF5 / ตัวอักษร #065F46</div><div class="ct"><span class="dot" style="background:#10B981"></span>สต็อกปกติ / สำเร็จ</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#FEF3C7"></div><div class="meta"><div class="nm">status-low</div><div class="hx">#FEF3C7 / ตัวอักษร #92400E</div><div class="ct"><span class="dot" style="background:#F59E0B"></span>สต็อกต่ำ / รอดำเนินการ</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#FEE2E2"></div><div class="meta"><div class="nm">status-out</div><div class="hx">#FEE2E2 / ตัวอักษร #991B1B</div><div class="ct"><span class="dot" style="background:#EF4444"></span>สต็อกหมด / ล้มเหลว</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#F3E8FF"></div><div class="meta"><div class="nm">status-negative</div><div class="hx">#F3E8FF / ตัวอักษร #6B21A8</div><div class="ct"><span class="dot" style="background:#A855F7"></span>สต็อกติดลบ</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#FFFFFF;border-bottom:1px solid rgba(0,0,0,.06)"><span style="font-size:20px;font-weight:700;color:#EF4444">emerald-600</span></div><div class="meta"><div class="nm">กติกาตัวอักษรบนพื้นขาว</div><div class="hx">text-emerald-600 = 3.8:1</div><div class="ct"><span class="bad">❌ ตกเกณฑ์</span> ใช้ emerald-700 <span class="ok">(5.5:1 ✅)</span> แทนเสมอ</div></div></div>
+    <div class="swatch"><div class="chip-c" style="background:#FFFFFF;border-bottom:1px solid rgba(0,0,0,.06)"><span style="font-size:20px;font-weight:700;color:#4F46E5">indigo-600</span></div><div class="meta"><div class="nm">ตัวอักษรสีอนุญาต</div><div class="hx">indigo-600 = 6.3:1 · amber-700 = 5.0:1</div><div class="ct"><span class="ok">✅</span> ใช้กับข้อความสีได้</div></div></div>
+  </div>
+</div>
+
+<!-- 3. ฟอนต์ -->
+<div class="sect">
+  <div class="sect-title">3 · Typography</div>
+  <div class="sect-sub">3 ฟอนต์ บทบาทชัดเจน — ฟอนต์ที่มีข้อความไทยต้องมี Thai subset จริง</div>
+  <div class="type-row">
+    <div>
+      <div style="font-size:16px;font-weight:700">ชื่อสินค้า — สายถัก STL 24 นิ้ว</div>
+      <div style="font-size:14px;color:#475569;margin-top:3px;line-height:1.7">เนื้อหาปกติ 14px (Sarabun) — ขั้นต่ำของทุกข้อความในหน้าทำงาน ข้อความรองใช้สี slate-600 เท่านั้น</div>
+    </div>
+    <div class="type-meta"><div class="f">Sarabun</div><div class="s">Body ไทย · 400/500/600/700<br>ขั้นต่ำ 14px · ชื่อสินค้า 16px</div></div>
+  </div>
+  <div class="type-row">
+    <div><span class="disp" style="font-size:34px;font-weight:700;color:#065F46">50,000</span> <span style="font-size:14px;color:#5B6660">ชิ้น — ตัวเลขเด่นบนจอ (disp + tabular-nums)</span></div>
+    <div class="type-meta"><div class="f">Space Grotesk</div><div class="s">Display / ตัวเลขเด่น<br>ใช้กับเลข-ละตินเท่านั้น (ไม่มีไทย)</div></div>
+  </div>
+  <div class="type-row">
+    <div><span class="mono" style="font-size:20px;font-weight:600">8859123456789</span><br><span class="mono" style="font-size:14px;color:#5B6660;margin-top:3px;display:inline-block">SKU: STL-24 · TRF-20260904-0001</span></div>
+    <div class="type-meta"><div class="f">IBM Plex Mono</div><div class="s">SKU / บาร์โค้ด / เลขเอกสาร<br>ต้องตรวจด้วยตา: ≥ 20px + bold · คั่นหลักพันทุกครั้ง</div></div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+    <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">ตัวเลข/SKU ต้องตรวจ ≥ 20px</span>
+    <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">ชื่อสินค้า ≥ 16px</span>
+    <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">label/เนื้อหา ≥ 14px</span>
+    <span class="chip" style="background:#FFF1F2;border-color:#FECDD3;color:#BE123C">text-[10px]/[11px] ห้ามในหน้าพนักงาน</span>
+    <span class="chip" style="background:#FFF1F2;border-color:#FECDD3;color:#BE123C">text-xs เฉพาะป้ายตกแต่ง</span>
+  </div>
+</div>
+
+<!-- 4. เป้าสัมผัส -->
+<div class="sect">
+  <div class="sect-title">4 · เป้าสัมผัส (Touch Targets)</div>
+  <div class="sect-sub">ขนาดจริงตามมาตราส่วน 1:1 — ออกแบบสำหรับนิ้วโป้งที่สั่นเล็กน้อยหรือใส่ถุงมือ (P2)</div>
+  <div class="card" style="padding:18px 20px">
+    <div class="ladder">
+      <div class="lad-row">
+        <div class="lad-box" style="width:240px;height:56px;background:#059669;color:#fff;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">บันทึกรับสินค้า</div>
+        <div class="lad-meta"><b>56px</b> — ปุ่มหลักเต็มความกว้างของ surface พนักงาน</div>
+      </div>
+      <div class="lad-row">
+        <div class="lad-box" style="width:240px;height:48px;background:#059669;color:#fff;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">ยืนยัน</div>
+        <div class="lad-meta"><b>48px</b> — ปุ่มหลักมาตรฐาน · <b style="display:inline-block">48×48px</b> สำหรับปุ่ม +/− ปรับจำนวน</div>
+      </div>
+      <div class="lad-row">
+        <div class="lad-box" style="width:120px;height:44px;background:#fff;border:1px solid rgba(0,0,0,.1);color:#334155">ยกเลิก</div>
+        <div class="lad-meta"><b>44px</b> — ปุ่มรอง / ปุ่มไอคอน (ไอคอนต้องมีข้อความกำกับเสมอ)</div>
+      </div>
+      <div class="lad-row">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="lad-box" style="width:240px;height:48px;background:#fff;border:1px solid #FECDD3;color:#BE123C">ลบรายการ</div>
+          <div class="lad-box" style="width:240px;height:48px;background:#059669;color:#fff;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">บันทึกต่อ</div>
+        </div>
+        <div class="lad-meta"><b>ห่าง ≥ 12px และคนละแถว</b> — ปุ่มทำลายห้ามอยู่ติดปุ่มหลักแนวนอน<br><span style="color:#5B6660">(เดิมหน้ารับสินค้าปุ่ม +/− กว้าง 36px → ใหญ่ขึ้นเป็น 48px)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. ระยะ มุมโค้ง ความเคลื่อนไหว -->
+<div class="sect">
+  <div class="sect-title">5 · Spacing · Radius · Motion</div>
+  <div class="sect-sub">ยึดชุดที่มีอยู่ — ไม่เพิ่มค่าใหม่ ไม่เพิ่ม animation นอกชุด</div>
+  <div class="grid2">
+    <div class="card" style="padding:16px 18px">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:12px">ระยะห่าง (Spacing)</div>
+      <div class="scale-row">
+        <div class="scale-item"><div class="scale-bar" style="height:4px"></div><div class="scale-lb">4</div></div>
+        <div class="scale-item"><div class="scale-bar" style="height:8px"></div><div class="scale-lb">8</div></div>
+        <div class="scale-item"><div class="scale-bar" style="height:12px"></div><div class="scale-lb">12</div></div>
+        <div class="scale-item"><div class="scale-bar" style="height:16px"></div><div class="scale-lb">16</div></div>
+        <div class="scale-item"><div class="scale-bar" style="height:24px"></div><div class="scale-lb">24</div></div>
+      </div>
+      <div style="font-size:12.5px;color:#5B6660;margin-top:10px;line-height:1.7">px — ใช้ชุด Tailwind เดิม · ระยะระหว่างปุ่มติดกัน ≥ 12px ตามกฎเป้าสัมผัส</div>
+    </div>
+    <div class="card" style="padding:16px 18px">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:12px">มุมโค้ง (Radius)</div>
+      <div style="display:flex;gap:10px">
+        <div class="rad-item"><div class="rad-box" style="border-radius:12px"></div><div class="scale-lb">12 · input</div></div>
+        <div class="rad-item"><div class="rad-box" style="border-radius:16px"></div><div class="scale-lb">16 · แผง</div></div>
+        <div class="rad-item"><div class="rad-box" style="border-radius:20px"></div><div class="scale-lb">20 · การ์ดใหญ่</div></div>
+        <div class="rad-item"><div class="rad-box" style="border-radius:32px"></div><div class="scale-lb">999 · badge/chip</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:14px 18px;margin-top:12px">
+    <div style="font-size:13.5px;font-weight:700;margin-bottom:8px">Motion — ชุดเดียวที่อนุญาต (ครอบ prefers-reduced-motion แล้วทั้งชุด)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <span class="chip mono" style="font-size:12px">fade-in</span><span class="chip mono" style="font-size:12px">rise-in + stagger delay</span>
+      <span class="chip mono" style="font-size:12px">scale-in</span><span class="chip mono" style="font-size:12px">skeleton (shimmer)</span>
+      <span class="chip mono" style="font-size:12px">draw-line / fade-area (sparkline)</span><span class="chip mono" style="font-size:12px">leave-up (แถวอนุมัติแล้ว)</span>
+      <span class="chip" style="background:#FFF1F2;border-color:#FECDD3;color:#BE123C">ห้าม animate-pulse ค้างในหน้าทำงาน</span>
+    </div>
+  </div>
+</div>
+
+<!-- ท้ายเอกสาร -->
+<div class="foot">
+  <div class="t">✅ v0.2 — ตัดสินใจครบแล้ว (7 ก.ย. 2569) · รายละเอียดอยู่ที่ design-system-spec.md §9</div>
+  <div class="d">
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q1 ปุ่มหลัก = เขียว #059669 ✅</span>
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q2 ระบบเดียวสองผิว ✅</span>
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q3 พื้นหลัง #F4F6F3 ✅</span>
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q4 tokens ลง globals.css แล้ว · กวาด indigo 28 จุดเป็นงานถัดไป</span>
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q5 สเปก component รายชิ้นในรอบลงลึก</span>
+    <span class="qchip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">Q6 pilot = หน้านับสต๊อก</span>
+  </div>
+</div>
+
+</div></body></html>

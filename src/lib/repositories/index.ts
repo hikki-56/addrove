@@ -1,10 +1,10 @@
 /**
  * Repository factory.
- * Returns all repositories backed by Google Sheets or In-Memory.
- * In future, swap this to return Postgres/Supabase-backed repositories
- * by changing only this file.
+ * Returns all repositories backed by the configured storage driver.
  */
 import type { IStockRepository } from "./interfaces";
+import { getStorageDriver, type StorageDriver } from "./storage-driver";
+import { createPostgresRepository } from "./postgres";
 import { SheetsWarehouseRepository } from "./sheets/warehouse.repository";
 import { SheetsLocationRepository } from "./sheets/location.repository";
 import { SheetsShelfRepository } from "./sheets/shelf.repository";
@@ -23,29 +23,48 @@ import { InMemoryStockRepository } from "./in-memory/in-memory-stock.repository"
 
 export * from "./interfaces";
 export * from "./in-memory/in-memory-stock.repository";
+export { DashboardDataError } from "./sheets/dashboard.repository";
 
-let instance: IStockRepository | null = null;
+let instance: { driver: StorageDriver; repository: IStockRepository } | null = null;
+
+function createSheetsRepository(): IStockRepository {
+  return {
+    warehouses: new SheetsWarehouseRepository(),
+    locations: new SheetsLocationRepository(),
+    shelves: new SheetsShelfRepository(),
+    products: new SheetsProductRepository(),
+    documents: new SheetsDocumentRepository(),
+    movements: new SheetsStockMovementRepository(),
+    stockSummary: new SheetsStockSummaryRepository(),
+    stockCounts: new SheetsStockCountRepository(),
+    users: new SheetsUserRepository(),
+    dashboard: new SheetsDashboardRepository(),
+    idempotency: new SheetsIdempotencyRepository(),
+    audit: new SheetsAuditRepository(),
+    journal: new SheetsOperationJournalRepository(),
+    warehouseSync: new SheetsWarehouseSyncRepository(),
+  };
+}
+
+function createRepositoryForDriver(driver: StorageDriver): IStockRepository {
+  if (driver === "postgres") {
+    return createPostgresRepository();
+  }
+
+  return createSheetsRepository();
+}
 
 export function getRepository(): IStockRepository {
-  if (!instance) {
+  const driver = getStorageDriver();
+
+  if (!instance || instance.driver !== driver) {
     instance = {
-      warehouses: new SheetsWarehouseRepository(),
-      locations: new SheetsLocationRepository(),
-      shelves: new SheetsShelfRepository(),
-      products: new SheetsProductRepository(),
-      documents: new SheetsDocumentRepository(),
-      movements: new SheetsStockMovementRepository(),
-      stockSummary: new SheetsStockSummaryRepository(),
-      stockCounts: new SheetsStockCountRepository(),
-      users: new SheetsUserRepository(),
-      dashboard: new SheetsDashboardRepository(),
-      idempotency: new SheetsIdempotencyRepository(),
-      audit: new SheetsAuditRepository(),
-      journal: new SheetsOperationJournalRepository(),
-      warehouseSync: new SheetsWarehouseSyncRepository(),
+      driver,
+      repository: createRepositoryForDriver(driver),
     };
   }
-  return instance;
+
+  return instance.repository;
 }
 
 export function createInMemoryRepository(): IStockRepository {

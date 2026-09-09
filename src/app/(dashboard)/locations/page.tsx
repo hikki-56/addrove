@@ -197,7 +197,7 @@ export default function LocationsPage() {
                 setError("");
                 setShowLocationForm(!showLocationForm);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer active:scale-95 transition-all"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -209,7 +209,7 @@ export default function LocationsPage() {
                 setError("");
                 setShowShelfForm(!showShelfForm);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm cursor-pointer active:scale-95 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm cursor-pointer active:scale-95 transition-all"
             >
               เพิ่มชั้นวาง (Shelf)
             </button>
@@ -218,12 +218,12 @@ export default function LocationsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-6 text-xs sm:text-sm font-bold">
+      <div className="flex border-b border-[#E8ECEA] gap-6 text-xs sm:text-sm font-bold">
         <button
           onClick={() => setActiveTab("map")}
           className={`pb-3 border-b-2 transition-colors cursor-pointer ${
             activeTab === "map"
-              ? "border-indigo-600 text-indigo-600"
+              ? "border-[#06402B] text-[#06402B]"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -233,7 +233,7 @@ export default function LocationsPage() {
           onClick={() => setActiveTab("manage")}
           className={`pb-3 border-b-2 transition-colors cursor-pointer ${
             activeTab === "manage"
-              ? "border-indigo-600 text-indigo-600"
+              ? "border-[#06402B] text-[#06402B]"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -249,12 +249,12 @@ export default function LocationsPage() {
       {activeTab === "manage" && (
         <>
           {/* Sub-tabs: Locations / Shelves */}
-          <div className="flex border-b border-slate-100 gap-5 text-xs sm:text-sm font-bold">
+          <div className="flex border-b border-[#EEF1EF] gap-5 text-xs sm:text-sm font-bold">
             <button
               onClick={() => setManageView("locations")}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 manageView === "locations"
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-[#06402B] text-[#06402B]"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -264,7 +264,7 @@ export default function LocationsPage() {
               onClick={() => setManageView("shelves")}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 manageView === "shelves"
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-[#06402B] text-[#06402B]"
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -274,7 +274,7 @@ export default function LocationsPage() {
 
           {/* Location Create Form */}
           {showLocationForm && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="bg-white rounded-2xl p-5 border border-[#E8ECEA] shadow-xs">
               <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">
                 สร้างตำแหน่งจัดเก็บใหม่ (Location)
               </h2>
@@ -291,7 +291,7 @@ export default function LocationsPage() {
                       id="loc-warehouse"
                       value={locWhId}
                       onChange={(e) => setLocWhId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold cursor-pointer"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-semibold cursor-pointer"
                     >
                       <option value="">เลือกโกดัง</option>
                       {warehouses.map((w) => (
@@ -308,7 +308,7 @@ export default function LocationsPage() {
                       value={locCode}
                       onChange={(e) => setLocCode(e.target.value)}
                       placeholder="เช่น 1K14-1A"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold"
                     />
                   </div>
                   <div>
@@ -318,7 +318,7 @@ export default function LocationsPage() {
                       value={locName}
                       onChange={(e) => setLocName(e.target.value)}
                       placeholder="เช่น โกดัง 1 ล็อก 14 ซ้ายล่าง"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
@@ -330,7 +330,7 @@ export default function LocationsPage() {
                     value={locDesc}
                     onChange={(e) => setLocDesc(e.target.value)}
                     placeholder="คำอธิบายตำแหน่ง เช่น ชั้น 1 ล็อก 14 ฝั่งซ้ายล่าง"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
                   />
                 </div>
 
@@ -338,14 +338,14 @@ export default function LocationsPage() {
                   <button
                     type="button"
                     onClick={() => setShowLocationForm(false)}
-                    className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95"
                   >
                     ยกเลิก
                   </button>
                   <button
                     type="submit"
                     disabled={submittingLoc}
-                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#06402B]/20 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
                   >
                     {submittingLoc ? "กำลังบันทึก..." : "บันทึกตำแหน่ง"}
                   </button>
@@ -356,7 +356,7 @@ export default function LocationsPage() {
 
           {/* Shelf Create Form */}
           {showShelfForm && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="bg-white rounded-2xl p-5 border border-[#E8ECEA] shadow-xs">
               <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">
                 สร้างชั้นวางสินค้าใหม่ (Shelf)
               </h2>
@@ -373,7 +373,7 @@ export default function LocationsPage() {
                       id="shelf-loc"
                       value={shelfLocId}
                       onChange={(e) => setShelfLocId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold cursor-pointer"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-semibold cursor-pointer"
                     >
                       <option value="">เลือกตำแหน่ง</option>
                       {locations.map((l, idx) => (
@@ -390,7 +390,7 @@ export default function LocationsPage() {
                       value={shelfCode}
                       onChange={(e) => setShelfCode(e.target.value)}
                       placeholder="เช่น 1K14-1A-S1"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold"
                     />
                   </div>
                   <div>
@@ -400,7 +400,7 @@ export default function LocationsPage() {
                       value={shelfName}
                       onChange={(e) => setShelfName(e.target.value)}
                       placeholder="เช่น ชั้นบนสุด 1K14-1A"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-medium"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-medium"
                     />
                   </div>
                   <div>
@@ -410,7 +410,7 @@ export default function LocationsPage() {
                       value={shelfLevel}
                       onChange={(e) => setShelfLevel(e.target.value)}
                       placeholder="1, 2, 3..."
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono"
                     />
                   </div>
                 </div>
@@ -419,14 +419,14 @@ export default function LocationsPage() {
                   <button
                     type="button"
                     onClick={() => setShowShelfForm(false)}
-                    className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95"
                   >
                     ยกเลิก
                   </button>
                   <button
                     type="submit"
                     disabled={submittingShelf}
-                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#06402B]/20 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
                   >
                     {submittingShelf ? "กำลังบันทึก..." : "บันทึกชั้นวาง"}
                   </button>
@@ -441,7 +441,7 @@ export default function LocationsPage() {
               <select
                 value={selectedWh}
                 onChange={(e) => setSelectedWh(e.target.value)}
-                className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-xs"
+                className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#0F5C3F] cursor-pointer shadow-xs"
               >
                 <option value="">ทุกโกดัง</option>
                 {warehouses.map((w) => (
@@ -456,7 +456,7 @@ export default function LocationsPage() {
               <select
                 value={selectedLoc}
                 onChange={(e) => setSelectedLoc(e.target.value)}
-                className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-xs"
+                className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#0F5C3F] cursor-pointer shadow-xs"
               >
                 <option value="">ทุกตำแหน่งจัดเก็บ</option>
                 {locations.map((l, idx) => (
@@ -472,11 +472,11 @@ export default function LocationsPage() {
           {loading ? (
             <div className="text-center py-12 text-slate-500 text-sm font-medium">กำลังโหลดข้อมูล...</div>
           ) : manageView === "locations" ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <tr className="bg-slate-50 text-slate-500 border-b border-[#E8ECEA]">
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">รหัสตำแหน่ง</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">ชื่อตำแหน่ง</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">โกดังที่สังกัด</th>
@@ -484,7 +484,7 @@ export default function LocationsPage() {
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">สถานะ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                  <tbody className="divide-y divide-[#EEF1EF] text-xs sm:text-sm">
                     {locations.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-10 text-slate-500 text-sm">
@@ -494,7 +494,7 @@ export default function LocationsPage() {
                     ) : (
                       locations.map((loc, idx) => (
                         <tr key={`tr-loc-${loc.location_id || loc.location_code || idx}-${loc.warehouse_id || 'wh'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-600">
+                          <td className="px-5 py-3.5 font-mono text-xs font-bold text-[#06402B]">
                             {loc.location_code}
                           </td>
                           <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-900 font-bold">
@@ -510,8 +510,8 @@ export default function LocationsPage() {
                             <span
                               className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                                 loc.active
-                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
+                                  ? "bg-[#DFEDE6] text-[#052B1F] border-[#C9DFD4]"
+                                  : "bg-slate-100 text-slate-600 border-[#E8ECEA]"
                               }`}
                             >
                               {loc.active ? "ใช้งาน" : "ปิดใช้งาน"}
@@ -525,11 +525,11 @@ export default function LocationsPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <tr className="bg-slate-50 text-slate-500 border-b border-[#E8ECEA]">
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">รหัสชั้นวาง</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">ชื่อชั้นวาง</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">ตำแหน่งที่สังกัด</th>
@@ -537,7 +537,7 @@ export default function LocationsPage() {
                       <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider">สถานะ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                  <tbody className="divide-y divide-[#EEF1EF] text-xs sm:text-sm">
                     {shelves.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-10 text-slate-500 text-sm">
@@ -547,7 +547,7 @@ export default function LocationsPage() {
                     ) : (
                       shelves.map((s, idx) => (
                         <tr key={`tr-shelf-${s.shelf_id || s.shelf_code || idx}-${s.location_id || 'loc'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-600">
+                          <td className="px-5 py-3.5 font-mono text-xs font-bold text-[#06402B]">
                             {s.shelf_code}
                           </td>
                           <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-900 font-bold">
@@ -563,8 +563,8 @@ export default function LocationsPage() {
                             <span
                               className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                                 s.active
-                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
+                                  ? "bg-[#DFEDE6] text-[#052B1F] border-[#C9DFD4]"
+                                  : "bg-slate-100 text-slate-600 border-[#E8ECEA]"
                               }`}
                             >
                               {s.active ? "ใช้งาน" : "ปิดใช้งาน"}

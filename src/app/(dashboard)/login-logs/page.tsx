@@ -25,20 +25,20 @@ const roleLabel: Record<string, string> = {
 };
 
 const roleBadgeColor: Record<string, string> = {
-  ADMIN: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  ADMIN: "bg-[#EAF2EE] text-[#053425] border-[#C9DFD4]",
   MANAGER: "bg-purple-50 text-purple-700 border-purple-200",
   APPROVER: "bg-amber-50 text-amber-800 border-amber-300",
-  WAREHOUSE_STAFF: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  STAFF: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  VIEWER: "bg-slate-100 text-slate-700 border-slate-200",
+  WAREHOUSE_STAFF: "bg-[#EAF2EE] text-[#053425] border-[#C9DFD4]",
+  STAFF: "bg-[#EAF2EE] text-[#053425] border-[#C9DFD4]",
+  VIEWER: "bg-slate-100 text-slate-700 border-[#E8ECEA]",
 };
 
 const avatarColor: Record<string, string> = {
-  ADMIN: "bg-indigo-600 text-white",
+  ADMIN: "bg-[#06402B] text-white",
   MANAGER: "bg-purple-600 text-white",
   APPROVER: "bg-amber-600 text-white",
-  WAREHOUSE_STAFF: "bg-emerald-600 text-white",
-  STAFF: "bg-emerald-600 text-white",
+  WAREHOUSE_STAFF: "bg-[#06402B] text-white",
+  STAFF: "bg-[#06402B] text-white",
   VIEWER: "bg-slate-600 text-white",
 };
 
@@ -126,7 +126,7 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-indigo-500 focus:bg-white"
+        className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-[#E8ECEA] text-slate-800 text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-[#0F5C3F] focus:bg-white"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
@@ -140,7 +140,7 @@ function ScrollableSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-slate-100 py-1">
+        <div className="absolute left-0 top-full mt-1 w-full min-w-[150px] bg-white border border-[#E8ECEA] rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-[#EEF1EF] py-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -151,14 +151,14 @@ function ScrollableSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? "bg-indigo-50 text-indigo-700 font-bold"
+                    ? "bg-[#EAF2EE] text-[#053425] font-bold"
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <span className="text-indigo-600 text-xs font-bold ml-1.5 shrink-0">✓</span>}
+                {isSelected && <span className="text-[#06402B] text-sm font-bold ml-1.5 shrink-0">✓</span>}
               </button>
             );
           })}
@@ -196,7 +196,7 @@ export default function LoginNotificationsPage() {
     else setLoading(true);
 
     try {
-      const res = await fetch(`/api/login-logs?_t=${Date.now()}`);
+      const res = await fetch(`/api/login-logs`);
       const json = await res.json();
       if (json.success && json.data) {
         setLogs(json.data.logs || []);
@@ -366,18 +366,18 @@ export default function LoginNotificationsPage() {
   return (
     <div className="w-full max-w-full space-y-4 sm:space-y-5">
       {/* Page Header */}
-      <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pb-3 border-b border-[#E8ECEA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               ประวัติการเข้าสู่ระบบ
             </h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] animate-pulse" />
               <span>เรียลไทม์</span>
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <p className="text-sm text-slate-500 font-normal mt-0.5">
             บันทึกประวัติการเข้าใช้งานระบบและรายชื่อผู้ใช้งานทั้งหมด
           </p>
         </div>
@@ -386,7 +386,7 @@ export default function LoginNotificationsPage() {
           type="button"
           onClick={() => fetchLogs(true)}
           disabled={isRefreshing}
-          className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
+          className="px-3 py-2 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-sm font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
         >
           <svg
             className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`}
@@ -402,65 +402,65 @@ export default function LoginNotificationsPage() {
 
       {/* Summary Statistics Cards (4 Columns) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">เข้าสู่ระบบทั้งหมด</span>
+            <span className="text-sm font-semibold text-slate-500">เข้าสู่ระบบทั้งหมด</span>
             <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">ครั้งทั้งหมดในระบบ</div>
+          <div className="text-2xl font-black text-slate-900">{stats.total.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ครั้งทั้งหมดในระบบ</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">เข้าใช้งานวันนี้</span>
-            <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <span className="text-sm font-semibold text-slate-500">เข้าใช้งานวันนี้</span>
+            <div className="w-6 h-6 rounded-lg bg-[#EAF2EE] flex items-center justify-center text-[#06402B]">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-emerald-600">{stats.todayCount.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">ครั้งในวันนี้</div>
+          <div className="text-2xl font-black text-[#06402B]">{stats.todayCount.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ครั้งในวันนี้</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">ผู้ดูแลระบบ (Admin)</span>
-            <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <span className="text-sm font-semibold text-slate-500">ผู้ดูแลระบบ (Admin)</span>
+            <div className="w-6 h-6 rounded-lg bg-[#EAF2EE] flex items-center justify-center text-[#06402B]">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-indigo-600">{stats.adminCount.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">ครั้งที่ Admin เข้าระบบ</div>
+          <div className="text-2xl font-black text-[#06402B]">{stats.adminCount.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ครั้งที่ Admin เข้าระบบ</div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-0.5">
+        <div className="bg-white rounded-2xl p-3.5 border border-[#E8ECEA] shadow-xs space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">พนักงานคลัง (Staff)</span>
+            <span className="text-sm font-semibold text-slate-500">พนักงานคลัง (Staff)</span>
             <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
           </div>
-          <div className="text-xl font-black text-teal-600">{stats.staffCount.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">ครั้งที่พนักงานเข้าระบบ</div>
+          <div className="text-2xl font-black text-teal-600">{stats.staffCount.toLocaleString()}</div>
+          <div className="text-xs text-slate-400">ครั้งที่พนักงานเข้าระบบ</div>
         </div>
       </div>
 
       {/* Search & Filters Card */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs space-y-4">
         {/* Search Box */}
         <div>
-          <label htmlFor="login-search-input" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <label htmlFor="login-search-input" className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span>ค้นหาผู้ใช้งาน</span>
@@ -475,7 +475,7 @@ export default function LoginNotificationsPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาชื่อผู้ใช้งาน, อีเมล, บทบาท, IP Address, หรือ อุปกรณ์..."
-              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-800 placeholder-slate-400 text-sm font-medium focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all shadow-2xs"
             />
             <svg
               className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -503,7 +503,7 @@ export default function LoginNotificationsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           {/* Role Dropdown */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">บทบาท</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">บทบาท</div>
             <ScrollableSelect
               value={selectedRole}
               options={roleOptions}
@@ -517,7 +517,7 @@ export default function LoginNotificationsPage() {
 
           {/* Login Method Dropdown */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">วิธีการเข้าใช้งาน</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">วิธีการเข้าใช้งาน</div>
             <ScrollableSelect
               value={selectedMethod}
               options={methodOptions}
@@ -531,7 +531,7 @@ export default function LoginNotificationsPage() {
 
           {/* Date Range Preset */}
           <div>
-            <div className="block text-xs font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
+            <div className="block text-sm font-bold text-slate-700 mb-1.5">ช่วงเวลา</div>
             <ScrollableSelect
               value={selectedDateRange}
               options={dateRangeOptions}
@@ -542,7 +542,7 @@ export default function LoginNotificationsPage() {
         </div>
 
         {/* Filter Summary & Reset Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#EEF1EF] text-sm text-slate-500">
           <div>
             พบทั้งหมด <span className="font-bold text-slate-800">{filteredLogs.length.toLocaleString()}</span> รายการ
             {filteredLogs.length !== logs.length && (
@@ -560,7 +560,7 @@ export default function LoginNotificationsPage() {
                   setSelectedMethod("ALL");
                   handleDateRangeChange("TODAY");
                 }}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-bold hover:underline cursor-pointer"
+                className="text-sm text-[#06402B] hover:text-[#053425] font-bold hover:underline cursor-pointer"
               >
                 ล้างตัวกรอง
               </button>
@@ -570,12 +570,12 @@ export default function LoginNotificationsPage() {
       </div>
 
       {/* Main Login Logs Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-[#EEF1EF] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-            <h2 className="text-sm font-extrabold text-slate-900">รายชื่อผู้เข้าสู่ระบบ</h2>
-            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+            <h2 className="text-base font-extrabold text-slate-900">รายชื่อผู้เข้าสู่ระบบ</h2>
+            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
               {filteredLogs.length} รายการ
             </span>
           </div>
@@ -583,20 +583,20 @@ export default function LoginNotificationsPage() {
 
         {loading ? (
           <div className="p-8 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-semibold text-slate-500">กำลังโหลดประวัติการเข้าสู่ระบบ...</p>
+            <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-slate-500">กำลังโหลดประวัติการเข้าสู่ระบบ...</p>
           </div>
         ) : paginatedLogs.length === 0 ? (
           <div className="p-12 text-center space-y-2 text-slate-400">
             <span className="text-4xl">👤</span>
-            <h3 className="text-sm font-bold text-slate-700">ไม่พบประวัติการเข้าสู่ระบบ</h3>
-            <p className="text-xs text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
+            <h3 className="text-base font-bold text-slate-700">ไม่พบประวัติการเข้าสู่ระบบ</h3>
+            <p className="text-sm text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[750px]">
+            <table className="w-full text-left text-sm min-w-[750px]">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold">
+                <tr className="border-b border-[#EEF1EF] bg-slate-50/70 text-slate-500 font-bold">
                   <th className="py-3.5 px-4">ผู้ใช้งาน</th>
                   <th className="py-3.5 px-4">บทบาท</th>
                   <th className="py-3.5 px-4">เวลาเข้าสู่ระบบ</th>
@@ -606,11 +606,11 @@ export default function LoginNotificationsPage() {
                   <th className="py-3.5 px-4 text-center">สถานะ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#EEF1EF]">
                 {paginatedLogs.map((log) => {
                   const roleKey = (log.user_role || "WAREHOUSE_STAFF").toUpperCase();
                   const roleTxt = roleLabel[roleKey] || log.user_role;
-                  const roleBadge = roleBadgeColor[roleKey] || "bg-slate-100 text-slate-700 border-slate-200";
+                  const roleBadge = roleBadgeColor[roleKey] || "bg-slate-100 text-slate-700 border-[#E8ECEA]";
                   const avatarBg = avatarColor[roleKey] || "bg-slate-600 text-white";
                   const { browser, os } = parseUserAgent(log.user_agent);
 
@@ -619,15 +619,15 @@ export default function LoginNotificationsPage() {
                       {/* User Info */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${avatarBg}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs ${avatarBg}`}>
                             {log.user_name?.slice(0, 1) || "U"}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900 text-xs">
+                            <div className="font-bold text-slate-900 text-sm">
                               {log.user_name || "ไม่ทราบผู้ใช้งาน"}
                             </div>
                             {log.user_email && (
-                              <div className="text-[11px] text-slate-400 font-medium">
+                              <div className="text-xs text-slate-400 font-medium">
                                 {log.user_email}
                               </div>
                             )}
@@ -637,17 +637,17 @@ export default function LoginNotificationsPage() {
 
                       {/* Role Badge */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${roleBadge}`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${roleBadge}`}>
                           {roleTxt}
                         </span>
                       </td>
 
                       {/* Login Time */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-bold text-slate-800 text-xs">
+                        <div className="font-bold text-slate-800 text-sm">
                           {formatThaiDate(log.login_at)}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
+                        <div className="text-[11px] text-slate-400 mt-0.5">
                           {getRelativeTime(log.login_at)}
                         </div>
                       </td>
@@ -655,12 +655,12 @@ export default function LoginNotificationsPage() {
                       {/* Login Method */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {log.login_method === "QR_CODE" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 text-xs font-bold">
                             <span>📱</span>
                             <span>สแกน QR Code</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-[#E8ECEA] text-xs font-semibold">
                             <span>🔑</span>
                             <span>รหัสผ่าน</span>
                           </span>
@@ -668,15 +668,15 @@ export default function LoginNotificationsPage() {
                       </td>
 
                       {/* IP Address */}
-                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-xs text-slate-600">
+                        <span className="bg-slate-100 px-2 py-0.5 rounded border border-[#E8ECEA]/80">
                           {log.ip_address || "127.0.0.1"}
                         </span>
                       </td>
 
                       {/* Device & Browser */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+                        <div className="flex items-center gap-1.5 text-sm text-slate-700 font-semibold">
                           <span>{browser}</span>
                           <span className="text-slate-300">•</span>
                           <span className="text-slate-500 font-normal">{os}</span>
@@ -685,8 +685,8 @@ export default function LoginNotificationsPage() {
 
                       {/* Status */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] shrink-0" />
                           <span>เข้าสู่ระบบสำเร็จ</span>
                         </span>
                       </td>
@@ -700,7 +700,7 @@ export default function LoginNotificationsPage() {
 
         {/* Pagination Bar */}
         {!loading && filteredLogs.length > 0 && (
-          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="p-4 border-t border-[#EEF1EF] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-600">
             <div className="flex items-center gap-2">
               <span>แสดง</span>
               <select
@@ -709,7 +709,7 @@ export default function LoginNotificationsPage() {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 font-semibold focus:outline-none focus:border-indigo-500"
+                className="px-2 py-1 rounded-lg border border-[#E8ECEA] bg-slate-50 font-semibold focus:outline-none focus:border-[#0F5C3F]"
               >
                 <option value={10}>10</option>
                 <option value={15}>15</option>
@@ -724,7 +724,7 @@ export default function LoginNotificationsPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
               >
                 ← ก่อนหน้า
               </button>
@@ -737,7 +737,7 @@ export default function LoginNotificationsPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-[#E8ECEA] bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
               >
                 ถัดไป →
               </button>

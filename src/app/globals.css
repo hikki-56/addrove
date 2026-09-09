@@ -1,8 +1,245 @@
 @import "tailwindcss";
 
+/* Sarabun 400 thai */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/sarabun-400-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+/* Sarabun 400 latin-ext */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/sarabun-400-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Sarabun 400 latin */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/sarabun-400-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Sarabun 500 thai */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/sarabun-500-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+/* Sarabun 500 latin-ext */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/sarabun-500-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Sarabun 500 latin */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/sarabun-500-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Sarabun 600 thai */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/sarabun-600-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+/* Sarabun 600 latin-ext */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/sarabun-600-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Sarabun 600 latin */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/sarabun-600-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Sarabun 700 thai */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/sarabun-700-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+/* Sarabun 700 latin-ext */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/sarabun-700-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Sarabun 700 latin */
+@font-face {
+  font-family: "Sarabun";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/sarabun-700-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Space Grotesk 500 latin-ext */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-500-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Space Grotesk 500 latin */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-500-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Space Grotesk 600 latin-ext */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-600-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Space Grotesk 600 latin */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-600-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Space Grotesk 700 latin-ext */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-700-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Space Grotesk 700 latin */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-700-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* IBM Plex Mono 500 latin-ext */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-500-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* IBM Plex Mono 500 latin */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* IBM Plex Mono 600 latin-ext */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-600-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* IBM Plex Mono 600 latin */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --font-sarabun: "Sarabun";
+  --font-grotesk: "Space Grotesk";
+  --font-plexmono: "IBM Plex Mono";
+}
+
+
 @theme {
-  --font-thai: var(--font-thai), "Noto Sans Thai", sans-serif;
-  --font-inter: var(--font-inter), "Inter", sans-serif;
+  --font-thai: var(--font-sarabun), "Leelawadee UI", sans-serif;
+  --font-disp: var(--font-grotesk), var(--font-sarabun), sans-serif;
+  --font-mono2: var(--font-plexmono), monospace;
+}
+
+@utility disp {
+  font-family: var(--font-disp);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
@@ -20,10 +257,16 @@
   --border-default: rgba(15,23,42,0.12);
   --border-strong:  rgba(15,23,42,0.20);
 
-  /* Primary — Indigo */
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
+  /* Primary — Pine (Stockify premium rebrand · #06402B) */
+  --color-primary-400: #8fb3a3;
+  --color-primary-500: #0f5c3f;
+  --color-primary-600: #06402b;
+
+  /* ── Design System v0.3 — pine palette ──
+     ปุ่มหลัก = เขียน pine เข้ม #06402B · ไอคอน/สถานะ active ใช้ชุดเดียวกัน */
+  --color-action:       #06402b;  /* pine-900 — ปุ่มหลัก / แอ็กชันยืนยัน */
+  --color-action-hover: #0a5236;  /* pine hover */
+  --color-accent:       #06402b;
 
   /* Emerald — success / stock */
   --color-brand-50:  #ecfdf5;
@@ -38,6 +281,29 @@
   --text-primary:   #0f172a;
   --text-secondary: #334155;
   --text-muted:     #64748b;
+
+  /* App Shell — ความสูง header ร่วมของ Sidebar brand และ Top Navbar (ทุก breakpoint)
+     ทั้งสองส่วนต้องอ้าง token นี้เสมอ เพื่อให้เส้นขอบล่างอยู่ระดับเดียวกันพอดี */
+  --header-height: 4.5rem; /* 72px */
+
+  /* ── Sidebar (พื้นดำ) — state tokens ──
+     รวมสีทุกสถานะไว้ที่นี่เพื่อให้ desktop sidebar และ mobile drawer ใช้ธีมเดียวกัน
+     ทุกสถานะผ่าน WCAG AA (ข้อความ ≥ 4.5:1 เทียบพื้นที่ปรากฏจริง) */
+  --sidebar-surface:       #0A0A0A;                    /* พื้น sidebar/drawer */
+  --sidebar-edge:          #262626;                    /* ขอบขวา */
+  --sidebar-divider:       rgba(255, 255, 255, 0.12);  /* เส้นแบ่งภายใน */
+  --sidebar-text:          #E5E5E5;                    /* เมนูปกติ */
+  --sidebar-text-hover:    #FFFFFF;                    /* เมนูและชื่อผู้ใช้ */
+  --sidebar-text-muted:    #A3A3A3;                    /* ป้ายกลุ่ม/บทบาท/ไอคอนปุ่ม */
+  --sidebar-icon:          #B3B3B3;                    /* ไอคอนเมนูปกติ */
+  --sidebar-icon-hover:    #FFFFFF;                    /* ไอคอนตอน hover */
+  --sidebar-active-bg:     #F5F5F5;                    /* ชิปเมนู active / badge / อวตาร */
+  --sidebar-active-text:   #171717;                    /* ตัวอักษรบนชิป active */
+  --sidebar-disabled-text: #858585;                    /* จางกว่าปกติแต่ยังอ่านได้ */
+  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.10);  /* พื้น pill ตอน hover */
+  --sidebar-cta-bg:        rgba(255, 255, 255, 0.06);  /* ปุ่มรองบนพื้นเข้ม (เช่น ออกจากระบบ) */
+  --sidebar-cta-bg-hover:  rgba(255, 255, 255, 0.16);
+  --sidebar-focus-ring:    #FFFFFF;                    /* วงโฟกัสบนพื้นดำ */
 }
 
 /* ============================================================
@@ -87,11 +353,11 @@ body {
   background: var(--bg-surface-1);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
+  background: rgba(16, 24, 40, 0.18);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.22);
+  background: rgba(16, 24, 40, 0.28);
 }
 
 /* ============================================================
@@ -100,14 +366,14 @@ body {
 .glass-card {
   background: var(--bg-surface-2);
   border: 1px solid var(--border-default);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   max-width: 100%;
 }
 
 .glass-card:hover {
   border-color: var(--border-strong);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.07);
 }
 
 .surface-card {
@@ -128,7 +394,7 @@ table tbody tr:nth-child(even) {
 }
 
 table tbody tr:hover {
-  background-color: rgba(99, 102, 241, 0.06) !important;
+  background-color: rgba(6, 64, 43, 0.04) !important;
 }
 
 table thead tr th {
@@ -150,26 +416,28 @@ table tbody td {
    Gradient Text
    ============================================================ */
 .gradient-text {
-  background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: #06402b;
+  background-clip: initial;
+  color: #06402b;
 }
 
 .gradient-text-emerald {
-  background: linear-gradient(135deg, #34d399, #10b981);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: #06402b;
+  background-clip: initial;
+  color: #06402b;
 }
 
 /* ============================================================
    Status Badges
    ============================================================ */
-.badge-normal   { background-color: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 500; }
-.badge-low      { background-color: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 500; }
-.badge-out      { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 500; }
-.badge-negative { background-color: rgba(168, 85, 247, 0.1); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); font-weight: 500; }
+.badge-normal   { background-color: #EAF2EE; color: #06402b; border: 1px solid #DFEDE6; font-weight: 500; }
+.badge-low      { background-color: #FDF4EC; color: #b54708; border: 1px solid #F5E2CE; font-weight: 500; }
+.badge-out      { background-color: #FCEFED; color: #b42318; border: 1px solid #F5D6D2; font-weight: 500; }
+.badge-negative { background-color: #F3F6F4; color: #475467; border: 1px solid #E8ECEA; font-weight: 500; }
 
 /* ============================================================
    Animations
@@ -206,6 +474,89 @@ table tbody td {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Section/row entrance — softer and slower than .fade-in, pairs with
+   Tailwind arbitrary delays like [animation-delay:90ms] */
+.rise-in {
+  animation: riseIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading skeleton with a light sweep (works on light & dark surfaces) */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(148, 163, 184, 0.28);
+  border-radius: 0.75rem;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* SVG sparkline draw-in — set pathLength={1} and strokeDasharray={1} on the path */
+.draw-line {
+  stroke-dasharray: 1;
+  animation: drawLine 0.9s ease-out both;
+}
+
+@keyframes drawLine {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Area fill under the drawn line — fades in after the line finishes */
+.fade-area {
+  animation: fadeArea 0.5s ease-out 0.55s both;
+}
+
+@keyframes fadeArea {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Approved row collapse — apply .leave-up, then remove from the list after it ends */
+.leave-up {
+  animation: leaveUp 0.32s ease-in both;
+  will-change: transform, opacity;
+  overflow: hidden;
+}
+
+@keyframes leaveUp {
+  from { opacity: 1; max-height: 80px; transform: translateY(0); }
+  to   { opacity: 0; max-height: 0; transform: translateY(-6px); }
+}
+
+/* Respect users who opt out of motion — covers every animation above */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ============================================================
    Form Controls
    ============================================================ */
@@ -223,10 +574,10 @@ select option {
   white-space: nowrap;
 }
 
-/* Focus ring — indigo */
+/* Focus ring — pine. ห้ามใส่ outline: none ที่นี่ — วงโฟกัสจาก
+   :focus-visible ต้องยังมองเห็นตอนใช้คีย์บอร์ด (Design System v0.3 · แก้ I5) */
 input:focus, select:focus, textarea:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 0 2px rgba(6, 64, 43, 0.22);
 }
 
 /* ── Keyboard focus indicator — covers ALL interactive elements ──────
@@ -234,7 +585,7 @@ input:focus, select:focus, textarea:focus {
    :focus-visible only fires for keyboard navigation, not mouse clicks.
    WCAG 2.4.7 (AA) — Focus Visible                                    */
 :where(button, a, input, select, textarea, [role="button"]):focus-visible {
-  outline: 2px solid #059669;      /* emerald-600 */
+  outline: 2px solid #06402b;      /* pine-900 */
   outline-offset: 2px;
 }
 
@@ -253,9 +604,9 @@ input:focus, select:focus, textarea:focus {
    Sidebar Active Item
    ============================================================ */
 .nav-active {
-  background: rgba(99, 102, 241, 0.12);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: #EAF2EE;
+  color: #06402b;
+  border: 1px solid transparent;
   position: relative;
 }
 
@@ -267,19 +618,61 @@ input:focus, select:focus, textarea:focus {
   transform: translateY(-50%);
   height: 60%;
   width: 3px;
-  background: linear-gradient(180deg, #818cf8, #6366f1);
+  background: #06402b;
   border-radius: 0 3px 3px 0;
+}
+
+/* ============================================================
+   Sidebar nav item states — ใช้ร่วมกันทั้ง desktop rail และ mobile drawer
+   ตั้งใจไม่ใช้ class จาก .bg-[#06402B]/.bg-[#EAF2EE] เพื่อไม่ให้เข้าไปเกี่ยว
+   กับ override ของ html.light ด้านบน (จุดเดิมที่ทำให้ active อ่านไม่ออก)
+   ============================================================ */
+.sidebar-link {
+  color: var(--sidebar-text);
+  background-color: transparent;
+}
+.sidebar-link .nav-icon {
+  color: var(--sidebar-icon);
+}
+.sidebar-link:not([aria-disabled="true"]):not(.is-active):hover {
+  background-color: var(--sidebar-item-bg-hover);
+  color: var(--sidebar-text-hover);
+}
+.sidebar-link:not([aria-disabled="true"]):not(.is-active):hover .nav-icon {
+  color: var(--sidebar-icon-hover);
+}
+.sidebar-link.is-active {
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+.sidebar-link.is-active .nav-icon {
+  color: var(--sidebar-active-text);
+}
+.sidebar-link[aria-disabled="true"],
+.sidebar-link[aria-disabled="true"] .nav-icon {
+  color: var(--sidebar-disabled-text);
+  cursor: not-allowed;
+}
+/* วงโฟกัสคีย์บอร์ด — ขาวบนพื้นดำ */
+.sidebar-link:focus-visible {
+  outline: 2px solid var(--sidebar-focus-ring);
+  outline-offset: 2px;
+}
+/* เมนู active พื้นอ่อน — วงโฟกัสใช้สีข้อความและเกาะในชิปเพื่อให้เห็นชัดทั้งสองด้าน */
+.sidebar-link.is-active:focus-visible {
+  outline-color: var(--sidebar-active-text);
+  outline-offset: -2px;
 }
 
 /* ============================================================
    Button variants
    ============================================================ */
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: var(--color-action);
   color: #ffffff !important;
   border: none;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary * {
@@ -287,14 +680,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
-  transform: translateY(-1px);
+  background: var(--color-action-hover);
+  box-shadow: 0 2px 6px rgba(6, 64, 43, 0.22);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  background: #053425;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 
 /* ============================================================
@@ -302,21 +694,21 @@ input:focus, select:focus, textarea:focus {
    ============================================================ */
 html.light {
   color-scheme: light;
-  --bg-base:        #f4f5f8;
+  --bg-base:        #EFF3F1;
   --bg-surface-1:   #ffffff;
   --bg-surface-2:   #ffffff;
   --bg-surface-3:   #f8fafc;
-  --border-subtle:  rgba(0,0,0,0.07);
-  --border-default: rgba(0,0,0,0.12);
-  --border-strong:  rgba(0,0,0,0.20);
-  --text-primary:   #0f172a;
-  --text-secondary: #334155;
-  --text-muted:     #64748b;
+  --border-subtle:  #EEF1EF;
+  --border-default: #E8ECEA;
+  --border-strong:  #D5DDD9;
+  --text-primary:   #111827;
+  --text-secondary: #344054;
+  --text-muted:     #667085;
 }
 
 html.light body {
-  background-color: #f4f5f8 !important;
-  color: #0f172a !important;
+  background-color: #EFF3F1 !important;
+  color: #111827 !important;
 }
 
 /* Hardcoded Dark Background Overrides */
@@ -324,7 +716,7 @@ html.light main,
 html.light .bg-\[\#0a0a0f\],
 html.light .bg-\[\#050807\],
 html.light .bg-gray-950 {
-  background-color: #f4f5f8 !important;
+  background-color: #EFF3F1 !important;
 }
 
 html.light header,
@@ -343,13 +735,13 @@ html.light header {
 
 html.light .glass-card {
   background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.03) !important;
+  border: 1px solid #E8ECEA !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
 }
 
 html.light .surface-card {
-  background: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  background: #ffffff !important;
+  border-color: #E8ECEA !important;
 }
 
 /* Standardized Cross-Browser Utility Fallbacks */
@@ -383,10 +775,12 @@ html.light .btn-primary *,
 html.light button.text-white,
 html.light button.text-white *,
 html.light a.text-white,
-html.light .bg-emerald-600,
-html.light .bg-emerald-600 *,
-html.light .bg-indigo-600,
-html.light .bg-indigo-600 *,
+html.light .bg-\[\#06402B\],
+html.light .bg-\[\#06402B\] *,
+html.light .bg-\[\#0F5C3F\],
+html.light .bg-\[\#0F5C3F\] *,
+html.light .bg-\[\#053425\],
+html.light .bg-\[\#053425\] *,
 html.light .bg-rose-600,
 html.light .bg-rose-600 *,
 html.light .bg-slate-900,
@@ -397,11 +791,22 @@ html.light .bg-slate-900 * {
 /* Counter badges with white/light backgrounds inside colored buttons */
 html.light button .bg-white,
 html.light button .bg-white *,
-html.light .bg-emerald-600 .bg-white,
-html.light .bg-emerald-600 .bg-white *,
+html.light .bg-\[\#06402B\] .bg-white,
+html.light .bg-\[\#06402B\] .bg-white *,
 html.light button.text-white .bg-white,
 html.light button.text-white .bg-white * {
-  color: #064e3b !important;
+  color: #06402b !important;
+}
+
+/* Chip โทนสว่าง (#EAF2EE) ที่วางบนพื้นเข้ม pine — เช่นเมนู active / badge ใน Sidebar
+   และ Drawer — ตัวอักษรต้องเป็นเขียวเข้มตามชิป ไม่ใช่ขาวที่ force โดย rule ด้านบน */
+html.light .bg-\[\#06402B\] .bg-\[\#EAF2EE\],
+html.light .bg-\[\#06402B\] .bg-\[\#EAF2EE\] *,
+html.light .bg-\[\#0F5C3F\] .bg-\[\#EAF2EE\],
+html.light .bg-\[\#0F5C3F\] .bg-\[\#EAF2EE\] *,
+html.light .bg-\[\#053425\] .bg-\[\#EAF2EE\],
+html.light .bg-\[\#053425\] .bg-\[\#EAF2EE\] * {
+  color: #06402b !important;
 }
 
 html.light main .text-slate-200,
@@ -424,19 +829,7 @@ html.light main .text-gray-500 {
   color: #64748b !important;
 }
 
-/* Sidebar Dark Text Rules (Always Pure White & Light) */
-aside,
-aside *,
-aside .text-white,
-aside .text-slate-100,
-aside .text-slate-200 {
-  color: #ffffff;
-}
-
-aside .text-white,
-aside .text-white * {
-  color: #ffffff !important;
-}
+/* Sidebar — light surface (premium rebrand): ไม่บังคับสีตัวอักษรขาวอีกต่อไป */
 
 html.light .text-slate-600,
 html.light .text-gray-600 {
@@ -540,7 +933,7 @@ html.light table tbody tr:nth-child(even) {
 }
 
 html.light table tbody tr:hover {
-  background-color: rgba(99, 102, 241, 0.06) !important;
+  background-color: rgba(6, 64, 43, 0.04) !important;
 }
 
 html.light table td {
@@ -632,7 +1025,7 @@ html.light button.bg-red-600 * {
    ============================================================ */
 .admin-shell,
 .admin-shell main {
-  background: #f4f6f8;
+  background: #EFF3F1;
   color: #111827;
 }
 
@@ -695,9 +1088,6 @@ html.light button.bg-red-600 * {
 .admin-tab { position: relative; padding: .25rem 0 .9rem; color: #64748b; font-size: .875rem; font-weight: 600; }
 .admin-tab-active { color: #059669; }
 .admin-tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 999px 999px 0 0; background: #059669; }
-.admin-shell aside .nav-active,
-.admin-shell aside .nav-active span { color: #ffffff !important; }
-
 @media (min-width: 640px) {
   .admin-panel { padding: 1.5rem; }
 }

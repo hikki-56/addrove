@@ -15,7 +15,7 @@ import {
   markTransferCancelled,
   markTransferWaitingApproval,
   markTransferCompleted,
-  clearAllTransferNotifications,
+  unmarkTransferCompleted,
   updateTransferTaskProgress,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
@@ -23,6 +23,7 @@ import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
 import { tagExpressItem } from "@/lib/express-tag-utils";
+import { useTransferConfirm } from "../_components/TransferConfirmDialog";
 
 export const TransferFormSchema = z.object({
   product_id: z.string(),
@@ -120,6 +121,23 @@ export const defaultStaff = [
   { id: "usr-staff-06", full_name: "ธนพล วงษ์สว่าง", role: "WAREHOUSE_STAFF" },
 ];
 
+/** รูปแบบแถวดิบจาก /api/users ก่อน normalize */
+interface RawUserRecord {
+  user_id?: string;
+  id?: string;
+  full_name?: string;
+  name?: string;
+  role?: string;
+  active?: boolean;
+}
+
+/** เอกสารใบเบิกที่ server สร้างแล้วตอบกลับ (subset ที่ flow นี้ใช้) */
+interface CreatedTransferDoc {
+  document_id: string;
+  document_no?: string;
+  created_at?: string;
+}
+
 export interface UseTransferMovementOptions {
   activeWhId: string;
   warehouses: Warehouse[];
@@ -165,13 +183,18 @@ export function useTransferMovement({
   const [sourceAllocations, setSourceAllocations] = useState<Array<{ location_id: string; location_name?: string; max_qty?: number; qty: number }>>([]);
   const [staffError, setStaffError] = useState("");
   const [staffSuccess, setStaffSuccess] = useState("");
-  const [isStaffCameraOpen, setIsStaffCameraOpen] = useState(false);
-  const [staffCameraTarget, setStaffCameraTarget] = useState<"PRODUCT" | "SOURCE_LOCATION" | "DEST_LOCATION">("PRODUCT");
+  // แถบ error ของบ้านสำหรับผลลัพธ์ action ที่ล้มเหลว (อนุมัติ/ปฏิเสธ/ยกเลิก) — แทน alert() ของเบราว์เซอร์
+  const [actionError, setActionError] = useState("");
+  const clearActionError = useCallback(() => setActionError(""), []);
+  const { confirmTransfer, dialogElement: confirmDialogElement } = useTransferConfirm();
 
   const staffProductInputRef = useRef<HTMLInputElement | null>(null);
   const staffSourceLocationInputRef = useRef<HTMLInputElement | null>(null);
   const staffDestLocationInputRef = useRef<HTMLInputElement | null>(null);
   const isStepTransitioningRef = useRef<boolean>(false);
+  // เก็บ idempotency base key ของ "ชุดข้อมูลที่กำลังส่ง" — ต้องคงเดิมระหว่าง retry
+  // เพื่อไม่ให้เกิดใบเบิกซ้ำ (regenerate เฉพาะเมื่อ submit สำเร็จ หรือผู้ใช้ resetForm)
+  const idempotencyBaseKeyRef = useRef<string>(uuidv4());
 
   const form = useForm<TransferFormInput>({
     resolver: zodResolver(TransferFormSchema),
@@ -206,13 +229,13 @@ export function useTransferMovement({
       .then((json) => {
         if (!isMounted || !json || !json.data || !Array.isArray(json.data)) return;
         const fetched: Array<{ id: string; full_name: string; role: string }> = json.data
-          .filter((u: any) => u && u.active !== false)
-          .map((u: any) => ({
+          .filter((u: RawUserRecord) => u && u.active !== false)
+          .map((u: RawUserRecord) => ({
             id: String(u.user_id || u.id || "").trim(),
             full_name: String(u.full_name || u.name || "").trim(),
             role: String(u.role || "WAREHOUSE_STAFF").trim(),
           }))
-          .filter((u: any) => u.id && u.full_name);
+          .filter((u: { id: string; full_name: string }) => u.id && u.full_name);
 
         if (fetched.length > 0) {
           setStaffList(fetched);
@@ -435,11 +458,38 @@ export function useTransferMovement({
   }, [selectedTask]);
 
   const handleCleanupHistory = async () => {
-    if (!confirm("คุณต้องการเคลียร์รายการที่ทำเสร็จแล้วออกจากหน้าจอใช่หรือไม่?")) return;
+    if (typeof window === "undefined") return;
+    // สเปก 6.4: เคลียร์เฉพาะรายการที่ทำเสร็จแล้ว (COMPLETED) — PENDING/WAITING_APPROVAL ต้องอยู่ครบ
+    // และจำนวนใน dialog ต้องตรงกับจำนวนที่จะถูกลบจริง
+    const allTasks = getTransferNotifications();
+    const completedTasks = allTasks.filter((t) => t.status === "COMPLETED");
+    const removedKeys = new Set<string>();
+    completedTasks.forEach((t) => {
+      if (t.id) removedKeys.add(t.id.trim().toLowerCase());
+      if (t.doc_no) removedKeys.add(t.doc_no.trim().toLowerCase());
+    });
+
+    // ยืนยันด้วยค่าจริงผ่าน modal ของบ้าน (สเปก 6.4)
+    const confirmed = await confirmTransfer({ action: "cleanup", count: completedTasks.length });
+    if (!confirmed) return;
+    setActionError("");
     setIsCleaningUp(true);
     try {
-      clearAllTransferNotifications();
-      localStorage.removeItem("stockify_completed_transfers");
+      const remainingTasks = allTasks.filter((t) => !completedTasks.includes(t));
+      localStorage.setItem("stockify_transfer_notifications", JSON.stringify(remainingTasks));
+
+      // เคลียร์ id/doc_no ของรายการที่ลบออกจาก completed list ด้วย กันค้างในเครื่องอื่น
+      const rawCompleted = localStorage.getItem("stockify_completed_transfers");
+      if (rawCompleted) {
+        const completedList: unknown = JSON.parse(rawCompleted);
+        if (Array.isArray(completedList)) {
+          const keptCompleted = completedList.filter(
+            (item) => !removedKeys.has(String(item || "").trim().toLowerCase())
+          );
+          localStorage.setItem("stockify_completed_transfers", JSON.stringify(keptCompleted));
+        }
+      }
+
       setPendingTasks((prev) => prev.filter((t) => t.status === "PENDING"));
       setWaitingApprovalTasks((prev) => prev.filter((t) => t.status === "WAITING_APPROVAL"));
       window.dispatchEvent(new Event("stockify-transfer-updated"));
@@ -459,9 +509,20 @@ export function useTransferMovement({
     }
     const t = taskParam || (eOrTask as TransferNotification);
     if (!t || !t.id) return;
-    if (!confirm(`ยืนยันยกเลิกใบเบิกสินค้า ${t.doc_no}?`)) return;
+
+    // ยืนยันด้วยค่าจริงผ่าน modal ของบ้าน (สเปก 6.4) แทน window.confirm
+    const confirmed = await confirmTransfer({
+      action: "cancel",
+      docNo: t.doc_no,
+      productName: t.product_name,
+      qty: t.qty,
+      route: `${t.from_warehouse_name} → ${t.to_warehouse_name}`,
+    });
+    if (!confirmed) return;
+    setActionError("");
 
     // --- OPTIMISTIC UI: Instant response in 0.05s ---
+    setCancellingId(t.id);
     markTransferCancelled(t.id);
     setPendingTasks((prev) => prev.filter((task) => task.id !== t.id));
     setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
@@ -493,22 +554,36 @@ export function useTransferMovement({
       });
       const json = await res.json();
       if (!json.success) {
-        // Rollback
+        // Rollback optimistic state (รวมถึงลบ id ออกจาก completed list ที่ markTransferCancelled เพิ่มไว้)
+        unmarkTransferCompleted(t.id);
         setPendingTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-        alert(`❌ ยกเลิกไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
+        setActionError(`ยกเลิกไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
       }
     } catch {
+      unmarkTransferCompleted(t.id);
       setPendingTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
       window.dispatchEvent(new Event("stockify-transfer-updated"));
-      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      setActionError("ยกเลิกไม่สำเร็จ: เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    } finally {
+      setCancellingId(null);
     }
   };
 
   const handleApproveTransfer = async (t: TransferNotification) => {
-    if (!confirm(`ยืนยันอนุมัติการเบิกสินค้า ${t.doc_no} และบันทึกยอดเข้าสต็อกจริงใช่หรือไม่?`)) return;
+    // ยืนยันด้วยค่าจริงผ่าน modal ของบ้าน (สเปก 6.4) แทน window.confirm
+    const confirmed = await confirmTransfer({
+      action: "approve",
+      docNo: t.doc_no,
+      productName: t.product_name,
+      qty: t.qty,
+      route: `${t.from_warehouse_name} → ${t.to_warehouse_name}`,
+    });
+    if (!confirmed) return;
+    setActionError("");
 
     // --- OPTIMISTIC UI: Instant response in 0.05s ---
+    setApprovingId(t.id);
     markTransferCompleted(t.id);
     setWaitingApprovalTasks((prev) => prev.filter((item) => item.id !== t.id));
     setPendingTasks((prev) => prev.filter((item) => item.id !== t.id));
@@ -582,27 +657,43 @@ export function useTransferMovement({
       });
       const json = await res.json();
       if (!json.success) {
-        // Rollback optimistic state if server failed
+        // Rollback optimistic state if server failed (รวมถึงลบ id ออกจาก completed list
+        // ไม่งั้น sync ถัดไปจะ force รายการเป็น COMPLETED และหายจากคิวถาวร)
         console.error("[Optimistic Transfer Approval] Server error:", json.message);
+        unmarkTransferCompleted(t.id);
         setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-        alert(`❌ อนุมัติไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์"}`);
+        setActionError(`อนุมัติไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์"}`);
       } else {
         refreshData();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Optimistic Transfer Approval] Network error:", err);
+      unmarkTransferCompleted(t.id);
       setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
       window.dispatchEvent(new Event("stockify-transfer-updated"));
-      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      setActionError("อนุมัติไม่สำเร็จ: เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    } finally {
+      setApprovingId(null);
     }
   };
 
   const handleRejectTransfer = async (e: React.MouseEvent, t: TransferNotification) => {
     e.stopPropagation();
-    if (!confirm(`ยืนยันปฏิเสธใบย้ายสินค้า ${t.doc_no}?`)) return;
+
+    // ยืนยันด้วยค่าจริงผ่าน modal ของบ้าน (สเปก 6.4) แทน window.confirm
+    const confirmed = await confirmTransfer({
+      action: "reject",
+      docNo: t.doc_no,
+      productName: t.product_name,
+      qty: t.qty,
+      route: `${t.from_warehouse_name} → ${t.to_warehouse_name}`,
+    });
+    if (!confirmed) return;
+    setActionError("");
 
     // --- OPTIMISTIC UI ---
+    setCancellingId(t.id);
     markTransferCancelled(t.id);
     setWaitingApprovalTasks((prev) => prev.filter((task) => task.id !== t.id));
     window.dispatchEvent(new Event("stockify-transfer-updated"));
@@ -627,14 +718,16 @@ export function useTransferMovement({
       });
       const json = await res.json();
       if (!json.success) {
+        unmarkTransferCompleted(t.id);
         setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
         window.dispatchEvent(new Event("stockify-transfer-updated"));
-        alert(`❌ ปฏิเสธไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
+        setActionError(`ปฏิเสธไม่สำเร็จ: ${json.message || "เกิดข้อผิดพลาด"}`);
       }
     } catch {
+      unmarkTransferCompleted(t.id);
       setWaitingApprovalTasks((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
       window.dispatchEvent(new Event("stockify-transfer-updated"));
-      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      setActionError("ปฏิเสธไม่สำเร็จ: เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     } finally {
       setCancellingId(null);
     }
@@ -649,7 +742,7 @@ export function useTransferMovement({
 
     const scannedNorm = norm(scannedCode);
     if (!scannedNorm) {
-      setStaffError("❌ กรุณาสแกนหรือระบุบาร์โค้ดสินค้า");
+      setStaffError("กรุณาสแกนหรือระบุบาร์โค้ดสินค้า");
       return;
     }
 
@@ -667,7 +760,7 @@ export function useTransferMovement({
     // Exclude TRF document numbers or placeholders
     if (selectedTask.doc_no && norm(selectedTask.doc_no) === scannedNorm) {
       setStaffError(
-        `❌ รหัสที่สแกนเป็นเลขที่ใบงาน (${scannedCode}) ไม่ใช่บาร์โค้ดสินค้า! กรุณาสแกนป้ายบาร์โค้ดบนตัวสินค้า`
+        `รหัสที่สแกนเป็นเลขที่ใบงาน (${scannedCode}) ไม่ใช่บาร์โค้ดสินค้า! กรุณาสแกนป้ายบาร์โค้ดบนตัวสินค้า`
       );
       return;
     }
@@ -691,13 +784,13 @@ export function useTransferMovement({
 
     // Check if task is missing barcode & product info completely
     if (!targetBarcode && !targetSku && !targetPid) {
-      setStaffError("❌ ใบงานนี้ไม่มีข้อมูลบาร์โค้ดสินค้า กรุณาให้ผู้ดูแลสร้างใบงานใหม่หรือแก้ไขข้อมูลสินค้า");
+      setStaffError("ใบงานนี้ไม่มีข้อมูลบาร์โค้ดสินค้า กรุณาให้ผู้ดูแลสร้างใบงานใหม่หรือแก้ไขข้อมูลสินค้า");
       return;
     }
 
     if (isMatch) {
       // ขั้นตอนที่ 2 (สแกนต้นทาง) ถูกคอมเมนต์ไว้ชั่วคราว -> ข้ามไปขั้นตอนปลายทางทันที
-      setStaffSuccess(`✅ บาร์โค้ดสินค้าถูกต้องเรียบร้อย! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งปลายทางใน ${selectedTask.to_warehouse_name}`);
+      setStaffSuccess(`บาร์โค้ดสินค้าถูกต้องเรียบร้อย! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งปลายทางใน ${selectedTask.to_warehouse_name}`);
       setStaffScanProductInput("");
       setStaffScanDestLocationInput("");
 
@@ -729,7 +822,7 @@ export function useTransferMovement({
         .join(" / ");
 
       setStaffError(
-        `❌ บาร์โค้ดไม่ตรงกับสินค้าที่ต้องย้าย! (ที่สแกน: "${scannedCode}" / ต้องการ: "${displayExpected || selectedTask.product_name}")`
+        `บาร์โค้ดไม่ตรงกับสินค้าที่ต้องย้าย! (ที่สแกน: "${scannedCode}" / ต้องการ: "${displayExpected || selectedTask.product_name}")`
       );
     }
   };
@@ -744,7 +837,7 @@ export function useTransferMovement({
     const code = scannedCode.trim().toLowerCase();
     if (!code) {
       setStaffError(
-        `❌ กรุณาสแกนหรือระบุรหัสตำแหน่งต้นทางใน "${selectedTask.from_warehouse_name}"`
+        `กรุณาสแกนหรือระบุรหัสตำแหน่งต้นทางใน "${selectedTask.from_warehouse_name}"`
       );
       return;
     }
@@ -790,7 +883,7 @@ export function useTransferMovement({
         .join(", ");
 
       setStaffError(
-        `❌ ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.from_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
+        `ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.from_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
       );
       return;
     }
@@ -808,7 +901,7 @@ export function useTransferMovement({
     const remainingNeeded = Math.max(0, selectedTask.qty - currentPickedTotal);
 
     if (remainingNeeded <= 0) {
-      setStaffError(`❌ สแกนหยิบสินค้าครบจำนวนตามใบงานแล้ว (${selectedTask.qty.toLocaleString()} ชิ้น)`);
+      setStaffError(`สแกนหยิบสินค้าครบจำนวนตามใบงานแล้ว (${selectedTask.qty.toLocaleString()} ชิ้น)`);
       return;
     }
 
@@ -840,7 +933,7 @@ export function useTransferMovement({
     } catch { }
 
     if (availableLocStock <= 0) {
-      setStaffError(`❌ ตำแหน่ง "${targetLocId}" ไม่มีสินค้าคงเหลือในคลัง`);
+      setStaffError(`ตำแหน่ง "${targetLocId}" ไม่มีสินค้าคงเหลือในคลัง`);
       return;
     }
 
@@ -851,7 +944,7 @@ export function useTransferMovement({
     }
 
     if (takeQty <= 0) {
-      setStaffError(`❌ ไม่สามารถหยิบสินค้าจากตำแหน่ง "${targetLocId}" ได้`);
+      setStaffError(`ไม่สามารถหยิบสินค้าจากตำแหน่ง "${targetLocId}" ได้`);
       return;
     }
 
@@ -869,11 +962,11 @@ export function useTransferMovement({
 
     if (newRemaining > 0) {
       setStaffSuccess(
-        `✅ ตรวจพบตำแหน่ง "${targetLocId}" มีสินค้า ${availableLocStock.toLocaleString()} ชิ้น (เลือกหยิบ ${takeQty.toLocaleString()} ชิ้น) ยังขาดอีก ${newRemaining.toLocaleString()} ชิ้น กรุณาสแกนตำแหน่งถัดไป`
+        `ตรวจพบตำแหน่ง "${targetLocId}" มีสินค้า ${availableLocStock.toLocaleString()} ชิ้น (เลือกหยิบ ${takeQty.toLocaleString()} ชิ้น) ยังขาดอีก ${newRemaining.toLocaleString()} ชิ้น กรุณาสแกนตำแหน่งถัดไป`
       );
     } else {
       setStaffSuccess(
-        `✅ เลือกหยิบสินค้าครบตามจำนวน (${selectedTask.qty.toLocaleString()} ชิ้น) เรียบร้อย! สามารถปรับจำนวนในแต่ละตำแหน่ง หรือกดยืนยันเพื่อไปขั้นตอนถัดไป`
+        `เลือกหยิบสินค้าครบตามจำนวน (${selectedTask.qty.toLocaleString()} ชิ้น) เรียบร้อย! สามารถปรับจำนวนในแต่ละตำแหน่ง หรือกดยืนยันเพื่อไปขั้นตอนถัดไป`
       );
     }
   };
@@ -897,20 +990,20 @@ export function useTransferMovement({
     const totalPicked = sourceAllocations.reduce((sum, a) => sum + (a.qty || 0), 0);
     if (totalPicked < selectedTask.qty) {
       setStaffError(
-        `❌ สินค้าที่เลือกยังไม่ครบตามใบงาน (เลือกแล้ว: ${totalPicked.toLocaleString()} / ต้องการ: ${selectedTask.qty.toLocaleString()} ชิ้น) กรุณาสแกนตำแหน่งเพิ่ม`
+        `สินค้าที่เลือกยังไม่ครบตามใบงาน (เลือกแล้ว: ${totalPicked.toLocaleString()} / ต้องการ: ${selectedTask.qty.toLocaleString()} ชิ้น) กรุณาสแกนตำแหน่งเพิ่ม`
       );
       return;
     }
     if (totalPicked > selectedTask.qty) {
       setStaffError(
-        `❌ จำนวนสินค้าที่ระบุ (${totalPicked.toLocaleString()} ชิ้น) เกินกว่าที่ต้องการย้าย (${selectedTask.qty.toLocaleString()} ชิ้น) กรุณาปรับลดจำนวนในช่องตัวเลข`
+        `จำนวนสินค้าที่ระบุ (${totalPicked.toLocaleString()} ชิ้น) เกินกว่าที่ต้องการย้าย (${selectedTask.qty.toLocaleString()} ชิ้น) กรุณาปรับลดจำนวนในช่องตัวเลข`
       );
       return;
     }
 
     setStaffError("");
     setStaffSuccess(
-      `✅ ตำแหน่งต้นทางถูกต้องครบถ้วน! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งปลายทางใน ${selectedTask.to_warehouse_name}`
+      `ตำแหน่งต้นทางถูกต้องครบถ้วน! ขั้นตอนถัดไป: สแกน/เลือกตำแหน่งปลายทางใน ${selectedTask.to_warehouse_name}`
     );
 
     isStepTransitioningRef.current = true;
@@ -956,7 +1049,7 @@ export function useTransferMovement({
     const code = scannedCode.trim().toLowerCase();
     if (!code) {
       setStaffError(
-        `❌ กรุณาสแกนหรือระบุรหัสตำแหน่งปลายทางใน "${selectedTask.to_warehouse_name}"`
+        `กรุณาสแกนหรือระบุรหัสตำแหน่งปลายทางใน "${selectedTask.to_warehouse_name}"`
       );
       return;
     }
@@ -1016,7 +1109,7 @@ export function useTransferMovement({
 
       setScannedToLocation("");
       setStaffError(
-        `❌ ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.to_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
+        `ไม่พบตำแหน่ง/ชั้นวาง "${scannedCode}" ใน "${selectedTask.to_warehouse_name}" กรุณาสแกนชั้นวางที่มีอยู่จริงในโกดังนี้${sampleNames ? ` (เช่น ${sampleNames})` : ""}`
       );
       return;
     }
@@ -1031,7 +1124,7 @@ export function useTransferMovement({
     setStaffScanDestLocationInput(targetToLocId);
     setStaffError("");
     setStaffSuccess(
-      `✅ สแกนชั้นวางปลายทาง "${targetToLocId}" ใน "${selectedTask.to_warehouse_name}" ถูกต้อง กรุณากดยืนยันการเบิก`
+      `สแกนชั้นวางปลายทาง "${targetToLocId}" ใน "${selectedTask.to_warehouse_name}" ถูกต้อง กรุณากดยืนยันการเบิก`
     );
   };
 
@@ -1040,7 +1133,7 @@ export function useTransferMovement({
     const targetToLocId = (scannedToLocation || staffScanDestLocationInput).trim().toUpperCase();
     if (!targetToLocId) {
       setStaffError(
-        `❌ กรุณาสแกนหรือระบุตำแหน่งปลายทางใน "${selectedTask.to_warehouse_name}" ก่อนกดยืนยัน`
+        `กรุณาสแกนหรือระบุตำแหน่งปลายทางใน "${selectedTask.to_warehouse_name}" ก่อนกดยืนยัน`
       );
       return;
     }
@@ -1061,7 +1154,7 @@ export function useTransferMovement({
 
       if (!isRealLoc) {
         setStaffError(
-          `❌ ตำแหน่ง "${targetToLocId}" ไม่ใช่ตำแหน่งจริงใน "${selectedTask.to_warehouse_name}" กรุณาสแกนตำแหน่งที่มีอยู่จริง`
+          `ตำแหน่ง "${targetToLocId}" ไม่ใช่ตำแหน่งจริงใน "${selectedTask.to_warehouse_name}" กรุณาสแกนตำแหน่งที่มีอยู่จริง`
         );
         return;
       }
@@ -1103,7 +1196,7 @@ export function useTransferMovement({
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || json.message || "ส่งข้อมูลการย้ายสินค้าไม่สำเร็จ");
+        throw new Error(json.error || json.message || "ส่งข้อมูลการเบิกสินค้าไม่สำเร็จ");
       }
 
       setStaffError("");
@@ -1122,8 +1215,9 @@ export function useTransferMovement({
       if (selectedTask?.id) {
         updateTransferTaskProgress(selectedTask.id, 4, "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)");
       }
-    } catch (err: any) {
-      setStaffError(`❌ เกิดข้อผิดพลาด: ${err.message || "ไม่สามารถย้ายสินค้าได้"}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error && err.message ? err.message : "ไม่สามารถส่งข้อมูลการเบิกสินค้าได้";
+      setStaffError(`เกิดข้อผิดพลาด: ${message}`);
     } finally {
       setIsSubmittingTransfer(false);
     }
@@ -1169,7 +1263,7 @@ export function useTransferMovement({
       const fromWhName = warehouses.find((w) => w.warehouse_id === data.from_warehouse_id)?.warehouse_name || data.from_warehouse_id;
       const toWhName = warehouses.find((w) => w.warehouse_id === data.to_warehouse_id)?.warehouse_name || data.to_warehouse_id;
 
-      const createdDocs: any[] = [];
+      const createdDocs: CreatedTransferDoc[] = [];
       const createdNotifs: TransferNotification[] = [];
       const errors: string[] = [];
 
@@ -1192,8 +1286,9 @@ export function useTransferMovement({
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
-      // Always generate a fresh unique idempotency base key on every submission attempt to prevent key conflict
-      const baseIdemKey = uuidv4();
+      // ใช้ base key เดิมของชุดข้อมูลที่กำลังส่ง — retry หลัง network ชลอจะได้ key เดิม
+      // (server ตอบ replay แทนการสร้างใบเบิกซ้ำ) ไม่สร้าง key ใหม่ต่อ attempt
+      const baseIdemKey = idempotencyBaseKeyRef.current;
       const creatorId = tabUser?.id || "admin";
       const creatorName = tabUser?.name || "ผู้สร้างรายการ";
       const docDateVal = data.document_date && data.document_date.trim() ? data.document_date.trim() : new Date().toISOString().slice(0, 10);
@@ -1202,7 +1297,7 @@ export function useTransferMovement({
       const createResults = await Promise.all(
         itemsToProcess.map(async (item, i) => {
           try {
-            const itemKey = `trf-${baseIdemKey}-${i}-${Date.now()}`;
+            const itemKey = `trf-${baseIdemKey}-${i}`;
             const res = await fetch("/api/movements/transfer", {
               method: "POST",
               headers,
@@ -1226,11 +1321,17 @@ export function useTransferMovement({
 
             const json = await res.json();
             if (!res.ok || !json.success || !json.data) {
-              const errMsg = json.error || json.message || "สร้างใบย้ายสินค้าไม่สำเร็จ";
-              return { error: `"${item.product_name}": ${errMsg}`, doc: null, notif: null };
+              const rawErrMsg = String(json.error || json.message || "สร้างใบเบิกสินค้าไม่สำเร็จ");
+              // IdempotencyConflictError / IdempotencyInProgressError — ห้ามสร้าง key ใหม่
+              const isIdempotencyBusy =
+                rawErrMsg.includes("ถูกใช้ไปแล้วกับข้อมูลอื่น") || rawErrMsg.includes("กำลังประมวลผลอยู่");
+              const errMsg = isIdempotencyBusy
+                ? `"${item.product_name}": รายการถูกบันทึกไปแล้วหรือกำลังประมวลผล กรุณารอสักครู่`
+                : `"${item.product_name}": ${rawErrMsg}`;
+              return { error: errMsg, doc: null, notif: null };
             }
 
-            const realDoc = json.data;
+            const realDoc = json.data as CreatedTransferDoc;
             const notif: TransferNotification = {
               id: realDoc.document_id,
               doc_no: realDoc.document_no || `TRF-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
@@ -1276,10 +1377,16 @@ export function useTransferMovement({
 
       if (errors.length > 0) {
         if (createdDocs.length === 0) {
-          setError(`❌ ไม่สามารถสร้างใบสั่งย้ายสินค้าได้:\n${errors.join("\n")}`);
+          setError(`ไม่สามารถสร้างใบเบิกสินค้าได้:\n${errors.join("\n")}`);
           return;
         }
-        setError(`⚠️ สร้างสำเร็จ ${createdDocs.length} รายการ แต่พบข้อผิดพลาดในบางรายการ:\n${errors.join("\n")}`);
+        setError(`สร้างสำเร็จ ${createdDocs.length} รายการ แต่พบข้อผิดพลาดในบางรายการ:\n${errors.join("\n")}`);
+      }
+
+      // ส่งสำเร็จ (ทั้งชุดหรือบางส่วน) → สร้าง base key ใหม่สำหรับชุดถัดไป
+      // กัน key เดิมโดน server ตอบ replay แทนการสร้างรายการใหม่ที่ข้อมูลเหมือนเดิม
+      if (createdDocs.length > 0) {
+        idempotencyBaseKeyRef.current = uuidv4();
       }
 
       refreshData();
@@ -1287,7 +1394,7 @@ export function useTransferMovement({
       setValue("product_id", "");
       setValue("qty", 1);
       setError("");
-      setSuccessMessage(`✅ สร้างรายการเบิกสินค้าสำเร็จ ${createdDocs.length} รายการ (บันทึกใน "รายการที่ต้องไปเบิก" เรียบร้อยแล้ว)`);
+      setSuccessMessage(`สร้างรายการเบิกสินค้าสำเร็จ ${createdDocs.length} รายการ (บันทึกใน "รายการที่ต้องไปเบิก" เรียบร้อยแล้ว)`);
       setSelectedTask(null);
       setStaffStep(1);
     } catch (err: unknown) {
@@ -1299,6 +1406,7 @@ export function useTransferMovement({
   const resetForm = () => {
     refreshData();
     setSubmitted(false);
+    idempotencyBaseKeyRef.current = uuidv4();
     reset({
       from_warehouse_id: activeWhId,
       to_warehouse_id: activeWhId === "wh-1" || activeWhId === "wh-01" ? "wh-2" : "wh-1",
@@ -1308,7 +1416,7 @@ export function useTransferMovement({
       document_date: new Date().toISOString().slice(0, 10),
       reference_no: "",
       note: "",
-      idempotency_key: uuidv4(),
+      idempotency_key: idempotencyBaseKeyRef.current,
     });
   };
 
@@ -1345,10 +1453,6 @@ export function useTransferMovement({
     destLocations,
     staffError,
     staffSuccess,
-    isStaffCameraOpen,
-    setIsStaffCameraOpen,
-    staffCameraTarget,
-    setStaffCameraTarget,
     staffProductInputRef,
     staffSourceLocationInputRef,
     staffDestLocationInputRef,
@@ -1385,5 +1489,8 @@ export function useTransferMovement({
     setSuccessMessage,
     onSubmit,
     resetForm,
+    actionError,
+    clearActionError,
+    confirmDialogElement,
   };
 }

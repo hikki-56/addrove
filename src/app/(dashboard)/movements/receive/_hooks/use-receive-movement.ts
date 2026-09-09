@@ -13,6 +13,37 @@ import { useTabAuth } from "@/context/TabAuthContext";
 
 export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v1";
 
+// Re-key index-based state (locationInputs/confirmedLines) after line order changes.
+// map() returns the new index for an old index, or null when the entry is dropped.
+function remapIndexState<T>(prev: Record<number, T>, map: (i: number) => number | null): Record<number, T> {
+  const next: Record<number, T> = {};
+  for (const [k, v] of Object.entries(prev)) {
+    const target = map(Number(k));
+    if (target === null) continue;
+    next[target] = v;
+  }
+  return next;
+}
+
+function shortName(name: string, max = 32): string {
+  return name.length > max ? `${name.slice(0, max).trimEnd()}…` : name;
+}
+
+function normalizeWhId(v: string): string {
+  return (v || "").trim().toLowerCase().replace(/^wh-0*(\d+)$/, "wh-$1");
+}
+
+// รับสินค้า: ต้องตรงกันทุกหลัก (บาร์โค้ด/SKU/product id) — ห้ามจับคู่บางส่วน
+function matchesProductExact(p: Product, code: string): boolean {
+  const c = code.trim().toLowerCase();
+  return (
+    (!!p.barcode && p.barcode.trim().toLowerCase() === c) ||
+    (!!p.sku && p.sku.trim().toLowerCase() === c) ||
+    (!!p.product_id && p.product_id.trim().toLowerCase() === c) ||
+    (!!p.product_id && p.product_id.trim().toLowerCase() === `prod-${c}`)
+  );
+}
+
 export interface UseReceiveMovementOptions {
   activeWhId: string;
   setActiveWhId?: (whId: string) => void;
@@ -36,10 +67,10 @@ export function useReceiveMovement({
   const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
   const [lastScannedId, setLastScannedId] = useState<string | null>(null);
-  const [cameraScanLineIndex, setCameraScanLineIndex] = useState<number | null>(null);
   const [locationInputs, setLocationInputs] = useState<Record<number, string>>({});
   const [confirmedLines, setConfirmedLines] = useState<Record<number, boolean>>({});
   const [searchOpen, setSearchOpen] = useState(false);
@@ -61,8 +92,27 @@ export function useReceiveMovement({
   });
 
   const { register, control, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = form;
-  const { fields, append, insert, remove } = useFieldArray({ control, name: "lines" });
+  const { fields, insert, remove, move } = useFieldArray({ control, name: "lines" });
   const watchLines = watch("lines");
+
+  // Remove a line AND remap index-keyed state (locationInputs/confirmedLines) so values
+  // of the removed line can never leak onto a different line after indices shift
+  const removeLine = useCallback((index: number) => {
+    remove(index);
+    const shift = (i: number): number | null => (i === index ? null : i > index ? i - 1 : i);
+    setLocationInputs((prev) => remapIndexState(prev, shift));
+    setConfirmedLines((prev) => remapIndexState(prev, shift));
+  }, [remove]);
+
+  // Latest scan wins: move the just-scanned line to the top of the list, carrying its
+  // index-keyed state along so location/confirmed status stay attached to the same line
+  const moveLineToTop = useCallback((fromIdx: number) => {
+    if (fromIdx <= 0) return;
+    move(fromIdx, 0);
+    const toTop = (i: number): number | null => (i === fromIdx ? 0 : i < fromIdx ? i + 1 : i);
+    setLocationInputs((prev) => remapIndexState(prev, toTop));
+    setConfirmedLines((prev) => remapIndexState(prev, toTop));
+  }, [move]);
 
   // Keep warehouse_id in form in sync with active warehouse
   useEffect(() => {
@@ -71,13 +121,18 @@ export function useReceiveMovement({
     }
   }, [activeWhId, setValue]);
 
-  // Restore draft from localStorage on mount
+  // Restore draft from localStorage on mount — only if the draft belongs to the same warehouse
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const saved = localStorage.getItem(RECEIVE_DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (parsed.warehouse_id && activeWhId && normalizeWhId(parsed.warehouse_id) !== normalizeWhId(activeWhId)) {
+          // Draft was made for another warehouse — discard it instead of mixing lines across warehouses
+          localStorage.removeItem(RECEIVE_DRAFT_KEY);
+          return;
+        }
         if (parsed.lines && Array.isArray(parsed.lines) && parsed.lines.length > 0) {
           setValue("lines", parsed.lines, { shouldValidate: true });
           if (parsed.step) setStep(parsed.step);
@@ -87,7 +142,7 @@ export function useReceiveMovement({
     } catch (e) {
       console.warn("[Receive Page] Failed to restore draft:", e);
     }
-  }, [setValue]);
+  }, [setValue, activeWhId]);
 
   // Save draft to localStorage
   useEffect(() => {
@@ -113,6 +168,62 @@ export function useReceiveMovement({
     }
   }, [watchLines, activeWhId, step, watch, submitted]);
 
+  // Restoring a draft only brings back the line rows. Products scanned in the previous
+  // session may not be in the warehouse product list after a refresh (refreshData
+  // replaces the list with warehouse-scoped products, e.g. zero-stock items are absent),
+  // so the card would fall back to "สินค้าใหม่" — re-fetch those from the product master.
+  const attemptedResolveRef = useRef<Set<string>>(new Set());
+  const lastProductsRef = useRef(products);
+  useEffect(() => {
+    if (lastProductsRef.current !== products) {
+      lastProductsRef.current = products;
+      // The list was replaced/reloaded (or we merged a product) — allow retrying lines
+      // that previously failed to resolve
+      attemptedResolveRef.current = new Set();
+    }
+    const lines = watchLines || [];
+    if (lines.length === 0) return;
+
+    const unresolved = lines.filter((l) => {
+      const pid = (l.product_id || "").trim().toLowerCase();
+      if (!pid || attemptedResolveRef.current.has(pid)) return false;
+      return !(products || []).some((p) =>
+        p.product_id.toLowerCase() === pid ||
+        p.sku.toLowerCase() === pid ||
+        (p.barcode && p.barcode.trim().toLowerCase() === pid) ||
+        p.product_id.toLowerCase() === `prod-${pid}`
+      );
+    });
+    if (unresolved.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      for (const line of unresolved) {
+        const code = (line.product_id || "").trim();
+        attemptedResolveRef.current.add(code.toLowerCase());
+        try {
+          const res = await fetch(`/api/products?search=${encodeURIComponent(code)}&master_only=true`);
+          const json = await res.json();
+          if (cancelled) return;
+          if (!json.success) continue;
+          const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
+          const exact = list.find((p) => matchesProductExact(p, code));
+          if (exact) {
+            setProducts((prev) => {
+              const exists = (prev || []).some((p) => p.product_id === exact.product_id);
+              return exists ? prev : [exact, ...(prev || [])];
+            });
+          }
+        } catch (e) {
+          console.error("[Receive Page] Draft product resolve error:", e);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [watchLines, products, setProducts]);
+
   const toggleConfirmLine = (i: number) => {
     const isCurrentlyConfirmed = !!confirmedLines[i];
     if (!isCurrentlyConfirmed) {
@@ -136,7 +247,7 @@ export function useReceiveMovement({
       extra_qtys: [],
       location_allocations: [],
       boxes: 1,
-      qty: 1,
+      qty: 0,
       barcode: currentLine.barcode || "",
     });
   };
@@ -185,27 +296,22 @@ export function useReceiveMovement({
       }
     }
 
-    const finalLocId = matchedLoc
-      ? (matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
-          ? matchedLoc.shelf_code.toUpperCase()
-          : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
-              ? matchedLoc.location_code.toUpperCase()
-              : finalLocCode))
-      : finalLocCode;
-
     if (!matchedLoc) {
-      const newLocObj: Location = {
-        location_id: finalLocId,
-        warehouse_id: activeWhId || "wh-01",
-        location_code: finalLocCode,
-        location_name: `ตำแหน่ง ${finalLocCode}`,
-        shelf_code: finalLocCode,
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      if (setLocations) setLocations((prev) => [newLocObj, ...prev]);
+      // Unknown shelf: reject instead of silently creating a phantom location
+      setScanFeedback({
+        type: "error",
+        title: "ไม่พบตำแหน่งนี้ในโกดัง",
+        message: `"${rawTrimmed.toUpperCase()}" ไม่อยู่ในรายการตำแหน่ง — กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`,
+      });
+      setTimeout(() => setScanFeedback(null), 4000);
+      return;
     }
+
+    const finalLocId = matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
+      ? matchedLoc.shelf_code.toUpperCase()
+      : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
+          ? matchedLoc.location_code.toUpperCase()
+          : finalLocCode);
 
     setValue(`lines.${lineIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
     setLocationInputs((prev) => ({ ...prev, [lineIdx]: finalLocId }));
@@ -230,30 +336,15 @@ export function useReceiveMovement({
       }
       setScanFeedback({
         type: "success",
-        title: "สลับโกดังสินค้าสำเร็จ",
-        message: `สแกนบาร์โค้ดสลับคลังเป็น: ${getWarehouseName(detectedWh)} (${detectedWh.toUpperCase()})`,
+        title: "สลับโกดังแล้ว",
+        message: getWarehouseName(detectedWh),
       });
       isProcessingRef.current = false;
       return;
     }
 
-    // Step 1: Product Scanning Match Check (Local Array + API Search Fallback)
-    let matched = (products || []).find(
-      (p) =>
-        (p.barcode && p.barcode.trim().toLowerCase() === trimmed) ||
-        (p.sku && p.sku.trim().toLowerCase() === trimmed) ||
-        (p.product_id && p.product_id.trim().toLowerCase() === trimmed) ||
-        (p.product_id && p.product_id.trim().toLowerCase() === `prod-${trimmed}`)
-    );
-
-    if (!matched) {
-      matched = (products || []).find(
-        (p) =>
-          (p.barcode && p.barcode.trim().toLowerCase().includes(trimmed)) ||
-          (p.sku && p.sku.trim().toLowerCase().includes(trimmed)) ||
-          (p.product_name && p.product_name.trim().toLowerCase().includes(trimmed))
-      );
-    }
+    // Step 1: Product match — exact code only, no partial matching
+    let matched = (products || []).find((p) => matchesProductExact(p, trimmed));
 
     if (!matched) {
       try {
@@ -261,8 +352,9 @@ export function useReceiveMovement({
         const json = await res.json();
         if (json.success) {
           const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
-          if (list.length > 0) {
-            matched = list[0];
+          const exact = list.find((p) => matchesProductExact(p, trimmed));
+          if (exact) {
+            matched = exact;
             setProducts((prev) => {
               const exists = (prev || []).some((p) => p.product_id === matched!.product_id);
               return exists ? prev : [matched!, ...(prev || [])];
@@ -274,40 +366,37 @@ export function useReceiveMovement({
       }
     }
 
-    // IF PRODUCT MATCHED -> ADD OR INCREMENT PRODUCT
+    // IF PRODUCT MATCHED -> ADD (duplicate scan adds one box only — จำนวนชิ้น is counted manually)
     if (matched) {
       const pid = matched.product_id || matched.sku;
       const currentLines = watchLines || [];
-      const barcodeDisplay = matched.barcode && matched.barcode.trim() !== "-" ? matched.barcode.trim() : "";
-      const barcodePrefix = barcodeDisplay ? `บาร์โค้ด: ${barcodeDisplay} | ` : "";
 
       const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
       if (existingIdx !== -1) {
         const currentBoxes = Number(currentLines[existingIdx].boxes) || 1;
-        const currentQty = Number(currentLines[existingIdx].qty) || 1;
         setValue(`lines.${existingIdx}.boxes`, currentBoxes + 1, { shouldValidate: true, shouldDirty: true });
-        setValue(`lines.${existingIdx}.qty`, currentQty + 1, { shouldValidate: true, shouldDirty: true });
+        moveLineToTop(existingIdx);
         setScanFeedback({
           type: "success",
-          title: "นำเข้าสินค้าสำเร็จ",
-          message: `${barcodePrefix}[${matched.sku}] ${matched.product_name} (เพิ่มเป็น ${currentBoxes + 1} กล่อง)`,
+          title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง`,
+          message: `[${matched.sku}] ${shortName(matched.product_name)}`,
         });
       } else {
-        append({
+        insert(0, {
           product_id: pid,
           location_id: "",
           extra_locations: [],
           extra_qtys: [],
           location_allocations: [],
           boxes: 1,
-          qty: 1,
+          qty: 0,
           barcode: matched.barcode || matched.sku || "",
         });
         setError("");
         setScanFeedback({
           type: "success",
-          title: "นำเข้าสินค้าสำเร็จ",
-          message: `${barcodePrefix}[${matched.sku}] ${matched.product_name}`,
+          title: "นำเข้าสำเร็จ",
+          message: `[${matched.sku}] ${shortName(matched.product_name)}`,
         });
       }
 
@@ -335,40 +424,58 @@ export function useReceiveMovement({
       );
     });
 
-    const isExplicitLocationPattern =
-      Boolean(matchedLoc) ||
-      /^(loc|wh[0-9]?|shelf|rack|bin|slf|sh|tier|zone)[-_]/i.test(trimmed) ||
-      /^[0-9]{1,2}[a-z]{1,4}[-_]?[0-9a-z\-_]*$/i.test(trimmed) ||
-      /^[a-z]{1,4}[-_]?[0-9]{1,4}[a-z0-9\-_]*$/i.test(trimmed) ||
-      /^[0-9a-z]{1,5}[-_][0-9a-z\-_]+$/i.test(trimmed) ||
-      /^([0-9]{1,2}[kK][0-9]{1,4}|wh[0-9]{1,2})[-_]?[0-9a-z]*$/i.test(trimmed);
+    // Only structural location-code prefixes count as a location barcode — generic
+    // patterns like "a12"/"12ab" also match product SKUs and must NOT be treated as shelves
+    const looksLikeLocationCode = /^(loc|shelf|rack|bin|slf)[-_]/i.test(trimmed);
 
-    if (matchedLoc || isExplicitLocationPattern) {
+    if (matchedLoc || looksLikeLocationCode) {
       const currentLines = watchLines || [];
       if (currentLines.length > 0) {
         const rawTrimmed = code.trim();
         const finalLocCode = rawTrimmed.toUpperCase();
-        const finalLocId = matchedLoc
-          ? (matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
-              ? matchedLoc.shelf_code.toUpperCase()
-              : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
-                  ? matchedLoc.location_code.toUpperCase()
-                  : finalLocCode))
-          : finalLocCode;
+
+        // Master may be stale (location recently added) — refetch once before rejecting
+        if (!matchedLoc) {
+          try {
+            const res = await fetch(`/api/locations?warehouse_id=${encodeURIComponent(activeWhId || "")}`);
+            const json = await res.json();
+            if (json.success && Array.isArray(json.data)) {
+              const freshLocations: Location[] = json.data;
+              if (setLocations) setLocations(freshLocations);
+              matchedLoc = freshLocations.find((l) => {
+                const shelfCode = ((l as unknown as { shelf_code?: string }).shelf_code || "").trim().toLowerCase();
+                const locCode = (l.location_code || "").trim().toLowerCase();
+                const locId = (l.location_id || "").trim().toLowerCase();
+                return (
+                  (locCode && locCode === trimmed) ||
+                  (locId && locId === trimmed) ||
+                  (shelfCode && shelfCode === trimmed)
+                );
+              });
+            }
+          } catch (e) {
+            console.error("Location search error:", e);
+          }
+        }
 
         if (!matchedLoc) {
-          const newLocObj: Location = {
-            location_id: finalLocId,
-            warehouse_id: activeWhId || "wh-01",
-            location_code: finalLocCode,
-            location_name: `ตำแหน่ง ${finalLocCode}`,
-            shelf_code: finalLocCode,
-            active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          if (setLocations) setLocations((prev) => [newLocObj, ...prev]);
+          // Unknown shelf: reject instead of silently creating a phantom location
+          setScanFeedback({
+            type: "error",
+            title: "ไม่พบตำแหน่งนี้ในโกดัง",
+            message: `"${finalLocCode}" ไม่อยู่ในรายการตำแหน่ง — กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`,
+          });
+          setBarcodeInput("");
+          setTimeout(() => setScanFeedback(null), 4000);
+          isProcessingRef.current = false;
+          return;
         }
+
+        const finalLocId = matchedLoc.shelf_code && matchedLoc.shelf_code.trim().toLowerCase() === trimmed
+          ? matchedLoc.shelf_code.toUpperCase()
+          : (matchedLoc.location_code && matchedLoc.location_code.trim().toLowerCase() === trimmed
+              ? matchedLoc.location_code.toUpperCase()
+              : finalLocCode);
 
         const firstEmptyLocIdx = currentLines.findIndex(
           (l) => !l.location_id || !l.location_id.trim()
@@ -400,7 +507,7 @@ export function useReceiveMovement({
             const updatedQtys = [...currentQtys, 1];
             setValue(`lines.${targetIdx}.extra_locations` as any, updatedExtras, { shouldValidate: true, shouldDirty: true });
             setValue(`lines.${targetIdx}.extra_qtys` as any, updatedQtys, { shouldValidate: true, shouldDirty: true });
-            const pQty = typeof (targetLine as any).primary_qty === "number" ? (targetLine as any).primary_qty : (Number(targetLine.qty) || 1);
+            const pQty = typeof (targetLine as any).primary_qty === "number" ? (targetLine as any).primary_qty : (Number(targetLine.qty) || 0);
             setValue(`lines.${targetIdx}.primary_qty` as any, pQty, { shouldValidate: true, shouldDirty: true });
             const sumExtras = updatedQtys.reduce((acc, curr) => acc + (Number(curr) || 1), 0);
             setValue(`lines.${targetIdx}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
@@ -415,8 +522,8 @@ export function useReceiveMovement({
 
         setScanFeedback({
           type: "success",
-          title: "ระบุตำแหน่งจัดเก็บสำเร็จ",
-          message: `📍 บันทึกตำแหน่ง [${finalLocId}] ให้กับสินค้า ${prodName} แล้ว`,
+          title: "บันทึกตำแหน่งแล้ว",
+          message: `[${finalLocId}] ${shortName(prodName)}`,
         });
         setBarcodeInput("");
         isProcessingRef.current = false;
@@ -427,8 +534,8 @@ export function useReceiveMovement({
     // Step 3: Neither Product nor Location
     setScanFeedback({
       type: "error",
-      title: "ไม่พบข้อมูล",
-      message: `บาร์โค้ด "${code}" ไม่พบในระบบสินค้า หรือ รหัสตำแหน่งไม่ถูกต้อง`,
+      title: "ไม่พบในระบบ",
+      message: `"${code}" ไม่ตรงกับสินค้า/ตำแหน่ง — ต้องตรงทุกหลัก`,
     });
     setBarcodeInput("");
     setTimeout(() => {
@@ -436,7 +543,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [step, locations, products, activeWhId, watchLines, confirmedLines, setValue, append, setLocations, setProducts]);
+  }, [step, locations, products, activeWhId, watchLines, confirmedLines, setValue, insert, moveLineToTop, setLocations, setProducts]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);
@@ -487,18 +594,22 @@ export function useReceiveMovement({
       return;
     }
 
-    const defaultLoc = locations[0]?.location_id || `loc-${activeWhId || "wh-1"}-A1`;
+    const missingLocIdx: number[] = [];
 
     const cleanedLines = data.lines.map((l, idx) => {
-      const manualLoc = locationInputs[idx];
-      const locToUse = manualLoc?.trim() ? manualLoc.trim() : (l.location_id?.trim() ? l.location_id.trim() : defaultLoc);
+      // The line's own location is authoritative — index-keyed manual input is only a fallback,
+      // and a missing location must block submission instead of guessing a default shelf
+      const locToUse = l.location_id?.trim()
+        ? l.location_id.trim()
+        : (locationInputs[idx]?.trim() ? locationInputs[idx].trim() : "");
+      if (!locToUse) missingLocIdx.push(idx + 1);
       const extraLocs = Array.isArray(l.extra_locations) ? l.extra_locations.filter((x: string) => Boolean(x && x.trim())) : [];
       const extraQtys = Array.isArray((l as any).extra_qtys) ? (l as any).extra_qtys : [];
-      const primaryQty = typeof (l as any).primary_qty === "number" && (l as any).primary_qty > 0
+      const primaryQty = typeof (l as any).primary_qty === "number"
         ? (l as any).primary_qty
         : extraLocs.length > 0
-        ? Math.max(1, (Number(l.qty) || 1) - extraQtys.reduce((sum: number, q: number) => sum + (Number(q) || 1), 0))
-        : (Number(l.qty) || 1);
+        ? Math.max(0, (Number(l.qty) || 0) - extraQtys.reduce((sum: number, q: number) => sum + (Number(q) || 1), 0))
+        : Number(l.qty) || 0;
 
       const allocations = [
         { location_id: locToUse, qty: primaryQty },
@@ -513,10 +624,16 @@ export function useReceiveMovement({
         extra_qtys: extraQtys,
         location_allocations: allocations,
         boxes: Number(l.boxes) || 1,
-        qty: Number(l.qty) || 1,
+        qty: Number(l.qty) || 0,
         barcode: l.barcode || "",
       };
     });
+
+    if (missingLocIdx.length > 0) {
+      setError(`กรุณาสแกน/เลือกตำแหน่งวางสินค้าให้ครบทุกรายการ (ขาด: รายการที่ ${missingLocIdx.join(", ")})`);
+      setConfirmModalOpen(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/movements/receive", {
@@ -535,14 +652,20 @@ export function useReceiveMovement({
           localStorage.removeItem(RECEIVE_DRAFT_KEY);
         }
         refreshWarehouseData();
+        setSuccessMessage(typeof json.message === "string" && json.message ? json.message : "ส่งรายการรับสินค้าไปรออนุมัติแล้ว");
         setSubmitted(true);
         setConfirmModalOpen(false);
       } else {
         setError(json.message || "เกิดข้อผิดพลาดในการบันทึกเอกสารรับสินค้า");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง";
-      setError(msg);
+      // Network failures must show friendly Thai text, never the raw browser message
+      const isNetworkError = err instanceof TypeError || (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message));
+      setError(
+        isNetworkError
+          ? "เน็ตขัดข้อง กรุณาตรวจสอบอินเทอร์เน็ตแล้วกดยืนยันอีกครั้ง — รายการเดิมยังอยู่ครบ"
+          : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง"
+      );
     }
   };
 
@@ -553,6 +676,7 @@ export function useReceiveMovement({
     refreshWarehouseData();
     setSubmitted(false);
     setStep(1);
+    setSuccessMessage("");
     reset({
       warehouse_id: activeWhId,
       document_date: new Date().toISOString().slice(0, 10),
@@ -566,36 +690,33 @@ export function useReceiveMovement({
   const handleProductSelect = (product: Product) => {
     const pid = product.product_id || product.sku;
     const currentLines = watchLines || [];
-    const barcodeDisplay = product.barcode && product.barcode.trim() !== "-" ? product.barcode.trim() : "";
-    const barcodePrefix = barcodeDisplay ? `บาร์โค้ด: ${barcodeDisplay} | ` : "";
 
     const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
     if (existingIdx !== -1) {
       const currentBoxes = Number(currentLines[existingIdx].boxes) || 1;
-      const currentQty = Number(currentLines[existingIdx].qty) || 1;
       setValue(`lines.${existingIdx}.boxes`, currentBoxes + 1, { shouldValidate: true, shouldDirty: true });
-      setValue(`lines.${existingIdx}.qty`, currentQty + 1, { shouldValidate: true, shouldDirty: true });
+      moveLineToTop(existingIdx);
       setScanFeedback({
         type: "success",
-        title: "นำเข้าสินค้าสำเร็จ",
-        message: `${barcodePrefix}[${product.sku}] ${product.product_name} (เพิ่มเป็น ${currentBoxes + 1} กล่อง)`,
+        title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง`,
+        message: `[${product.sku}] ${shortName(product.product_name)}`,
       });
       } else {
-        append({
+        insert(0, {
         product_id: pid,
         location_id: "",
         extra_locations: [],
         extra_qtys: [],
         location_allocations: [],
         boxes: 1,
-        qty: 1,
+        qty: 0,
         barcode: product.barcode || product.sku || "",
       });
         setError("");
         setScanFeedback({
           type: "success",
-          title: "นำเข้าสินค้าสำเร็จ",
-          message: `${barcodePrefix}[${product.sku}] ${product.product_name}`,
+          title: "นำเข้าสำเร็จ",
+          message: `[${product.sku}] ${shortName(product.product_name)}`,
         });
       }
 
@@ -619,20 +740,19 @@ export function useReceiveMovement({
     errors,
     isSubmitting,
     fields,
-    append,
-    remove,
+    insert,
+    remove: removeLine,
     watchLines,
     submitted,
     error,
     setError,
+    successMessage,
     barcodeInput,
     setBarcodeInput,
     barcodeInputRef,
     scanFeedback,
     setScanFeedback,
     lastScannedId,
-    cameraScanLineIndex,
-    setCameraScanLineIndex,
     locationInputs,
     setLocationInputs,
     confirmedLines,

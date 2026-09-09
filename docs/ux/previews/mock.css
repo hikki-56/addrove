@@ -1,0 +1,85 @@
+/* Stockify — Modern Ops mock styles (แสดงผลเท่านั้น ไม่ใช่โค้ดแอป) */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#F4F6F3}
+body{font-family:'Sarabun','Leelawadee UI',sans-serif;color:#0F1712;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',Consolas,monospace}
+.disp{font-family:'Space Grotesk','Sarabun',sans-serif}
+.card{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:20px;
+  box-shadow:0 1px 2px rgba(16,22,20,.04),0 14px 36px -20px rgba(16,22,20,.14)}
+.subcard{background:rgba(0,0,0,.015);border:1px solid rgba(0,0,0,.06);border-radius:16px}
+.panel{background:#ECFDF5;border:2px solid #10B981;border-radius:16px}
+.band-err{background:#FFF1F2;border:1px solid #FECDD3;color:#BE123C;border-radius:12px}
+.band-ok{background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;
+  border-radius:12px;font-family:inherit;line-height:1}
+.btn-primary{background:#059669;color:#fff;font-weight:700;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)}
+.btn-secondary{background:#fff;border:1px solid rgba(0,0,0,.1);color:#334155;font-weight:600}
+.btn-ink{background:#0F1712;color:#fff;font-weight:700}
+.btn-danger{background:#fff;border:1px solid #FECDD3;color:#BE123C;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;
+  font-weight:700;font-size:13px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.input{width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:10px 14px;
+  font-size:15px;color:#0F172A;font-family:inherit}
+.input::placeholder{color:#64748B}
+.select{width:100%;background:#fff;border:2px solid #CBD5E1;border-radius:16px;padding:13px 16px;
+  font-size:16px;font-weight:700;color:#0F172A;font-family:inherit;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center}
+.label{font-size:14px;font-weight:700;color:#0F1712;display:block;margin-bottom:6px}
+.req{color:#E11D48}
+.muted{color:#5B6660}
+.sep{height:1px;background:rgba(0,0,0,.08);margin:12px 0}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.col{display:flex;flex-direction:column}
+.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g14{gap:14px}
+.grow{flex:1}
+svg{flex:none}
+
+/* แท็บสวิตช์ (S1) */
+.tabs{display:flex;gap:6px;background:rgba(0,0,0,.035);border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:5px}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 8px;border-radius:12px;
+  font-size:14px;font-weight:700;color:#475569;text-align:center;white-space:nowrap}
+.tab.active{background:#fff;color:#0F1712;box-shadow:0 1px 2px rgba(16,22,20,.08),0 6px 16px -8px rgba(16,22,20,.18)}
+.count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;
+  border-radius:999px;font-size:12px;font-weight:700;color:#fff}
+
+/* เดสก์ท็อป: sidebar + main */
+.dsk{display:flex;min-height:100vh}
+.side{width:248px;flex:none;background:#fff;border-right:1px solid rgba(0,0,0,.07);padding:18px 12px;
+  display:flex;flex-direction:column;gap:2px}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:#059669;color:#fff;display:flex;
+  align-items:center;justify-content:center;font-weight:700;font-size:17px;font-family:'Space Grotesk',sans-serif}
+.brand .name{font-weight:700;font-size:17px}
+.navitem{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:12px;color:#334155;
+  font-size:14px;font-weight:600}
+.navitem svg{color:#64748B}
+.navitem.active{background:#ECFDF5;color:#047857;font-weight:700}
+.navitem.active svg{color:#059669}
+.main{flex:1;padding:24px 30px 40px;min-width:0}
+.page-title{font-size:22px;font-weight:700}
+.page-sub{font-size:14px;color:#5B6660;margin-top:2px}
+
+/* step indicator */
+.steps{display:flex;align-items:flex-start}
+.step{display:flex;flex-direction:column;align-items:center;gap:6px;width:110px}
+.step .circle{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:17px}
+.step.active .circle{background:#059669;color:#fff;box-shadow:0 0 0 4px #A7F3D0}
+.step.done .circle{background:#059669;color:#fff}
+.step.todo .circle{background:#fff;border:2px solid #CBD5E1;color:#64748B}
+.step .stxt{font-size:14px;font-weight:700}
+.step.active .stxt{color:#047857}
+.step.todo .stxt,.step.done .stxt{color:#475569}
+.sline{flex:1;height:3px;background:#059669;border-radius:2px;margin-top:21px}
+
+/* badge จำนวนชิ้น (การ์ดคิว) */
+.qty-chip{background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:8px 14px;text-align:center}
+.qty-chip .n{font-family:'Space Grotesk',monospace;font-weight:700;font-size:20px;color:#065F46}
+.qty-chip .u{font-size:12px;font-weight:600;color:#047857}
+
+/* chip เล็ก */
+.chip{display:inline-flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid #E2E8F0;
+  border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;color:#334155}

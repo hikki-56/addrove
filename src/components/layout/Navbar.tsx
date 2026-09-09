@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { navItems, getNavItems } from "@/lib/nav-items";
+import { getNavItems } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
@@ -20,16 +20,7 @@ const roleLabel: Record<UserRole, string> = {
   VIEWER: "ผู้ดูข้อมูล",
 };
 
-const roleColor: Record<UserRole, string> = {
-  ADMIN: "bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold",
-  MANAGER: "bg-purple-50 text-purple-700 border-purple-200 font-semibold",
-  APPROVER: "bg-amber-50 text-amber-800 border-amber-200 font-semibold",
-  WAREHOUSE_STAFF: "bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold",
-  STAFF: "bg-blue-50 text-blue-700 border-blue-200 font-semibold",
-  VIEWER: "bg-slate-100 text-slate-700 border-slate-200 font-medium",
-};
-
-const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
+const pathTitles: Record<string, { parent: string; title: string }> = {
   "/dashboard": { parent: "หน้าหลัก", title: "ภาพรวมระบบ" },
   "/products": { parent: "คลังสินค้า", title: "สินค้าทั้งหมด" },
   "/products/new": { parent: "สินค้าทั้งหมด", title: "เพิ่มสินค้าใหม่" },
@@ -55,193 +46,313 @@ const pathBreadcrumbs: Record<string, { parent: string; title: string }> = {
   "/login-logs": { parent: "การแจ้งเตือน", title: "ประวัติการเข้าระบบ" },
 };
 
-export default function Navbar({
-  user: initialUser,
-  onToggleSidebar,
-  isSidebarCollapsed,
+function SearchIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+}
+
+export default function DashboardHeader({
+  user,
 }: {
   user: { name: string; email: string; role: UserRole };
-  onToggleSidebar?: () => void;
-  isSidebarCollapsed?: boolean;
 }) {
-  const { user: tabUser, logout: tabLogout } = useTabAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [pendingTransferCount, setPendingTransferCount] = useState(0);
+  const { logout: tabLogout } = useTabAuth();
+  const router = useRouter();
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [pendingTransferCount, setPendingTransferCount] = useState(0);
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+  const { activeWhId } = useWarehouseData({ autoFetch: false });
+
+  const isAdmin = user.role === "ADMIN";
 
   useEscapeKey(mobileOpen, () => setMobileOpen(false));
 
-  const user = tabUser || initialUser;
-  const isAdmin = user.role === "ADMIN";
-
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsList, setNotificationsList] = useState<any[]>([]);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { activeWhId } = useWarehouseData({ autoFetch: false });
-
-
-  // Fetch transfer notifications for all users
+  // แจ้งเตือนงานเบิกสินค้า (พนักงาน/ทุกบทบาทที่ไม่ใช่แอดมิน)
   useEffect(() => {
     const updateCount = () => {
       const staffFilter = isAdmin ? undefined : user.name;
       const list = isAdmin
-        ? getPendingTransferNotifications()
+        ? []
         : getPendingTransferNotifications(staffFilter, activeWhId);
-
       setPendingTransferCount(list.length);
       setNotificationsList(list);
     };
     updateCount();
-
     const unsubscribeSync = subscribeTransferSync(updateCount);
-
-    const handleWhChange = () => {
-      updateCount();
-    };
-
     window.addEventListener("stockify-transfer-created", updateCount);
     window.addEventListener("stockify-transfer-updated", updateCount);
-    window.addEventListener("stockify-warehouse-changed", handleWhChange);
+    window.addEventListener("stockify-warehouse-changed", updateCount);
     window.addEventListener("storage", updateCount);
     return () => {
       unsubscribeSync();
       window.removeEventListener("stockify-transfer-created", updateCount);
       window.removeEventListener("stockify-transfer-updated", updateCount);
-      window.removeEventListener("stockify-warehouse-changed", handleWhChange);
+      window.removeEventListener("stockify-warehouse-changed", updateCount);
       window.removeEventListener("storage", updateCount);
     };
   }, [isAdmin, user.name, activeWhId]);
 
-  const breadcrumb = pathBreadcrumbs[pathname] || { parent: "หน้าหลัก", title: "Stockify" };
+  // จำนวนรออนุมัติสำหรับแอดมิน — รับค่าจาก Sidebar (โพลล์อยู่แล้ว) หรือดึงเองถ้ายังไม่มี
+  useEffect(() => {
+    if (!isAdmin) return;
+    const handler = (e: Event) => {
+      const count = (e as CustomEvent).detail;
+      if (typeof count === "number") setPendingApprovalCount(count);
+    };
+    window.addEventListener("stockify-pending-approvals", handler);
+    fetch(`/api/approvals?status=PENDING`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) setPendingApprovalCount(res.data.length);
+      })
+      .catch(() => {});
+    return () => window.removeEventListener("stockify-pending-approvals", handler);
+  }, [isAdmin]);
+
+  const breadcrumb = pathTitles[pathname] ||
+    (pathname.startsWith("/products/") && pathname !== "/products/new"
+      ? { parent: "สินค้าทั้งหมด", title: "รายละเอียดสินค้า" }
+      : { parent: "Stockify", title: "ภาพรวม" });
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = search.trim();
+    router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
+    setMobileOpen(false);
+  };
 
   const itemsForRole = getNavItems(user.role);
   const visibleItems = itemsForRole.filter(
     (item) => !item.roles || item.roles.includes(user.role)
   );
 
+  const headerNotificationCount = isAdmin ? pendingApprovalCount : pendingTransferCount;
+
   return (
     <>
-      {/* Top Header Navbar (Height 64px - Golden SaaS Standard) */}
-      <header className="h-16 sm:h-18 bg-white border-b border-slate-200/90 flex items-center justify-between px-3 sm:px-4 md:px-6 flex-shrink-0 z-20 shadow-xs">
-        {/* Left Side: Toggle Button + Logo (Staff) + Breadcrumbs (Admin) */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-          {onToggleSidebar && (
+      <header className="bg-white border-b border-[#E8ECEA] flex-shrink-0 z-20 md:h-(--header-height)">
+        {/* Mobile */}
+        <div className="flex h-(--header-height) items-center justify-between gap-3 px-4 md:hidden">
+          <div className="flex min-w-0 items-center gap-2">
             <button
+              id="btn-mobile-menu"
               type="button"
-              onClick={onToggleSidebar}
-              id="btn-toggle-sidebar"
-              className="hidden md:flex p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all items-center justify-center cursor-pointer shadow-2xs"
-              title={isSidebarCollapsed ? "เปิดเมนูข้าง" : "ปิดเมนูข้าง"}
-              aria-label="สลับแถบเมนู"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="p-2 -ml-2 rounded-xl text-[#344054] hover:text-[#111827] hover:bg-[#F3F6F4] border border-transparent hover:border-[#E8ECEA] transition-colors duration-150 flex items-center justify-center cursor-pointer"
+              aria-label="เปิดเมนู"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-          )}
-
-          {/* Logo on Top Left (Staff Only) */}
-          {!isAdmin && (
-            <Link href="/dashboard" className="flex items-center gap-2 group shrink-0">
-              <img
-                src="/logo.png"
-                alt="Stockify Logo"
-                className="h-8 sm:h-9 w-auto object-contain max-w-[140px] sm:max-w-[200px] transition-transform duration-200 group-hover:scale-105"
-              />
-            </Link>
-          )}
-
-          {/* Admin Clean Breadcrumbs */}
-          {isAdmin && (
-            <div className="hidden sm:flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 truncate">
-              <span className="text-slate-400 hover:text-slate-600 transition-colors">{breadcrumb.parent}</span>
-              <span className="text-slate-300 font-normal">/</span>
-              <span className="text-slate-900 font-semibold">{breadcrumb.title}</span>
+            <h1 className="text-[#111827] truncate text-lg font-semibold tracking-tight">
+              {breadcrumb.title}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Notification */}
+            <div className="relative">
+              {isAdmin ? (
+                <Link
+                  href="/approvals"
+                  aria-label="รายการรออนุมัติ"
+                  title="รายการรออนุมัติ"
+                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
+                >
+                  <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {headerNotificationCount > 0 && (
+                    <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-[#06402B]" />
+                  )}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(!notificationsOpen);
+                    setUserMenuOpen(false);
+                  }}
+                  aria-label="การแจ้งเตือนงานเบิกสินค้า"
+                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150 cursor-pointer"
+                >
+                  <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {pendingTransferCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[10px] font-bold text-white">
+                      {pendingTransferCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
-          )}
-        </div>
-
-
-        {/* Right Side: Role Controls, Notifications & User Profile Capsule */}
-        <div className="flex items-center gap-2 sm:gap-3 relative shrink-0">
-
-
-          {/* STAFF Specific Notification Bell */}
-          {!isAdmin && (
+            {/* Avatar */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => {
-                  setNotificationsOpen(!notificationsOpen);
-                  setUserMenuOpen(false);
+                  setUserMenuOpen(!userMenuOpen);
+                  setNotificationsOpen(false);
                 }}
-                id="btn-notification-bell"
-                className={`p-2 rounded-xl border transition-all cursor-pointer relative flex items-center justify-center ${
-                  pendingTransferCount > 0
-                    ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shadow-2xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200"
-                }`}
-                title="การแจ้งเตือนงานเบิกสินค้า"
-                aria-label="การแจ้งเตือนงานเบิกสินค้า"
+                aria-label="เมนูผู้ใช้"
+                className="grid size-9 place-items-center rounded-full bg-[#EAF2EE] border border-[#DFEDE6] text-sm font-bold text-[#06402B] cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-
-                {pendingTransferCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-xs animate-pulse">
-                    {pendingTransferCount}
-                  </span>
-                )}
+                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
               </button>
-
-              {/* Staff Transfer Notification Dropdown */}
-              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-900">🔔 การแจ้งเตือนงานเบิกสินค้า</span>
-                      {pendingTransferCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
-                          {pendingTransferCount}
-                        </span>
-                      )}
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center gap-3 border-b border-[#EEF1EF] pb-3">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#06402B] text-sm font-bold text-white">
+                      {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
+                      <p className="truncate text-[11px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[10px] font-semibold text-[#053425]">
+                        {roleLabel[user.role]}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => tabLogout()}
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#E8ECEA] bg-white px-3 py-2 text-xs font-semibold text-[#344054] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
+                  >
+                    <svg className="h-4 w-4 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    ออกจากระบบ
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile: search อยู่ใต้ header */}
+        <form onSubmit={submitSearch} className="px-4 pb-3 md:hidden">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาสินค้า, เอกสาร…"
+              className="h-10 w-full rounded-xl border border-[#E8ECEA] bg-white pl-9 pr-3 text-sm text-[#111827] placeholder:text-[#98A2B3] outline-none transition-shadow duration-150 focus:border-[#06402B] focus:shadow-[0_0_0_3px_rgba(6,64,43,0.10)]"
+            />
+          </div>
+        </form>
+
+        {/* Tablet / Desktop */}
+        <div className="hidden h-(--header-height) items-center justify-between gap-6 px-6 md:flex xl:px-8">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-[#111827]">
+              {breadcrumb.title}
+            </h1>
+            <p className="truncate text-sm text-[#667085]">{breadcrumb.parent}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <form onSubmit={submitSearch} className="relative w-64 xl:w-72">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ค้นหาสินค้า, เอกสาร…"
+                className="h-9 w-full rounded-xl border border-[#E8ECEA] bg-white pl-9 pr-12 text-sm text-[#111827] placeholder:text-[#98A2B3] outline-none transition-shadow duration-150 focus:border-[#06402B] focus:shadow-[0_0_0_3px_rgba(6,64,43,0.10)]"
+              />
+              <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-[#E8ECEA] bg-[#EFF3F1] px-1.5 py-0.5 text-[10px] font-medium text-[#98A2B3] lg:block">
+                ⏎
+              </kbd>
+            </form>
+
+            {/* Notification */}
+            <div className="relative">
+              {isAdmin ? (
+                <Link
+                  href="/approvals"
+                  aria-label="รายการรออนุมัติ"
+                  title="รายการรออนุมัติ"
+                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
+                >
+                  <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {headerNotificationCount > 0 && (
+                    <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-[#06402B]" />
+                  )}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(!notificationsOpen);
+                    setUserMenuOpen(false);
+                  }}
+                  aria-label="การแจ้งเตือนงานเบิกสินค้า"
+                  className={`relative grid size-9 place-items-center rounded-xl border transition-colors duration-150 cursor-pointer ${
+                    pendingTransferCount > 0
+                      ? "border-[#F1DECB] bg-[#FDF4EC] text-[#B54708] hover:bg-[#FCEFDD]"
+                      : "border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827]"
+                  }`}
+                >
+                  <svg className="size-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {pendingTransferCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[10px] font-bold text-white">
+                      {pendingTransferCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Staff notification dropdown */}
+              {notificationsOpen && !isAdmin && (
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-[#EEF1EF] pb-2">
+                    <span className="text-xs font-bold text-[#111827]">การแจ้งเตือนงานเบิกสินค้า</span>
                     <button
                       onClick={() => setNotificationsOpen(false)}
-                      className="text-xs text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer font-bold"
+                      className="cursor-pointer p-0.5 text-xs font-bold text-[#98A2B3] hover:text-[#344054]"
                     >
                       ✕
                     </button>
                   </div>
-
                   {notificationsList.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-slate-500 space-y-0.5">
-                      <p className="font-medium text-slate-600">ไม่มีรายการแจ้งเตือนค้างอยู่</p>
+                    <div className="py-4 text-center text-xs text-[#667085]">
+                      <p className="font-medium text-[#344054]">ไม่มีรายการแจ้งเตือนค้างอยู่</p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
+                    <div className="max-h-60 space-y-1.5 overflow-y-auto pr-0.5">
                       {notificationsList.map((t) => (
                         <Link
                           key={t.id}
                           href="/movements/transfer"
                           onClick={() => setNotificationsOpen(false)}
-                          className="block p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 transition-all text-xs space-y-1"
+                          className="block space-y-1 rounded-xl border border-[#E8ECEA] bg-white p-2.5 text-xs transition-colors duration-150 hover:border-[#D5DDD9] hover:bg-[#F3F6F4]"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono font-bold text-slate-900 text-[11px]">
+                            <span className="font-mono text-[11px] font-bold text-[#111827]">
                               {t.doc_no || "TRF"}
                             </span>
-                            <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
+                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-[10px] font-bold text-[#B54708]">
                               {Number(t.qty || 0).toLocaleString()} ชิ้น
                             </span>
                           </div>
-                          <div className="flex items-center justify-between text-[11px] gap-2">
-                            <span className="font-medium text-slate-800 truncate flex-1">
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="flex-1 truncate font-medium text-[#344054]">
                               {getDisplayProductName(t)}
                             </span>
-                            <span className="text-[10px] text-slate-500 shrink-0">
-                              {t.from_warehouse_name} ➔ <strong className="text-emerald-700">{t.to_warehouse_name}</strong>
+                            <span className="shrink-0 text-[10px] text-[#667085]">
+                              {t.from_warehouse_name} ➔ <strong className="text-[#06402B]">{t.to_warehouse_name}</strong>
                             </span>
                           </div>
                         </Link>
@@ -251,10 +362,8 @@ export default function Navbar({
                 </div>
               )}
             </div>
-          )}
 
-          {/* User Profile Avatar Capsule & Dropdown Menu (Admin Only) */}
-          {isAdmin && (
+            {/* Avatar */}
             <div className="relative">
               <button
                 type="button"
@@ -262,46 +371,37 @@ export default function Navbar({
                   setUserMenuOpen(!userMenuOpen);
                   setNotificationsOpen(false);
                 }}
-                id="btn-user-profile-menu"
-                className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer shadow-2xs group"
-                title={user.name}
+                aria-label="เมนูผู้ใช้"
+                className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#E8ECEA] bg-white py-1 pl-1.5 pr-2.5 transition-colors duration-150 hover:bg-[#F3F6F4]"
               >
-                <div className="relative w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
-                  {user.name ? user.name.charAt(0).toUpperCase() : "A"}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white" />
-                </div>
-                <span className="hidden sm:inline-block text-xs font-semibold text-slate-800 max-w-[130px] truncate">
-                  {user.name}
+                <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-[#06402B] text-xs font-bold text-white">
+                  {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full bg-[#12B76A] ring-2 ring-white" />
                 </span>
-                <span className="hidden md:inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
-                  Admin
-                </span>
-                <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="size-3.5 text-[#98A2B3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {/* Role-Specific User Dropdown Menu */}
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-64 max-w-xs rounded-2xl bg-white border border-slate-200 shadow-xl z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
-                      {user.name ? user.name.charAt(0).toUpperCase() : "A"}
+                <div className="absolute right-0 mt-2 w-64 max-w-xs rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center gap-3 border-b border-[#EEF1EF] pb-3">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#06402B] text-sm font-bold text-white">
+                      {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h6 className="text-xs font-bold text-slate-950 truncate">{user.name}</h6>
-                      <p className="text-[11px] font-medium text-slate-500 truncate">{user.email || "user@stockify.com"}</p>
-                      <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] border ${roleColor[user.role]}`}>
+                      <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
+                      <p className="truncate text-[11px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[10px] font-semibold text-[#053425]">
                         {roleLabel[user.role]}
                       </span>
                     </div>
                   </div>
-
                   <button
                     onClick={() => tabLogout()}
-                    className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 transition-all text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#E8ECEA] bg-white px-3 py-2 text-xs font-semibold text-[#344054] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
                   >
-                    <svg className="w-4 h-4 text-slate-500 group-hover:text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                     ออกจากระบบ
@@ -309,114 +409,65 @@ export default function Navbar({
                 </div>
               )}
             </div>
-          )}
-
-          {/* Mobile Hamburger Menu Button */}
-          <button
-            id="btn-mobile-menu"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200 transition-all flex items-center justify-center cursor-pointer"
-            aria-label="เปิดเมนู"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          </div>
         </div>
       </header>
 
-      {/* Mobile Drawer Navigation (Shared) */}
+      {/* Mobile Drawer (ซ้าย) */}
       <div
         className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
+        <div className="fixed inset-0 bg-[#101828]/40" onClick={() => setMobileOpen(false)} />
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
-          onClick={() => setMobileOpen(false)}
-        />
-
-        <div
-          className={`absolute right-0 top-0 w-72 max-w-[85vw] bg-white text-slate-900 h-full shadow-2xl border-l border-slate-200 flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
-            mobileOpen ? "translate-x-0" : "translate-x-full"
+          className={`absolute left-0 top-0 h-full w-[280px] max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          {/* Drawer Header */}
-          <div className="flex items-center justify-between px-4 sm:px-5 h-16 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="A'AMAZON Logo" className="h-8 sm:h-9 w-auto object-contain max-w-[150px]" />
-            </div>
+          <div className="flex h-(--header-height) items-center justify-between border-b border-(--sidebar-divider) px-4">
+            <img src="/logo.png" alt="Stockify" className="h-10 w-auto object-contain max-w-[180px]" />
             <button
               onClick={() => setMobileOpen(false)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all"
+              className="rounded-lg p-1.5 text-(--sidebar-text) transition-colors duration-150 hover:bg-(--sidebar-item-bg-hover) hover:text-(--sidebar-text-hover)"
+              aria-label="ปิดเมนู"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* User Info Bar */}
-          <div className="px-4 py-4 border-b border-slate-200">
-            <div className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold flex items-center justify-center text-lg shadow-xs">
-                {user.name?.charAt(0)?.toUpperCase() ?? "U"}
-              </div>
-
-              <p className="text-sm font-bold text-slate-900 tracking-tight pt-0.5">
-                {user.name}
-              </p>
-
-              <div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] border ${roleColor[user.role]}`}>
-                  {roleLabel[user.role]}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Nav Links */}
-          <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">เมนูหลัก</p>
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
             {visibleItems.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
-              const showBadge = item.href === "/movements/transfer" && pendingTransferCount > 0;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 relative ${
-                    isActive
-                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200/60"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  className={`sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 ${
+                    isActive ? "is-active font-semibold" : "font-medium"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={isActive ? "text-emerald-700 font-bold" : "text-slate-500"}>
-                      {isAdmin ? item.icon : (item.staffIcon || item.icon)}
-                    </span>
-                    {item.label}
-                  </div>
-                  {showBadge && (
-                    <span className="px-2 py-0.5 rounded-full bg-red-500 text-white font-bold text-xs shadow-xs animate-pulse">
-                      {pendingTransferCount}
-                    </span>
-                  )}
+                  <span className="nav-icon shrink-0">
+                    {item.icon}
+                  </span>
+                  <span className="truncate">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Drawer Footer */}
-          <div className="p-3 border-t border-slate-200">
+          <div className="border-t border-(--sidebar-divider) p-3">
             <button
               onClick={() => tabLogout()}
-              className="w-full py-2.5 rounded-xl bg-white hover:bg-rose-50 text-slate-700 border border-slate-200 hover:border-rose-200 hover:text-rose-700 transition-all text-xs font-semibold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#DFEDE6] bg-[#EAF2EE] py-2.5 text-sm font-semibold text-[#06402B] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
             >
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
               ออกจากระบบ

@@ -3,7 +3,7 @@ import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
-import { parseTransferMetadata } from "@/lib/transfer-notification-utils";
+import { parseTransferMetadata, isUsableLocationCode } from "@/lib/transfer-notification-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
 
@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
     const emittedSemanticKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
-    const productCatalogMap = new Map<string, { sku: string; barcode: string; name: string; location: string }>();
+    const productCatalogMap = new Map<
+      string,
+      { sku: string; barcode: string; name: string; location: string; whLocs: Record<string, string> }
+    >();
 
     try {
       const [prodRows, wh1Rows, wh2Rows, wh3Rows] = await Promise.all([
@@ -69,7 +72,7 @@ export async function GET(req: NextRequest) {
         readSheet(getWarehouseSheetName("wh-03"), "A2:I").catch(() => []),
       ]);
 
-      const addProductEntry = (rawSku: string, rawBcode: string, rawName: string, rawLoc: string = "") => {
+      const addProductEntry = (rawSku: string, rawBcode: string, rawName: string, rawLoc: string = "", warehouseId: string = "") => {
         const sku = (rawSku || "").trim();
         const bcode = (rawBcode || "").trim();
         const name = (rawName || "").trim();
@@ -81,21 +84,36 @@ export async function GET(req: NextRequest) {
           barcode: bcode && bcode !== "-" && bcode !== "null" ? bcode : "",
           name: name && name !== sku ? name : "",
           location: loc && loc !== "-" ? loc : "",
+          whLocs: {} as Record<string, string>,
         };
+        // เก็บตำแหน่งแยกตามโกดังเสมอ — SKU เดียววางได้หลายโกดัง ถ้าทับกันตัวเดียว
+        // fallback จะเลือกชั้นวางของโกดังอื่นให้แทนโกดังที่สินค้าอยู่จริง
+        if (warehouseId && entry.location) {
+          entry.whLocs[normalizeWarehouseId(warehouseId)] = entry.location;
+        }
 
         const keys = [cleanCode(sku), cleanCode(bcode), sku.toLowerCase(), bcode.toLowerCase()].filter(Boolean);
         keys.forEach((k) => {
           const existing = productCatalogMap.get(k);
-          if (!existing || (!existing.name && entry.name) || (!existing.barcode && entry.barcode)) {
-            productCatalogMap.set(k, { ...(existing || {}), ...entry });
+          if (!existing) {
+            productCatalogMap.set(k, entry);
+            return;
+          }
+          const mergedWhLocs = { ...existing.whLocs, ...entry.whLocs };
+          if ((!existing.name && entry.name) || (!existing.barcode && entry.barcode)) {
+            productCatalogMap.set(k, { ...existing, ...entry, whLocs: mergedWhLocs });
+          } else {
+            existing.whLocs = mergedWhLocs;
           }
         });
       };
 
       // Ingest warehouse sheets (Col 0=SKU, Col 1=Barcode, Col 2=Name, Col 6=Loc)
-      [wh1Rows, wh2Rows, wh3Rows].forEach((rows) => {
+      const warehouseSheetIds = ["wh-01", "wh-02", "wh-03"];
+      [wh1Rows, wh2Rows, wh3Rows].forEach((rows, sheetIdx) => {
+        const whId = warehouseSheetIds[sheetIdx];
         rows.forEach((r) => {
-          if (r && r[0]) addProductEntry(r[0], r[1], r[2], r[6]);
+          if (r && r[0]) addProductEntry(r[0], r[1], r[2], r[6], whId);
         });
       });
 
@@ -112,11 +130,11 @@ export async function GET(req: NextRequest) {
       console.warn("[GET /api/express-import/issue] Preload products warning:", e);
     }
 
-    const enrichProduct = (rawSku: string, rawBarcode: string, rawName: string, rawLocation?: string) => {
+    const enrichProduct = (rawSku: string, rawBarcode: string, rawName: string, rawLocation?: string, preferredWarehouseId?: string) => {
       const cleanSku = (rawSku || "").replace(/^prod-/, "").trim();
       const keys = [cleanCode(cleanSku), cleanCode(rawBarcode), cleanSku.toLowerCase()].filter(Boolean);
-      
-      let matched: { sku: string; barcode: string; name: string; location: string } | undefined;
+
+      let matched: { sku: string; barcode: string; name: string; location: string; whLocs?: Record<string, string> } | undefined;
       for (const k of keys) {
         if (productCatalogMap.has(k)) {
           matched = productCatalogMap.get(k);
@@ -139,7 +157,15 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const finalLocation = (rawLocation && rawLocation !== "-" && rawLocation !== "A1") ? rawLocation : (matched?.location || rawLocation || "-");
+      // ตำแหน่ง fallback ต้องเป็นชั้นวาง "ในโกดังเดียวกับที่สินค้าอยู่จริง" ก่อนเสมอ
+      // เดิมใช้ matched.location ตรง ๆ ซึ่งเป็นค่าของชีตโกดังแรกที่เจอ ทำให้โชว์ชั้นวางโกดังอื่น
+      let catalogLocation = matched?.location || "";
+      const prefWh = preferredWarehouseId ? normalizeWarehouseId(preferredWarehouseId) : "";
+      if (prefWh && matched?.whLocs && matched.whLocs[prefWh]) {
+        catalogLocation = matched.whLocs[prefWh];
+      }
+
+      const finalLocation = (rawLocation && rawLocation !== "-" && rawLocation !== "A1") ? rawLocation : (catalogLocation || rawLocation || "-");
 
       return {
         sku: finalSku,
@@ -291,7 +317,9 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        const enriched = enrichProduct(sku, barcode, productName, location);
+        // โกดังต้นทางของแถว (ตัดส่วนปลายทางออกถ้าเซลล์เป็น route "โกดัง1 -> โกดัง2")
+        const rowFromWhRaw = whName.split(/\s*(?:->|➔|→|ไป|\/)\s*/)[0] || whName;
+        const enriched = enrichProduct(sku, barcode, productName, location, rowFromWhRaw);
         const resolvedDocNo = cleanDocNumber(docNo, docNo, date, "TRF");
         const uniqueKey = `sheet_iss_${resolvedDocNo}_${enriched.sku}_${idx}`;
 
@@ -425,7 +453,14 @@ export async function GET(req: NextRequest) {
         const fromLoc = subItem.from_location_id || meta.from_location_id || meta.from_location || "-";
         const qty = Math.abs(Number(subItem.qty || subItem.quantity || meta.qty) || 1);
 
-        const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, toLoc || fromLoc);
+        // หน้านี้คือรายการ "เบิกสินค้า" — ตำแหน่งจริงคือชั้นต้นทางที่หยิบของ
+        // (ตรงกับที่ completeTransfer เขียนลงชีตด้วย finalFromLocId)
+        // เดิมใช้ toLoc || fromLoc ทำให้โชว์ชั้นวางปลายทางแทนชั้นที่สินค้าถูกเบิกจากจริง
+        const fromWhIdRaw =
+          subItem.from_warehouse_id || meta.from_warehouse_id || (doc as any).from_warehouse_id || (doc as any).warehouse_id || "";
+        const usableFromLoc = isUsableLocationCode(fromLoc) ? fromLoc : "";
+
+        const enriched = enrichProduct(rawSku, rawBarcode, rawProductName, usableFromLoc || toLoc, fromWhIdRaw);
         const uniqueKey = `iss_trf-mov-${doc.document_id}_${enriched.sku}_${subIdx}`;
 
         // ข้ามถ้าชีตมีรายการ (เลขที่เอกสาร, SKU) นี้อยู่แล้ว หรือ record เอกสารซ้ำกันเอง

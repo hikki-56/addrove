@@ -1,0 +1,129 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css"></head>
+<body><div class="dsk">
+
+<div class="side">
+  <div class="brand"><div class="logo">S</div><div class="name">Stockify</div></div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="18" rx="1"/></svg>หน้าหลัก</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M19 13v6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/></svg>รับสินค้าเข้าโกดัง</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>ผลิตสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3 4 7l4 4M4 7h16m-4 10 4-4-4-4M20 17H4"/></svg>จัดตำแหน่งสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>เบิกสินค้า</div>
+  <div class="navitem active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>ประวัติเบิกสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>สินค้าทั้งหมด</div>
+</div>
+
+<div class="main">
+  <div class="page-title">ประวัติเบิกสินค้า</div>
+  <div class="page-sub">บันทึกและประวัติรายการเบิก-โอนย้ายสินค้าทั้งหมดในระบบ</div>
+
+  <!-- การ์ดสรุป 4 ใบ -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px">
+    <div class="card" style="padding:16px 18px"><div style="font-size:13px;font-weight:600;color:#5B6660">รายการทั้งหมด</div>
+      <div class="disp" style="font-size:27px;font-weight:700;margin-top:4px">128</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:13px;font-weight:600;color:#5B6660">จำนวนชิ้นรวม</div>
+      <div class="disp" style="font-size:27px;font-weight:700;margin-top:4px">45,200</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:13px;font-weight:600;color:#5B6660">เบิกสำเร็จแล้ว</div>
+      <div class="disp" style="font-size:27px;font-weight:700;margin-top:4px;color:#047857">120</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:13px;font-weight:600;color:#5B6660">รออนุมัติ / กำลังเบิก</div>
+      <div class="disp" style="font-size:27px;font-weight:700;margin-top:4px;color:#B45309">8</div></div>
+  </div>
+
+  <!-- ตัวกรอง -->
+  <div class="card" style="margin-top:14px;padding:16px 18px">
+    <div class="row g10">
+      <div class="row input grow" style="height:44px;gap:10px;background:#fff">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span style="color:#64748B">ค้นหา: เลขเอกสาร / บาร์โค้ด / รหัส / ชื่อสินค้า / ผู้เบิก…</span>
+      </div>
+      <button class="btn btn-secondary" style="height:44px;padding:0 16px;font-size:14px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>ส่งออก CSV</button>
+    </div>
+    <div class="row g10" style="margin-top:10px">
+      <div class="select" style="width:170px;padding:9px 38px 9px 14px;font-size:14px">สถานะ: ทั้งหมด</div>
+      <div class="select" style="width:190px;padding:9px 38px 9px 14px;font-size:14px">โกดังต้นทาง: ทั้งหมด</div>
+      <div class="select" style="width:200px;padding:9px 38px 9px 14px;font-size:14px">โกดังปลายทาง: ทั้งหมด</div>
+      <div class="select" style="width:190px;padding:9px 38px 9px 14px;font-size:14px">วันนี้ (4 ก.ย. 2569)</div>
+      <span style="font-size:14px;font-weight:600;color:#475569;text-decoration:underline">ล้างตัวกรอง</span>
+      <div class="grow"></div>
+      <span style="font-size:14px;color:#5B6660">พบทั้งหมด <b>12</b> รายการ (จาก 128)</span>
+      <div class="select" style="width:130px;padding:9px 38px 9px 14px;font-size:14px">แถวละ: 15</div>
+    </div>
+  </div>
+
+  <!-- ตาราง -->
+  <div class="card" style="margin-top:14px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:15px">
+      <thead><tr style="border-bottom:1px solid rgba(0,0,0,.08)">
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">ลำดับ</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">เลขที่เอกสาร</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">ชื่อสินค้า</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">เส้นทาง</th>
+        <th style="text-align:right;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">จำนวน</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">คนสร้าง</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">คนเบิก</th>
+        <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">สถานะ</th>
+      </tr></thead>
+      <tbody style="color:#0F1712">
+        <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+          <td style="padding:13px 18px;color:#5B6660">1</td>
+          <td class="mono" style="padding:13px 18px;font-weight:600;font-size:14px">TRF-20260904-0001</td>
+          <td style="padding:13px 18px;font-weight:600">สายถัก STL 24 นิ้ว</td>
+          <td style="padding:13px 18px;color:#5B6660">โกดัง 1 → โกดัง 2</td>
+          <td class="disp" style="padding:13px 18px;text-align:right;font-weight:600">400</td>
+          <td style="padding:13px 18px">อารีย์ แก้วใส</td>
+          <td style="padding:13px 18px">สมชาย ใจดี</td>
+          <td style="padding:13px 18px"><span class="badge" style="background:#D1FAE5;color:#047857"><span class="dot" style="background:#10B981"></span>เบิกสำเร็จ</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+          <td style="padding:13px 18px;color:#5B6660">2</td>
+          <td class="mono" style="padding:13px 18px;font-weight:600;font-size:14px">TRF-20260904-0002</td>
+          <td style="padding:13px 18px;font-weight:600">ถังน้ำมัน 200 ลิตร</td>
+          <td style="padding:13px 18px;color:#5B6660">โกดัง 1 → โกดัง 3</td>
+          <td class="disp" style="padding:13px 18px;text-align:right;font-weight:600">60</td>
+          <td style="padding:13px 18px">อารีย์ แก้วใส</td>
+          <td style="padding:13px 18px">ประเสริฐ มั่นคง</td>
+          <td style="padding:13px 18px"><span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>รออนุมัติ</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+          <td style="padding:13px 18px;color:#5B6660">3</td>
+          <td class="mono" style="padding:13px 18px;font-weight:600;font-size:14px">TRF-20260904-0003</td>
+          <td style="padding:13px 18px;font-weight:600">ผ้าใบ PVC สีน้ำเงิน</td>
+          <td style="padding:13px 18px;color:#5B6660">โกดัง 2 → โกดัง 1</td>
+          <td class="disp" style="padding:13px 18px;text-align:right;font-weight:600">120</td>
+          <td style="padding:13px 18px">อารีย์ แก้วใส</td>
+          <td style="padding:13px 18px;color:#94A3B8">—</td>
+          <td style="padding:13px 18px"><span class="badge" style="background:#F1F5F9;color:#334155"><span class="dot" style="background:#64748B"></span>รอดำเนินการ</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+          <td style="padding:13px 18px;color:#5B6660">4</td>
+          <td class="mono" style="padding:13px 18px;font-weight:600;font-size:14px">TRF-20260903-0011</td>
+          <td style="padding:13px 18px;font-weight:600">เชือกไนลอน 10 มม.</td>
+          <td style="padding:13px 18px;color:#5B6660">โกดัง 3 → โกดัง 1</td>
+          <td class="disp" style="padding:13px 18px;text-align:right;font-weight:600">250</td>
+          <td style="padding:13px 18px">วิภา ทองดี</td>
+          <td style="padding:13px 18px">สมชาย ใจดี</td>
+          <td style="padding:13px 18px"><span class="badge" style="background:#FFE4E6;color:#BE123C"><span class="dot" style="background:#F43F5E"></span>ยกเลิก</span></td>
+        </tr>
+        <tr>
+          <td style="padding:13px 18px;color:#5B6660">5</td>
+          <td class="mono" style="padding:13px 18px;font-weight:600;font-size:14px">TRF-20260903-0009</td>
+          <td style="padding:13px 18px;font-weight:600">ถุงพลาสติกใหญ่ 50 ใบ</td>
+          <td style="padding:13px 18px;color:#5B6660">โกดัง 1 → โกดัง 2</td>
+          <td class="disp" style="padding:13px 18px;text-align:right;font-weight:600">300</td>
+          <td style="padding:13px 18px">วิภา ทองดี</td>
+          <td style="padding:13px 18px">ประเสริฐ มั่นคง</td>
+          <td style="padding:13px 18px"><span class="badge" style="background:#D1FAE5;color:#047857"><span class="dot" style="background:#10B981"></span>เบิกสำเร็จ</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="row between" style="margin-top:12px;font-size:14px;color:#5B6660">
+    <span>หน้า 1 จาก 1</span>
+    <span class="row g8"><span class="chip" style="background:#fff">‹ ก่อนหน้า</span><span class="chip" style="background:#fff;border-color:#059669;color:#047857;font-weight:700">1</span><span class="chip" style="background:#fff">ถัดไป ›</span></span>
+  </div>
+</div>
+
+</div></body></html>

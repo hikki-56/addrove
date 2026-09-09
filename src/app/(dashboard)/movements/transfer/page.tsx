@@ -1,10 +1,11 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
+import { useTabAuth } from "@/context/TabAuthContext";
 
-import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import { useTransferMovement, defaultStaff } from "./_hooks/use-transfer-movement";
+import { useTransferMovement } from "./_hooks/use-transfer-movement";
 import TransferNotificationList from "./_components/TransferNotificationList";
 import TransferForm from "./_components/TransferForm";
 import TransferStaffWorkflowModal from "./_components/TransferStaffWorkflowModal";
@@ -12,6 +13,8 @@ import TransferStaffWorkflowModal from "./_components/TransferStaffWorkflowModal
 export default function TransferPage() {
   const searchParams = useSearchParams();
   const whParam = searchParams?.get("warehouse_id") || searchParams?.get("wh");
+  const { user: authUser, status: authStatus } = useTabAuth();
+  const router = useRouter();
 
   const {
     activeWhId,
@@ -50,10 +53,6 @@ export default function TransferPage() {
     setStaffScanDestLocationInput,
     staffError,
     staffSuccess,
-    isStaffCameraOpen,
-    setIsStaffCameraOpen,
-    staffCameraTarget,
-    setStaffCameraTarget,
     staffProductInputRef,
     staffSourceLocationInputRef,
     staffDestLocationInputRef,
@@ -72,13 +71,30 @@ export default function TransferPage() {
     resetForm,
     error,
     setError,
+    actionError,
+    clearActionError,
+    confirmDialogElement,
   } = transferHook;
 
   const isAdmin = tabUser?.role === "ADMIN";
   const isApprover = tabUser?.role === "APPROVER";
   const canApprove = isAdmin || isApprover;
 
+  // Guard role (สเปก 10.13): WAREHOUSE_STAFF ที่พิมพ์ URL /movements/transfer ตรง
+  // ให้เด้งไปหน้าพนักงาน /staff/transfer — ไม่พึ่งการซ่อนเมนูเพียงอย่างเดียว
+  // คง query string (warehouse_id) เดิมไว้ เพื่อไม่ให้โกดังจาก deep-link หายระหว่างเด้ง
+  useEffect(() => {
+    if (authStatus !== "loading" && authUser?.role === "WAREHOUSE_STAFF") {
+      const query = typeof window !== "undefined" ? window.location.search : "";
+      router.replace(`/staff/transfer${query}`);
+    }
+  }, [authStatus, authUser, router]);
+
   const containerWidth = "max-w-4xl lg:max-w-5xl";
+
+  if (authStatus !== "loading" && authUser?.role === "WAREHOUSE_STAFF") {
+    return null;
+  }
 
   return (
     <div className={`${containerWidth} mx-auto w-full px-3 sm:px-6 pt-2 pb-20 sm:pt-4 sm:pb-8 space-y-4`}>
@@ -91,17 +107,17 @@ export default function TransferPage() {
         </div>
       ) : (
         /* Segmented Switch Bar: สลับไปทำรายการ / สร้างใบย้าย / รออนุมัติ */
-        <div className={`grid ${isAdmin || waitingApprovalTasks.length > 0 ? "grid-cols-3" : "grid-cols-2"} p-1.5 bg-slate-100 border border-slate-200 rounded-2xl gap-1.5 sm:gap-2 shadow-xs items-stretch`}>
+        <div className={`grid ${isAdmin || waitingApprovalTasks.length > 0 ? "grid-cols-3" : "grid-cols-2"} p-1.5 bg-slate-100 border border-[#E8ECEA] rounded-2xl gap-1.5 sm:gap-2 shadow-xs items-stretch`}>
           <button
             type="button"
             onClick={() => setActiveMode("ADMIN_CREATE")}
-            className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
+            className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-sm transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
               activeMode === "ADMIN_CREATE"
-                ? "bg-white text-slate-900 shadow-xs border-slate-200"
+                ? "bg-white text-slate-900 shadow-xs border-[#E8ECEA]"
                 : "text-slate-600 hover:text-slate-900 border-transparent hover:bg-white/60"
             }`}
           >
-            <svg className="w-4 h-4 text-emerald-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[#053425] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             <span className="leading-tight">สร้างใบเบิกสินค้า</span>
@@ -110,18 +126,18 @@ export default function TransferPage() {
           <button
             type="button"
             onClick={() => setActiveMode("STAFF_EXECUTE")}
-            className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
+            className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-sm transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
               activeMode === "STAFF_EXECUTE"
-                ? "bg-white text-slate-900 shadow-xs border-slate-200"
+                ? "bg-white text-slate-900 shadow-xs border-[#E8ECEA]"
                 : "text-slate-600 hover:text-slate-900 border-transparent hover:bg-white/60"
             }`}
           >
-            <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[#053425] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             <span className="leading-tight">รายการที่ต้องไปเบิก</span>
             {pendingTasks.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-black bg-rose-600 text-white shadow-xs">
+              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[13px] font-black bg-rose-600 text-white shadow-xs">
                 {pendingTasks.length}
               </span>
             )}
@@ -131,9 +147,9 @@ export default function TransferPage() {
             <button
               type="button"
               onClick={() => setActiveMode("WAITING_APPROVAL")}
-              className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
+              className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl font-bold text-sm transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
                 activeMode === "WAITING_APPROVAL"
-                  ? "bg-white text-slate-900 shadow-xs border-slate-200"
+                  ? "bg-white text-slate-900 shadow-xs border-[#E8ECEA]"
                 : "text-slate-600 hover:text-slate-900 border-transparent hover:bg-white/60"
               }`}
             >
@@ -142,7 +158,7 @@ export default function TransferPage() {
               </svg>
               <span className="leading-tight">รออนุมัติ</span>
               {waitingApprovalTasks.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-black bg-amber-500 text-slate-950 shadow-xs">
+                <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[13px] font-black bg-amber-500 text-slate-950 shadow-xs">
                   {waitingApprovalTasks.length}
                 </span>
               )}
@@ -158,7 +174,6 @@ export default function TransferPage() {
           warehouses={warehouses}
           products={transferHook.fromWhProducts.length > 0 ? transferHook.fromWhProducts : products}
           selectedProduct={selectedProduct}
-          staffList={transferHook.staffList}
           watchProduct={watchProduct}
           watchFromWh={watchFromWh}
           watchToWh={watchToWh}
@@ -169,7 +184,6 @@ export default function TransferPage() {
           selectedItems={transferHook.selectedItems}
           addTransferItem={transferHook.addTransferItem}
           updateItemQty={transferHook.updateItemQty}
-          /* toLocaleString formatted inside TransferForm */
           removeItem={transferHook.removeItem}
           clearItems={transferHook.clearItems}
         />
@@ -191,6 +205,8 @@ export default function TransferPage() {
           isCleaningUp={isCleaningUp}
           cancellingId={cancellingId}
           approvingId={approvingId}
+          errorBanner={actionError}
+          onDismissError={clearActionError}
         />
       ) : (
         /* activeMode === "STAFF_EXECUTE" */
@@ -209,6 +225,8 @@ export default function TransferPage() {
           isCleaningUp={isCleaningUp}
           cancellingId={cancellingId}
           approvingId={approvingId}
+          errorBanner={actionError}
+          onDismissError={clearActionError}
         />
       )}
 
@@ -241,27 +259,10 @@ export default function TransferPage() {
         onVerifyProductBarcode={handleVerifyProductBarcode}
         onVerifySourceLocationBarcode={handleVerifySourceLocationBarcode}
         onVerifyDestinationLocationBarcode={handleVerifyDestinationLocationBarcode}
-        onOpenStaffCamera={(target) => {
-          setStaffCameraTarget(target);
-          setIsStaffCameraOpen(true);
-        }}
       />
 
-      {/* Camera Barcode Scanner for Staff modal */}
-      <CameraBarcodeScannerModal
-        isOpen={isStaffCameraOpen}
-        onClose={() => setIsStaffCameraOpen(false)}
-        onScanSuccess={(scannedText) => {
-          if (staffCameraTarget === "PRODUCT") {
-            handleVerifyProductBarcode(scannedText);
-          } else if (staffCameraTarget === "SOURCE_LOCATION") {
-            handleVerifySourceLocationBarcode(scannedText);
-          } else if (staffCameraTarget === "DEST_LOCATION") {
-            handleVerifyDestinationLocationBarcode(scannedText);
-          }
-          setIsStaffCameraOpen(false);
-        }}
-      />
+      {/* Modal ยืนยันแบบอ่านง่าย (แทน window.confirm) */}
+      {confirmDialogElement}
     </div>
   );
 }

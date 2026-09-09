@@ -13,6 +13,8 @@ export interface BarcodeScanInputProps {
   autoFocus?: boolean;
   className?: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /** id ของ input — ใส่เมื่อมี <label htmlFor> กำกับช่องสแกนจากภายนอก */
+  id?: string;
 }
 
 export default function BarcodeScanInput({
@@ -26,6 +28,7 @@ export default function BarcodeScanInput({
   autoFocus = true,
   className = "",
   inputRef,
+  id,
 }: BarcodeScanInputProps) {
   const internalRef = useRef<HTMLInputElement>(null);
   const refToUse = inputRef || internalRef;
@@ -49,8 +52,8 @@ export default function BarcodeScanInput({
 
   return (
     <div className={`relative flex items-center gap-2 ${className}`}>
-      <div className="relative flex-1 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 overflow-hidden">
-        <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4.5 flex items-center pointer-events-none text-emerald-600">
+      <div className="relative flex-1 bg-white rounded-2xl sm:rounded-3xl border border-[#E8ECEA]/90 shadow-sm transition-all focus-within:border-[#0F5C3F] focus-within:ring-2 focus-within:ring-[#0F5C3F]/20 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4.5 flex items-center pointer-events-none text-[#06402B]">
           {/* Green QR/Barcode Viewfinder Icon */}
           <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 7V5a2 2 0 012-2h2m12 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
@@ -60,6 +63,7 @@ export default function BarcodeScanInput({
 
         <input
           ref={refToUse as React.RefObject<HTMLInputElement>}
+          id={id}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -67,7 +71,7 @@ export default function BarcodeScanInput({
           placeholder={placeholder}
           readOnly={disabled || isProcessing}
           aria-busy={isProcessing}
-          className={`w-full pl-10 sm:pl-13 pr-10 sm:pr-12 py-3 sm:py-4 bg-transparent text-slate-900 font-bold placeholder-slate-400 text-xs sm:text-base outline-none read-only:cursor-default disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full pl-10 sm:pl-13 pr-10 sm:pr-12 py-3 sm:py-4 bg-transparent text-slate-900 font-bold placeholder-slate-500 text-sm sm:text-base outline-none read-only:cursor-default disabled:opacity-50 disabled:cursor-not-allowed ${
             isProcessing ? "opacity-50" : ""
           }`}
         />
@@ -96,7 +100,7 @@ export default function BarcodeScanInput({
               onClick={onOpenScannerModal}
               disabled={disabled || isProcessing}
               aria-label="เปิดกล้องสแกน"
-              className="p-1.5 sm:p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1.5 sm:p-2 bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] rounded-xl border border-[#C9DFD4] text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               title="เปิดกล้องสแกน"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

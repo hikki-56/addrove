@@ -72,9 +72,9 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-[120px]" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#06402B]/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[150px]" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-[#0F5C3F]/5 rounded-full blur-[150px]" />
       </div>
 
       {/* Admin Login Menu Card */}
@@ -91,9 +91,9 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Admin Login Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-7 shadow-xl">
+        <div className="bg-white border border-[#E8ECEA] rounded-2xl p-7 shadow-xl">
           <h2 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
             <span>เข้าสู่ระบบ Admin</span>
@@ -143,7 +143,7 @@ export default function AdminLoginPage() {
                   {...register("email")}
                   placeholder="admin@stockify.com"
                   suppressHydrationWarning
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all text-sm"
                 />
               </div>
               {errors.email && (
@@ -174,7 +174,7 @@ export default function AdminLoginPage() {
                   {...register("password")}
                   placeholder="••••••••"
                   suppressHydrationWarning
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all text-sm"
                 />
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export default function AdminLoginPage() {
               type="submit"
               disabled={loading}
               suppressHydrationWarning
-              className="w-full py-2.5 mt-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-600/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2.5 mt-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-sm shadow-md shadow-[#06402B]/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {loading ? (
                 <>

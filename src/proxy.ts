@@ -30,6 +30,10 @@ export async function proxy(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/employee-login" ||
     pathname === "/admin-login" ||
+    pathname === "/dev-preview" || // TEMP: preview route (ลบพร้อม /dev-preview page)
+    pathname === "/dev-preview-approvals" || // TEMP: approvals UI preview (ลบพร้อม /dev-preview-approvals page)
+    pathname === "/dev-preview-products" || // TEMP: products UI preview (ลบพร้อม /dev-preview-products page)
+    pathname === "/dev-preview-express" || // TEMP: Express UI preview (ลบพร้อม /dev-preview-express page)
     pathname === "/warehouses/qr" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/system") ||

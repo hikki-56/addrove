@@ -94,10 +94,9 @@ export default function NewProductPage() {
           ย้อนกลับ
         </button>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">เพิ่มสินค้าใหม่เข้าคลัง</h1>
-        <p className="text-slate-500 text-xs sm:text-sm mt-0.5">ระบุรายละเอียดสินค้าและเลือกโกดังจัดเก็บ</p>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs w-full">
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#E8ECEA] shadow-xs w-full">
         {error && (
           <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-2 font-medium">
             <svg className="w-5 h-5 flex-shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +126,7 @@ export default function NewProductPage() {
                 id="prod-sku"
                 {...register("sku")}
                 placeholder="เช่น PROD-001"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold transition-all"
               />
               {errors.sku && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.sku.message}</p>}
             </div>
@@ -138,7 +137,7 @@ export default function NewProductPage() {
                 id="prod-barcode"
                 {...register("barcode")}
                 placeholder="เช่น 885000000001"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono font-bold transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold transition-all"
               />
               {errors.barcode && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.barcode.message}</p>}
             </div>
@@ -150,7 +149,7 @@ export default function NewProductPage() {
               id="prod-name"
               {...register("product_name")}
               placeholder="กรอกชื่อสินค้าภาษาไทย"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-medium transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-medium transition-all"
             />
             {errors.product_name && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.product_name.message}</p>}
           </div>
@@ -162,7 +161,7 @@ export default function NewProductPage() {
                 id="prod-category"
                 {...register("category")}
                 placeholder="เช่น เครื่องดื่ม / ของใช้"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
               />
               {errors.category && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.category.message}</p>}
             </div>
@@ -173,7 +172,7 @@ export default function NewProductPage() {
                 id="prod-base-unit"
                 {...register("base_unit")}
                 placeholder="เช่น ชิ้น / กล่อง / แพ็ก"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
               />
               {errors.base_unit && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.base_unit.message}</p>}
             </div>
@@ -188,7 +187,7 @@ export default function NewProductPage() {
                 min="0"
                 {...register("initial_quantity", { valueAsNumber: true })}
                 placeholder="0"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono transition-all"
               />
               {/* Form quantity validation message (formatted with toLocaleString where applicable) */}
               {errors.initial_quantity && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.initial_quantity.message}</p>}
@@ -202,7 +201,7 @@ export default function NewProductPage() {
                 min="0"
                 {...register("minimum_stock", { valueAsNumber: true })}
                 placeholder="0"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono transition-all"
               />
               {errors.minimum_stock && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.minimum_stock.message}</p>}
             </div>
@@ -215,7 +214,7 @@ export default function NewProductPage() {
               {...register("description")}
               rows={3}
               placeholder="กรอกรายละเอียดสินค้า เช่น เอเจนต์ซี ผู้ส่งมอบ หรือข้อความบันทึก"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm resize-none transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm resize-none transition-all"
             />
           </div>
 
@@ -223,7 +222,7 @@ export default function NewProductPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold transition-all text-xs sm:text-sm cursor-pointer active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-white border border-[#E8ECEA] hover:bg-slate-50 text-slate-700 font-semibold transition-all text-xs sm:text-sm cursor-pointer active:scale-95"
             >
               ยกเลิก
             </button>
@@ -231,7 +230,7 @@ export default function NewProductPage() {
               type="submit"
               disabled={isSubmitting}
               id="submit-new-product"
-              className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] disabled:opacity-50 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
             >
               {isSubmitting ? "กำลังบันทึก..." : "บันทึกสินค้าเข้าคลัง"}
             </button>

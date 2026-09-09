@@ -1,50 +1,133 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useEscapeKey } from "@/hooks/use-escape-key";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { isSameJson } from "@/lib/json-equal";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
-import ScrollSelect from "@/components/ui/ScrollSelect";
-import { getTransferNotifications } from "@/lib/transfer-notification-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
-import type { MovementWithDetails, Product } from "@/types/models";
+import type { Product } from "@/types/models";
+import ExpressImportWorkspaceHeader, {
+  type ExpressDatePreset,
+  type ExpressStatusFilter,
+} from "../_components/ExpressImportWorkspaceHeader";
+import ExpressToast, { type ExpressToastState } from "../_components/ExpressToast";
 import {
   getAllTaggedExpressItems,
   tagExpressItem,
-  untagExpressItem,
   batchTagExpressItems,
-  batchUntagExpressItems,
   updateExpressItemStatus,
-  batchUpdateExpressItemStatus,
-  clearImportedExpressItems,
   type TaggedExpressItem,
   type ExpressSyncStatus,
 } from "@/lib/express-tag-utils";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type RowData,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
-export interface DisplayFields {
-  barcode: boolean;
-  productName: boolean;
-  warehouse: boolean;
-  quantity: boolean;
-  sku: boolean;
-  location: boolean;
-  docNo: boolean;
+// เพิ่ม meta ของคอลัมน์สำหรับคลาส Tailwind ของ <th>/<td> (แนวทางตามเอกสาร TanStack Table)
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    th?: string;
+    td?: string;
+  }
 }
 
-const DEFAULT_DISPLAY_FIELDS: DisplayFields = {
-  barcode: true,
-  productName: true,
-  warehouse: true,
-  quantity: true,
-  sku: false,
-  location: false,
-  docNo: false,
+type TagFilterType = ExpressStatusFilter;
+
+type DatePreset = ExpressDatePreset;
+
+const toIsoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// จำนวนแถวต่อหน้าของตาราง — ข้อมูลเต็มยังอยู่ใน filteredItems แบ่งแสดงฝั่งหน้าเว็บเท่านั้น
+const PAGE_SIZE = 10;
+
+// ลูกศรบอกสถานะการเรียงบนหัวคอลัมน์
+function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
+  const base = "w-3.5 h-3.5 shrink-0";
+  if (dir === "asc") {
+    return (
+      <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    );
+  }
+  if (dir === "desc") {
+    return (
+      <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 5v14M19 12l-7 7-7-7" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={`${base} opacity-40`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 9l4-4 4 4M8 15l4 4 4-4" />
+    </svg>
+  );
+}
+
+// รูปแบบชั้นวางที่ยอมรับ — ตรวจจากข้อมูลจริงในชีตโกดัง (233/239 ค่า):
+// หลัก: เลขโกดัง+โซน+เลขแถว-ชั้น เช่น 1K11-2A, 3K41-1B, 6K53 | รอง (มีขีด): B-12, AD-02
+// กันหยิบรหัสสินค้า/รหัสรุ่น/แบรนด์ (เช่น "JHC", "433AC", "AD02", "0C1000-1") มาโชว์ในคอลัมน์ตำแหน่ง
+const looksLikeShelfCode = (loc: string): boolean =>
+  loc.length >= 3 &&
+  loc.length <= 8 &&
+  (/^\d[A-Za-z]\d{2}(-\d[A-Za-z])?$/.test(loc) || /^[A-Za-z]{1,4}-\d{1,3}[A-Za-z]?$/.test(loc));
+
+// Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
+const extractShelfFromText = (text: string | undefined | null): string => {
+  if (!text) return "";
+  const str = String(text).trim();
+  // 1. Explicit hash tag like #AD-02, #ADS-05, #HC40, #B-12, #A01
+  const hashMatch = str.match(/#\s*([A-Za-z0-9\-_/]+)/);
+  if (hashMatch && hashMatch[1]) {
+    const loc = hashMatch[1].trim();
+    if (looksLikeShelfCode(loc) && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1") {
+      return loc;
+    }
+  }
+  // 2. Bracketed shelf code e.g. [AD-02], (AD-02) — ต้องผ่านรูปแบบชั้นวางเท่านั้น
+  //    วงเล็บในชื่อสินค้ามักเป็นรหัสรุ่น (เช่น "สายยาง (6K13-1A)") ไม่ใช่ตำแหน่งวาง
+  const bracketMatch = str.match(/[\(\[\{]([A-Za-z0-9\-_/]+)[\)\]\}]/);
+  if (bracketMatch && bracketMatch[1]) {
+    const loc = bracketMatch[1].trim();
+    if (looksLikeShelfCode(loc) && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1") {
+      return loc;
+    }
+  }
+  return "";
 };
 
-type TagFilterType = "ALL" | "TAGGED_ONLY" | "PENDING" | "IMPORTED" | "UNTAGGED";
+// Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
+const toExpressWhCode = (whNameOrCode: string): string => {
+  if (!whNameOrCode) return "01";
+  // normalize ก่อนเสมอ — เดิม regex จับเลขจากข้อความดิบ ทำให้ชื่อที่ไม่มีเลข (เช่น สำนักงานใหญ่) ได้โค้ด "01" ผิด
+  const normalized = normalizeWarehouseId(whNameOrCode);
+  const match = normalized.match(/\d+/);
+  return match ? match[0].padStart(2, "0") : "01";
+};
+
+// Helper to get user-friendly Thai warehouse name
+const getWarehouseDisplayName = (raw: string | undefined | null): string => {
+  if (!raw) return "-";
+  const str = String(raw).trim();
+  if (!str || str === "-" || str === "null" || str === "undefined") return "-";
+  // ชื่อที่ไม่ตรงรูปแบบโกดังมาตรฐานจะถูก normalize เป็น wh-01 เสมอ —
+  // ถ้าข้อความเดิมไม่ได้หมายถึงโกดัง 1 ให้แสดงข้อความเดิม อย่าหลอกว่าเป็น "โกดัง1"
+  if (normalizeWarehouseId(str) === "wh-01" && !/โกดัง|สำนักงาน|wh[-_\s]*0?1|^1$/.test(str.toLowerCase())) {
+    return str;
+  }
+  return getWarehouseName(str);
+};
 
 export default function ExpressIssuePage() {
   const router = useRouter();
@@ -59,27 +142,28 @@ export default function ExpressIssuePage() {
   const [movements, setMovements] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDocNo, setSelectedDocNo] = useState<string>("ALL");
+  // true = รอบดึงข้อมูลล่าสุดล้มเหลว (เครือข่าย/เซิร์ฟเวอร์) — โชว์แบนเนอร์พร้อมปุ่มลองใหม่ ไม่ปล่อยให้กลายเป็น empty state หลอก
+  const [fetchError, setFetchError] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [selectedDay, setSelectedDay] = useState<string>("ALL");
-  const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
-  const [selectedYear, setSelectedYear] = useState<string>("ALL");
+  // ค่าเริ่มต้นโชว์เฉพาารายการของวันนี้ — ข้อมูลเก่าต้องกด "ทั้งหมด" เอง
+  const [datePreset, setDatePreset] = useState<DatePreset>("TODAY");
   const [tagFilter, setTagFilter] = useState<TagFilterType>("ALL");
-  const [copySuccess, setCopySuccess] = useState<string | null>(null);
-  const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [copiedItemSku, setCopiedItemSku] = useState<string | null>(null);
-  const [displayFields, setDisplayFields] = useState<DisplayFields>(DEFAULT_DISPLAY_FIELDS);
+  const [toast, setToast] = useState<ExpressToastState | null>(null);
+  // แบ่งหน้าตาราง — ค่าเริ่มต้นหน้าละ 10 แถว (เปลี่ยนได้ที่แถบล่างตาราง)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  // เรียงข้อมูล — คลิกหัวคอลัมน์
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  // เปลี่ยนตัวกรอง/คำค้นหาเมื่อไหร่ กลับไปหน้า 1 เสมอ
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedWarehouse, datePreset, tagFilter]);
 
   // Tagging State
   const [taggedItemsMap, setTaggedItemsMap] = useState<Map<string, TaggedExpressItem>>(new Map());
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  const [customTagInput, setCustomTagInput] = useState<string>("เบิกสินค้าเข้า Express");
-  const [showTagModal, setShowTagModal] = useState<boolean>(false);
-
-  useEscapeKey(showTagModal, () => setShowTagModal(false));
 
   // นับรอบของ fetch — response ของรอบเก่าต้องไม่ย่อยสถานะใหม่ (กัน race กับการกดระหว่าง poll)
   const fetchGenRef = useRef(0);
@@ -119,37 +203,14 @@ export default function ExpressIssuePage() {
     };
   }, [refreshTaggedMap]);
 
-  // Helper to extract 2-digit Express warehouse code (e.g. "01", "02", "03")
-  const toExpressWhCode = (whNameOrCode: string): string => {
-    if (!whNameOrCode) return "01";
-    // normalize ก่อนเสมอ — เดิม regex จับเลขจากข้อความดิบ ทำให้ชื่อที่ไม่มีเลข (เช่น สำนักงานใหญ่) ได้โค้ด "01" ผิด
-    const normalized = normalizeWarehouseId(whNameOrCode);
-    const match = normalized.match(/\d+/);
-    return match ? match[0].padStart(2, "0") : "01";
-  };
-
-  // Helper to get user-friendly Thai warehouse name
-  const getWarehouseDisplayName = (raw: string | undefined | null): string => {
-    if (!raw) return "-";
-    const str = String(raw).trim();
-    if (!str || str === "-" || str === "null" || str === "undefined") return "-";
-    // ชื่อที่ไม่ตรงรูปแบบโกดังมาตรฐานจะถูก normalize เป็น wh-01 เสมอ —
-    // ถ้าข้อความเดิมไม่ได้หมายถึงโกดัง 1 ให้แสดงข้อความเดิม อย่าหลอกว่าเป็น "โกดัง1"
-    if (normalizeWarehouseId(str) === "wh-01" && !/โกดัง|สำนักงาน|wh[-_\s]*0?1|^1$/.test(str.toLowerCase())) {
-      return str;
-    }
-    return getWarehouseName(str);
-  };
-
   const fetchMovements = useCallback(async (isSilent = false) => {
     const gen = ++fetchGenRef.current;
     if (!isSilent) setLoading(true);
     try {
-      const ts = Date.now();
       const [issueRes, prodRes, statusRes] = await Promise.all([
-        fetch(`/api/express-import/issue?_t=${ts}`, { cache: "no-store" }),
-        fetch(`/api/products?limit=5000&_t=${ts}`, { cache: "no-store" }).catch(() => null),
-        fetch(`/api/express-import/status?type=ISSUE&_t=${ts}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/issue`, { cache: "no-store" }),
+        fetch(`/api/products?limit=5000`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/express-import/status?type=ISSUE`, { cache: "no-store" }).catch(() => null),
       ]);
 
       const issueJson = await issueRes.json().catch(() => null);
@@ -158,6 +219,9 @@ export default function ExpressIssuePage() {
 
       // response ของรอบเก่า (ยิงก่อนหน้านี้) มาถึงทีหลัง — ทิ้ง อย่าให้ทับ state และ sync สถานะ
       if (gen !== fetchGenRef.current) return;
+
+      // ดึงรายการหลักไม่สำเร็จ (เครือข่าย/เซิร์ฟเวอร์) — โชว์แบนเนอร์ให้ผู้ใช้รู้จริง ไม่ปล่อยให้กลายเป็น empty state หลอก
+      setFetchError(issueJson?.success !== true);
 
       // Extract products list for catalog matching
       if (prodJson && (Array.isArray(prodJson?.data) || Array.isArray(prodJson?.data?.data))) {
@@ -230,6 +294,7 @@ export default function ExpressIssuePage() {
       }
     } catch (e) {
       console.error("Failed to fetch issue movements for Express:", e);
+      setFetchError(true);
     } finally {
       if (!isSilent && gen === fetchGenRef.current) setLoading(false);
     }
@@ -242,29 +307,6 @@ export default function ExpressIssuePage() {
     void fetchMovements(!initial);
   }, [fetchMovements]);
   usePollingWhenVisible(pollingFetch, 12000);
-
-  // Helper to extract shelf/location code from text, e.g. "05850 #AD-02 ก็อกบอลก/ล สีชมพู" -> "AD-02"
-  const extractShelfFromText = (text: string | undefined | null): string => {
-    if (!text) return "";
-    const str = String(text).trim();
-    // 1. Explicit hash tag like #AD-02, #ADS-05, #HC40, #B-12, #A01
-    const hashMatch = str.match(/#\s*([A-Za-z0-9\-_/]+)/);
-    if (hashMatch && hashMatch[1]) {
-      const loc = hashMatch[1].trim();
-      if (loc && loc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1") {
-        return loc;
-      }
-    }
-    // 2. Bracketed shelf code e.g. [AD-02], (AD-02)
-    const bracketMatch = str.match(/[\(\[\{]([A-Za-z0-9\-_/]+)[\)\]\}]/);
-    if (bracketMatch && bracketMatch[1]) {
-      const loc = bracketMatch[1].trim();
-      if (loc && loc !== "-" && !/^loc-?(a0?1|b0?1)?$/i.test(loc) && loc !== "A1" && loc.length >= 2 && loc.length <= 15) {
-        return loc;
-      }
-    }
-    return "";
-  };
 
   // Flatten & transform movement items
   const allItems = useMemo(() => {
@@ -354,7 +396,6 @@ export default function ExpressIssuePage() {
         return;
       }
 
-      if (selectedDocNo !== "ALL" && m.document_no !== selectedDocNo) return;
       if (
         selectedWarehouse !== "ALL" &&
         m.warehouse_name !== selectedWarehouse &&
@@ -388,7 +429,17 @@ export default function ExpressIssuePage() {
         realLocation = "";
       }
 
-      // 2. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง)
+      // 2. Source Scanned Location (ตำแหน่งต้นทางที่สแกนตอนเบิก) — หน้านี้เป็นรายการ "เบิกสินค้า"
+      //    ตำแหน่งจริงคือชั้นต้นทางที่หยิบของ เดิมดึง to_location_id มาก่อน ทำให้โชว์ชั้นวางปลายทางแทน
+      if (!realLocation) {
+        const srcScannedLoc = ((m as any).from_location_id || "").trim();
+
+        if (srcScannedLoc && !/^loc-?(a0?1|b0?1)?$/i.test(srcScannedLoc) && srcScannedLoc !== "A1" && srcScannedLoc !== "A01" && srcScannedLoc !== "-" && srcScannedLoc !== "ตำแหน่งเริ่มต้น") {
+          realLocation = srcScannedLoc.replace(/^loc-/, "");
+        }
+      }
+
+      // 3. Destination Scanned Location (รหัสตำแหน่งที่สแกนตอนปลายทาง) — fallback รอง
       if (!realLocation) {
         const destScannedLoc = (
           (m as any).to_location_id ||
@@ -402,7 +453,7 @@ export default function ExpressIssuePage() {
         }
       }
 
-      // 3. Location code on movement record
+      // 4. Location code on movement record
       if (!realLocation) {
         const rawLoc = (m.location_code || m.location_id || "").trim();
         const isDummy = !rawLoc || /^loc-?(a0?1|b0?1)?$/i.test(rawLoc) || rawLoc === "A1" || rawLoc === "A01" || rawLoc === "-" || rawLoc === "ตำแหน่งเริ่มต้น";
@@ -411,7 +462,7 @@ export default function ExpressIssuePage() {
         }
       }
 
-      // 4. Fallback: extract shelf tag #SHELF from product name, SKU, or note
+      // 5. Fallback: extract shelf tag #SHELF from product name, SKU, or note
       if (!realLocation) {
         realLocation =
           extractShelfFromText(prodName) ||
@@ -420,46 +471,36 @@ export default function ExpressIssuePage() {
           extractShelfFromText(m.note);
       }
 
-      // 5. From Matched Product in catalog (Destination warehouse first, then Source)
+      // 6. From Matched Product in catalog (Source warehouse first, then Destination)
       const matchedProd = findMatchedProduct(sku, finalBarcode, prodName, m.product_id);
       if (!realLocation && matchedProd) {
-        const destWhId = normalizeWarehouseId((m as any).to_warehouse_id || (m as any).to_warehouse_name);
         const srcWhId = normalizeWarehouseId(m.warehouse_id || m.from_warehouse_name || m.warehouse_name);
-        
-        if (Array.isArray(matchedProd.locations_breakdown)) {
-          // Destination warehouse location
-          const destLoc = matchedProd.locations_breakdown.find(
-            (l: any) =>
-              normalizeWarehouseId(l.warehouse_id) === destWhId &&
-              l.location &&
-              l.location !== "-" &&
-              !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
-              l.location !== "A1"
-          );
-          if (destLoc?.location) realLocation = destLoc.location.replace(/^loc-/, "");
+        const destWhId = normalizeWarehouseId((m as any).to_warehouse_id || (m as any).to_warehouse_name);
 
-          // Source warehouse location
+        if (Array.isArray(matchedProd.locations_breakdown)) {
+          const isUsableLocEntry = (l: any) =>
+            l.location &&
+            l.location !== "-" &&
+            !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
+            l.location !== "A1";
+
+          // Source warehouse location — ชั้นวางต้นทางคือตำแหน่งจริงของรายการเบิก
+          const srcLoc = matchedProd.locations_breakdown.find(
+            (l: any) => normalizeWarehouseId(l.warehouse_id) === srcWhId && isUsableLocEntry(l)
+          );
+          if (srcLoc?.location) realLocation = srcLoc.location.replace(/^loc-/, "");
+
+          // Destination warehouse location
           if (!realLocation) {
-            const srcLoc = matchedProd.locations_breakdown.find(
-              (l: any) =>
-                normalizeWarehouseId(l.warehouse_id) === srcWhId &&
-                l.location &&
-                l.location !== "-" &&
-                !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
-                l.location !== "A1"
+            const destLoc = matchedProd.locations_breakdown.find(
+              (l: any) => normalizeWarehouseId(l.warehouse_id) === destWhId && isUsableLocEntry(l)
             );
-            if (srcLoc?.location) realLocation = srcLoc.location.replace(/^loc-/, "");
+            if (destLoc?.location) realLocation = destLoc.location.replace(/^loc-/, "");
           }
 
           // Fallback any warehouse location
           if (!realLocation) {
-            const anyLoc = matchedProd.locations_breakdown.find(
-              (l: any) =>
-                l.location &&
-                l.location !== "-" &&
-                !/^loc-?(a0?1|b0?1)?$/i.test(l.location) &&
-                l.location !== "A1"
-            );
+            const anyLoc = matchedProd.locations_breakdown.find(isUsableLocEntry);
             if (anyLoc?.location) realLocation = anyLoc.location.replace(/^loc-/, "");
           }
         }
@@ -470,6 +511,10 @@ export default function ExpressIssuePage() {
         }
       }
 
+      // ค่าที่ได้ต้องหน้าตาเป็นชั้นวางเท่านั้น — ค่าที่ไม่ผ่าน (เช่นรหัสรุ่นหลุดมาจากชื่อ/ชีต) แสดง "-" ดีกว่าโชว์ผิด
+      if (realLocation && !looksLikeShelfCode(realLocation)) {
+        realLocation = "-";
+      }
       if (!realLocation) {
         realLocation = "-";
       }
@@ -508,7 +553,7 @@ export default function ExpressIssuePage() {
     });
 
     return list;
-  }, [movements, selectedDocNo, selectedWarehouse, catalogProducts]);
+  }, [movements, selectedWarehouse, catalogProducts]);
 
   // Helper to parse date into { year, month, day }
   const parseDateParts = (raw: string | undefined | null) => {
@@ -552,27 +597,45 @@ export default function ExpressIssuePage() {
     return null;
   };
 
-  // Available distinct years from dataset
-  const availableYears = useMemo(() => {
-    const set = new Set<string>();
-    const currentYear = String(new Date().getFullYear());
-    set.add(currentYear);
-    set.add(String(new Date().getFullYear() - 1));
-    allItems.forEach((item) => {
-      const parts = parseDateParts(item.created_at);
-      if (parts && /^\d{4}$/.test(parts.year)) {
-        set.add(parts.year);
-      }
-    });
-    return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [allItems]);
-
-  const setDateToToday = () => {
+  // กรองตามช่วงเวลาลัด — คำนวณจาก preset ที่เลือก เทียบเป็นสตริง ISO (YYYY-MM-DD)
+  const presetRange = useMemo(() => {
     const now = new Date();
-    setSelectedYear(String(now.getFullYear()));
-    setSelectedMonth(String(now.getMonth() + 1).padStart(2, "0"));
-    setSelectedDay(String(now.getDate()).padStart(2, "0"));
-  };
+    const today = toIsoDate(now);
+    switch (datePreset) {
+      case "TODAY":
+        return { from: today, to: today };
+      case "YESTERDAY": {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        const iso = toIsoDate(y);
+        return { from: iso, to: iso };
+      }
+      case "LAST_7_DAYS": {
+        const s = new Date(now);
+        s.setDate(s.getDate() - 6);
+        return { from: toIsoDate(s), to: today };
+      }
+      case "THIS_MONTH": {
+        const s = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { from: toIsoDate(s), to: today };
+      }
+      default:
+        return { from: "", to: "" };
+    }
+  }, [datePreset]);
+
+  const isInDateRange = useCallback(
+    (rawDate: string): boolean => {
+      if (!presetRange.from && !presetRange.to) return true;
+      const parts = parseDateParts(rawDate);
+      if (!parts) return false;
+      const iso = `${parts.year}-${parts.month}-${parts.day}`;
+      if (presetRange.from && iso < presetRange.from) return false;
+      if (presetRange.to && iso > presetRange.to) return false;
+      return true;
+    },
+    [presetRange]
+  );
 
   const availableWarehouses = useMemo(() => {
     const set = new Set<string>();
@@ -583,12 +646,6 @@ export default function ExpressIssuePage() {
     return Array.from(set);
   }, [movements]);
 
-  const resetDateFilter = () => {
-    setSelectedYear("ALL");
-    setSelectedMonth("ALL");
-    setSelectedDay("ALL");
-  };
-
   const warehouseOptions = useMemo(() => [
     { value: "ALL", label: `ทุกคลังสินค้า (${availableWarehouses.length})` },
     ...availableWarehouses.map((wh) => ({
@@ -597,35 +654,7 @@ export default function ExpressIssuePage() {
     })),
   ], [availableWarehouses]);
 
-  const dayOptions = useMemo(() => [
-    { value: "ALL", label: "ทุกวัน" },
-    ...Array.from({ length: 31 }, (_, i) => {
-      const d = String(i + 1).padStart(2, "0");
-      return { value: d, label: `วันที่ ${parseInt(d, 10)}` };
-    }),
-  ], []);
-  const monthOptions = useMemo(() => [
-    { value: "ALL", label: "ทุกเดือน" },
-    { value: "01", label: "ม.ค. (01)" },
-    { value: "02", label: "ก.พ. (02)" },
-    { value: "03", label: "มี.ค. (03)" },
-    { value: "04", label: "เม.ย. (04)" },
-    { value: "05", label: "พ.ค. (05)" },
-    { value: "06", label: "มิ.ย. (06)" },
-    { value: "07", label: "ก.ค. (07)" },
-    { value: "08", label: "ส.ค. (08)" },
-    { value: "09", label: "ก.ย. (09)" },
-    { value: "10", label: "ต.ค. (10)" },
-    { value: "11", label: "พ.ย. (11)" },
-    { value: "12", label: "ธ.ค. (12)" },
-  ], []);
-
-  const yearOptions = useMemo(() => [
-    { value: "ALL", label: "ทุกปี" },
-    ...availableYears.map((yr) => ({ value: yr, label: `ปี ${yr}` })),
-  ], [availableYears]);
-
-  // Filter items by search query, Tag filter, & Day/Month/Year date filter
+  // Filter items by search query, tag filter & date range
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
       // Tag filter check
@@ -638,17 +667,8 @@ export default function ExpressIssuePage() {
       if (tagFilter === "IMPORTED" && effectiveStatus !== "IMPORTED") return false;
       if (tagFilter === "UNTAGGED" && (tagged || isTagged)) return false;
 
-      // Day / Month / Year date filter check
-      if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
-        const parts = parseDateParts(item.created_at);
-        if (parts) {
-          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
-          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
-          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
-        } else {
-          return false;
-        }
-      }
+      // Date range check
+      if (!isInDateRange(item.created_at)) return false;
 
       // Search query check
       if (!searchQuery.trim()) return true;
@@ -666,15 +686,25 @@ export default function ExpressIssuePage() {
         currentTag.toLowerCase().includes(q)
       );
     });
-  }, [allItems, searchQuery, tagFilter, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
+  }, [allItems, searchQuery, tagFilter, taggedItemsMap, isInDateRange]);
 
-  const availableDocNos = useMemo(() => {
-    const set = new Set<string>();
-    movements.forEach((m) => {
-      if (m.document_no) set.add(m.document_no);
-    });
-    return Array.from(set);
-  }, [movements]);
+  // แบ่งหน้า — currentPage กันค่าเกินกรณี polling ทำให้จำนวนแถวหดระหว่างอยู่หน้าท้าย
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  // เลขหน้าแสดงสูงสุด 5 ปุ่ม ครอบหน้าปัจจุบันไว้กลางเสมอ
+  const pageWindow = useMemo(() => {
+    const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
+
+  // คลาสปุ่มเลขหน้า — หน้าปัจจุบันพื้นเขียวตัวขาว
+  const pageBtnClass = (active: boolean): string =>
+    `min-h-[44px] min-w-[44px] px-3.5 rounded-xl text-base font-bold border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
+      active
+        ? "bg-[#06402B] border-[#06402B] text-white shadow-sm shadow-[#06402B]/25"
+        : "border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425]"
+    }`;
 
   // Tagging Stats
   const tagStats = useMemo(() => {
@@ -682,19 +712,7 @@ export default function ExpressIssuePage() {
     let pendingCount = 0;
     let importedCount = 0;
 
-    const baseItems = allItems.filter((item) => {
-      if (selectedYear !== "ALL" || selectedMonth !== "ALL" || selectedDay !== "ALL") {
-        const parts = parseDateParts(item.created_at);
-        if (parts) {
-          if (selectedYear !== "ALL" && parts.year !== selectedYear) return false;
-          if (selectedMonth !== "ALL" && parts.month !== selectedMonth) return false;
-          if (selectedDay !== "ALL" && parts.day !== selectedDay) return false;
-        } else {
-          return false;
-        }
-      }
-      return true;
-    });
+    const baseItems = allItems.filter((item) => isInDateRange(item.created_at));
 
     baseItems.forEach((item) => {
       const t = taggedItemsMap.get(item.id);
@@ -705,35 +723,12 @@ export default function ExpressIssuePage() {
     });
 
     return { total: baseItems.length, taggedCount, pendingCount, importedCount };
-  }, [allItems, taggedItemsMap, selectedDay, selectedMonth, selectedYear]);
-
-  // Toggle Single Tag
-  const handleToggleTag = (item: (typeof allItems)[0]) => {
-    const existing = taggedItemsMap.get(item.id);
-    if (existing) {
-      untagExpressItem(item.id);
-    } else {
-      tagExpressItem({
-        id: item.id,
-        type: "ISSUE",
-        tag: customTagInput || "รอนำเข้า Express",
-        sku: item.sku,
-        barcode: item.barcode,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        location: item.location,
-        warehouse: item.warehouse_name,
-        warehouse_code: toExpressWhCode(item.warehouse_name),
-        document_no: item.document_no,
-        document_date: item.created_at,
-      });
-    }
-  };
+  }, [allItems, taggedItemsMap, isInDateRange]);
 
   // Helper to sync status to Google Sheets and DB in background
   // ตลอดช่วงที่ POST ยังไม่ตอบกลับ จะ mark เอกสารไว้ใน pendingSyncRef เพื่อกัน
   // รอบ polling เอาสถานะเก่าจาก server มาทับค่าที่ผู้ใช้เพิ่งกด (สาเหตุที่สถานะเด้งกลับเป็น "รอนำเข้า")
-  const syncStatusToSheet = async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "ISSUE" }>) => {
+  const syncStatusToSheet = useCallback(async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "ISSUE" }>) => {
     const docKeys = items
       .map((i) => (i.document_no || "").trim().toLowerCase())
       .filter(Boolean);
@@ -749,610 +744,537 @@ export default function ExpressIssuePage() {
       }
       // POST ตอบกลับแล้ว = server รับสถานะแล้ว (memory + doc note) — ปล่อยให้ polling sync ตามปกติ
       docKeys.forEach((k) => pendingSyncRef.current.delete(k));
+
+      const firstItem = items[0];
+      const statusLabel = firstItem?.status === "IMPORTED" ? "นำเข้าแล้ว" : "รอนำเข้า";
+      const docDesc = items.length === 1 && firstItem?.document_no
+        ? `เลขที่ ${firstItem.document_no}`
+        : `${items.length} รายการ`;
+      setToast({
+        message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) เข้า Google Sheets เรียบร้อย`,
+        tone: "success",
+      });
     } catch (e) {
       // คง pendingSync ไว้ — รอบหน้าจะไม่ทับค่าที่ผู้ใช้กด และรายการหมดอายุเองใน 30 วิ
       console.warn("[ExpressIssuePage] Background status sync to sheet failed:", e);
-    }
-  };
-
-  // Update Status
-  const handleSetStatus = (item: (typeof allItems)[0], newStatus: ExpressSyncStatus) => {
-    const existing = taggedItemsMap.get(item.id);
-    if (existing) {
-      updateExpressItemStatus(item.id, newStatus);
-    } else {
-      tagExpressItem({
-        id: item.id,
-        type: "ISSUE",
-        tag: customTagInput || "เบิกสินค้ารอนำเข้า Express",
-        sku: item.sku,
-        barcode: item.barcode,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        location: item.location,
-        warehouse: item.warehouse_name,
-        warehouse_code: toExpressWhCode(item.warehouse_name),
-        document_no: item.document_no,
-        document_date: item.created_at,
-        status: newStatus,
+      setToast({
+        message: "ไม่สามารถบันทึกสถานะเข้า Google Sheets ได้ ระบบจะลองใหม่อัตโนมัติ",
+        tone: "error",
       });
     }
-    refreshTaggedMap();
-    syncStatusToSheet([{ document_no: item.document_no, sku: item.sku, status: newStatus, type: "ISSUE" }]);
-  };
+  }, []);
 
-  const handleToggleStatus = (id: string) => {
-    const existing = taggedItemsMap.get(id);
-    if (!existing) return;
-    const nextStatus: ExpressSyncStatus = existing.status === "PENDING" ? "IMPORTED" : "PENDING";
-    updateExpressItemStatus(id, nextStatus);
-    refreshTaggedMap();
-    if (existing.document_no) {
-      syncStatusToSheet([{ document_no: existing.document_no, sku: existing.sku, status: nextStatus, type: "ISSUE" }]);
-    }
-  };
-
-  // Multi-Select
-  const handleSelectAll = () => {
-    if (selectedItemIds.size === filteredItems.length) {
-      setSelectedItemIds(new Set());
-    } else {
-      setSelectedItemIds(new Set(filteredItems.map((i) => i.id)));
-    }
-  };
-
-  const handleSelectItem = (id: string) => {
-    setSelectedItemIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  // Batch Actions
-  const handleBatchTag = (tagLabel: string) => {
-    const selectedItems = allItems.filter((i) => selectedItemIds.has(i.id));
-    if (selectedItems.length === 0) return;
-
-    batchTagExpressItems(
-      selectedItems.map((item) => ({
-        id: item.id,
-        type: "ISSUE",
-        tag: tagLabel || "รอนำเข้า Express",
-        sku: item.sku,
-        barcode: item.barcode,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        location: item.location,
-        warehouse: item.warehouse_name,
-        warehouse_code: toExpressWhCode(item.warehouse_name),
-        document_no: item.document_no,
-        document_date: item.created_at,
-      }))
-    );
-    setShowTagModal(false);
-  };
-
-  const handleBatchUntag = () => {
-    if (selectedItemIds.size === 0) return;
-    batchUntagExpressItems(Array.from(selectedItemIds));
-    setSelectedItemIds(new Set());
-  };
-
-  const handleBatchMarkStatus = (status: ExpressSyncStatus) => {
-    if (selectedItemIds.size === 0) return;
-    const ids = Array.from(selectedItemIds);
-    batchUpdateExpressItemStatus(ids, status);
-    refreshTaggedMap();
-    const itemsToSync = allItems
-      .filter((i) => selectedItemIds.has(i.id))
-      .map((i) => ({ document_no: i.document_no, sku: i.sku, status, type: "ISSUE" as const }));
-    syncStatusToSheet(itemsToSync);
-  };
-
-  // Generate Tab-delimited row for an item
-  const getItemExpressRowString = useCallback(
-    (item: (typeof allItems)[0]) => {
-      const parts: string[] = [];
-      if (displayFields.barcode) parts.push(item.barcode);
-      if (displayFields.productName) parts.push(item.product_name.replace(/\t/g, " "));
-      if (displayFields.warehouse) parts.push(toExpressWhCode(item.warehouse_name));
-      if (displayFields.quantity) parts.push(String(item.quantity));
-      if (displayFields.sku) parts.push(item.sku);
-      if (displayFields.location) parts.push(item.location);
-      if (displayFields.docNo) parts.push(item.document_no);
-
-      if (parts.length === 0) {
-        return `${item.barcode}\t${item.product_name.replace(/\t/g, " ")}\t${toExpressWhCode(item.warehouse_name)}\t${item.quantity}`;
+  // Update Status
+  const handleSetStatus = useCallback(
+    (item: (typeof allItems)[0], newStatus: ExpressSyncStatus) => {
+      const existing = taggedItemsMap.get(item.id);
+      if (existing) {
+        updateExpressItemStatus(item.id, newStatus);
+      } else {
+        tagExpressItem({
+          id: item.id,
+          type: "ISSUE",
+          tag: "เบิกสินค้าเข้า Express",
+          sku: item.sku,
+          barcode: item.barcode,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          location: item.location,
+          warehouse: item.warehouse_name,
+          warehouse_code: toExpressWhCode(item.warehouse_name),
+          document_no: item.document_no,
+          document_date: item.created_at,
+          status: newStatus,
+        });
       }
-      return parts.join("\t");
+      refreshTaggedMap();
+      syncStatusToSheet([{ document_no: item.document_no, sku: item.sku, status: newStatus, type: "ISSUE" }]);
     },
-    [displayFields]
+    [taggedItemsMap, refreshTaggedMap, syncStatusToSheet]
   );
 
-  // Copy Single Row with TAB separators
-  const handleCopyRow = (item: (typeof allItems)[0]) => {
-    const rowStr = getItemExpressRowString(item);
-    navigator.clipboard.writeText(rowStr);
-    setCopiedItemId(item.id);
-    setTimeout(() => setCopiedItemId(null), 2000);
-  };
-
   // Copy Single Barcode Only
-  const handleCopySingleBarcode = (code: string) => {
+  const handleCopySingleBarcode = useCallback((code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedItemSku(code);
     setTimeout(() => setCopiedItemSku(null), 2000);
+  }, []);
+
+  // ล้างตัวกรองทุกตัวในคลิกเดียว (ใช้ใน empty state)
+  const handleClearAllFilters = () => {
+    setSearchQuery("");
+    setDatePreset("ALL");
+    setSelectedWarehouse("ALL");
+    setTagFilter("ALL");
   };
 
-  // Copy All Filtered Rows
-  const handleCopyExpressData = () => {
-    if (filteredItems.length === 0) return;
-    const lines = filteredItems.map((item) => getItemExpressRowString(item));
-    const content = lines.join("\n");
-    navigator.clipboard.writeText(content);
-    setCopySuccess("คัดลอกข้อมูลทั้งหมดเรียบร้อยแล้ว!");
-    setTimeout(() => setCopySuccess(null), 3000);
-  };
+  // ── TanStack Table v8 (headless) — logic แบ่งหน้า/จัดการแถว, หน้าตาเป็น Tailwind เดิมทั้งหมด ──
+  type IssueItem = (typeof allItems)[number];
 
-  // Copy Only Selected Rows
-  const handleCopySelectedRows = () => {
-    const selectedItems = filteredItems.filter((i) => selectedItemIds.has(i.id));
-    if (selectedItems.length === 0) return;
-    const lines = selectedItems.map((item) => getItemExpressRowString(item));
-    const content = lines.join("\n");
-    navigator.clipboard.writeText(content);
-    setCopySuccess(`คัดลอกเฉพาะ ${selectedItems.length} รายการที่เลือกเรียบร้อยแล้ว!`);
-    setTimeout(() => setCopySuccess(null), 3000);
-  };
-
-  const handleDownloadExpressTxt = () => {
-    if (filteredItems.length === 0) return;
-    const headers: string[] = [];
-    if (displayFields.barcode) headers.push("บาร์โค้ด");
-    if (displayFields.productName) headers.push("ชื่อสินค้า");
-    if (displayFields.warehouse) headers.push("โกดัง");
-    if (displayFields.quantity) headers.push("จำนวน");
-    if (displayFields.sku) headers.push("รหัสสินค้า");
-    if (displayFields.location) headers.push("ตำแหน่ง");
-    if (displayFields.docNo) headers.push("เลขที่เอกสาร");
-
-    const headerLine = (headers.length > 0 ? headers.join("\t") : "บาร์โค้ด\tชื่อสินค้า\tโกดัง\tจำนวน") + "\n";
-    const body = filteredItems.map((item) => getItemExpressRowString(item)).join("\n");
-
-    const blob = new Blob([headerLine + body], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `express_issue_${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handlePrintBarcodes = () => {
-    window.print();
-  };
-
-  const toggleField = (field: keyof DisplayFields) => {
-    setDisplayFields((prev) => ({ ...prev, [field]: !prev[field] }));
-  };
-
-  return (
-    <div className="w-full max-w-full space-y-5 pb-12">
-      {/* Top Header Banner (Clean Light Style) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm print:hidden">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 font-bold flex-shrink-0">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-black text-slate-900">
-              นำเข้า Express — เบิกสินค้า
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCopyExpressData}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-            </svg>
-            <span>{copySuccess || "คัดลอกข้อมูลทั้งหมด"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadExpressTxt}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-            title="ดาวน์โหลดไฟล์ .txt สำหรับ Express"
-          >
-            <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span>ดาวน์โหลด .txt</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handlePrintBarcodes}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-          >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            <span>พิมพ์ใบสแกน</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
-              } else {
-                document.exitFullscreen().catch(() => {});
-              }
-            }}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-            title="ขยายเต็มหน้าจอ (Fullscreen)"
-          >
-            <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-            <span>เต็มจอ</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Express Tagging & Batch Stats Bar (Clean Light Theme Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
-        {/* All Items Card */}
-        <div
-          onClick={() => setTagFilter("ALL")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            tagFilter === "ALL"
-              ? "bg-slate-100 border-slate-400 shadow-sm"
-              : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 shadow-2xs"
-          }`}
-        >
-          <div className="text-xs font-bold text-slate-600">รายการเบิกทั้งหมด</div>
-          <div className="text-2xl font-black text-slate-900 mt-1 font-mono">{tagStats.total}</div>
-        </div>
-
-        {/* Pending Card */}
-        <div
-          onClick={() => setTagFilter("PENDING")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            tagFilter === "PENDING"
-              ? "bg-amber-100/70 border-amber-500 shadow-sm"
-              : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs"
-          }`}
-        >
-          <div className="text-xs font-bold text-amber-800">⏳ รอนำเข้า Express</div>
-          <div className="text-2xl font-black text-amber-900 mt-1 font-mono">{tagStats.pendingCount}</div>
-        </div>
-
-        {/* Imported Card */}
-        <div
-          onClick={() => setTagFilter("IMPORTED")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            tagFilter === "IMPORTED"
-              ? "bg-emerald-100/70 border-emerald-500 shadow-sm"
-              : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 shadow-2xs"
-          }`}
-        >
-          <div className="text-xs font-bold text-emerald-800">✅ นำเข้าแล้ว</div>
-          <div className="text-2xl font-black text-emerald-900 mt-1 font-mono">{tagStats.importedCount}</div>
-        </div>
-      </div>
-
-      {/* Filter Controls & Search (Clean Light Box) */}
-      <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3.5 shadow-2xs print:hidden">
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          {/* Search Box */}
-          <div className="sm:col-span-5 relative">
-            <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาบาร์โค้ด, SKU, สินค้า, แท็ก, โกดัง, เลขเอกสาร..."
-              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:bg-white transition-all font-medium"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-800"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Warehouse Selector */}
-          <div className="sm:col-span-3">
-            <ScrollSelect
-              value={selectedWarehouse}
-              onChange={setSelectedWarehouse}
-              options={warehouseOptions}
-              maxVisibleItems={4}
-              title="เลือกคลังสินค้า"
-              activeColor="rose"
-            />
-          </div>
-
-          {/* Day / Month / Year Dropdowns */}
-          <div className="sm:col-span-4 flex items-center gap-1.5">
-            {/* วัน (Day) */}
-            <ScrollSelect
-              value={selectedDay}
-              onChange={setSelectedDay}
-              options={dayOptions}
-              maxVisibleItems={4}
-              title="เลือกวัน"
-              activeColor="rose"
-            />
-
-            {/* เดือน (Month) */}
-            <ScrollSelect
-              value={selectedMonth}
-              onChange={setSelectedMonth}
-              options={monthOptions}
-              maxVisibleItems={4}
-              title="เลือกเดือน"
-              activeColor="rose"
-            />
-
-            {/* ปี (Year) */}
-            <ScrollSelect
-              value={selectedYear}
-              onChange={setSelectedYear}
-              options={yearOptions}
-              maxVisibleItems={4}
-              title="เลือกปี"
-              activeColor="rose"
-            />
-
-            {(selectedDay !== "ALL" || selectedMonth !== "ALL" || selectedYear !== "ALL") && (
+  const columns = useMemo<ColumnDef<IssueItem, any>[]>(
+    () => [
+      {
+        id: "no",
+        header: "ลำดับ",
+        enableSorting: false,
+        meta: { th: "text-center w-16 text-base sm:text-[17px] font-bold text-slate-900", td: "text-center" },
+        // ลำดับที่มองเห็น = ตำแหน่งในลิสต์ที่เรียงแล้ว (นับต่อเนื่องข้ามหน้า)
+        cell: ({ row, table }) => {
+          const { pageIndex, pageSize } = table.getState().pagination;
+          const visibleIndex = table.getPaginationRowModel().rows.findIndex((r) => r.id === row.id);
+          return <span className="disp text-base sm:text-[17px] font-bold num text-slate-700">{pageIndex * pageSize + visibleIndex + 1}</span>;
+        },
+      },
+      {
+        accessorKey: "document_no",
+        header: "เลขที่เอกสาร",
+        meta: { th: "text-left text-base sm:text-[17px] font-bold text-slate-900", td: "whitespace-nowrap" },
+        cell: ({ row }) => {
+          const item = row.original;
+          return (
+            <>
+              <div className="font-mono font-bold text-slate-900 text-[17px] sm:text-lg">{item.document_no}</div>
+              {item.created_at && <div className="text-base font-medium text-slate-600 font-mono mt-1">{item.created_at}</div>}
+            </>
+          );
+        },
+      },
+      {
+        id: "barcode",
+        header: "บาร์โค้ด",
+        meta: { th: "text-center text-base sm:text-[17px] font-bold text-slate-900", td: "text-center" },
+        cell: ({ row }) => {
+          const item = row.original;
+          const barcodeValue = item.barcode || item.sku;
+          const isBarcodeCopied = copiedItemSku === barcodeValue;
+          return (
+            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+              <div className="bg-white px-3 py-2 rounded-xl border border-[#D5DDD9] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <BarcodeSvg value={barcodeValue} height={48} width={1.5} fontSize={14} showText={true} />
+              </div>
               <button
                 type="button"
-                onClick={resetDateFilter}
-                aria-label="ล้างตัวกรองวันที่"
-                className="px-2.5 py-2 min-h-[42px] text-sm text-rose-600 hover:bg-rose-50 rounded-xl font-bold cursor-pointer flex-shrink-0 border border-rose-200"
-                title="ล้างตัวกรองวันที่"
+                onClick={() => handleCopySingleBarcode(barcodeValue)}
+                aria-label={`คัดลอกเลขบาร์โค้ด ${barcodeValue}`}
+                className="text-base font-bold text-[#344054] hover:text-[#053425] px-3 py-1.5 min-h-[36px] rounded-lg hover:bg-black/[.05] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 print:hidden"
+                title="คัดลอกเฉพาะเลขบาร์โค้ด"
               >
-                ✕
+                {isBarcodeCopied ? (
+                  <span className="text-[#053425] font-bold inline-flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.5l5 5L19.5 7" />
+                    </svg>
+                    คัดลอกแล้ว
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>คัดลอกเลข</span>
+                  </>
+                )}
               </button>
-            )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "sku",
+        header: "รหัสสินค้า",
+        meta: { th: "text-left text-base sm:text-[17px] font-bold text-slate-900", td: "font-mono font-bold text-slate-900 text-base sm:text-lg" },
+        cell: ({ getValue }) => getValue<string>() || "-",
+      },
+      {
+        accessorKey: "product_name",
+        header: "ชื่อสินค้า",
+        meta: { th: "min-w-[260px] text-left text-base sm:text-[17px] font-bold text-slate-900", td: "min-w-[260px] whitespace-nowrap" },
+        cell: ({ row }) => (
+          <div className="text-slate-900 font-bold text-[18px] sm:text-[19px] leading-snug" title={row.original.product_name}>
+            {row.original.product_name}
           </div>
-        </div>
-      </div>
+        ),
+      },
+      {
+        id: "warehouse",
+        header: "คลังสินค้า",
+        meta: { th: "text-center text-base sm:text-[17px] font-bold text-slate-900", td: "text-center whitespace-nowrap" },
+        // แสดงต้นทาง ➔ ปลายทางเสมอ — ถ้าไม่มีปลายทางจริงใช้ "Express" เพราะทุกรายการบนหน้านี้จะนำเข้า Express
+        cell: ({ row }) => {
+          const item = row.original;
+          return (
+            <div className="inline-flex items-center gap-2 text-slate-800 text-base sm:text-[17px] font-medium">
+              <span>{getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name)}</span>
+              <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+              <span className="font-bold text-slate-900">
+                {item.to_warehouse_name ? getWarehouseDisplayName(item.to_warehouse_name) : "Express"}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "location",
+        header: "ตำแหน่ง",
+        meta: { th: "text-center text-base sm:text-[17px] font-bold text-slate-900", td: "text-center" },
+        cell: ({ getValue }) => {
+          const val = getValue<string>();
+          const hasVal = val && val !== "-";
+          return (
+            <span className={`font-mono font-bold text-base sm:text-[17px] ${hasVal ? "text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/70" : "text-slate-400"}`}>
+              {hasVal ? val : "-"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "quantity",
+        header: "จำนวน",
+        meta: { th: "text-right text-base sm:text-[17px] font-bold text-slate-900", td: "text-right whitespace-nowrap" },
+        cell: ({ getValue }) => (
+          <>
+            <span className="disp font-black num text-slate-900 text-[24px] sm:text-[26px]">{Number(getValue()).toLocaleString()}</span>
+            <span className="font-bold text-slate-600 text-base sm:text-[17px] ml-1.5">ชิ้น</span>
+          </>
+        ),
+      },
+      {
+        id: "status",
+        header: "สถานะ Express",
+        meta: { th: "text-center text-base sm:text-[17px] font-bold text-slate-900 print:hidden", td: "text-center print:hidden" },
+        cell: ({ row }) => {
+          const item = row.original;
+          const tagged = taggedItemsMap.get(item.id);
+          const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || (item.status as ExpressSyncStatus) || "PENDING";
+          const isImported = effectiveStatus === "IMPORTED";
+          return (
+            <select
+              value={effectiveStatus}
+              onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
+              aria-label={`สถานะ Express ของเอกสาร ${item.document_no} สินค้า ${item.product_name}`}
+              className={`px-4 min-h-[46px] rounded-full text-base sm:text-[17px] font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
+                isImported
+                  ? "bg-[#DFEDE6] text-[#052B1F] border-[#8FB3A3] hover:bg-[#C9DFD4]/60"
+                  : "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200/60"
+              }`}
+            >
+              <option value="PENDING">รอนำเข้า</option>
+              <option value="IMPORTED">นำเข้าแล้ว</option>
+            </select>
+          );
+        },
+      },
+    ],
+    [taggedItemsMap, copiedItemSku, handleSetStatus, handleCopySingleBarcode]
+  );
 
-      {/* Main Items Content (Clean Light Card Design) */}
+  const table = useReactTable({
+    data: filteredItems,
+    columns,
+    state: {
+      pagination: { pageIndex: currentPage - 1, pageSize },
+      sorting,
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater({ pageIndex: currentPage - 1, pageSize }) : updater;
+      setPage(next.pageIndex + 1);
+      setPageSize(next.pageSize);
+    },
+    onSortingChange: (updater) => {
+      setSorting(updater);
+      setPage(1); // เรียงใหม่เมื่อไหร่กลับไปหน้า 1
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    // คุมการกลับหน้า 1 เองผ่าน useEffect ตัวกรอง (กัน polling เปลี่ยนข้อมูลแล้วหน้ากระโดด)
+    autoResetPageIndex: false,
+  });
+
+  return (
+    <div className="w-full max-w-full space-y-4 sm:space-y-5 pb-12">
+      <ExpressToast toast={toast} onClose={() => setToast(null)} />
+      <ExpressImportWorkspaceHeader
+        mode="issue"
+        loading={loading}
+        totalCount={tagStats.total}
+        pendingCount={tagStats.pendingCount}
+        importedCount={tagStats.importedCount}
+        visibleCount={filteredItems.length}
+        statusFilter={tagFilter}
+        onStatusFilterChange={setTagFilter}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        selectedWarehouse={selectedWarehouse}
+        onWarehouseChange={setSelectedWarehouse}
+        warehouseOptions={warehouseOptions}
+        datePreset={datePreset}
+        onDatePresetChange={setDatePreset}
+        hasActiveFilters={Boolean(searchQuery.trim()) || selectedWarehouse !== "ALL" || datePreset !== "TODAY" || tagFilter !== "ALL"}
+        onClearFilters={handleClearAllFilters}
+      />
+
+      {/* เนื้อหาหลัก */}
       <div className="space-y-4">
-        {/* Printable Header */}
+        {/* หัวกระดาษเมื่อพิมพ์ */}
         <div className="hidden print:block text-center mb-6 pb-3 border-b-2 border-black">
           <h1 className="text-xl font-bold text-black">ใบสแกนบาร์โค้ดเบิกสินค้า — Express ERP</h1>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             วันที่พิมพ์: {new Date().toLocaleDateString("th-TH")} | รวม {filteredItems.length} รายการ
           </p>
         </div>
 
+        {/* แบนเนอร์ข้อผิดพลาด — รอบดึงข้อมูลล่าสุดล้มเหลว (ซ่อนระหว่างโหลดซ้ำ และหายเองเมื่อรอบถัดไปสำเร็จ) */}
+        {fetchError && !loading && (
+          <div
+            role="alert"
+            className="bg-white rounded-[20px] border border-[#F3C4BA] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 print:hidden"
+          >
+            <div className="flex items-center gap-2.5 text-[#9B1C1C]">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4M12 17h.01" />
+              </svg>
+              <p className="text-sm font-bold">โหลดข้อมูลไม่สำเร็จ — ตรวจการเชื่อมต่อแล้วลองใหม่</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => pollingFetch(true)}
+              className="min-h-[44px] px-4 rounded-xl border border-[#E8B7AC] bg-white text-[#9B1C1C] text-sm font-bold hover:bg-[#FDF3F1] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
+              </svg>
+              ลองใหม่
+            </button>
+          </div>
+        )}
+
         {loading ? (
-          <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-sm">
-            <div className="w-8 h-8 border-3 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-600 text-sm font-medium">กำลังโหลดข้อมูลรายการเบิกสินค้า...</p>
+          <div
+            className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] overflow-hidden"
+            aria-busy="true"
+            aria-label="กำลังโหลดรายการเบิกสินค้า"
+          >
+            <div className="bg-slate-50 border-b border-[#E8ECEA] px-4 py-3.5 flex items-center gap-4">
+              <div className="skeleton h-4 w-8 shrink-0" />
+              <div className="skeleton h-4 w-28 hidden sm:block" />
+              <div className="skeleton h-4 w-20 mx-auto hidden md:block" />
+              <div className="skeleton h-4 w-24 hidden lg:block" />
+              <div className="skeleton h-4 w-20 ml-auto" />
+            </div>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="px-4 py-[21px] border-b border-[#EEF1EF] last:border-b-0 flex items-center gap-4">
+                <div className="skeleton h-4 w-8 shrink-0" />
+                <div className="skeleton h-4 w-36 hidden sm:block" />
+                <div className="skeleton h-10 w-24 shrink-0" />
+                <div className="skeleton h-4 flex-1 min-w-[80px] max-w-[240px]" />
+                <div className="skeleton h-7 w-28 ml-auto shrink-0 hidden sm:block" />
+              </div>
+            ))}
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-2xl p-16 text-center border border-slate-200 bg-white shadow-sm">
-            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
+          allItems.length === 0 ? (
+            /* ไม่มีข้อมูลจากระบบเลย — แยกกรณีคลังที่กรองไว้ (มีทางออก) กับไม่มีข้อมูลจริง */
+            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-black/[.04] flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M3.5 7.5L12 12l8.5-4.5M12 12v9" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-slate-800">ยังไม่มีรายการเบิก</h3>
+              {selectedWarehouse !== "ALL" ? (
+                <>
+                  <p className="text-sm text-slate-500 mt-1">ไม่พบรายการในคลังที่เลือก — ลองดูทุกคลังสินค้า</p>
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    className="min-h-[44px] px-5 mt-4 rounded-xl border border-[#D5DDD9] bg-white text-[15px] font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                  >
+                    ล้างตัวกรอง
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500 mt-1">รายการจะแสดงที่นี่เมื่อมีการบันทึกเบิกสินค้าในระบบ</p>
+              )}
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">ไม่พบรายการเบิกสินค้าที่ตรงกับเงื่อนไข</h3>
-            <p className="text-slate-500 text-xs sm:text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาหรือตัวกรองแท็ก</p>
-          </div>
+          ) : tagFilter === "PENDING" && !searchQuery.trim() ? (
+            /* กรอง "รอนำเข้า" แล้วว่าง = นำเข้าครบแล้ว */
+            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-[#EAF2EE] border border-[#C9DFD4] flex items-center justify-center mx-auto mb-3 text-[#053425]">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12.5l5 5L19.5 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-slate-800">นำเข้าครบแล้ว</h3>
+              <p className="text-sm text-slate-500 mt-1 mb-4">ทุกรายการในช่วงเวลานี้นำเข้า Express เรียบร้อย</p>
+              <button
+                type="button"
+                onClick={() => setTagFilter("ALL")}
+                className="min-h-[44px] px-5 rounded-xl border border-[#D5DDD9] bg-white text-[15px] font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+              >
+                ดูทั้งหมด
+              </button>
+            </div>
+          ) : (
+            /* ค้นหา/กรองแล้วไม่เจอ */
+            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-black/[.04] flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-slate-800 mb-4">
+                {searchQuery.trim() ? `ไม่พบ "${searchQuery.trim()}"` : "ไม่พบรายการที่ตรงกับตัวกรอง"}
+              </h3>
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="min-h-[44px] px-5 rounded-xl border border-[#D5DDD9] bg-white text-[15px] font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+              >
+                ล้างตัวกรอง
+              </button>
+            </div>
+          )
         ) : (
-          /* Table View */
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden print:border-black">
+          /* ตารางรายการเบิก */
+          <div className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] overflow-hidden print:rounded-none print:shadow-none print:border-black">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/95 border-b border-slate-200 text-slate-700 text-sm font-bold tracking-normal print:bg-white">
-                    <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-slate-700">ลำดับ</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">เลขที่เอกสาร</th>
-                    <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">รหัสสินค้า</th>
-                    <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-slate-700">ชื่อสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">คลังสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
-                    <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
-                    <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-slate-700">สถานะ Express</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
-                  {filteredItems.map((item, idx) => {
-                    const barcodeValue = item.barcode || item.sku;
-                    const isRowCopied = copiedItemId === item.id;
-                    const isBarcodeCopied = copiedItemSku === barcodeValue;
-                    const isSelected = selectedItemIds.has(item.id);
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="bg-slate-50 hover:bg-slate-50 border-b border-[#E8ECEA] print:bg-white"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={(header.column.columnDef.meta as { th?: string } | undefined)?.th ?? ""}
+                        >
+                          {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className="inline-flex items-center gap-1 transition-colors hover:text-slate-900 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425]"
+                              title="คลิกเพื่อเรียงข้อมูล"
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              <SortIcon dir={header.column.getIsSorted()} />
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody className="text-base">
+                  {table.getRowModel().rows.map((row) => {
+                    const item = row.original;
                     const tagged = taggedItemsMap.get(item.id);
                     const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || (item.status as ExpressSyncStatus) || "PENDING";
                     const isImported = effectiveStatus === "IMPORTED";
 
                     return (
-                      <tr
-                        key={`${item.id}-${idx}`}
-                        className={`transition-colors border-b ${
-                          isImported
-                            ? "!bg-emerald-100 hover:!bg-emerald-200/80 border-emerald-300"
-                            : isSelected
-                            ? "bg-rose-50/50 hover:bg-rose-100/50 border-slate-100"
-                            : "hover:bg-slate-50/90 border-slate-100"
-                        }`}
+                      <TableRow
+                        key={row.id}
+                        className={isImported ? "bg-[#EAF2EE] border-[#C9DFD4] hover:bg-[#DFEDE6]/70" : undefined}
                       >
-                        {/* 1. ลำดับ */}
-                        <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-emerald-100" : ""}`}>
-                          {idx + 1}
-                        </td>
-
-                        {/* 2. เลขที่เอกสาร */}
-                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <div className="font-mono font-bold text-slate-900 text-sm">
-                            {item.document_no}
-                          </div>
-                          {item.created_at && (
-                            <div className="text-xs text-slate-400 font-mono mt-0.5">
-                              {item.created_at}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* 3. บาร์โค้ด (รูปบาร์โค้ด) */}
-                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <div className="flex flex-col items-center justify-center gap-1">
-                            <BarcodeSvg
-                              value={barcodeValue}
-                              height={40}
-                              width={1.4}
-                              fontSize={12}
-                              showText={true}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleCopySingleBarcode(barcodeValue)}
-                              className="text-xs font-mono text-slate-500 hover:text-rose-600 px-2 py-0.5 rounded hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-1 print:hidden"
-                              title="คัดลอกเฉพาะเลขบาร์โค้ด"
-                            >
-                              {isBarcodeCopied ? (
-                                <span className="text-emerald-600 font-bold">✓ คัดลอกแล้ว</span>
-                              ) : (
-                                <>
-                                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                  </svg>
-                                  <span>คัดลอกเลข</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* 4. รหัสสินค้า */}
-                        <td className={`py-3 px-3 whitespace-nowrap font-mono font-bold text-slate-900 text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          {item.sku || "-"}
-                        </td>
-
-                        {/* 5. ชื่อสินค้า */}
-                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <div className="text-slate-900 font-semibold text-sm leading-snug" title={item.product_name}>
-                            {item.product_name}
-                          </div>
-                        </td>
-
-                        {/* 6. คลังสินค้า — แสดงต้นทาง ➔ ปลายทางเสมอ
-                            ถ้าไม่มีข้อมูลปลายทางจริง ใช้ "Express" เพราะทุกรายการบนหน้านี้คือของที่จะนำเข้า Express */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <div className="inline-flex items-center gap-1.5 text-slate-800 font-medium">
-                            <span>{getWarehouseDisplayName(item.from_warehouse_name || item.warehouse_name)}</span>
-                            <span className="text-slate-400 font-bold">➔</span>
-                            <span className="font-bold text-slate-900">
-                              {item.to_warehouse_name ? getWarehouseDisplayName(item.to_warehouse_name) : "Express"}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* 7. ตำแหน่ง */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <span className="font-mono font-bold text-slate-800 text-sm">
-                            {item.location && item.location !== "-" ? item.location : "-"}
-                          </span>
-                        </td>
-
-                        {/* 8. จำนวน */}
-                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <span className="font-mono font-bold text-slate-900 text-base">
-                            {item.quantity.toLocaleString()} <span className="font-normal text-slate-500 text-xs">ชิ้น</span>
-                          </span>
-                        </td>
-
-                        {/* 8. สถานะ Express */}
-                        <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-emerald-100" : ""}`}>
-                          <select
-                            value={effectiveStatus}
-                            onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
-                              isImported
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
-                            }`}
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={(cell.column.columnDef.meta as { td?: string } | undefined)?.td ?? ""}
                           >
-                            <option value="PENDING">⏳ รอนำเข้า</option>
-                            <option value="IMPORTED">✅ นำเข้าแล้ว</option>
-                          </select>
-                        </td>
-                      </tr>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
+
+            {/* แบ่งหน้า — แสดงเมื่อมีมากกว่า 1 หน้า */}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[#EEF1EF] print:hidden">
+                <p className="text-base font-semibold text-slate-700">
+                  แสดง {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredItems.length)} จาก{" "}
+                  {filteredItems.length.toLocaleString()} รายการ
+                </p>
+                <nav className="flex flex-wrap items-center gap-1.5" aria-label="แบ่งหน้ารายการ">
+                  <label className="flex items-center gap-2 text-base font-semibold text-slate-700 mr-2">
+                    แถว/หน้า
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="min-h-[44px] px-3 rounded-xl text-base font-bold border border-[#E8ECEA] bg-white text-slate-800 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425]"
+                    >
+                      {[10, 20, 50, 100].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                  >
+                    ‹ ก่อนหน้า
+                  </button>
+                  {pageWindow[0] > 1 && (
+                    <>
+                      <button type="button" onClick={() => setPage(1)} className={pageBtnClass(false)}>1</button>
+                      {pageWindow[0] > 2 && <span className="px-1 text-slate-400" aria-hidden="true">…</span>}
+                    </>
+                  )}
+                  {pageWindow.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                      className={pageBtnClass(p === currentPage)}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  {pageWindow[pageWindow.length - 1] < totalPages && (
+                    <>
+                      {pageWindow[pageWindow.length - 1] < totalPages - 1 && (
+                        <span className="px-1 text-slate-400" aria-hidden="true">…</span>
+                      )}
+                      <button type="button" onClick={() => setPage(totalPages)} className={pageBtnClass(false)}>
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                  >
+                    ถัดไป ›
+                  </button>
+                </nav>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Batch Tag Input Modal (Clean Light Design) */}
-      {showTagModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>🏷️ กำหนดชื่อแท็กสำหรับ Express</span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
-                {selectedItemIds.size} รายการ
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              ระบุชื่อแท็กหรือกลุ่มข้อมูลสำหรับจัดเก็บรายการเบิกสินค้านี้ เช่น &quot;เบิกส่งลูกค้า A&quot;, &quot;ล็อตบ่าย&quot;
-            </p>
-
-            <input
-              type="text"
-              value={customTagInput}
-              onChange={(e) => setCustomTagInput(e.target.value)}
-              placeholder="ระบุชื่อแท็ก..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:bg-white"
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowTagModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBatchTag(customTagInput)}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm cursor-pointer"
-              >
-                บันทึกแท็ก
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

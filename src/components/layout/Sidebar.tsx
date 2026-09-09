@@ -4,16 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { navItems, getNavItems, type NavItem } from "@/lib/nav-items";
+import { getNavItems, type NavItem } from "@/lib/nav-items";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
   getPendingTransferNotifications,
-  getTransferNotifications,
-  saveTransferNotification,
-  markTransferCompleted,
-  isTransferCompleted,
-  getDisplayProductName,
   purgeInvalidNotifications,
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
@@ -27,31 +22,75 @@ const roleLabel: Record<UserRole, string> = {
   VIEWER: "ผู้ดูข้อมูล",
 };
 
+// ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
+const OPERATION_ORDER = [
+  "/movements/receive",
+  "/movements/transfer",
+  "/movements/move",
+  "/production",
+  "/stock-counts",
+  "/movements/receive/history",
+  "/movements/transfer/history",
+  "/production/history",
+  "/movements/history",
+];
+const byOperationOrder = (a: NavItem, b: NavItem) => {
+  const ia = OPERATION_ORDER.indexOf(a.href);
+  const ib = OPERATION_ORDER.indexOf(b.href);
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+};
+
+function GroupLabel({ label }: { label: string }) {
+  return (
+    <p className="hidden lg:block px-3 pt-5 pb-1.5 text-[11px] 2xl:text-xs font-medium uppercase tracking-wider text-(--sidebar-text-muted)">
+      {label}
+    </p>
+  );
+}
+
+function NavRow({
+  item,
+  active,
+  badge,
+}: {
+  item: NavItem;
+  active: boolean;
+  badge?: number;
+}) {
+  const showBadge = badge !== undefined && Number(badge) > 0;
+  return (
+    <Link
+      href={item.href}
+      title={item.label}
+      aria-current={active ? "page" : undefined}
+      className={`sidebar-link relative flex h-10 2xl:h-12 items-center gap-3 rounded-xl px-3 text-sm 2xl:text-base cursor-pointer transition-colors duration-150 justify-center lg:justify-start ${
+        active ? "is-active font-semibold" : "font-medium"
+      }`}
+    >
+      <span className="nav-icon shrink-0 2xl:[&_svg]:size-5">
+        {item.icon}
+      </span>
+      <span className="truncate opacity-0 w-0 lg:opacity-100 lg:w-auto transition-all duration-200">
+        {item.label}
+      </span>
+      {showBadge && (
+        <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 grid place-items-center rounded-full bg-(--sidebar-active-bg) text-(--sidebar-active-text) font-semibold text-[10px] num lg:static lg:ml-auto lg:h-5 lg:min-w-5 lg:px-1.5 lg:text-[11px] 2xl:h-6 2xl:min-w-6 2xl:px-2 2xl:text-xs">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default function Sidebar({
   role: initialRole,
   userName: initialName,
-  collapsed = false,
-  onToggle,
 }: {
   role: UserRole;
   userName?: string;
-  collapsed?: boolean;
-  onToggle?: () => void;
 }) {
   const pathname = usePathname();
   const { user: tabUser, logout: tabLogout } = useTabAuth();
-
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    overview: true,
-    management: true,
-    movements: true,
-    system: true,
-    express: true,
-  });
-
-  const toggleSection = (sectionKey: string) => {
-    setOpenSections((prev) => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
-  };
 
   const [pendingTransferCount, setPendingTransferCount] = useState<number>(() => {
     purgeInvalidNotifications();
@@ -96,15 +135,18 @@ export default function Sidebar({
     };
   }, [updateCount]);
 
-  // Fetch pending approval count for Admin
+  // จำนวนรออนุมัติสำหรับแอดมิน (เติมเต็ม badge เมนู + กระดิ่งใน header)
   useEffect(() => {
     if (role === "ADMIN") {
       const fetchPending = () => {
-        fetch(`/api/approvals?status=PENDING&_t=${Date.now()}`, { cache: "no-store" })
+        fetch(`/api/approvals?status=PENDING`, { cache: "no-store" })
           .then((r) => r.json())
           .then((res) => {
             if (res.success && Array.isArray(res.data)) {
               setPendingApprovalCount(res.data.length);
+              window.dispatchEvent(
+                new CustomEvent("stockify-pending-approvals", { detail: res.data.length })
+              );
             }
           })
           .catch(() => {});
@@ -126,282 +168,117 @@ export default function Sidebar({
   const inventoryNav = visibleItems.filter((i) =>
     ["/products", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr"].includes(i.href)
   );
-  const movementNav = visibleItems.filter((i) =>
-    [
-      "/movements/receive",
-      "/movements/receive/history",
-      "/production",
-      "/production/history",
-      "/movements/transfer",
-      "/movements/transfer/history",
-      "/movements/move",
-      "/staff/receive",
-      "/staff/transfer",
-      "/staff/move",
-      "/stock-counts",
-      "/movements/history",
-    ].includes(i.href)
-  );
+  const movementNav = visibleItems
+    .filter((i) =>
+      [
+        "/movements/receive",
+        "/movements/transfer",
+        "/movements/move",
+        "/production",
+        "/movements/receive/history",
+        "/movements/transfer/history",
+        "/production/history",
+        "/movements/history",
+        "/staff/receive",
+        "/staff/transfer",
+        "/staff/move",
+        "/stock-counts",
+      ].includes(i.href)
+    )
+    .sort(byOperationOrder);
   const systemNav = visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href));
   const expressNav = visibleItems.filter((i) =>
     ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
   );
 
+  const badgeFor = (href: string): number | undefined => {
+    if (href === "/approvals" && pendingApprovalCount > 0) return pendingApprovalCount;
+    if (href === "/movements/transfer" && pendingTransferCount > 0 && role !== "ADMIN") return pendingTransferCount;
+    if (href === "/express-import/receive" && expressTagCounts.receive > 0) return expressTagCounts.receive;
+    if (href === "/express-import/transfer" && expressTagCounts.transfer > 0) return expressTagCounts.transfer;
+    if (href === "/express-import/issue" && expressTagCounts.issue > 0) return expressTagCounts.issue;
+    return undefined;
+  };
+
+  const userInitial = (userName || "ผู้ใช้").trim().charAt(0);
+  const userDisplayName = userName || "ผู้ใช้ระบบ";
+
+  const isActiveRoute = (item: NavItem) =>
+    pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+  const renderRows = (items: NavItem[]) =>
+    items.map((item) => (
+      <NavRow key={item.href} item={item} active={isActiveRoute(item)} badge={badgeFor(item.href)} />
+    ));
+
   return (
-    <aside
-      className={`hidden md:flex flex-shrink-0 flex-col bg-slate-900 border-r border-slate-800 text-white select-none shadow-xl transition-all duration-300 ease-in-out ${
-        collapsed ? "w-0 overflow-hidden border-r-0 opacity-0 pointer-events-none" : "w-64 sm:w-72 opacity-100"
-      }`}
-    >
-      {/* Brand Header */}
-      <div className="flex items-center px-4 sm:px-5 h-16 sm:h-18 border-b border-slate-800/90 bg-slate-900/95 shrink-0">
-        <Link href="/dashboard" className="flex items-center group">
-          <img
-            src="/logo.png"
-            alt="A'AMAZON Logo"
-            className="h-10 sm:h-11 md:h-12 w-auto object-contain max-w-[220px] transition-transform duration-200 group-hover:scale-105"
-          />
-        </Link>
+    <aside className="relative hidden md:flex flex-col bg-(--sidebar-surface) text-(--sidebar-text) select-none overflow-x-visible w-[72px] lg:w-64 2xl:w-80 shrink-0 transition-[width] duration-300 ease-in-out border-r border-(--sidebar-edge)">
+      {/* Brand — ความสูงผูกกับ --header-height เพื่อให้เส้นขอบล่างตรงกับ Top Navbar */}
+      <div className="flex h-(--header-height) items-center justify-center border-b border-(--sidebar-divider) shrink-0 overflow-hidden">
+        <img
+          src="/logo.png"
+          alt="Stockify"
+          className="hidden lg:block h-12 2xl:h-14 w-auto object-contain max-w-[220px]"
+        />
+        <img
+          src="/logo-vertical.png"
+          alt="Stockify"
+          className="lg:hidden h-11 w-auto object-contain"
+        />
       </div>
 
-      {/* Nav Menu List */}
-      <nav className="flex-1 px-3 py-3 space-y-3.5 overflow-y-auto overscroll-contain">
-        {/* Overview Section */}
-        {mainNav.length > 0 && (
-          <div>
-            <SectionHeader
-              title="ภาพรวม (Overview)"
-              isOpen={openSections.overview}
-              onToggle={() => toggleSection("overview")}
-            />
-            {openSections.overview && (
-              <div className="space-y-1 mt-1">
-                {mainNav.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                  return (
-                    <MinimalNavItem
-                      key={item.href}
-                      item={item}
-                      isActive={isActive}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2.5 lg:px-3.5 py-3">
+        <GroupLabel label="ภาพรวม" />
+        <div className="flex flex-col gap-1">{renderRows(mainNav)}</div>
 
-        {/* Management (คลังสินค้า) Section */}
-        {inventoryNav.length > 0 && (
-          <div>
-            <SectionHeader
-              title="คลังสินค้า (Inventory)"
-              isOpen={openSections.management}
-              onToggle={() => toggleSection("management")}
-            />
-            {openSections.management && (
-              <div className="space-y-1 mt-1">
-                {inventoryNav.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                  const badge =
-                    item.href === "/approvals" && pendingApprovalCount > 0
-                      ? pendingApprovalCount
-                      : undefined;
-                  return (
-                    <MinimalNavItem
-                      key={item.href}
-                      item={item}
-                      isActive={isActive}
-                      badge={badge}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        <GroupLabel label="คลังสินค้า" />
+        <div className="flex flex-col gap-1">{renderRows(inventoryNav)}</div>
 
-        {/* Transactions (การทำรายการ) Section */}
-        {movementNav.length > 0 && (
-          <div>
-            <SectionHeader
-              title="การทำรายการ (Operations)"
-              isOpen={openSections.movements}
-              onToggle={() => toggleSection("movements")}
-            />
-            {openSections.movements && (
-              <div className="space-y-1 mt-1">
-                {movementNav.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                  const showBadge = item.href === "/movements/transfer" && pendingTransferCount > 0 && role !== "ADMIN";
-                  return (
-                    <MinimalNavItem
-                      key={item.href}
-                      item={item}
-                      isActive={isActive}
-                      badge={showBadge ? pendingTransferCount : undefined}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        <GroupLabel label="การทำรายการ" />
+        <div className="flex flex-col gap-1">{renderRows(movementNav)}</div>
 
-        {/* System (ระบบและการตั้งค่า) Section */}
-        {systemNav.length > 0 && (
-          <div>
-            <SectionHeader
-              title="ระบบและการตั้งค่า (System)"
-              isOpen={openSections.system}
-              onToggle={() => toggleSection("system")}
-            />
-            {openSections.system && (
-              <div className="space-y-1 mt-1">
-                {systemNav.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                  return (
-                    <MinimalNavItem
-                      key={item.href}
-                      item={item}
-                      isActive={isActive}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Express (นำเข้า Express) Section */}
-        {role === "ADMIN" && expressNav.length > 0 && (
-          <div>
-            <SectionHeader
-              title="นำเข้า Express (Express)"
-              isOpen={openSections.express}
-              onToggle={() => toggleSection("express")}
-            />
-            {openSections.express && (
-              <div className="space-y-1 mt-1">
-                {expressNav.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                  const badge =
-                    item.href === "/express-import/receive" && expressTagCounts.receive > 0
-                      ? expressTagCounts.receive
-                      : item.href === "/express-import/transfer" && expressTagCounts.transfer > 0
-                      ? expressTagCounts.transfer
-                      : item.href === "/express-import/issue" && expressTagCounts.issue > 0
-                      ? expressTagCounts.issue
-                      : undefined;
-                  return (
-                    <MinimalNavItem
-                      key={item.href}
-                      item={item}
-                      isActive={isActive}
-                      badge={badge}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        {role === "ADMIN" && (
+          <>
+            <GroupLabel label="นำเข้า Express" />
+            <div className="flex flex-col gap-1">{renderRows(expressNav)}</div>
+          </>
         )}
       </nav>
 
-      {/* Footer System Status Badge */}
-      <div className="p-3 border-t border-slate-800/90 bg-slate-900/60 shrink-0">
-        <div className="px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      {/* Bottom: ระบบ + โปรไฟล์ */}
+      <div className="border-t border-(--sidebar-divider) shrink-0 px-2.5 lg:px-3.5 py-3">
+        <div className="hidden lg:block">
+          <GroupLabel label="ระบบ" />
+        </div>
+        <div className="flex flex-col gap-1">{renderRows(systemNav)}</div>
+        <div className="border-t border-(--sidebar-divider) mt-3 pt-3">
+          <div className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-(--sidebar-item-bg-hover) justify-center lg:justify-start">
+            <span className="size-9 2xl:size-10 rounded-full bg-(--sidebar-active-bg) grid place-items-center text-sm 2xl:text-base font-bold text-(--sidebar-active-text) shrink-0">
+              {userInitial}
             </span>
-            <span className="font-medium text-slate-300">ระบบออนไลน์</span>
+            <div className="hidden lg:flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm 2xl:text-base font-medium leading-tight text-(--sidebar-text-hover)">
+                {userDisplayName}
+              </span>
+              <span className="truncate text-xs 2xl:text-sm text-(--sidebar-text-muted)">{roleLabel[role]}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => tabLogout()}
+              title="ออกจากระบบ"
+              aria-label="ออกจากระบบ"
+              className="hidden lg:grid shrink-0 place-items-center size-8 rounded-lg text-(--sidebar-text-muted) hover:text-(--sidebar-text-hover) hover:bg-(--sidebar-item-bg-hover) transition-colors duration-150 cursor-pointer"
+            >
+              <svg style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+              </svg>
+            </button>
           </div>
-          <span className="font-mono text-[10px] text-slate-500 font-semibold">v0.2.0</span>
         </div>
       </div>
     </aside>
-  );
-}
-
-function SectionHeader({
-  title,
-  isOpen,
-  onToggle,
-}: {
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="w-full text-left text-[11px] font-semibold text-slate-400 px-3 py-1.5 flex items-center justify-between group hover:text-slate-200 transition-colors cursor-pointer"
-    >
-      <span className="tracking-wider">{title}</span>
-      <svg
-        className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
-          isOpen ? "rotate-180" : ""
-        }`}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-  );
-}
-
-function MinimalNavItem({
-  item,
-  isActive,
-  badge,
-}: {
-  item: NavItem;
-  isActive: boolean;
-  badge?: number | string;
-}) {
-  return (
-    <Link
-      href={item.href}
-      className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-        isActive
-          ? "bg-emerald-500/12 text-emerald-400 font-semibold border border-emerald-500/25 shadow-xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-emerald-400"
-          : "text-slate-300 hover:bg-slate-800/70 hover:text-white font-medium"
-      }`}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span
-          className={`flex-shrink-0 transition-colors ${
-            isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-200"
-          }`}
-        >
-          {item.icon}
-        </span>
-        <span className="truncate">{item.label}</span>
-      </div>
-
-      {badge !== undefined && Number(badge) > 0 ? (
-        <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-white font-bold text-[10px] shadow-xs animate-pulse">
-          {badge}
-        </span>
-      ) : (
-        <svg
-          className={`w-3.5 h-3.5 transition-all ${
-            isActive
-              ? "text-emerald-400 opacity-100 translate-x-0"
-              : "text-slate-500 opacity-0 -translate-x-1 group-hover:opacity-60 group-hover:translate-x-0"
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      )}
-    </Link>
   );
 }

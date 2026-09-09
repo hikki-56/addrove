@@ -15,6 +15,11 @@ function matchSku(sku1?: string, sku2?: string): boolean {
   return s1 === s2;
 }
 
+/** Normalize warehouse ids so "wh-01" and "wh-1" compare equal without fuzzy endsWith */
+function normalizeWhKey(whId?: string): string {
+  return (whId || "").trim().toLowerCase().replace(/^wh-0*(\d+)$/, "wh-$1");
+}
+
 function cleanLocCode(loc?: string): string {
   if (!loc) return "";
   return loc
@@ -177,6 +182,10 @@ export class SheetsStockMovementRepository
         m.sku.toLowerCase().includes(filters.sku!.toLowerCase())
       );
     }
+    if (filters.product_id) {
+      // ค้นจาก product_id ในแถว movement โดยตรง — ครอบคลุมสินค้าที่ไม่มีใน master sheet
+      movements = movements.filter((m) => matchSku(m.product_id, filters.product_id!));
+    }
     if (filters.product_name) {
       movements = movements.filter((m) =>
         m.product_name.toLowerCase().includes(filters.product_name!.toLowerCase())
@@ -215,7 +224,7 @@ export class SheetsStockMovementRepository
     locationId: string
   ): Promise<number> {
     const cleanPid = (productId || "").trim().toLowerCase();
-    const cleanWhId = (warehouseId || "").trim().toLowerCase();
+    const cleanWhId = normalizeWhKey(warehouseId);
     const cleanLocId = (locationId || "").trim().toLowerCase();
     const normTargetLoc = cleanLocCode(locationId);
     const normTargetSku = cleanSkuCode(productId);
@@ -228,7 +237,9 @@ export class SheetsStockMovementRepository
       readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []),
     ]);
 
-    // 1. Primary Source of Truth: Physical warehouse sheet
+    // 1. Physical warehouse sheet — strict location equality on cleaned codes.
+    // Fuzzy includes/endsWith matched "A1" against "14A1" and let staff move stock
+    // they never had; the physical sheet is only a fallback source, not an inflater.
     let sheetLocBal = 0;
     let sheetSkuTotal = 0;
     if (whRows && whRows.length > 0) {
@@ -254,24 +265,17 @@ export class SheetsStockMovementRepository
         sheetSkuTotal += qty;
 
         const rowLoc = cleanLocCode(r[6] || "");
-        const isLocMatch =
-          !normTargetLoc ||
-          !rowLoc ||
-          rowLoc === normTargetLoc ||
-          rowLoc.includes(normTargetLoc) ||
-          normTargetLoc.includes(rowLoc);
-
-        if (isLocMatch) {
+        if (normTargetLoc && rowLoc && rowLoc === normTargetLoc) {
           sheetLocBal += qty;
         }
       }
     }
 
-    // 2. Secondary check: StockMovements
+    // 2. StockMovements ledger — strict id equality (wh/loc normalized)
     const movBalance = (movRows || [])
       .filter((r) => {
         const rowPid = (r[2] || "").trim().toLowerCase();
-        const rowWhId = (r[3] || "").trim().toLowerCase();
+        const rowWhId = normalizeWhKey(r[3] || "");
         const rowLocId = (r[4] || "").trim().toLowerCase();
 
         const pidMatch =
@@ -279,25 +283,18 @@ export class SheetsStockMovementRepository
           rowPid === cleanPid.replace(/^prod-/, "") ||
           cleanPid === rowPid.replace(/^prod-/, "") ||
           matchSku(rowPid, productId);
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-        const locMatch =
-          !cleanLocId ||
-          rowLocId === cleanLocId ||
-          rowLocId.endsWith(cleanLocId) ||
-          cleanLocId.endsWith(rowLocId);
+        const whMatch = rowWhId === cleanWhId;
+        const locMatch = !cleanLocId || rowLocId === cleanLocId;
 
         return pidMatch && whMatch && locMatch;
       })
       .reduce((sum, r) => sum + (parseFloat(r[5]) || 0), 0);
 
-    // 3. Tertiary check: StockSummary
+    // 3. StockSummary — strict id equality (wh/loc normalized)
     const summaryBalance = (summaryRows || [])
       .filter((r) => {
         const rowPid = (r[0] || "").trim().toLowerCase();
-        const rowWhId = (r[1] || "").trim().toLowerCase();
+        const rowWhId = normalizeWhKey(r[1] || "");
         const rowLocId = (r[2] || "").trim().toLowerCase();
 
         const pidMatch =
@@ -305,23 +302,22 @@ export class SheetsStockMovementRepository
           rowPid === cleanPid.replace(/^prod-/, "") ||
           cleanPid === rowPid.replace(/^prod-/, "") ||
           matchSku(rowPid, productId);
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
-        const locMatch =
-          !cleanLocId ||
-          rowLocId === cleanLocId ||
-          rowLocId.endsWith(cleanLocId) ||
-          cleanLocId.endsWith(rowLocId);
+        const whMatch = rowWhId === cleanWhId;
+        const locMatch = !cleanLocId || rowLocId === cleanLocId;
 
         return pidMatch && whMatch && locMatch;
       })
       .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
 
-    const maxLocBalance = Math.max(sheetLocBal, movBalance, summaryBalance);
-    if (maxLocBalance > 0) return maxLocBalance;
-    if (sheetSkuTotal > 0) return sheetSkuTotal;
+    // Source-of-truth priority instead of Math.max: summary (maintained by atomic
+    // operations) → movements ledger → physical sheet. A higher number in a weaker
+    // source must never inflate the balance of a location.
+    if (summaryBalance !== 0) return summaryBalance;
+    if (movBalance !== 0) return movBalance;
+    if (sheetLocBal !== 0) return sheetLocBal;
+    // Last resort: the SKU exists in the physical sheet but with a different/blank
+    // location label — expose the warehouse total rather than silently reporting 0
+    if (sheetSkuTotal > 0 && !normTargetLoc) return sheetSkuTotal;
 
     return 0;
   }
@@ -331,7 +327,7 @@ export class SheetsStockMovementRepository
     warehouseId: string
   ): Promise<number> {
     const cleanPid = (productId || "").trim().toLowerCase();
-    const cleanWhId = (warehouseId || "").trim().toLowerCase();
+    const cleanWhId = normalizeWhKey(warehouseId);
     const normTargetSku = cleanSkuCode(productId);
 
     // Concurrently fetch all 3 sources of truth in parallel
@@ -379,10 +375,7 @@ export class SheetsStockMovementRepository
           rowPid === cleanPid.replace(/^prod-/, "") ||
           cleanPid === rowPid.replace(/^prod-/, "") ||
           matchSku(rowPid, productId);
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+        const whMatch = normalizeWhKey(rowWhId) === cleanWhId;
 
         return pidMatch && whMatch;
       })
@@ -399,10 +392,7 @@ export class SheetsStockMovementRepository
           rowPid === cleanPid.replace(/^prod-/, "") ||
           cleanPid === rowPid.replace(/^prod-/, "") ||
           matchSku(rowPid, productId);
-        const whMatch =
-          rowWhId === cleanWhId ||
-          (cleanWhId && rowWhId.endsWith(cleanWhId.replace("wh-", ""))) ||
-          (rowWhId && cleanWhId.endsWith(rowWhId.replace("wh-", "")));
+        const whMatch = normalizeWhKey(rowWhId) === cleanWhId;
 
         return pidMatch && whMatch;
       })

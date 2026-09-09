@@ -1,0 +1,94 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>
+.sheet{max-width:1180px;margin:0 auto;padding:36px 40px 48px}
+.sec-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px;margin:34px 0 6px}
+.sec-title .no{width:26px;height:26px;border-radius:8px;background:#059669;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-family:'Space Grotesk',sans-serif}
+.note{font-size:14px;color:#5B6660;line-height:1.8;margin-top:10px}
+.note b{color:#0F1712}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:2px 8px;color:#334155;margin:0 2px}
+.demo{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:20px;box-shadow:0 1px 2px rgba(16,22,20,.04),0 14px 36px -20px rgba(16,22,20,.14);padding:20px}
+.demo.dark{background:#E9EDE8}
+</style></head>
+<body><div class="sheet">
+
+<div style="font-size:24px;font-weight:700">แท็บสวิตช์ — เมนูเบิกสินค้า</div>
+<div class="note" style="margin-top:4px">Wireframe <b>W1</b> · แท็บสวิตช์ 3 ช่องบนหน้า <span class="tag">/movements/transfer</span> — แสดงขนาดและสถานะจริงตามระบบ Modern Ops</div>
+
+<!-- 1) มือถือ -->
+<div class="sec-title"><span class="no">1</span>มือถือ (390px) — เริ่มที่แท็บ "สร้างใบเบิกสินค้า"</div>
+<div class="demo dark" style="width:430px">
+  <div class="tabs" style="background:#F4F6F3">
+    <div class="tab active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>สร้างใบเบิกสินค้า</div>
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span style="display:inline-block;max-width:88px;line-height:1.3">รายการที่ต้องไปเบิก</span><span class="count" style="background:#E11D48">3</span></div>
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>รออนุมัติ<span class="count" style="background:#F59E0B">2</span></div>
+  </div>
+</div>
+<div class="note">
+  ความสูงแต่ละช่อง <b>58px</b> · ตัวอักษร <b>14px หนา</b> · แท็บที่เลือก = การ์ดขาว + เงา · ไม่เลือก = ตัวหนังสือ slate-600 (คอนทราสต์ 7.58:1)<br>
+  badge แดง <span class="tag">bg-rose-600</span> = จำนวนคิวที่ต้องไปเบิก · badge เหลือง <span class="tag">bg-amber-500</span> = รออนุมัติ (อัปเดตสดทุก sync)
+</div>
+
+<!-- 2) จอใหญ่ -->
+<div class="sec-title"><span class="no">2</span>จอใหญ่ (≥640px) — สลับไปแท็บ "รายการที่ต้องไปเบิก"</div>
+<div class="demo" style="width:760px">
+  <div class="tabs">
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>สร้างใบเบิกสินค้า</div>
+    <div class="tab active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>รายการที่ต้องไปเบิก<span class="count" style="background:#E11D48">3</span></div>
+    <div class="tab"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>รออนุมัติ<span class="count" style="background:#F59E0B">2</span></div>
+  </div>
+</div>
+<div class="note">จอใหญ่ข้อความเรียงแนวนอนเต็มช่อง — โครงเดิม สีเดิม เพียงกว้างขึ้นเป็น <span class="tag">max-w-4xl</span> กึ่งกลาง</div>
+
+<!-- 3) APPROVER -->
+<div class="sec-title"><span class="no">3</span>มุมมอง APPROVER — ไม่มีแท็บสวิตช์ (เมนูเดียวของทั้งแอป)</div>
+<div class="demo" style="width:760px">
+  <div class="row between g12" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:16px;padding:14px 18px">
+    <div class="row g10" style="font-size:15px;font-weight:700;color:#92400E">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      โหมดรออนุมัติ — เข้าหน้านี้ทันที ไม่มีแท็บสร้างใบเบิก
+    </div>
+    <span class="badge" style="background:#FDE68A;color:#92400E;border:1px solid #F59E0B">รออนุมัติ 5 รายการ</span>
+  </div>
+</div>
+<div class="note">
+  <span class="tag">getNavItems("APPROVER")</span> คืนรายการเดียว = เมนูเบิกสินค้า → เข้ามาเจอแบนเนอร์นี้ + คิวรออนุมัติทุกโกดังทันที (สเปก 1.3 / A3) · badge เหลืองตัวอักษร 14px หนา
+</div>
+
+<!-- 4) สิทธิ์ -->
+<div class="sec-title"><span class="no">4</span>ใครเห็นแท็บไหน</div>
+<div class="demo" style="padding:0;overflow:hidden">
+  <table style="width:100%;border-collapse:collapse;font-size:15px">
+    <thead><tr style="border-bottom:1px solid rgba(0,0,0,.08)">
+      <th style="text-align:left;padding:12px 18px;font-size:13px;font-weight:600;color:#5B6660">แท็บ</th>
+      <th style="text-align:center;padding:12px 14px;font-size:13px;font-weight:600;color:#5B6660">ADMIN</th>
+      <th style="text-align:center;padding:12px 14px;font-size:13px;font-weight:600;color:#5B6660">WAREHOUSE_STAFF</th>
+      <th style="text-align:center;padding:12px 14px;font-size:13px;font-weight:600;color:#5B6660">APPROVER</th>
+    </tr></thead>
+    <tbody style="color:#0F1712">
+      <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+        <td style="padding:12px 18px;font-weight:700">+ สร้างใบเบิกสินค้า</td>
+        <td style="text-align:center;color:#047857;font-weight:700">เห็น (เริ่มต้น)</td>
+        <td style="text-align:center;color:#5B6660">ไม่ (ใช้ /staff/transfer)</td>
+        <td style="text-align:center;color:#5B6660">ไม่</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+        <td style="padding:12px 18px;font-weight:700">รายการที่ต้องไปเบิก <span class="count" style="background:#E11D48">3</span></td>
+        <td style="text-align:center;color:#047857;font-weight:700">เห็น (คิวรวมทุกโกดัง)</td>
+        <td style="text-align:center;color:#047857;font-weight:700">เห็น (เฉพาะโกดังตน)</td>
+        <td style="text-align:center;color:#5B6660">ไม่</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 18px;font-weight:700">รออนุมัติ <span class="count" style="background:#F59E0B">2</span></td>
+        <td style="text-align:center;color:#047857;font-weight:700">เห็น</td>
+        <td style="text-align:center;color:#5B6660">ไม่</td>
+        <td style="text-align:center;color:#047857;font-weight:700">เห็น (แทนแท็บสวิตช์)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<div class="note">ตารางสิทธิ์ฉบับย่อจากสเปกหัวข้อ 1.3 — เวอร์ชันเต็มอยู่ที่ <span class="tag">docs/ux/issue-menu-ux-spec.md</span></div>
+
+</div></body></html>

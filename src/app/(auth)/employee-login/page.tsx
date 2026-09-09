@@ -190,7 +190,7 @@ function PinScreen() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       {/* Ambient background brand tint (Stockify Emerald & Slate) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 right-1/4 w-[480px] h-[480px] bg-emerald-500/6 rounded-full blur-[120px]" />
+        <div className="absolute top-0 right-1/4 w-[480px] h-[480px] bg-[#0F5C3F]/6 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-10 w-[380px] h-[380px] bg-teal-600/5 rounded-full blur-[100px]" />
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[520px] h-[520px] bg-slate-400/5 rounded-full blur-[140px]" />
       </div>
@@ -209,9 +209,9 @@ function PinScreen() {
 
           {/* Reassurance Beacon: Warehouse context confirmation */}
           {warehouseDisplayName ? (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-medium shadow-xs">
               <svg
-                className="w-4 h-4 text-emerald-700 flex-shrink-0"
+                className="w-4 h-4 text-[#053425] flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -230,12 +230,12 @@ function PinScreen() {
                 />
               </svg>
               <span>
-                เข้าปฏิบัติงาน: <strong className="font-semibold text-emerald-900">{warehouseDisplayName}</strong>{" "}
-                {canonicalWhCode && <span className="font-mono text-emerald-700">({canonicalWhCode})</span>}
+                เข้าปฏิบัติงาน: <strong className="font-semibold text-[#04231A]">{warehouseDisplayName}</strong>{" "}
+                {canonicalWhCode && <span className="font-mono text-[#053425]">({canonicalWhCode})</span>}
               </span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-[#E8ECEA] text-slate-700 text-sm font-medium">
               <svg
                 className="w-4 h-4 text-slate-600 flex-shrink-0"
                 fill="none"
@@ -255,7 +255,7 @@ function PinScreen() {
         </div>
 
         {/* PIN Login Card */}
-        <div className="w-full rounded-3xl p-4.5 sm:p-7 border border-slate-200/90 shadow-xl bg-white">
+        <div className="w-full rounded-3xl p-4.5 sm:p-7 border border-[#E8ECEA]/90 shadow-xl bg-white">
           {/* Card Title */}
           <div className="text-center mb-3">
             <h1 className="text-slate-900 font-bold text-lg sm:text-xl mb-0.5">กรอกรหัส PIN</h1>
@@ -275,12 +275,12 @@ function PinScreen() {
                   key={i}
                   className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl border-2 flex items-center justify-center transition-all duration-150 ${
                     isFilled
-                      ? "border-emerald-600 bg-emerald-50/60 shadow-xs scale-102"
-                      : "border-slate-200 bg-slate-50"
+                      ? "border-[#06402B] bg-[#EAF2EE]/60 shadow-xs scale-102"
+                      : "border-[#E8ECEA] bg-slate-50"
                   } ${submitting ? "opacity-75 animate-pulse" : ""}`}
                 >
                   {isFilled && (
-                    <span className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-emerald-700 shadow-xs inline-block" />
+                    <span className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-[#053425] shadow-xs inline-block" />
                   )}
                 </div>
               );
@@ -290,14 +290,14 @@ function PinScreen() {
           {/* Error / Success / Lockout Message Feedback */}
           <div className="min-h-[40px] flex items-center justify-center mb-3 text-center px-1">
             {submitting ? (
-              <p className="text-emerald-800 text-sm font-semibold flex items-center gap-2 animate-pulse">
-                <span className="w-4 h-4 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin inline-block flex-shrink-0" />
+              <p className="text-[#052B1F] text-sm font-semibold flex items-center gap-2 animate-pulse">
+                <span className="w-4 h-4 border-2 border-[#053425] border-t-transparent rounded-full animate-spin inline-block flex-shrink-0" />
                 กำลังยืนยันตัวตน...
               </p>
             ) : successMessage ? (
-              <p className="text-emerald-800 text-sm font-semibold flex items-center gap-2">
+              <p className="text-[#052B1F] text-sm font-semibold flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-emerald-700 flex-shrink-0"
+                  className="w-5 h-5 text-[#053425] flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -361,10 +361,10 @@ function PinScreen() {
                 id={`pin-key-${k}`}
                 disabled={locked || submitting}
                 onClick={() => handleNumClick(k)}
-                className="h-14 sm:h-16 rounded-2xl bg-white border border-slate-200 shadow-xs
+                className="h-14 sm:h-16 rounded-2xl bg-white border border-[#E8ECEA] shadow-xs
                            text-slate-900 font-bold text-2xl font-mono
-                           hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800
-                           active:bg-emerald-700 active:text-white active:scale-95
+                           hover:bg-[#EAF2EE] hover:border-[#8FB3A3] hover:text-[#052B1F]
+                           active:bg-[#053425] active:text-white active:scale-95
                            transition-all duration-100 cursor-pointer flex items-center justify-center
                            select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -378,7 +378,7 @@ function PinScreen() {
               id="pin-key-clear"
               disabled={locked || submitting}
               onClick={handleClear}
-              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-slate-200 shadow-xs
+              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-[#E8ECEA] shadow-xs
                          text-slate-700 font-semibold text-sm
                          hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 active:scale-95
                          transition-all duration-100 cursor-pointer flex flex-col items-center justify-center gap-0.5
@@ -408,10 +408,10 @@ function PinScreen() {
               id="pin-key-0"
               disabled={locked || submitting}
               onClick={() => handleNumClick("0")}
-              className="h-14 sm:h-16 rounded-2xl bg-white border border-slate-200 shadow-xs
+              className="h-14 sm:h-16 rounded-2xl bg-white border border-[#E8ECEA] shadow-xs
                          text-slate-900 font-bold text-2xl font-mono
-                         hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-800
-                         active:bg-emerald-700 active:text-white active:scale-95
+                         hover:bg-[#EAF2EE] hover:border-[#8FB3A3] hover:text-[#052B1F]
+                         active:bg-[#053425] active:text-white active:scale-95
                          transition-all duration-100 cursor-pointer flex items-center justify-center
                          select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -424,7 +424,7 @@ function PinScreen() {
               id="pin-key-del"
               disabled={locked || submitting}
               onClick={() => handleNumClick("del")}
-              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-slate-200 shadow-xs
+              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-[#E8ECEA] shadow-xs
                          text-slate-700
                          hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800
                          active:bg-amber-700 active:text-white active:scale-95
@@ -466,7 +466,7 @@ export default function EmployeeLoginPage() {
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <svg
-              className="animate-spin h-8 w-8 text-emerald-700"
+              className="animate-spin h-8 w-8 text-[#053425]"
               fill="none"
               viewBox="0 0 24 24"
             >

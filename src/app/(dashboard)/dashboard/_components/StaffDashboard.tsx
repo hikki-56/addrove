@@ -63,7 +63,7 @@ export default function StaffDashboard() {
       <div className="w-full max-w-md space-y-6 text-center">
 
         {/* Warehouse Header Title */}
-        <div className="flex items-center justify-center gap-3 py-1">
+        <div className="rise-in flex items-center justify-center gap-3 py-1">
           <img
             src="/warehouse-icon.png"
             alt="Warehouse Icon"
@@ -81,12 +81,13 @@ export default function StaffDashboard() {
           <Link
             href={`/movements/receive?warehouse_id=${activeWh}`}
             id="staff-btn-receive"
-            className="group relative aspect-square w-full rounded-3xl p-5 bg-white border border-slate-200/90 hover:border-indigo-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            style={{ animationDelay: "90ms" }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
               <img src="/receive-stock-icon.png" alt="รับสินค้าเข้าคลัง" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
               รับสินค้าเข้าโกดัง
             </h2>
             <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">สแกนและนำเข้า</p>
@@ -96,12 +97,13 @@ export default function StaffDashboard() {
           <Link
             href={`/movements/move?warehouse_id=${activeWh}`}
             id="staff-btn-move"
-            className="group relative aspect-square w-full rounded-3xl p-5 bg-white border border-slate-200/90 hover:border-emerald-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            style={{ animationDelay: "180ms" }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
               <img src="/move-location-icon.png" alt="จัดตำแหน่งสินค้า" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-emerald-600 transition-colors">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
               จัดตำแหน่งสินค้า
             </h2>
             <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">จัดตำแหน่งจัดเก็บ</p>
@@ -111,7 +113,8 @@ export default function StaffDashboard() {
           <Link
             href={`/movements/transfer?warehouse_id=${activeWh}`}
             id="staff-btn-transfer"
-            className="group relative aspect-square w-full rounded-3xl p-5 bg-white border border-slate-200/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            style={{ animationDelay: "270ms" }}
           >
             <div className="relative w-14 h-14 rounded-2xl bg-sky-50 border border-sky-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
               <img src="/transfer-stock-icon.png" alt="ย้ายสินค้า" className="w-full h-full object-contain" />
@@ -131,7 +134,8 @@ export default function StaffDashboard() {
           <Link
             href="/products"
             id="staff-btn-products"
-            className="group relative aspect-square w-full rounded-3xl p-5 bg-white border border-slate-200/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            style={{ animationDelay: "360ms" }}
           >
             <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
               <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

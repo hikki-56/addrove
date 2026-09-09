@@ -86,7 +86,7 @@ function BarcodeSvgComponent({
 
   if (!cleanValue) {
     return (
-      <div className={`flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs font-mono select-none bg-slate-50 ${sizeClasses} ${className}`}>
+      <div className={`flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-[#D5DDD9] text-slate-400 text-xs font-mono select-none bg-slate-50 ${sizeClasses} ${className}`}>
         <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
       </div>
     );
@@ -99,8 +99,8 @@ function BarcodeSvgComponent({
           if (!disableZoom) setIsZoomed(true);
         }}
         title={disableZoom ? "" : "🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"}
-        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-2xs ${
-          disableZoom ? "" : "hover:border-indigo-400 hover:shadow-md cursor-zoom-in"
+        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-[#E8ECEA] shadow-2xs ${
+          disableZoom ? "" : "hover:border-[#5B8A74] hover:shadow-md cursor-zoom-in"
         } transition-all select-none overflow-hidden ${sizeClasses} ${className}`}
       >
         <canvas
@@ -128,7 +128,7 @@ function BarcodeSvgComponent({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-slate-200 flex flex-col items-center gap-6 relative cursor-default"
+            className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-[#E8ECEA] flex flex-col items-center gap-6 relative cursor-default"
           >
             <button
               type="button"
@@ -139,11 +139,11 @@ function BarcodeSvgComponent({
             </button>
 
             <div className="text-center space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF2EE] text-[#053425] font-bold text-xs border border-[#C9DFD4]">
                 🎯 ขนาดใหญ่พิเศษสำหรับเครื่องยิงบาร์โค้ด
               </span>
               <h3 className="text-lg font-black text-slate-800">
-                บาร์โค้ด: <span className="font-mono text-indigo-700">{cleanValue}</span>
+                บาร์โค้ด: <span className="font-mono text-[#053425]">{cleanValue}</span>
               </h3>
               <p className="text-xs text-slate-500">
                 สามารถใช้เครื่องยิงบาร์โค้ดยิงที่กรอบสีขาวด้านล่างได้ทันที (ระยะยิง 10 - 50 ซม.)
@@ -151,7 +151,7 @@ function BarcodeSvgComponent({
             </div>
 
             {/* Giant White Box Canvas */}
-            <div className="bg-white p-6 rounded-2xl border-2 border-slate-300 shadow-inner flex flex-col items-center justify-center w-full overflow-x-auto">
+            <div className="bg-white p-6 rounded-2xl border-2 border-[#D5DDD9] shadow-inner flex flex-col items-center justify-center w-full overflow-x-auto">
               <canvas
                 ref={zoomCanvasRef}
                 style={{
@@ -168,7 +168,7 @@ function BarcodeSvgComponent({
                 onClick={() => {
                   navigator.clipboard.writeText(cleanValue);
                 }}
-                className="flex-1 py-3 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm border border-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-xl bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] font-bold text-sm border border-[#C9DFD4] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>📋 คัดลอกเลขบาร์โค้ด</span>
               </button>

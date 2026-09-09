@@ -80,6 +80,20 @@ export function useMoveMovement({
     }
   }, [activeWhId, setValue]);
 
+  // Switching warehouse mid-flow invalidates the picked product/locations/qty —
+  // reset the flow instead of moving stock using the previous warehouse's data
+  const prevWhRef = useRef(activeWhId);
+  useEffect(() => {
+    if (prevWhRef.current !== activeWhId) {
+      prevWhRef.current = activeWhId;
+      setValue("product_id", "", { shouldValidate: false, shouldDirty: true });
+      setValue("from_location_id", "", { shouldValidate: false, shouldDirty: true });
+      setValue("to_location_id", "", { shouldValidate: false, shouldDirty: true });
+      setValue("qty", "" as any, { shouldValidate: false, shouldDirty: true });
+      setStep(1);
+    }
+  }, [activeWhId, setValue]);
+
   // Derived selected product
   const cleanSearchVal = (watchProduct || "").trim().toLowerCase();
   const selectedProduct = cleanSearchVal
@@ -90,13 +104,17 @@ export function useMoveMovement({
           (p.barcode && p.barcode.trim().toLowerCase() === cleanSearchVal) ||
           p.product_id.toLowerCase() === `prod-${cleanSearchVal}`
       ) ||
-      (products || []).find(
-        (p) =>
-          (p.barcode && p.barcode.trim().toLowerCase().includes(cleanSearchVal)) ||
-          (p.sku && p.sku.trim().toLowerCase().includes(cleanSearchVal)) ||
-          (p.product_name && p.product_name.trim().toLowerCase().includes(cleanSearchVal))
-      ) ||
-      null
+      // Partial fallback: only for long-enough codes (>= 6 chars) or name search —
+      // short barcode fragments must never silently match the wrong product
+      (cleanSearchVal.length >= 6 || /[\u0E00-\u0E7F]/.test(cleanSearchVal)
+        ? (products || []).find(
+            (p) =>
+              (p.barcode && p.barcode.trim().toLowerCase().includes(cleanSearchVal)) ||
+              (p.sku && p.sku.trim().toLowerCase().includes(cleanSearchVal)) ||
+              (p.product_name && p.product_name.trim().toLowerCase().includes(cleanSearchVal))
+          ) ||
+          null
+        : null)
     : null;
 
 
@@ -182,7 +200,9 @@ export function useMoveMovement({
           (p.product_id && p.product_id.trim().toLowerCase() === `prod-${trimmed}`)
       );
 
-      if (!matched) {
+      // Partial matching on scan is limited to long codes / Thai name search —
+      // a short barcode fragment must never silently pick the wrong product
+      if (!matched && (trimmed.length >= 6 || /[\u0E00-\u0E7F]/.test(trimmed))) {
         matched = (products || []).find(
           (p) =>
             (p.barcode && p.barcode.trim().toLowerCase().includes(trimmed)) ||
@@ -197,8 +217,18 @@ export function useMoveMovement({
           const json = await res.json();
           if (json.success) {
             const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
-            if (list.length > 0) {
+            // Never silently pick the first of several candidates — make the user choose
+            if (list.length === 1) {
               matched = list[0];
+            } else if (list.length > 1) {
+              setScanFeedback({
+                type: "error",
+                message: `⚠ พบสินค้าที่ตรงกัน ${list.length} รายการ กรุณาค้นหาและเลือกเอง`,
+                scannedCode: code.trim(),
+              });
+              setBarcodeInput("");
+              setTimeout(() => setScanFeedback(null), 4000);
+              return;
             }
           }
         } catch (e) {
@@ -265,7 +295,20 @@ export function useMoveMovement({
             : (matchedLoc.location_code && (matchedLoc.location_code.trim().toLowerCase() === trimmed || cleanLocStr(matchedLoc.location_code) === scannedClean)
                 ? matchedLoc.location_code.toUpperCase()
                 : code.trim().toUpperCase()))
-        : code.trim().toUpperCase();
+        : "";
+
+      if (!matchedLoc || !targetCode) {
+        // Unknown shelf: reject instead of silently creating stock on a phantom location
+        setScanFeedback({
+          type: "error",
+          message: `✕ ไม่พบตำแหน่ง "${code.trim()}" ใน ${activeWhName}`,
+          scannedCode: code.trim(),
+        });
+        setBarcodeInput("");
+        setTimeout(() => setScanFeedback(null), 4000);
+        return;
+      }
+
       setValue("to_location_id", targetCode, { shouldValidate: true });
       setScanFeedback({
         type: "success",
@@ -374,6 +417,12 @@ export function useMoveMovement({
       return;
     }
 
+    // Moving to the same shelf is a no-op — stop the user before it pollutes the ledger
+    if (rawFrom && cleanLocStr(rawFrom) === cleanLocStr(rawTo)) {
+      setError("ตำแหน่งต้นทางและปลายทางเหมือนกัน กรุณาสแกนตำแหน่งปลายทางใหม่");
+      return;
+    }
+
     const currentQty = Number(data.qty) || 1;
     if (maxAvailableQty !== null && maxAvailableQty > 0 && currentQty > maxAvailableQty) {
       setError(`จำนวนที่ระบุ (${currentQty}) เกินจำนวนคงเหลือในโกดัง (มีอยู่ ${maxAvailableQty} ชิ้น)`);
@@ -405,8 +454,12 @@ export function useMoveMovement({
         setError(json.message || "เกิดข้อผิดพลาดในการจัดตำแหน่งสินค้า");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง";
-      setError(msg);
+      const isNetworkError = err instanceof TypeError || (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message));
+      setError(
+        isNetworkError
+          ? "เน็ตขัดข้อง กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง — รายการยังไม่ถูกบันทึก"
+          : "ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง"
+      );
     }
   };
 

@@ -65,6 +65,7 @@ export interface Product {
   minimum_stock: number;
   quantity?: number;
   total_quantity?: number;
+  stock_status?: "NORMAL" | "LOW" | "OUT" | "NEGATIVE";
   locations_breakdown?: Array<{
     warehouse_id: string;
     warehouse_name: string;
@@ -214,19 +215,60 @@ export interface MovementWithDetails extends StockMovement {
   created_by_name: string;
 }
 
+export interface WarehouseDistribution {
+  warehouse_id: string;
+  warehouse_name: string;
+  quantity: number;
+}
+
+export interface DashboardChartPoint {
+  date: string;
+  received: number;
+  issued: number;
+  produced: number;
+}
+
+export type TodayActivityType =
+  | "RECEIVE"
+  | "ISSUE"
+  | "TRANSFER"
+  | "PRODUCTION"
+  | "ADJUST";
+
+export interface TodayActivity {
+  id: string;
+  actor_id: string;
+  actor_name: string;
+  action_type: TodayActivityType;
+  action_label: string;
+  document_id?: string;
+  document_no?: string;
+  product_name?: string;
+  quantity: number;
+  unit: string;
+  warehouse_name?: string;
+  created_at: string;
+}
+
 export interface DashboardStats {
   total_sku: number;
+  // ผลรวมคอลัมน์ "จำนวนคงเหลือ" จากชีตรายโกดังทั้ง 6 แท็บ (หน่วย: ชิ้น)
+  // คนละความหมายกับ total_sku ที่เป็นจำนวนรหัสสินค้าไม่ซ้ำ
+  total_remaining_quantity: number;
   total_quantity: number;
   low_stock_count: number;
   out_of_stock_count: number;
   received_today: number;
+  received_document_count_today: number;
   issued_today: number;
+  issued_document_count_today: number;
+  produced_today: number;
+  production_order_count_today: number;
+  warehouse_distribution: WarehouseDistribution[];
+  today_activities: TodayActivity[];
+  pending_approval_count: number;
   recent_movements: MovementWithDetails[];
-  chart_data: {
-    date: string;
-    received: number;
-    issued: number;
-  }[];
+  chart_data: DashboardChartPoint[];
 }
 
 // ------ LoginLog ------

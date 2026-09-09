@@ -1,0 +1,65 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>body{background:#fff}.wrap{max-width:430px;margin:0 auto;padding:14px 16px 26px;min-height:100vh;display:flex;flex-direction:column}</style></head>
+<body><div class="wrap">
+
+<!-- แถวบนของ modal -->
+<div class="row between g8">
+  <div>
+    <div class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0001</div>
+    <div style="font-size:13px;color:#5B6660;margin-top:2px">ผู้สร้าง: อารีย์ แก้วใส</div>
+  </div>
+  <button class="btn btn-secondary" style="width:44px;height:44px" aria-label="ปิดหน้าต่าง">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+</div>
+
+<!-- ตัวบอกขั้น 2 ขั้น -->
+<div class="steps" style="margin:18px 4px 6px">
+  <div class="step active"><div class="circle">1</div><div class="stxt">สแกนสินค้า</div></div>
+  <div class="sline" style="background:#CBD5E1"></div>
+  <div class="step todo"><div class="circle">2</div><div class="stxt">ตำแหน่งปลายทาง</div></div>
+</div>
+
+<!-- การ์ดสรุปงาน -->
+<div class="subcard" style="padding:16px;margin-top:14px">
+  <div style="font-size:19px;font-weight:700;line-height:1.35">สายถัก STL 24 นิ้ว</div>
+  <div class="mono" style="font-size:13px;color:#5B6660;margin-top:4px">SKU: STL-24 · บาร์โค้ด: 8859123456789</div>
+  <div class="sep"></div>
+  <div class="row" style="gap:8px;align-items:baseline">
+    <span style="font-size:16px;font-weight:700">ต้องหยิบ</span>
+    <span class="mono" style="font-size:32px;font-weight:600;letter-spacing:-.5px">400</span>
+    <span style="font-size:16px;font-weight:700">ชิ้น</span>
+  </div>
+  <div style="font-size:16px;font-weight:700;margin-top:4px">จาก <span style="color:#047857">โกดัง 1</span> ไป <span style="color:#047857">โกดัง 2</span></div>
+  <div class="sep"></div>
+  <div class="row between">
+    <span style="font-size:14px;font-weight:600;color:#5B6660">ตำแหน่งปัจจุบัน</span>
+    <span class="mono" style="font-size:26px;font-weight:600">L1-A2</span>
+  </div>
+</div>
+
+<!-- error จากการสแกนครั้งล่าสุด (ไม่หายเอง) -->
+<div class="band-err" style="padding:12px 14px;margin-top:12px">
+  <div style="font-size:16px;font-weight:700;display:flex;gap:8px;align-items:center">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+    บาร์โค้ดไม่ตรงกับสินค้าที่ต้องย้าย!</div>
+  <div style="font-size:14px;margin-top:6px;line-height:1.6">ที่สแกน: <span class="mono" style="font-weight:600">"8850000001111"</span><br>
+    ต้องการ: <span class="mono" style="font-weight:600">"8859123456789" (STL-24)</span></div>
+</div>
+
+<div style="flex:1"></div>
+
+<!-- ช่องสแกน -->
+<div style="font-size:16px;font-weight:700;margin-top:16px">สแกนบาร์โค้ดสินค้าบนตัวสินค้า:</div>
+<div class="row" style="margin-top:8px;border:2px solid #CBD5E1;border-radius:14px;background:#fff;height:56px;padding:0 16px;gap:10px">
+  <span class="mono" style="font-size:18px;color:#94A3B8">▌</span>
+  <span class="mono" style="font-size:18px;color:#94A3B8">สแกนหรือพิมพ์ 8859123456789…</span>
+</div>
+<div style="font-size:13px;color:#5B6660;margin-top:6px">ยิงบาร์โค้ดด้วยเครื่องสแกน หรือพิมพ์รหัสแล้วกด Enter</div>
+<button class="btn btn-secondary" style="width:100%;height:44px;font-size:14px;margin-top:10px">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+  สแกนด้วยกล้อง</button>
+
+</div></body></html>

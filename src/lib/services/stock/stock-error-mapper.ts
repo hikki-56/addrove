@@ -49,16 +49,13 @@ export function mapStockErrorToResponse(error: unknown): NextResponse<StockError
     );
   }
 
-  // 3. Fallback generic error
-  const message =
-    error instanceof Error
-      ? error.message
-      : "เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้ง";
-
+  // 3. Fallback generic error — never leak raw library/infra messages to the UI
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  console.error("[StockErrorMapper] Unmapped error:", rawMessage);
   return NextResponse.json(
     {
       success: false,
-      message,
+      message: "ไม่สามารถบันทึกข้อมูลลงระบบได้ กรุณาลองอีกครั้ง",
       code: "INTERNAL_SERVER_ERROR",
     },
     { status: 500 }

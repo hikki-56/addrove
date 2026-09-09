@@ -71,6 +71,19 @@ export async function reverseStock(
     warehouseId: originalMovements[0]?.warehouse_id || "",
     payload: input,
     execute: async ({ repo }) => {
+      // Re-check after acquiring the lock (BUG-C6): two concurrent reversals with
+      // different idempotency keys can both pass the pre-lock fast-path check above,
+      // so the check must always be repeated once the lock is held.
+      const lockedDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
+      const alreadyReversedUnderLock = lockedDocs.data.some(
+        (d: Document) =>
+          d.document_type === "REVERSAL" &&
+          d.reference_no === originalDoc.document_no
+      );
+      if (alreadyReversedUnderLock) {
+        throw new StockAlreadyReversedError("เอกสารนี้ถูกกลับยอดไปแล้ว");
+      }
+
       const existsIdempotency =
         (await repo.movements.existsByIdempotencyKey(input.idempotency_key)) ||
         (await repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`));

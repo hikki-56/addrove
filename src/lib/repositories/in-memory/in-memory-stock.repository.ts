@@ -505,11 +505,26 @@ export class InMemoryDashboardRepository implements IDashboardRepository {
   async getStats(): Promise<DashboardStats> {
     return {
       total_sku: 1,
+      total_remaining_quantity: 100,
       total_quantity: 100,
       low_stock_count: 0,
       out_of_stock_count: 0,
       received_today: 0,
+      received_document_count_today: 0,
       issued_today: 0,
+      issued_document_count_today: 0,
+      produced_today: 0,
+      production_order_count_today: 0,
+      warehouse_distribution: [
+        { warehouse_id: "wh-6", warehouse_name: "สำนักงานใหญ่", quantity: 100 },
+        { warehouse_id: "wh-1", warehouse_name: "โกดัง1", quantity: 0 },
+        { warehouse_id: "wh-2", warehouse_name: "โกดัง2", quantity: 0 },
+        { warehouse_id: "wh-3", warehouse_name: "โกดัง3", quantity: 0 },
+        { warehouse_id: "wh-4", warehouse_name: "โกดัง4", quantity: 0 },
+        { warehouse_id: "wh-5", warehouse_name: "โกดัง5", quantity: 0 },
+      ],
+      today_activities: [],
+      pending_approval_count: 0,
       recent_movements: [],
       chart_data: [],
     };

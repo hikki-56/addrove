@@ -3,12 +3,15 @@
 import { useSearchParams } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
+import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import ProductSearchInput from "@/components/ui/ProductSearchInput";
 import { useReceiveMovement } from "../../movements/receive/_hooks/use-receive-movement";
 import ReceiveLinesTable from "../../movements/receive/_components/ReceiveLinesTable";
 import ReceiveConfirmModal from "../../movements/receive/_components/ReceiveConfirmModal";
 import ReceiveSuccessCard from "../../movements/receive/_components/ReceiveSuccessCard";
+
+const cardClass =
+  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
 
 export default function StaffReceivePage() {
   const searchParams = useSearchParams();
@@ -44,17 +47,17 @@ export default function StaffReceivePage() {
     remove,
     submitted,
     error,
+    successMessage,
     barcodeInput,
     setBarcodeInput,
     barcodeInputRef,
-    cameraScanLineIndex,
-    setCameraScanLineIndex,
+    scanFeedback,
+    setScanFeedback,
     confirmedLines,
     toggleConfirmLine,
     handleAddLocationForProduct,
     handleScanLocationForLine,
     handleScanBarcode,
-    setSearchOpen,
     confirmModalOpen,
     setConfirmModalOpen,
     isCameraOpen,
@@ -64,53 +67,59 @@ export default function StaffReceivePage() {
   } = receiveHook;
 
   if (submitted) {
-    return <ReceiveSuccessCard onReset={resetForm} />;
+    return <ReceiveSuccessCard onReset={resetForm} successMessage={successMessage} />;
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
-      {/* Staff Header Card */}
-      <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-sm p-3.5 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
+    <div className="max-w-3xl mx-auto space-y-4 pb-24 sm:pb-10">
+      <section className={`${cardClass} p-4 flex items-center justify-between gap-3`}>
+        <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="font-extrabold text-slate-900 text-base sm:text-xl tracking-tight">
-              สแกนรับสินค้าเข้าคลัง
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F] shrink-0" />
+            <h1 className="font-extrabold text-[#111827] text-base sm:text-xl tracking-tight truncate">
+              รับสินค้าเข้าคลัง
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            คลัง: <span className="font-bold text-slate-800">{activeWhName}</span> • ยิงบาร์โค้ดสินค้าเพื่อนับยอดรับเข้า
-          </p>
+          <span className="inline-block max-w-full truncate bg-[#EAF2EE] px-3 py-1 rounded-full border border-[#DFEDE6] text-sm font-bold text-[#052B1F]">
+            {activeWhName}
+          </span>
         </div>
 
         <button
           type="button"
           onClick={() => refreshData()}
-          className="self-start sm:self-auto px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
+          className="min-h-11 px-3.5 rounded-xl bg-black/[.04] hover:bg-black/[.07] text-slate-700 font-bold text-sm transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
         >
-          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           <span>รีเฟรช</span>
         </button>
-      </div>
+      </section>
 
-      {/* Barcode Scanner Input */}
       <BarcodeScanInput
         value={barcodeInput}
         onChange={setBarcodeInput}
         onScanSubmit={handleScanBarcode}
+        onOpenScannerModal={() => setIsCameraOpen(true)}
         inputRef={barcodeInputRef}
-        placeholder="สแกนบาร์โค้ดสินค้าที่รับเข้า..."
+        placeholder="สแกนบาร์โค้ดสินค้า / ตำแหน่ง / โกดัง…"
       />
 
+      {scanFeedback && (
+        <ScanFeedbackBanner
+          feedback={scanFeedback}
+          onDismiss={() => setScanFeedback(null)}
+          className="fade-in"
+        />
+      )}
+
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 text-xs font-medium">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold fade-in">
           {error}
         </div>
       )}
 
-      {/* Main Table of Receive Line Items */}
       <ReceiveLinesTable
         form={form}
         fields={fields}
@@ -121,13 +130,11 @@ export default function StaffReceivePage() {
         onToggleConfirm={toggleConfirmLine}
         onAddLocationForProduct={handleAddLocationForProduct}
         onRemove={remove}
-        onOpenLocationCamera={(lineIdx) => setCameraScanLineIndex(lineIdx)}
         onScanLocation={handleScanLocationForLine}
-        onOpenProductSearch={() => setSearchOpen(true)}
+        onScanFeedback={setScanFeedback}
         onOpenConfirmModal={() => setConfirmModalOpen(true)}
       />
 
-      {/* Confirmation Modal */}
       <ReceiveConfirmModal
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
@@ -138,25 +145,11 @@ export default function StaffReceivePage() {
         onSubmit={onSubmit}
       />
 
-      {/* Camera Barcode Scanner Modal for Main Scanner */}
       <CameraBarcodeScannerModal
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
-        onScanSuccess={(scannedText) => {
+        onScan={(scannedText) => {
           handleScanBarcode(scannedText);
-          setIsCameraOpen(false);
-        }}
-      />
-
-      {/* Camera Scanner for specific line item location */}
-      <CameraBarcodeScannerModal
-        isOpen={cameraScanLineIndex !== null}
-        onClose={() => setCameraScanLineIndex(null)}
-        onScanSuccess={(scannedText) => {
-          if (cameraScanLineIndex !== null) {
-            handleScanLocationForLine(cameraScanLineIndex, scannedText);
-            setCameraScanLineIndex(null);
-          }
         }}
       />
     </div>

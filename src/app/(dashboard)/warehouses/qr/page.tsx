@@ -28,11 +28,20 @@ const ACTIONS = [
   { id: "receive", label: "รับสินค้าเข้า", path: "/movements/receive" },
 ];
 
+type WarehouseQrPrintMode = "poster" | "grid";
+
+// Sticker-sheet layout: 3x3 grid = 9 labels per A4 page,
+// each warehouse QR repeated QR_COPIES_PER_WAREHOUSE times ("ละ 3 ชุด")
+const QR_GRID_COLUMNS = 3;
+const QR_GRID_ROWS = 3;
+const QR_COPIES_PER_WAREHOUSE = 3;
+
 export default function WarehouseQrPage() {
   const [selectedAction, setSelectedAction] = useState("receive");
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState(getWarehouseQrProductionOrigin());
   const [wifiIp, setWifiIp] = useState("192.168.1.54");
+  const [printMode, setPrintMode] = useState<WarehouseQrPrintMode | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -102,9 +111,30 @@ export default function WarehouseQrPage() {
     generateQrs();
   }, [qrBaseUrl, actionObj, isLocalOrWifi]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const qrGridCells = WAREHOUSES.flatMap((wh) =>
+    Array.from({ length: QR_COPIES_PER_WAREHOUSE }, () => wh)
+  );
+  const qrGridPageSize = QR_GRID_COLUMNS * QR_GRID_ROWS;
+  const qrGridPages: WarehouseItem[][] = [];
+  for (let i = 0; i < qrGridCells.length; i += qrGridPageSize) {
+    qrGridPages.push(qrGridCells.slice(i, i + qrGridPageSize));
+  }
+
+  useEffect(() => {
+    if (!printMode) return;
+    const resetMode = () => setPrintMode(null);
+    window.addEventListener("afterprint", resetMode);
+    const timer = setTimeout(() => {
+      window.print();
+      resetMode();
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("afterprint", resetMode);
+    };
+  }, [printMode]);
+
+  const handlePrint = (mode: WarehouseQrPrintMode) => setPrintMode(mode);
 
   const handleDownloadSingle = (wh: WarehouseItem) => {
     const dataUrl = qrUrls[wh.id];
@@ -139,37 +169,46 @@ export default function WarehouseQrPage() {
         )}
 
         {/* Page Header (Hidden when printing) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8ECEA] pb-5">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
               </svg>
               <span>QR Code ประจำโกดัง (โกดัง 1 - 5)</span>
             </h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">
-              สแกนเพื่อเปิดหน้าล็อกอินพนักงาน (PIN) และสลับเข้าสู่ระบบโกดังที่เลือกโดยอัตโนมัติ (พิมพ์แบบ 1 โกดังต่อ 1 หน้า)
+              สแกนเพื่อเปิดหน้าล็อกอินพนักงาน (PIN) และสลับเข้าสู่ระบบโกดังที่เลือกโดยอัตโนมัติ (พิมพ์ได้ทั้งแบบสติกเกอร์ 3×3 ละ 3 ชุด และโปสเตอร์โกดังละหน้า)
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
             <button
-              onClick={handlePrint}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
+              onClick={() => handlePrint("grid")}
+              className="px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              <span>พิมพ์ป้าย QR ทั้งหมด 5 โกดัง (โกดังละหน้า)</span>
+              <span>พิมพ์ QR 3×3 (ละ 3 ชุด)</span>
+            </button>
+            <button
+              onClick={() => handlePrint("poster")}
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D5DDD9] text-slate-700 hover:text-slate-900 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-xs active:scale-95"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h10" />
+              </svg>
+              <span>พิมพ์โปสเตอร์ (โกดังละหน้า)</span>
             </button>
           </div>
         </div>
 
         {/* Target Action & Base URL Selector (Hidden when printing) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <div className="bg-white rounded-2xl p-5 border border-[#E8ECEA] shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-[#E8ECEA]">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F] animate-ping" />
               <span className="text-xs text-slate-700 font-semibold">Domain / IP Address สำหรับมือถือสแกน:</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -178,19 +217,19 @@ export default function WarehouseQrPage() {
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 onBlur={() => setBaseUrl(resolveWarehouseQrBaseUrl(baseUrl))}
-                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-900 font-mono text-xs font-bold focus:outline-none focus:border-indigo-500 w-64 shadow-2xs"
+                className="px-3 py-1.5 rounded-lg bg-white border border-[#E8ECEA] text-slate-900 font-mono text-xs font-bold focus:outline-none focus:border-[#0F5C3F] w-64 shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setBaseUrl(`http://${wifiIp}:3000`)}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition-colors cursor-pointer active:scale-95"
+                className="px-2.5 py-1.5 rounded-lg bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] text-xs font-bold border border-[#C9DFD4] transition-colors cursor-pointer active:scale-95"
               >
                 ใช้ Wi-Fi IP ({wifiIp})
               </button>
               <button
                 type="button"
                 onClick={() => setBaseUrl(getWarehouseQrProductionOrigin())}
-                className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors cursor-pointer active:scale-95"
+                className="px-2.5 py-1.5 rounded-lg bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] text-xs font-bold border border-[#C9DFD4] transition-colors cursor-pointer active:scale-95"
               >
                 ใช้ URL Production
               </button>
@@ -210,13 +249,13 @@ export default function WarehouseQrPage() {
                     onClick={() => setSelectedAction(action.id)}
                     className={`p-3 rounded-xl border text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
                       selectedAction === action.id
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        ? "bg-[#EAF2EE] border-[#8FB3A3] text-[#053425] shadow-xs"
+                        : "bg-white border-[#E8ECEA] text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     }`}
                   >
                     <span>{action.label}</span>
                     {selectedAction === action.id && (
-                      <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-[#06402B] animate-pulse" />
                     )}
                   </button>
                 ))}
@@ -238,11 +277,11 @@ export default function WarehouseQrPage() {
             return (
               <div
                 key={wh.id}
-                className="bg-white rounded-2xl p-6 border border-slate-200 flex flex-col items-center justify-between text-center space-y-4 shadow-xs hover:border-indigo-400 hover:shadow-md transition-all"
+                className="bg-white rounded-2xl p-6 border border-[#E8ECEA] flex flex-col items-center justify-between text-center space-y-4 shadow-xs hover:border-[#5B8A74] hover:shadow-md transition-all"
               >
                 {/* Card Header */}
-                <div className="space-y-1 w-full border-b border-slate-100 pb-3">
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                <div className="space-y-1 w-full border-b border-[#EEF1EF] pb-3">
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#053425] border border-[#C9DFD4]">
                     {wh.code}
                   </span>
                   <h2 className="text-xl font-bold text-slate-900 mt-1">{wh.name}</h2>
@@ -250,7 +289,7 @@ export default function WarehouseQrPage() {
                 </div>
 
                 {/* QR Code Container */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-center min-h-[200px] min-w-[200px]">
+                <div className="bg-white p-4 rounded-2xl border border-[#E8ECEA] shadow-xs flex items-center justify-center min-h-[200px] min-w-[200px]">
                   {qrDataUrl ? (
                     <img src={qrDataUrl} alt={`QR ${wh.name}`} className="w-44 h-44 object-contain" />
                   ) : (
@@ -262,13 +301,13 @@ export default function WarehouseQrPage() {
 
                 {/* Action Description */}
                 <div className="w-full text-center space-y-1">
-                  <p className="text-xs sm:text-sm font-bold text-indigo-700">
+                  <p className="text-xs sm:text-sm font-bold text-[#053425]">
                     สแกนเพื่อ: {actionObj.label} ({wh.name})
                   </p>
                   <Link
                     href={fullTargetUrl}
                     target="_blank"
-                    className="text-xs text-indigo-600 hover:underline font-mono truncate block px-2"
+                    className="text-xs text-[#06402B] hover:underline font-mono truncate block px-2"
                   >
                     {fullTargetUrl}
                   </Link>
@@ -279,7 +318,7 @@ export default function WarehouseQrPage() {
                   <button
                     type="button"
                     onClick={() => handleDownloadSingle(wh)}
-                    className="w-full py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-colors cursor-pointer shadow-xs active:scale-95"
+                    className="w-full py-2 rounded-xl bg-white hover:bg-slate-50 border border-[#E8ECEA] text-slate-700 hover:text-slate-900 text-xs font-bold transition-colors cursor-pointer shadow-xs active:scale-95"
                   >
                     ดาวน์โหลด PNG
                   </button>
@@ -292,8 +331,9 @@ export default function WarehouseQrPage() {
 
       {/* ======================================================== */}
       {/* Dedicated Warehouse Poster Print View (1 Page Per Wh)    */}
-      {/* Contains ONLY Warehouse Name and QR Code                 */}
+      {/* Rendered only when printing in "poster" mode             */}
       {/* ======================================================== */}
+      {printMode === "poster" && (
       <div id="warehouse-print-container" className="hidden print:block print:w-full print:m-0 print:p-0">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
@@ -371,7 +411,7 @@ export default function WarehouseQrPage() {
               </h1>
 
               {/* Only 2: QR Code - Large & Clean */}
-              <div className="p-6 sm:p-8 bg-white rounded-3xl border-2 border-slate-300 shadow-sm flex items-center justify-center">
+              <div className="p-6 sm:p-8 bg-white rounded-3xl border-2 border-[#D5DDD9] shadow-sm flex items-center justify-center">
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}
@@ -388,6 +428,126 @@ export default function WarehouseQrPage() {
           );
         })}
       </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 3x3 Sticker-Sheet Print View                             */}
+      {/* 9 QR labels per A4 page, each warehouse x 3 sets         */}
+      {/* ======================================================== */}
+      {printMode === "grid" && (
+        <div id="warehouse-grid-print-container" className="hidden print:block print:w-full print:m-0 print:p-0">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 10mm;
+              }
+              html, body {
+                height: auto !important;
+                min-height: 100% !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              #__next, main, .admin-shell, .flex, .flex-col, .overflow-hidden, .overflow-y-auto {
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                display: block !important;
+                position: static !important;
+              }
+              header, nav, aside, footer, .sidebar, .navbar {
+                display: none !important;
+              }
+              #warehouse-grid-print-container {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              .qr-grid-page {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                grid-template-rows: repeat(3, 1fr) !important;
+                width: 100% !important;
+                height: 277mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+              }
+              .qr-grid-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+              }
+              .qr-grid-cell {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 3mm !important;
+                text-align: center !important;
+                box-sizing: border-box !important;
+                padding: 2mm !important;
+                border: 1px dashed #94a3b8 !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                overflow: hidden !important;
+              }
+              .qr-grid-cell img {
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
+                object-fit: contain !important;
+              }
+            }
+          `}} />
+
+          {qrGridPages.map((pageWhs, pageIdx) => (
+            <div key={`qr-grid-page-${pageIdx}`} className="qr-grid-page">
+              {pageWhs.map((wh, cellIdx) => (
+                <div key={`qr-grid-cell-${pageIdx}-${cellIdx}`} className="qr-grid-cell">
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: "#4338ca", letterSpacing: "0.08em" }}>
+                      {wh.code}
+                    </div>
+                    <div style={{ fontSize: "18px", fontWeight: 900, color: "#0f172a", lineHeight: 1.2, marginTop: "1mm" }}>
+                      {wh.name}
+                    </div>
+                  </div>
+                  {qrUrls[wh.id] ? (
+                    <img src={qrUrls[wh.id]} alt={`QR ${wh.name}`} />
+                  ) : (
+                    <div
+                      style={{
+                        width: "50mm",
+                        height: "50mm",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#94a3b8",
+                        fontSize: "10px",
+                      }}
+                    >
+                      กำลังสร้าง QR Code...
+                    </div>
+                  )}
+                  <div style={{ fontSize: "10px", color: "#334155", fontWeight: 700 }}>
+                    สแกนเพื่อ: {actionObj.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

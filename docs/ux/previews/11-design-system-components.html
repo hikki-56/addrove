@@ -1,0 +1,269 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<title>Stockify Design System — Components (ร่าง v0.1)</title>
+<style>
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 40px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#6B7280}
+.h1{font-family:'Space Grotesk','Sarabun',sans-serif;font-size:26px;font-weight:700;margin-top:4px}
+.lede{font-size:14px;color:#5B6660;margin-top:6px;line-height:1.7}
+.sect{margin-top:24px}
+.sect-title{font-size:17px;font-weight:700;margin-bottom:2px}
+.sect-sub{font-size:13px;color:#5B6660;margin-bottom:12px}
+.demo{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:16px 18px}
+.demo-label{font-size:12px;font-weight:700;color:#6B7280;margin-bottom:10px;letter-spacing:.04em}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note{font-size:12.5px;color:#5B6660;margin-top:8px;line-height:1.65}
+.note b{color:#334155}
+.demobtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;font-weight:700;cursor:default}
+.ph{width:392px;flex:none;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:28px;padding:14px 14px 18px;box-shadow:0 18px 44px -22px rgba(16,22,20,.25)}
+.ph-notch{width:96px;height:5px;border-radius:99px;background:#E2E8F0;margin:0 auto 12px}
+.adm{flex:1;background:#edf1ea;border:1px solid rgba(0,0,0,.08);border-radius:16px;overflow:hidden}
+.adm-top{background:#fff;border-bottom:1px solid rgba(0,0,0,.07);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.adm-body{padding:16px}
+.atable{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border-radius:12px;overflow:hidden}
+.atable th{background:#F1F5F9;color:#475569;font-size:12px;font-weight:700;text-align:left;padding:9px 12px;border-bottom:1px solid #CBD5E1}
+.atable td{padding:10px 12px;border-bottom:1px solid #F1F5F9;color:#1E293B}
+.atable tr:last-child td{border-bottom:none}
+.eyebrow-sm{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B7280}
+</style></head><body><div class="wrap">
+
+<!-- หัวเอกสาร -->
+<div class="row between">
+  <div>
+    <div class="eyebrow">Stockify Design System · Modern Ops</div>
+    <div class="h1">Components — คอมโพเนนต์หลักในสองผิว</div>
+    <div class="lede">v0.2 — ทิศทางล็อกแล้ว · ทุกชิ้นต้องมีครบ 4 สถานะ (default / loading / empty / error) · ตัวอย่างทั้งหมดใช้ค่าจาก Foundation (10-design-system-foundation)</div>
+  </div>
+  <span class="tag tag-ok" style="height:26px">v0.2 — ล็อกทิศทางแล้ว (Q1-Q6)</span>
+</div>
+
+<!-- 1. ปุ่ม -->
+<div class="sect">
+  <div class="sect-title">1 · ปุ่ม (Buttons)</div>
+  <div class="sect-sub">ลำดับความสำคัญชัดเจน — หน้าหนึ่งมีปุ่มหลักได้ปุ่มเดียว · ปุ่มทำลายคือพื้นขาวขอบแดง ไม่ใช่แดงทึบ</div>
+  <div class="duo">
+    <div class="demo">
+      <div class="demo-label">SURFACE พนักงาน (มือถือ — ปุ่มเต็มความกว้าง)</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button class="demobtn" style="width:100%;height:56px;background:#059669;color:#fff;font-size:16px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">บันทึกรับสินค้า</button>
+        <button class="demobtn" style="width:100%;height:48px;background:#059669;color:#fff;font-size:16px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">สแกนต่อ</button>
+        <div style="display:flex;gap:12px">
+          <button class="demobtn" style="flex:1;height:48px;background:#fff;border:1px solid rgba(0,0,0,.1);color:#334155;font-size:15px">ยกเลิก</button>
+          <button class="demobtn" style="flex:1;height:48px;background:#059669;color:#fff;font-size:15px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">ยืนยัน</button>
+        </div>
+      </div>
+      <div class="note">หลัก 56 / 48 / 44 px · ระยะห่าง 12px · ปุ่ม <b>ต้องมีข้อความ</b> ไม่ใช่ไอคอนเปล่า</div>
+    </div>
+    <div class="demo">
+      <div class="demo-label">SURFACE แอดมิน (เดสก์ท็อป — ปุ่มแน่นกว่า) + ปุ่มทำลาย</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="demobtn admin-button-primary" style="height:40px">อนุมัติใบเบิก</button>
+        <button class="demobtn" style="height:40px;padding:0 14px;background:#fff;border:1px solid #d1d5db;color:#1f2937;font-size:14px">ส่งกลับ</button>
+        <button class="demobtn" style="height:40px;padding:0 14px;background:#fff;border:1px solid #FECDD3;color:#BE123C;font-size:14px">ลบเอกสาร</button>
+        <button class="demobtn" style="height:40px;padding:0 14px;background:#0F1712;color:#fff;font-size:14px">พิมพ์ QR</button>
+      </div>
+      <div class="note"><b>ปุ่มทำลาย (ลบ) = ขาวขอบแดง</b> และวาง <b>ห่างจากปุ่มหลัก</b> — กันกดพลาดตาม P2 · แถวล่างคือสถานะปิดใช้งาน</div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="demobtn" style="height:48px;flex:1;background:#A7D8C3;color:#fff">กำลังบันทึก… (disabled)</button>
+        <button class="demobtn" style="height:48px;width:48px;flex:none;background:#fff;border:1px solid rgba(0,0,0,.1);color:#334155">＋</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. ฟอร์ม -->
+<div class="sect">
+  <div class="sect-title">2 · ฟอร์ม (Inputs)</div>
+  <div class="sect-sub">label ผูกช่องกรอกด้วย htmlFor ทุกช่อง · ช่องสแกนห้าม disabled — ใช้ readOnly เพื่อไม่เสียโฟกัสของเครื่องยิงบาร์โค้ด</div>
+  <div class="duo">
+    <div class="demo">
+      <div class="demo-label">ช่องกรอกปกติ</div>
+      <label class="label" for="qty">จำนวนที่รับ <span class="req">*</span></label>
+      <input class="input" id="qty" type="text" inputmode="numeric" placeholder="0" style="font-size:20px;font-weight:700">
+      <div class="note">ตัวเลขที่ต้องตรวจใช้ <b>20px + bold</b> · ข้อความสำคัญ <b>ห้ามใส่ placeholder</b> — มันหายทันทีที่พิมพ์</div>
+      <div style="margin-top:14px">
+        <label class="label" for="wh">โกดังปลายทาง <span class="req">*</span></label>
+        <select class="select" id="wh"><option>โกดัง 2 — อาคาร B</option></select>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="demo-label">ช่องสแกน (BarcodeScanInput)</div>
+      <label class="label" for="scan">สแกนบาร์โค้ดสินค้า</label>
+      <div class="subcard" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff">
+        <input class="input" id="scan" value="8859123456789" readonly aria-busy="true" style="flex:1;background:#F8FAFC;font-size:16px;font-weight:600;opacity:.65">
+        <span class="badge" style="background:#FEF3C7;color:#92400E"><span class="pulse-slow dot" style="background:#F59E0B"></span>กำลังตรวจ…</span>
+      </div>
+      <div class="note">ระหว่างประมวลผลใช้ <b>readOnly + aria-busy + opacity</b> — ห้าม <b>disabled</b> เพราะช่องเสียโฟกัส ทำให้ยิงสแกนรัว ๆ ตกหล่น (สาเหตุ "ต้องสแกนสองครั้ง")</div>
+      <div style="margin-top:14px;border-radius:12px;padding:12px 14px;background:#ECFDF5;border:1px solid #A7F3D0">
+        <div style="font-size:14px;font-weight:700;color:#047857">✓ พบสินค้า</div>
+        <div style="font-size:16px;font-weight:700;margin-top:3px">สายถัก STL 24 นิ้ว</div>
+        <div style="font-size:14px;color:#047857;margin-top:2px">คงเหลือ <b class="disp" style="font-size:18px">1,250</b> ชิ้น · ตำแหน่ง <span class="mono">L1-A2</span></div>
+      </div>
+      <div class="note">ผลสแกนต้อง<b>เด่นที่สุดบนจอ</b> (ScanFeedbackBanner) · กรณีไม่พบต้องบอกทางออก: "ไม่พบสินค้ารหัสนี้ — สแกนใหม่ หรือค้นด้วยชื่อสินค้า"</div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. สถานะ -->
+<div class="sect">
+  <div class="sect-title">3 · สถานะ (Badges · Chips · ตัวเลข)</div>
+  <div class="sect-sub">สี + ข้อความ + จุด ไปด้วยกันทุกครั้ง (P4) · ตัวอักษรบน badge ใช้เฉด -700/-800 เท่านั้น</div>
+  <div class="duo">
+    <div class="demo">
+      <div class="demo-label">BADGE สถานะสต็อก (4 สถานะตายตัว)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge" style="background:#ECFDF5;color:#065F46"><span class="dot" style="background:#10B981"></span>ปกติ</span>
+        <span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>ใกล้หมด</span>
+        <span class="badge" style="background:#FEE2E2;color:#991B1B"><span class="dot" style="background:#EF4444"></span>หมด</span>
+        <span class="badge" style="background:#F3E8FF;color:#6B21A8"><span class="dot" style="background:#A855F7"></span>ติดลบ −12</span>
+      </div>
+      <div class="demo-label" style="margin-top:14px">CHIP บริบท (เส้นทาง / ตัวกรอง)</div>
+      <div class="row g8" style="flex-wrap:wrap">
+        <span class="chip" style="background:#fff">โกดัง 1</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+        <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">โกดัง 2</span>
+        <span class="chip" style="background:#F1F5F9">รออนุมัติ ×3</span>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="demo-label">ตัวเลขที่ต้องตรวจ (qty-chip)</div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div class="qty-chip"><div class="n">400</div><div class="u">ชิ้น</div></div>
+        <div class="qty-chip" style="background:#FEF3C7;border-color:#FDE68A"><div class="n" style="color:#92400E">60</div><div class="u" style="color:#92400E">ขาดอีก</div></div>
+        <div class="qty-chip" style="background:#FEE2E2;border-color:#FCA5A5"><div class="n" style="color:#991B1B">0</div><div class="u" style="color:#991B1B">บนชั้น</div></div>
+      </div>
+      <div class="note">เลขใช้ Space Grotesk 20px + คั่นหลักพัน (<b>50,000</b> ไม่ใช่ 50000) · ความหมายสีตาม badge — ม่วงเฉพาะติดลบ</div>
+      <div class="demo-label" style="margin-top:14px">แถบผลลัพธ์ (Empty / Error band)</div>
+      <div class="band-ok" style="padding:10px 14px;font-size:14px;font-weight:600">ทุกรายการนำเข้าแล้ว — ไม่มีค้างในรอบนี้</div>
+      <div class="band-err" style="padding:10px 14px;font-size:14px;font-weight:600;margin-top:8px">ดึงข้อมูลไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วกด "รีเฟรช"</div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. โครง -->
+<div class="sect">
+  <div class="sect-title">4 · โครงหน้า (Tabs · Steps · Card)</div>
+  <div class="sect-sub">บอกตำแหน่งด้วยข้อความ "ขั้นที่ n จาก N" — ชัดกว่าแถบความคืบหน้าเปล่า (P3)</div>
+  <div class="duo">
+    <div class="demo">
+      <div class="demo-label">แท็บสวิตช์ (ตัวกรองหน้าพนักงาน)</div>
+      <div class="tabs">
+        <div class="tab active">รอดำเนินการ <span class="count" style="background:#059669">3</span></div>
+        <div class="tab">กำลังเบิก <span class="count" style="background:#64748B">1</span></div>
+        <div class="tab">เสร็จสิ้น</div>
+      </div>
+      <div class="demo-label" style="margin-top:16px">การ์ด + การ์ดย่อย</div>
+      <div class="card" style="padding:14px">
+        <div class="row between g8">
+          <span class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0001</span>
+          <span class="badge" style="background:#F1F5F9;color:#334155"><span class="dot" style="background:#64748B"></span>รอดำเนินการ</span>
+        </div>
+        <div style="font-size:16px;font-weight:700;margin-top:6px">สายถัก STL 24 นิ้ว</div>
+        <div class="subcard row g8" style="padding:8px 12px;margin-top:10px">
+          <span style="font-size:13px;color:#5B6660">ตำแหน่ง <span class="mono" style="font-weight:600;color:#334155">L1-A2</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="demo-label">Step indicator (บอกเป็นข้อความ)</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">ขั้นที่ 2 จาก 3 — ตรวจสินค้า</div>
+      <div class="steps">
+        <div class="step" style="width:auto;flex:1"><div class="circle done" style="width:44px;height:44px;background:#059669;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px">✓</div><div class="stxt" style="font-size:13px;color:#475569;margin-top:6px;font-weight:600">สแกนใบเบิก</div></div>
+        <div class="sline" style="flex:1;height:3px;background:#059669;border-radius:2px;margin-top:21px"></div>
+        <div class="step" style="width:auto;flex:1"><div class="circle" style="width:44px;height:44px;background:#059669;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-shadow:0 0 0 4px #A7F3D0">2</div><div class="stxt" style="font-size:13px;color:#047857;margin-top:6px;font-weight:700">ตรวจสินค้า</div></div>
+        <div class="sline" style="flex:1;height:3px;background:#CBD5E1;border-radius:2px;margin-top:21px"></div>
+        <div class="step" style="width:auto;flex:1"><div class="circle" style="width:44px;height:44px;background:#fff;border:2px solid #CBD5E1;color:#64748B;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px">3</div><div class="stxt" style="font-size:13px;color:#475569;margin-top:6px;font-weight:600">ยืนยัน</div></div>
+      </div>
+      <div class="demo-label" style="margin-top:16px">Modal ยืนยันด้วยค่าจริง</div>
+      <div class="card" style="padding:14px;border-radius:16px">
+        <div style="font-size:15px;font-weight:700">ยืนยันการรับสินค้า?</div>
+        <div class="subcard" style="padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.8">
+          รับ <b>สายถัก STL 24 นิ้ว</b> จำนวน <b class="disp" style="font-size:16px">400</b> ชิ้น เข้า <b>โกดัง 3</b>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <button class="demobtn" style="flex:1;height:48px;background:#fff;border:1px solid rgba(0,0,0,.1);color:#334155;font-size:15px">ยกเลิก (Esc)</button>
+          <button class="demobtn" style="flex:1;height:48px;background:#059669;color:#fff;font-size:15px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">ยืนยัน</button>
+        </div>
+        <div class="note"><b>Esc แปลว่ายกเลิกเสมอ</b> — โดยเฉพาะ modal ที่ย้อนไม่ได้อย่างผลิตสินค้า</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. สองผิว -->
+<div class="sect">
+  <div class="sect-title">5 · ระบบเดียว สองผิว (Staff ↔ Admin)</div>
+  <div class="sect-sub">tokens เดียวกัน ต่างกันที่ density กับขนาดเป้ากด — ซ้าย: พนักงานบนมือถือ · ขวา: แอดมินบนเดสก์ท็อป</div>
+  <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+    <!-- โทรศัพท์ -->
+    <div class="ph">
+      <div class="ph-notch"></div>
+      <div class="card" style="padding:14px">
+        <div class="row between">
+          <div style="font-size:17px;font-weight:700">รายการที่ต้องเบิก</div>
+          <span class="badge" style="background:#ECFDF5;color:#047857"><span class="dot" style="background:#10B981"></span>โกดัง 1</span>
+        </div>
+        <div style="font-size:13px;color:#5B6660;margin-top:4px">พนักงาน: สมชาย ใจดี</div>
+      </div>
+      <div class="card" style="padding:14px;margin-top:10px">
+        <div class="row between g8">
+          <span class="mono" style="font-size:13px;font-weight:600;color:#334155">TRF-20260904-0001</span>
+          <span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>รอดำเนินการ</span>
+        </div>
+        <div class="row between g10" style="margin-top:8px">
+          <div>
+            <div style="font-size:16px;font-weight:700">สายถัก STL 24 นิ้ว</div>
+            <div style="font-size:13px;color:#5B6660;margin-top:2px">ตำแหน่ง <span class="mono" style="font-weight:600;color:#334155">L1-A2</span></div>
+          </div>
+          <div class="qty-chip"><div class="n">400</div><div class="u">ชิ้น</div></div>
+        </div>
+        <button class="demobtn" style="width:100%;height:48px;background:#059669;color:#fff;font-size:16px;margin-top:12px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">เริ่มเบิกสินค้า / สแกน</button>
+      </div>
+      <div class="card" style="padding:14px;margin-top:10px;opacity:.92">
+        <div class="row between g8">
+          <span class="mono" style="font-size:13px;font-weight:600;color:#334155">TRF-20260904-0002</span>
+          <span class="badge" style="background:#D1FAE5;color:#047857"><span class="dot" style="background:#10B981"></span>กำลังสแกน (1/3)</span>
+        </div>
+        <div class="row between g10" style="margin-top:8px">
+          <div style="font-size:16px;font-weight:700">ถังน้ำมัน 200 ลิตร</div>
+          <div class="qty-chip"><div class="n">60</div><div class="u">ชิ้น</div></div>
+        </div>
+        <button class="demobtn" style="width:100%;height:48px;background:#059669;color:#fff;font-size:16px;margin-top:12px;box-shadow:0 10px 18px -8px rgba(5,150,105,.45)">สแกนต่อ</button>
+      </div>
+    </div>
+    <!-- เดสก์ท็อปแอดมิน -->
+    <div class="adm">
+      <div class="adm-top">
+        <div style="width:30px;height:30px;border-radius:9px;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk',sans-serif">S</div>
+        <div style="font-weight:700;font-size:15px">Stockify</div>
+        <div style="margin-left:auto;display:flex;gap:14px;font-size:13.5px;color:#475569;font-weight:600">
+          <span>หน้าหลัก</span><span style="color:#047857">อนุมัติ</span><span>สินค้า</span><span>ผู้ใช้</span>
+        </div>
+      </div>
+      <div class="adm-body">
+        <div class="eyebrow-sm">รอการอนุมัติ</div>
+        <div style="font-size:18px;font-weight:700;margin:2px 0 12px">ใบเบิกที่รออนุมัติ <span class="disp" style="color:#047857">3</span> รายการ</div>
+        <div class="admin-panel" style="padding:0;overflow:hidden">
+          <table class="atable">
+            <thead><tr><th>เลขเอกสาร</th><th>ผู้สร้าง</th><th>สินค้า</th><th>จำนวน</th><th>สถานะ</th><th style="text-align:right">การดำเนินการ</th></tr></thead>
+            <tbody>
+              <tr><td class="mono" style="font-weight:600">TRF-20260904-0001</td><td>อารีย์ แก้วใส</td><td>สายถัก STL 24 นิ้ว</td><td class="disp" style="font-weight:700">400</td><td><span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>รออนุมัติ</span></td><td style="text-align:right"><span style="color:#047857;font-weight:700;font-size:13px">อนุมัติ</span> · <span style="color:#334155;font-size:13px">ส่งกลับ</span></td></tr>
+              <tr><td class="mono" style="font-weight:600">TRF-20260904-0004</td><td>วิชัย มั่นคง</td><td>ถังน้ำมัน 200 ลิตร</td><td class="disp" style="font-weight:700">60</td><td><span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>รออนุมัติ</span></td><td style="text-align:right"><span style="color:#047857;font-weight:700;font-size:13px">อนุมัติ</span> · <span style="color:#334155;font-size:13px">ส่งกลับ</span></td></tr>
+              <tr><td class="mono" style="font-weight:600">TRF-20260904-0007</td><td>อารีย์ แก้วใส</td><td>ข้อต่อ PVC 3 นิ้ว</td><td class="disp" style="font-weight:700">1,200</td><td><span class="badge" style="background:#FFF1F2;color:#BE123C"><span class="dot" style="background:#EF4444"></span>สต็อกไม่พอ</span></td><td style="text-align:right"><span style="color:#BE123C;font-weight:700;font-size:13px">ตรวจสอบ</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:12px">ตารางใช้ได้เฉพาะผิวแอดมิน — ผิวพนักงานบนมือถือเกิน 3 คอลัมน์ต้องเป็น<b>การ์ดต่อรายการ</b> · ตัวเลขทุกช่องใช้ disp + คั่นหลักพัน · แถวแรก hover/แถบสีไม่ใช่สื่อความหมายเดียว (มี badge ข้อความกำกับ)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ท้าย -->
+<div class="foot" style="border:1px dashed #CBD5E1;border-radius:14px;padding:14px 16px;background:#fff;margin-top:26px">
+  <div style="font-size:13.5px;font-weight:700;margin-bottom:4px">✅ v0.2 — ทิศทางล็อกแล้ว · component รายชิ้น (สถานะครบ + interaction + copy ไทยทุกกรณี) จะทำในรอบลงลึก เริ่มจากชิ้นที่ pilot "นับสต๊อก" ใช้ — ตามแผน design-system-spec.md §10</div>
+</div>
+
+</div></body></html>

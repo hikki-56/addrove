@@ -18,9 +18,9 @@ export default function ProductCard({
   onAddToCart,
 }: ProductCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-emerald-300 transition-all duration-200 flex flex-col justify-between p-4 sm:p-5 space-y-3 group relative overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs hover:shadow-lg hover:border-[#8FB3A3] transition-all duration-200 flex flex-col justify-between p-4 sm:p-5 space-y-3 group relative overflow-hidden">
       {/* Product Image */}
-      <div className="w-full h-40 sm:h-44 bg-gradient-to-b from-slate-50 to-slate-100/70 rounded-xl overflow-hidden flex items-center justify-center p-3 border border-slate-100 relative">
+      <div className="w-full h-40 sm:h-44 bg-[#EFF3F1] rounded-xl overflow-hidden flex items-center justify-center p-3 border border-[#EEF1EF] relative">
         <img
           src={bom.image || "/products/A002.jpg"}
           alt={bom.fg_name}
@@ -52,11 +52,11 @@ export default function ProductCard({
       </div>
 
       {/* Producible Count & Stepper */}
-      <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/90 space-y-3">
+      <div className="bg-slate-50 rounded-xl p-3.5 border border-[#E8ECEA]/90 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-slate-700">ผลิตได้สูงสุด:</span>
           {maxProducible > 0 ? (
-            <span className="text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-lg text-sm font-bold font-mono">
+            <span className="text-[#052B1F] bg-[#DFEDE6] border border-[#8FB3A3] px-2.5 py-0.5 rounded-lg text-sm font-bold font-mono">
               {maxProducible.toLocaleString()} {bom.fg_unit}
             </span>
           ) : (
@@ -72,7 +72,7 @@ export default function ProductCard({
             type="button"
             disabled={maxProducible <= 0}
             onClick={() => onQuantityChange(bom.fg_sku, currentQty - 1, maxProducible)}
-            className="w-11 h-11 rounded-xl bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xl transition-all shadow-2xs cursor-pointer select-none"
+            className="w-11 h-11 rounded-xl bg-white border border-[#D5DDD9] text-slate-800 hover:bg-slate-100 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xl transition-all shadow-2xs cursor-pointer select-none"
             aria-label="ลดจำนวน"
           >
             −
@@ -100,7 +100,7 @@ export default function ProductCard({
                   onQuantityChange(bom.fg_sku, 1, maxProducible);
                 }
               }}
-              className="w-full text-center h-11 px-2 bg-white border border-slate-300 rounded-xl font-mono text-base font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner disabled:bg-slate-100 disabled:text-slate-400 cursor-text select-all"
+              className="w-full text-center h-11 px-2 bg-white border border-[#D5DDD9] rounded-xl font-mono text-base font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F] shadow-inner disabled:bg-slate-100 disabled:text-slate-400 cursor-text select-all"
             />
           </div>
 
@@ -108,7 +108,7 @@ export default function ProductCard({
             type="button"
             disabled={maxProducible <= 0}
             onClick={() => onQuantityChange(bom.fg_sku, currentQty + 1, maxProducible)}
-            className="w-11 h-11 rounded-xl bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xl transition-all shadow-2xs cursor-pointer select-none"
+            className="w-11 h-11 rounded-xl bg-white border border-[#D5DDD9] text-slate-800 hover:bg-slate-100 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xl transition-all shadow-2xs cursor-pointer select-none"
             aria-label="เพิ่มจำนวน"
           >
             +
@@ -119,7 +119,7 @@ export default function ProductCard({
             type="button"
             disabled={maxProducible <= 0 || currentQty === maxProducible}
             onClick={() => onQuantityChange(bom.fg_sku, maxProducible, maxProducible)}
-            className="h-11 px-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xs transition-all cursor-pointer select-none"
+            className="h-11 px-2.5 rounded-xl bg-[#EAF2EE] border border-[#8FB3A3] text-[#052B1F] hover:bg-[#DFEDE6] active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center font-bold text-xs transition-all cursor-pointer select-none"
             aria-label="ใส่จำนวนสูงสุด"
             title="ใส่จำนวนสูงสุดที่ผลิตได้"
           >
@@ -135,7 +135,7 @@ export default function ProductCard({
         onClick={onAddToCart}
         className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer active:scale-[0.98] ${
           maxProducible > 0
-            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+            ? "bg-[#06402B] hover:bg-[#053425] text-white shadow-[#06402B]/20"
             : "bg-slate-200 text-slate-500 cursor-not-allowed shadow-none"
         }`}
       >

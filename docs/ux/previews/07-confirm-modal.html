@@ -1,0 +1,70 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>.dim{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:10}
+.modal{width:470px;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:16px;box-shadow:0 24px 60px -12px rgba(0,0,0,.35);padding:22px 24px}</style></head>
+<body><div class="dsk">
+
+<div class="side">
+  <div class="brand"><div class="logo">S</div><div class="name">Stockify</div></div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="18" rx="1"/></svg>หน้าหลัก</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M19 13v6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/></svg>รับสินค้าเข้าโกดัง</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3 4 7l4 4M4 7h16m-4 10 4-4-4-4M20 17H4"/></svg>จัดตำแหน่งสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16h6M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>เบิกสินค้า</div>
+  <div class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>ประวัติเบิกสินค้า</div>
+</div>
+
+<div class="main">
+  <div class="page-title">เบิกสินค้า</div>
+  <div class="page-sub">สร้างใบเบิก ติดตามคิวงาน และอนุมัติรายการเบิกสินค้า</div>
+
+  <div class="card" style="max-width:760px;margin-top:16px;padding:18px 20px;filter:blur(1px);opacity:.75">
+    <div class="row between g8">
+      <span class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0001</span>
+      <span class="badge" style="background:#FEF3C7;color:#92400E"><span class="dot" style="background:#F59E0B"></span>เบิกแล้ว (รอ Admin อนุมัติ)</span>
+    </div>
+    <div class="row between g10" style="margin-top:12px">
+      <div>
+        <div style="font-size:16px;font-weight:700">สายถัก STL 24 นิ้ว</div>
+        <div class="row g8" style="margin-top:8px">
+          <span class="chip" style="background:#fff">โกดัง 1</span>
+          <span class="chip" style="background:#ECFDF5;border-color:#A7F3D0;color:#047857">โกดัง 2</span>
+        </div>
+      </div>
+      <div class="qty-chip"><div class="n">400</div><div class="u">ชิ้น</div></div>
+    </div>
+    <div class="row between g12" style="margin-top:14px">
+      <button class="btn btn-danger" style="height:46px;padding:0 20px;font-size:14px">ปฏิเสธ</button>
+      <button class="btn btn-primary" style="height:48px;padding:0 24px;font-size:15px">อนุมัติการเบิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ยืนยันแบบอ่านง่าย (W9) -->
+<div class="dim">
+  <div class="modal">
+    <div style="font-size:18px;font-weight:700;display:flex;gap:10px;align-items:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="m8.5 12.5 2.5 2.5 5-5.5"/></svg>
+      อนุมัติใบเบิกสินค้า?</div>
+    <div class="subcard" style="padding:16px;margin-top:14px">
+      <div class="mono" style="font-size:16px;font-weight:600">TRF-20260904-0001</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px">สายถัก STL 24 นิ้ว</div>
+      <div class="row" style="gap:8px;align-items:baseline;margin-top:4px">
+        <span style="font-size:15px;font-weight:600;color:#5B6660">จำนวน</span>
+        <span class="mono" style="font-size:24px;font-weight:600">400</span>
+        <span style="font-size:15px;font-weight:600;color:#5B6660">ชิ้น</span>
+      </div>
+      <div style="font-size:15px;font-weight:600;margin-top:4px">โกดัง 1 → โกดัง 2 (B1-C3)</div>
+    </div>
+    <div class="row g8" style="font-size:14px;color:#5B6660;line-height:1.6;margin-top:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="margin-top:3px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      ระบบจะตัดสต็อกต้นทางและเพิ่มปลายทาง — ตรวจค่าข้างบนให้ถูกต้องก่อนกดยืนยัน</div>
+    <div class="row g12" style="margin-top:18px">
+      <button class="btn btn-secondary" style="flex:1;height:48px;font-size:15px">ยกเลิก</button>
+      <button class="btn btn-primary" style="flex:1.4;height:52px;font-size:16px">อนุมัติการเบิก</button>
+    </div>
+  </div>
+</div>
+
+</div></body></html>

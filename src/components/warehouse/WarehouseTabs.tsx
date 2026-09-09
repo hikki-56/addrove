@@ -35,11 +35,11 @@ export default function WarehouseTabs({
             onClick={() => onSelectWarehouse(normId)}
             className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               isActive
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/40 font-semibold"
+                ? "bg-[#06402B] text-white shadow-[0_1px_2px_rgba(16,24,40,0.10)] font-semibold"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
             } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"}`}
           >
-            <span className={`w-2 h-2 rounded-full ${isActive ? "bg-emerald-300 animate-pulse" : "bg-slate-600"}`} />
+            <span className={`w-2 h-2 rounded-full ${isActive ? "bg-[#8FB3A3] animate-pulse" : "bg-slate-600"}`} />
             {wh.warehouse_name}
           </button>
         );

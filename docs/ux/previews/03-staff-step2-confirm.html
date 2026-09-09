@@ -1,0 +1,70 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>body{background:#fff}.wrap{max-width:430px;margin:0 auto;padding:14px 16px 26px;min-height:100vh;display:flex;flex-direction:column}</style></head>
+<body><div class="wrap">
+
+<div class="row between g8">
+  <div>
+    <div class="mono" style="font-size:14px;font-weight:600;color:#334155">TRF-20260904-0001</div>
+    <div style="font-size:13px;color:#5B6660;margin-top:2px">ผู้สร้าง: อารีย์ แก้วใส</div>
+  </div>
+  <button class="btn btn-secondary" style="width:44px;height:44px" aria-label="ปิดหน้าต่าง">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+</div>
+
+<!-- ตัวบอกขั้น: ขั้น 1 ผ่านแล้ว -->
+<div class="row" style="margin:18px 4px 6px">
+  <div class="steps" style="flex:1">
+    <div class="step done" style="width:100px"><div class="circle">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m5 13 4 4L19 7"/></svg></div>
+      <div class="stxt">สแกนสินค้า</div></div>
+    <div class="sline"></div>
+    <div class="step active" style="width:120px"><div class="circle">2</div><div class="stxt">ตำแหน่งปลายทาง</div></div>
+  </div>
+  <div style="font-size:14px;font-weight:600;color:#5B6660;margin-top:4px">ขั้นที่ 2 จาก 2</div>
+</div>
+
+<!-- การ์ดสรุปงาน (ค้างทุกขั้น) -->
+<div class="subcard" style="padding:14px 16px;margin-top:14px">
+  <div class="row between g8">
+    <div style="font-size:17px;font-weight:700">สายถัก STL 24 นิ้ว</div>
+    <span class="mono" style="font-size:20px;font-weight:600;color:#065F46">400 <span style="font-size:13px;font-family:'Sarabun';font-weight:600">ชิ้น</span></span>
+  </div>
+  <div style="font-size:14px;color:#5B6660;margin-top:2px">จาก <span style="color:#047857;font-weight:700">โกดัง 1</span> ไป <span style="color:#047857;font-weight:700">โกดัง 2</span></div>
+</div>
+
+<!-- ช่องสแกนชั้นปลายทาง -->
+<div style="font-size:16px;font-weight:700;margin-top:16px">สแกนตำแหน่งปลายทางใน โกดัง 2:</div>
+<div class="row" style="margin-top:8px;border:2px solid #CBD5E1;border-radius:14px;background:#fff;height:56px;padding:0 16px;gap:10px">
+  <span class="mono" style="font-size:18px;color:#94A3B8">▌</span>
+  <span class="mono" style="font-size:18px;color:#94A3B8">สแกนตำแหน่งปลายทาง…</span>
+</div>
+
+<!-- แผงยืนยันหลังสแกนชั้นผ่าน -->
+<div class="panel" style="padding:14px;margin-top:14px">
+  <div class="row between g8">
+    <div class="row g8" style="font-size:15px;font-weight:700;color:#065F46">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.6" stroke-linecap="round"><path d="m5 13 4 4L19 7"/></svg>
+      สแกนชั้นวางปลายทางสำเร็จ</div>
+    <span style="font-size:14px;font-weight:700;color:#047857;text-decoration:underline">สแกนใหม่</span>
+  </div>
+  <div style="background:#fff;border-radius:12px;padding:12px 14px;margin-top:10px">
+    <div class="row between">
+      <div class="row g8" style="font-size:14px;font-weight:600;color:#5B6660">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        ตำแหน่งปลายทาง</div>
+      <span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0">โกดัง 2</span>
+    </div>
+    <div class="mono" style="font-size:26px;font-weight:600;margin-top:4px">B1-C3</div>
+  </div>
+  <button class="btn btn-primary" style="width:100%;height:56px;font-size:16px;margin-top:12px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="m5 13 4 4L19 7"/></svg>
+    ยืนยันการเบิก (ส่งให้ Admin อนุมัติ)</button>
+</div>
+
+<div style="flex:1"></div>
+<div style="font-size:13px;color:#5B6660;text-align:center;margin-top:14px">ปิดหน้าต่างกลางทางได้ทุกเมื่อ — ระบบจำขั้นที่ทำค้างไว้ กด "สแกนต่อ" เพื่อกลับมาที่ขั้นเดิม</div>
+
+</div></body></html>

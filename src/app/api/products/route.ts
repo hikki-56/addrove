@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { getStockStatus } from "@/lib/stock-status";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { CreateProductSchema } from "@/types/api";
@@ -11,7 +12,7 @@ import {
   zodErrorResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
-import { readSheet, appendRows, SHEETS, getWarehouseSheetName, clearSheetCache } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { ZodError } from "zod";
 
 export async function GET(req: NextRequest) {
@@ -23,22 +24,16 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get("category");
     const search = searchParams.get("search");
     const warehouseId = searchParams.get("warehouse_id");
+    const statusFilter = searchParams.get("status");
     const pageParam = searchParams.get("page");
     const limitParam = searchParams.get("limit");
     const masterOnly = searchParams.get("master_only") === "true" || searchParams.get("source") === "master";
-    const noCache = searchParams.has("_t"); // bust cache when _t param is present
     if (
       warehouseId &&
       session.user.role !== "ADMIN" &&
       !hasWarehouseAccess(session.user.warehouse_access, warehouseId)
     ) {
       return forbiddenResponse("คุณไม่มีสิทธิ์ดูสินค้าในโกดังนี้");
-    }
-
-    // If cache-busting param is present, clear only products cache
-    if (noCache) {
-      clearSheetCache(SHEETS.PRODUCTS);
-      if (warehouseId) clearSheetCache(getWarehouseSheetName(warehouseId));
     }
 
     const repo = getRepository();
@@ -137,68 +132,56 @@ export async function GET(req: NextRequest) {
       return Array.from(listMap.values());
     };
 
-    // Read all 5 warehouse tabs in parallel to compute total stock across all warehouses per SKU
-    const warehouseTabs = [
-      { id: "wh-1", sheet: "โกดัง1" },
-      { id: "wh-2", sheet: "โกดัง2" },
-      { id: "wh-3", sheet: "โกดัง3" },
-      { id: "wh-4", sheet: "โกดัง4" },
-      { id: "wh-5", sheet: "โกดัง5" },
-      { id: "wh-6", sheet: "สำนักงานใหญ่" },
-    ].filter((tab) =>
-      session.user.role === "ADMIN" || hasWarehouseAccess(session.user.warehouse_access, tab.id)
-    );
+    // Build per-SKU total stock and per-location breakdown from only the rows we actually read.
+    const buildStockMaps = (rows: any[]) => {
+      // Map normalized SKU -> Total stock quantity summed across read warehouses
+      const totalStockMap = new Map<string, number>();
+      // Map normalized SKU -> Array of location entries across read warehouses
+      const locationBreakdownMap = new Map<string, Array<{
+        warehouse_id: string;
+        warehouse_name: string;
+        location: string;
+        quantity: number;
+      }>>();
 
-    const warehouseResults = await Promise.all(
-      warehouseTabs.map((t) => readWarehouseProducts(t.id, t.sheet))
-    );
-    const allWarehouseProducts = warehouseResults.flat();
+      rows.forEach((p) => {
+        const skuKey = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
+        const qty = Number(p.quantity ?? p.minimum_stock ?? 0);
+        totalStockMap.set(skuKey, (totalStockMap.get(skuKey) || 0) + qty);
 
-    // Map normalized SKU -> Total stock quantity summed across ALL warehouses
-    const totalStockMap = new Map<string, number>();
-    // Map normalized SKU -> Array of location entries across all warehouses
-    const locationBreakdownMap = new Map<string, Array<{
-      warehouse_id: string;
-      warehouse_name: string;
-      location: string;
-      quantity: number;
-    }>>();
+        const whId = (p as any).warehouse_id || "wh-1";
+        const whName =
+          whId === "wh-1" ? "โกดัง 1" :
+          whId === "wh-2" ? "โกดัง 2" :
+          whId === "wh-3" ? "โกดัง 3" :
+          whId === "wh-4" ? "โกดัง 4" :
+          whId === "wh-5" ? "โกดัง 5" :
+          whId === "wh-6" ? "สำนักงานใหญ่" : `โกดัง ${whId.replace(/^wh-/, "")}`;
 
-    allWarehouseProducts.forEach((p) => {
-      const skuKey = (p.sku || "").trim().toLowerCase().replace(/^prod-/, "");
-      const qty = Number(p.quantity ?? p.minimum_stock ?? 0);
-      totalStockMap.set(skuKey, (totalStockMap.get(skuKey) || 0) + qty);
+        const loc = p.location && p.location.trim() !== "" && p.location.trim() !== "-" ? p.location.trim() : "-";
 
-      const whId = (p as any).warehouse_id || "wh-1";
-      const whName =
-        whId === "wh-1" ? "โกดัง 1" :
-        whId === "wh-2" ? "โกดัง 2" :
-        whId === "wh-3" ? "โกดัง 3" :
-        whId === "wh-4" ? "โกดัง 4" :
-        whId === "wh-5" ? "โกดัง 5" :
-        whId === "wh-6" ? "สำนักงานใหญ่" : `โกดัง ${whId.replace(/^wh-/, "")}`;
+        if (!locationBreakdownMap.has(skuKey)) {
+          locationBreakdownMap.set(skuKey, []);
+        }
+        const existingEntry = locationBreakdownMap.get(skuKey)!.find(
+          (e) => e.warehouse_id === whId && e.location === loc
+        );
+        if (existingEntry) {
+          existingEntry.quantity += qty;
+        } else {
+          locationBreakdownMap.get(skuKey)!.push({
+            warehouse_id: whId,
+            warehouse_name: whName,
+            location: loc,
+            quantity: qty,
+          });
+        }
+      });
+      return { totalStockMap, locationBreakdownMap };
+    };
 
-      const loc = p.location && p.location.trim() !== "" && p.location.trim() !== "-" ? p.location.trim() : "-";
-
-      if (!locationBreakdownMap.has(skuKey)) {
-        locationBreakdownMap.set(skuKey, []);
-      }
-      const existingEntry = locationBreakdownMap.get(skuKey)!.find(
-        (e) => e.warehouse_id === whId && e.location === loc
-      );
-      if (existingEntry) {
-        existingEntry.quantity += qty;
-      } else {
-        locationBreakdownMap.get(skuKey)!.push({
-          warehouse_id: whId,
-          warehouse_name: whName,
-          location: loc,
-          quantity: qty,
-        });
-      }
-    });
-
-    const deduplicateBySku = (rawList: any[]) => {
+    const deduplicateBySku = (rawList: any[], stockMaps: ReturnType<typeof buildStockMaps>) => {
+      const { totalStockMap, locationBreakdownMap } = stockMaps;
       const map = new Map<string, any>();
 
       rawList.forEach((p) => {
@@ -210,11 +193,19 @@ export async function GET(req: NextRequest) {
 
         if (!existing) {
           const breakdowns = locationBreakdownMap.get(skuKey) || [];
+          const totalQty = totalStockMap.get(skuKey) ?? qty;
+          // minimum_stock ที่แท้จริงต้องมาจาก master sheet เท่านั้น (แถวโกดังไม่ได้เก็บขั้นต่ำรวม)
+          const masterForSku =
+            masterMap.get(skuKey) || masterMap.get(`prod-${skuKey}`);
+          const minStock = masterForSku
+            ? Number(masterForSku.minimum_stock) || 0
+            : Number(p.minimum_stock) || 0;
           map.set(skuKey, {
             ...p,
             quantity: qty,
-            total_quantity: totalStockMap.get(skuKey) ?? qty,
-            minimum_stock: totalStockMap.get(skuKey) ?? qty,
+            total_quantity: totalQty,
+            minimum_stock: minStock,
+            stock_status: getStockStatus(totalQty, minStock),
             locations_breakdown: breakdowns,
           });
         } else {
@@ -239,17 +230,35 @@ export async function GET(req: NextRequest) {
     };
 
     if (masterOnly) {
-      products = deduplicateBySku(masterProducts);
+      products = deduplicateBySku(masterProducts, buildStockMaps([]));
     } else if (warehouseId) {
+      // มุมมองรายโกดัง: อ่านแค่ master + แท็บโกดังที่ขอ ไม่ต้องอ่านโกดังอื่น
       const targetSheet = getWarehouseSheetName(warehouseId);
       const rawWhProds = await readWarehouseProducts(warehouseId, targetSheet);
-      products = deduplicateBySku(rawWhProds);
+      products = deduplicateBySku(rawWhProds, buildStockMaps(rawWhProds));
     } else {
+      // Read all warehouse tabs in parallel to compute total stock across all warehouses per SKU
+      const warehouseTabs = [
+        { id: "wh-1", sheet: "โกดัง1" },
+        { id: "wh-2", sheet: "โกดัง2" },
+        { id: "wh-3", sheet: "โกดัง3" },
+        { id: "wh-4", sheet: "โกดัง4" },
+        { id: "wh-5", sheet: "โกดัง5" },
+        { id: "wh-6", sheet: "สำนักงานใหญ่" },
+      ].filter((tab) =>
+        session.user.role === "ADMIN" || hasWarehouseAccess(session.user.warehouse_access, tab.id)
+      );
+
+      const warehouseResults = await Promise.all(
+        warehouseTabs.map((t) => readWarehouseProducts(t.id, t.sheet))
+      );
+      const allWarehouseProducts = warehouseResults.flat();
       const rawAll = allWarehouseProducts.length > 0 ? allWarehouseProducts : masterProducts;
-      products = deduplicateBySku(rawAll);
+      products = deduplicateBySku(rawAll, buildStockMaps(allWarehouseProducts));
     }
 
     if (category) products = products.filter((p) => p.category === category);
+    if (statusFilter) products = products.filter((p) => p.stock_status === statusFilter);
     if (search) {
       const q = search.toLowerCase();
       products = products.filter(

@@ -1,10 +1,10 @@
 import { getRepository } from "@/lib/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import type { User } from "@/types/models";
 import { encode } from "next-auth/jwt";
 import { recordLoginLog } from "@/lib/services/login-log.service";
 import { getAuthSecret } from "@/lib/server-secrets";
+import { getAccessibleWarehouseIds } from "@/lib/api-response";
 import {
   clearFailedAttempts,
   getClientIp,
@@ -25,53 +25,20 @@ function rateLimitedResponse(retryAfter: number) {
   );
 }
 
-/** Verify password using Bcrypt hash with support for standard admin defaults and plaintext fallbacks */
-function verifyPassword(password: string, hash: string, email?: string): boolean {
+/** Verify password against bcrypt hash only — plaintext rows and default passwords fail closed (run scripts/migrate-plaintext-pins.ts to re-hash legacy rows) */
+function verifyPassword(password: string, hash: string): boolean {
   const cleanPass = (password || "").trim();
-  const cleanEmail = (email || "").trim().toLowerCase();
+  const rawHash = (hash || "").trim();
+  if (!rawHash) return false;
 
-  // 1. Direct Bcrypt comparison
-  if (hash && hash.trim()) {
-    const cleanHash = hash.trim();
-    if (cleanHash.startsWith("$2b$") || cleanHash.startsWith("$2a$") || cleanHash.startsWith("$2y$")) {
-      try {
-        if (bcrypt.compareSync(cleanPass, cleanHash)) return true;
-      } catch (err) {
-        console.error("[Login] bcrypt.compareSync error:", err);
-      }
-    }
-    // 2. Direct plaintext match (if password in database is stored in plain text)
-    if (cleanPass === cleanHash) return true;
-  }
-
-  // 3. Fallback for Admin account credentials
-  const isAdminIdentifier =
-    cleanEmail === "admin" ||
-    cleanEmail === "admin@stockify.com" ||
-    cleanEmail.startsWith("admin") ||
-    cleanEmail === "pui" ||
-    cleanEmail === "pui@stockify.com" ||
-    cleanEmail === "ปุ๋ย" ||
-    cleanEmail === "tak" ||
-    cleanEmail === "tak@stockify.com" ||
-    cleanEmail === "ตั๊ก";
-
-  if (isAdminIdentifier) {
-    const allowedAdminPasswords = [
-      "admin",
-      "admin1234",
-      "admin123",
-      "123456",
-      "1234",
-      "password",
-      "Stockify2026!",
-      "Stockify@2026",
-    ];
-    if (allowedAdminPasswords.includes(cleanPass)) {
-      return true;
+  if (rawHash.startsWith("$2b$") || rawHash.startsWith("$2a$") || rawHash.startsWith("$2y$")) {
+    try {
+      return bcrypt.compareSync(cleanPass, rawHash);
+    } catch (err) {
+      console.error("[Login] bcrypt.compareSync error:", err);
+      return false;
     }
   }
-
   return false;
 }
 
@@ -107,8 +74,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify password against user's bcrypt hash, plaintext, or default admin credentials
-    const isValid = verifyPassword(password, user.password_hash || "", normalizedEmail);
+    // Verify password against the user's bcrypt hash only (fail closed on legacy plaintext)
+    const isValid = verifyPassword(password, user.password_hash || "");
     if (!isValid) {
       const blockedFor = recordFailedAttempt(rateLimitKey, LOGIN_RATE_LIMIT);
       if (blockedFor > 0) return rateLimitedResponse(blockedFor);
@@ -120,18 +87,10 @@ export async function POST(req: Request) {
 
     clearFailedAttempts(rateLimitKey);
 
-    // Parse warehouse access with fail-closed security
-    let warehouseAccess: string[] = [];
-    try {
-      const parsed = JSON.parse(user.warehouse_access);
-      if (Array.isArray(parsed)) {
-        warehouseAccess = parsed.filter((v): v is string => typeof v === "string");
-      } else if (parsed === "*") {
-        warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
-      }
-    } catch {
-      warehouseAccess = user.role === "ADMIN" ? ["*"] : [];
-    }
+    // Parse warehouse access with the same helper the authorize layer uses,
+    // so "*", '["*"]', JSON arrays and comma-separated values all behave identically (fail closed)
+    const accessibleWarehouseIds = getAccessibleWarehouseIds(user.warehouse_access);
+    const warehouseAccess = accessibleWarehouseIds === null ? ["*"] : accessibleWarehouseIds;
 
     const ADMIN_SESSION_MAX_AGE = 24 * 60 * 60; // 24 Hours session timeout (86,400 seconds)
     const expiresAtMs = Date.now() + ADMIN_SESSION_MAX_AGE * 1000;

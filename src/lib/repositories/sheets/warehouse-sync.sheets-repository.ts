@@ -383,8 +383,11 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       const actualMoveQty = qty > 0 ? qty : totalSourceQty;
       const currentLoc = cleanLocCode(matchedRow[6] || "");
 
-      // Case 1: Assigning new location, or moving all stock -> Simply update the location in place!
-      if (!currentLoc || actualMoveQty >= totalSourceQty || totalSourceQty <= 0) {
+      // Case 1: Assigning a location to unlabelled stock, or moving ALL stock ->
+      // simply update the location in place. A location-less row with a PARTIAL move
+      // must fall through to the split path below, otherwise the whole row would be
+      // relocated even though the user only shelved part of it.
+      if ((currentLoc && actualMoveQty >= totalSourceQty) || totalSourceQty <= 0) {
         matchedRow[6] = cleanToLoc;
         matchedRow[8] = now;
         await updateRow(sheetName, matchedIndex + 2, matchedRow);
@@ -410,7 +413,9 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
       await this.syncAdd(warehouseId, productInfo, actualMoveQty, cleanToLoc);
       clearSheetCache(sheetName);
     } catch (e) {
+      // Do not swallow: callers (move-stock) must be able to record the sync failure
       console.error("[SheetsWarehouseSync] syncMove error:", e);
+      throw e;
     }
   }
 }
