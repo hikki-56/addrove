@@ -7,6 +7,8 @@ import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
 
+export const maxDuration = 60;
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

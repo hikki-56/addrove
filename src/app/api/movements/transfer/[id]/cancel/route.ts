@@ -10,6 +10,8 @@ import {
   serverErrorResponse,
 } from "@/lib/api-response";
 
+export const maxDuration = 60;
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

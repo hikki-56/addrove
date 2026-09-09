@@ -258,6 +258,18 @@ const sheetCache = globalForSheetCache.sheetCache;
 const persistentSheetData = globalForSheetCache.persistentSheetData;
 const CACHE_TTL_MS = 30 * 1000; // 30s memory cache TTL to prevent Google 429 quota exhaustion
 
+// ข้อมูล master (สินค้า/โกดัง/ตำแหน่ง/ชั้น) แทบไม่เปลี่ยนระหว่างกะ — cache นานขึ้น
+// ลดการยิง Google API ในชีวิตประจำวันได้มาก โดยทุก write path ยังเคลียร์ cache
+// ของชีตที่ตัวเองเขียนเหมือนเดิม (เห็นข้อมูลตัวเองทันทีเสมอ)
+// Users/BOM/ธุรกรรมต่าง ๆ คง TTL 30 วินาที เพราะความสดมีผลต่อความถูกต้อง
+const REFERENCE_SHEETS = new Set(["products", "warehouses", "locations", "shelves"]);
+const REFERENCE_TTL_MS = 5 * 60 * 1000;
+
+function getCacheTtlMs(sheetName: string): number {
+  const key = sheetName.replace(/^'|'$/g, "").trim().toLowerCase();
+  return REFERENCE_SHEETS.has(key) ? REFERENCE_TTL_MS : CACHE_TTL_MS;
+}
+
 export function clearSheetCache(sheetName?: string) {
   if (sheetName) {
     const clean = sheetName.replace(/^'|'$/g, "").trim().toLowerCase();
@@ -275,6 +287,7 @@ export function clearSheetCache(sheetName?: string) {
 const globalForSheetFetch = globalThis as unknown as {
   inFlightSheetReads?: Map<string, Promise<string[][]>>;
   resolvedSheetNames?: Map<string, string>;
+  sheetReadErrors?: Map<string, { message: string; at: number }>;
 };
 if (!globalForSheetFetch.inFlightSheetReads) {
   globalForSheetFetch.inFlightSheetReads = new Map<string, Promise<string[][]>>();
@@ -282,8 +295,29 @@ if (!globalForSheetFetch.inFlightSheetReads) {
 if (!globalForSheetFetch.resolvedSheetNames) {
   globalForSheetFetch.resolvedSheetNames = new Map<string, string>();
 }
+if (!globalForSheetFetch.sheetReadErrors) {
+  globalForSheetFetch.sheetReadErrors = new Map<string, { message: string; at: number }>();
+}
 const inFlightSheetReads = globalForSheetFetch.inFlightSheetReads;
 const resolvedSheetNames = globalForSheetFetch.resolvedSheetNames;
+const sheetReadErrors = globalForSheetFetch.sheetReadErrors;
+
+// readSheet กลบ error เป็น [] เพื่อ resilience — map นี้เก็บ error ล่าสุดไว้ให้ caller
+// แยกแยะ "ชีตว่างจริง" ออกจาก "อ่านชีตไม่สำเร็จ" (เช่น Dashboard ต้องตอบ error ไม่ใช่ 0)
+export function getSheetReadError(sheetName: string): string | null {
+  return sheetReadErrors.get(sheetNameKey(sheetName))?.message ?? null;
+}
+
+function recordSheetReadError(sheetName: string, error: unknown): void {
+  sheetReadErrors.set(sheetNameKey(sheetName), {
+    message: error instanceof Error ? error.message : String(error),
+    at: Date.now(),
+  });
+}
+
+function clearSheetReadError(sheetName: string): void {
+  sheetReadErrors.delete(sheetNameKey(sheetName));
+}
 
 // Once a candidate tab name succeeds, remember it so later reads/writes skip
 // the sequential name probing — every probed miss is a billable Sheets API call.
@@ -306,8 +340,113 @@ function forgetResolvedSheetName(input: string): void {
 function hasServiceAccountCredentials(): boolean {
   return Boolean(
     (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL) &&
-      process.env.GOOGLE_PRIVATE_KEY
+    process.env.GOOGLE_PRIVATE_KEY
   );
+}
+
+// ============================================================
+// Tab-title metadata cache
+// ดึงรายชื่อแท็บจริงทั้งหมดครั้งเดียว (spreadsheets.get) แล้วจับคู่ชื่อ logical
+// กับชื่อแท็บจริง — ตัดการ "ลองชื่อ candidates ทีละอัน" ที่แต่ละ miss
+// คือ Google API call 1 ครั้งเปล่า ๆ โดยเฉพาะตอน cold start
+// ============================================================
+interface SpreadsheetTabsCache {
+  byNormTitle: Map<string, string>;
+  byTitle: Map<string, { title: string; sheetId: number | null }>;
+  at: number;
+}
+
+const TABS_CACHE_TTL_MS = 10 * 60 * 1000;
+const globalForTabs = globalThis as unknown as {
+  spreadsheetTabs?: SpreadsheetTabsCache;
+  spreadsheetTabsInFlight?: Promise<SpreadsheetTabsCache | null> | undefined;
+};
+
+function normalizeTabTitle(title: string): string {
+  return title.replace(/\s+/g, "").toLowerCase();
+}
+
+async function fetchSpreadsheetTabs(): Promise<SpreadsheetTabsCache | null> {
+  if (!SPREADSHEET_ID) return null;
+  try {
+    let sheetsMeta: { title?: string | null; sheetId?: number | null }[] = [];
+    if (hasServiceAccountCredentials()) {
+      const meta = await withRetry(() =>
+        getSheetsClient().spreadsheets.get({
+          spreadsheetId: SPREADSHEET_ID,
+          fields: "sheets.properties(title,sheetId)",
+        })
+      );
+      sheetsMeta = (meta.data.sheets ?? []).map((s) => ({
+        title: s.properties?.title,
+        sheetId: s.properties?.sheetId ?? null,
+      }));
+    } else if (process.env.GOOGLE_API_KEY) {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties(title,sheetId)&key=${process.env.GOOGLE_API_KEY}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      sheetsMeta = (json.sheets ?? []).map(
+        (s: { properties?: { title?: string; sheetId?: number } }) => ({
+          title: s.properties?.title,
+          sheetId: s.properties?.sheetId ?? null,
+        })
+      );
+    } else {
+      return null;
+    }
+
+    const byNormTitle = new Map<string, string>();
+    const byTitle = new Map<string, { title: string; sheetId: number | null }>();
+    for (const m of sheetsMeta) {
+      if (!m.title) continue;
+      byNormTitle.set(normalizeTabTitle(m.title), m.title);
+      byTitle.set(m.title, { title: m.title, sheetId: m.sheetId ?? null });
+    }
+    if (byTitle.size === 0) return globalForTabs.spreadsheetTabs ?? null;
+    const cache: SpreadsheetTabsCache = { byNormTitle, byTitle, at: Date.now() };
+    globalForTabs.spreadsheetTabs = cache;
+    return cache;
+  } catch (e) {
+    console.warn("[GoogleSheets] fetchSpreadsheetTabs failed:", e);
+    return globalForTabs.spreadsheetTabs ?? null;
+  }
+}
+
+async function getSpreadsheetTabs(): Promise<SpreadsheetTabsCache | null> {
+  const cached = globalForTabs.spreadsheetTabs;
+  if (cached && Date.now() - cached.at < TABS_CACHE_TTL_MS) return cached;
+  if (globalForTabs.spreadsheetTabsInFlight) return globalForTabs.spreadsheetTabsInFlight;
+  const inFlight = fetchSpreadsheetTabs().finally(() => {
+    globalForTabs.spreadsheetTabsInFlight = undefined;
+  });
+  globalForTabs.spreadsheetTabsInFlight = inFlight;
+  return inFlight;
+}
+
+/**
+ * Resolve logical sheet name → ชื่อแท็บจริงจาก metadata ที่ cache ไว้
+ * (คืน null เมื่อหาไม่ได้/ดึง metadata ไม่ได้ — caller ไปต่อด้วยวิธีเดิม)
+ */
+async function resolveSheetTitle(sheetName: string): Promise<string | null> {
+  const memo = getResolvedSheetName(sheetName);
+  if (memo) return memo;
+  const tabs = await getSpreadsheetTabs();
+  if (!tabs) return null;
+  const clean = sheetName.replace(/^'|'$/g, "").trim();
+  const direct = tabs.byNormTitle.get(normalizeTabTitle(clean));
+  if (direct) {
+    rememberResolvedSheetName(sheetName, direct);
+    return direct;
+  }
+  for (const cand of getPossibleSheetNames(clean)) {
+    const hit = tabs.byNormTitle.get(normalizeTabTitle(cand));
+    if (hit) {
+      rememberResolvedSheetName(sheetName, hit);
+      return hit;
+    }
+  }
+  return null;
 }
 
 async function assertAppsScriptSuccess(response: Response, operation: string): Promise<void> {
@@ -341,6 +480,319 @@ async function assertAppsScriptSuccess(response: Response, operation: string): P
 }
 
 // ------ Read rows from a sheet ------
+function sheetReadCacheKey(
+  sheetName: string,
+  range?: string,
+  keepHeader?: boolean
+): string {
+  // keepHeader=true ต้องแยก cache เพราะข้อมูลที่ได้ (มีหัวตาราง) ต่างจากปกติ
+  return keepHeader
+    ? `${sheetName}:${range || "ALL"}:raw`
+    : `${sheetName}:${range || "ALL"}`;
+}
+
+// ตัดแถวหัวตารางออกตาม heuristic เดียวกับเส้นทาง service account
+function stripHeaderRowIfPresent(rows: string[][], keepHeader?: boolean): string[][] {
+  if (rows.length === 0 || keepHeader) return rows;
+  const first = rows[0][0] ?? "";
+  if (
+    first.includes("_id") ||
+    first.toLowerCase().includes("sku") ||
+    first.includes("รหัสสินค้า")
+  ) {
+    return rows.slice(1);
+  }
+  return rows;
+}
+
+async function fetchFreshRowsUncached(
+  sheetName: string,
+  range?: string,
+  options?: { forceFresh?: boolean; maxAgeMs?: number; keepHeader?: boolean }
+): Promise<string[][]> {
+  const cleanSheet = sheetName.replace(/^'|'$/g, "").trim();
+  const safeSheet = cleanSheet.includes(" ") || cleanSheet.includes("-") ? `'${cleanSheet}'` : cleanSheet;
+  const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}!A1:Z5000`;
+
+  if (process.env.GOOGLE_API_KEY) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${process.env.GOOGLE_API_KEY}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          let googleRows = (json.values as string[][]) ?? [];
+          if (googleRows.length > 0 && !options?.keepHeader) {
+            const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
+            const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
+            if (
+              firstCell.includes("_id") ||
+              firstCell.includes("sku") ||
+              firstCell.includes("รหัส") ||
+              firstCell.includes("ลำดับ") ||
+              firstCell.includes("header") ||
+              firstCell.includes("bom") ||
+              firstCell.includes("id") ||
+              secondCell.includes("sku") ||
+              secondCell.includes("รหัส") ||
+              secondCell.includes("barcode")
+            ) {
+              googleRows = googleRows.slice(1);
+            }
+          }
+          return googleRows;
+        } else if (res.status === 429 || res.status === 503) {
+          // Rate limited by Google Sheets - back off and retry
+          const backoff = 500 * Math.pow(2, attempt);
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+          continue;
+        } else {
+          console.warn(`[GoogleSheets API Key] HTTP ${res.status} for ${url}:`, await res.text());
+          break;
+        }
+      } catch (e) {
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+        console.warn(`[GoogleSheets API Key] ${sheetName} read failed:`, e);
+      }
+    }
+  }
+
+  if (hasServiceAccountCredentials()) {
+    const readViaServiceAccount = async (cand: string): Promise<string[][]> => {
+      const sheets = getSheetsClient();
+      const safeCand = cand.startsWith("'") ? cand : `'${cand.replace(/'/g, "")}'`;
+      const candRange = range ? `${safeCand}!${range}` : `${safeCand}`;
+      const response = await withRetry(() =>
+        sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: candRange,
+        })
+      );
+      return stripHeaderRowIfPresent(
+        (response.data.values as string[][]) ?? [],
+        options?.keepHeader
+      );
+    };
+
+    // metadata cache บอกชื่อแท็บจริงได้ภายใน call เดียว — ไม่ต้องลอง candidates
+    const resolved = await resolveSheetTitle(sheetName);
+    if (resolved) {
+      try {
+        const rows = await readViaServiceAccount(resolved);
+        if (rows.length > 0) return rows;
+        // Resolved tab exists but is empty — re-probe in case the tab moved.
+        forgetResolvedSheetName(sheetName);
+      } catch {
+        forgetResolvedSheetName(sheetName);
+      }
+    }
+
+    const candidates = getPossibleSheetNames(sheetName);
+    for (const cand of candidates) {
+      try {
+        const googleRows = await readViaServiceAccount(cand);
+        if (googleRows.length > 0) rememberResolvedSheetName(sheetName, cand);
+        return googleRows;
+      } catch (err) {
+        // Try next candidate
+      }
+    }
+  }
+
+  return readPublicSheetCsv(sheetName);
+}
+
+// เอาผลที่อ่านได้ (ไม่ว่าจะจาก batchGet หรืออ่านเดี่ยว) เก็บลง cache และคืนค่า
+// พร้อมกลไก preserve-last-good เดิม: อ่านได้ 0 แถว/อ่านพลาด → ใช้ข้อมูลเดิม
+async function settleFetchedRows(
+  sheetName: string,
+  range: string | undefined,
+  options: { keepHeader?: boolean } | undefined,
+  freshRows: string[][]
+): Promise<string[][]> {
+  const cacheKey = sheetReadCacheKey(sheetName, range, options?.keepHeader);
+  if (freshRows && freshRows.length > 0) {
+    clearSheetReadError(sheetName);
+    sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
+    persistentSheetData.set(cacheKey, freshRows);
+    persistentSheetData.set(sheetName, freshRows);
+    return freshRows;
+  }
+
+  // If freshRows returned empty but we previously had good data, preserve the good data
+  const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+  if (lastGood && lastGood.length > 0) {
+    console.warn(`[GoogleSheets readSheet] Fresh fetch returned 0 rows for ${sheetName}, preserving ${lastGood.length} existing rows`);
+    sheetCache.set(cacheKey, { data: lastGood, timestamp: Date.now() });
+    return lastGood;
+  }
+
+  sheetCache.set(cacheKey, { data: [], timestamp: Date.now() });
+  return [];
+}
+
+async function fetchAndCacheRead(
+  sheetName: string,
+  range?: string,
+  options?: { forceFresh?: boolean; maxAgeMs?: number; keepHeader?: boolean }
+): Promise<string[][]> {
+  const cacheKey = sheetReadCacheKey(sheetName, range, options?.keepHeader);
+  try {
+    const freshRows = await fetchFreshRowsUncached(sheetName, range, options);
+    return await settleFetchedRows(sheetName, range, options, freshRows);
+  } catch (error) {
+    recordSheetReadError(sheetName, error);
+    const cached = sheetCache.get(cacheKey);
+    if (cached && cached.data.length > 0) {
+      console.warn(`[GoogleSheets readSheet] Using memory cached rows for ${sheetName} (${cached.data.length} rows)`);
+      return cached.data;
+    }
+    const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
+    if (lastGood && lastGood.length > 0) {
+      console.warn(`[GoogleSheets readSheet] Using persistent fallback rows for ${sheetName} (${lastGood.length} rows)`);
+      return lastGood;
+    }
+    console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
+    return [];
+  }
+}
+
+// ============================================================
+// Micro-batching ของ read ที่มาพร้อมกัน
+// readSheet หลายตัวที่ถูกเรียกใน tick เดียวกัน (Promise.all ใน repository)
+// จะถูกรวมเป็น spreadsheets.values.batchGet ครั้งเดียว — N read = 1 quota
+// unit + 1 round trip แทนที่จะเป็น N และไม่ต้องแก้ caller ทั้งหมด
+// ============================================================
+interface QueuedSheetRead {
+  sheetName: string;
+  range?: string;
+  options?: { forceFresh?: boolean; maxAgeMs?: number; keepHeader?: boolean };
+  resolve: (rows: string[][]) => void;
+}
+
+const MICRO_BATCH_WINDOW_MS = Math.max(
+  0,
+  Number(process.env.SHEETS_MICRO_BATCH_MS ?? 10)
+);
+const globalForBatch = globalThis as unknown as {
+  sheetReadQueue?: QueuedSheetRead[];
+  sheetReadFlushTimer?: ReturnType<typeof setTimeout> | null;
+};
+if (!globalForBatch.sheetReadQueue) globalForBatch.sheetReadQueue = [];
+const sheetReadQueue = globalForBatch.sheetReadQueue;
+
+function batchReadsSupported(): boolean {
+  return (
+    MICRO_BATCH_WINDOW_MS > 0 &&
+    (hasServiceAccountCredentials() || Boolean(process.env.GOOGLE_API_KEY))
+  );
+}
+
+function enqueueSheetRead(item: QueuedSheetRead): void {
+  sheetReadQueue.push(item);
+  if (!globalForBatch.sheetReadFlushTimer) {
+    globalForBatch.sheetReadFlushTimer = setTimeout(() => {
+      globalForBatch.sheetReadFlushTimer = null;
+      void flushSheetReadQueue();
+    }, MICRO_BATCH_WINDOW_MS);
+  }
+}
+
+function quotedA1(title: string, range?: string): string {
+  const safe = `'${title.replace(/'/g, "''")}'`;
+  return range ? `${safe}!${range}` : safe;
+}
+
+async function flushSheetReadQueue(): Promise<void> {
+  const batch = sheetReadQueue.splice(0, sheetReadQueue.length);
+  if (batch.length === 0) return;
+
+  const resolutions = await Promise.all(
+    batch.map((item) => resolveSheetTitle(item.sheetName).catch(() => null))
+  );
+
+  const fetchKey = (title: string, range?: string) => `${title}\u0000${range ?? ""}`;
+  const targets = new Map<string, { title: string; range?: string }>();
+  const paired: { item: QueuedSheetRead; title: string }[] = [];
+  const runIndividually: QueuedSheetRead[] = [];
+
+  // ชีตที่ resolve ชื่อไม่ได้ (metadata ไม่พร้อม) ให้อ่านเดี่ยวตามวิธีเดิม
+  // เพื่อไม่ให้ range ที่พังลามไป kill ทั้ง batch
+  batch.forEach((item, i) => {
+    const title = resolutions[i];
+    if (title) {
+      paired.push({ item, title });
+      const key = fetchKey(title, item.range);
+      if (!targets.has(key)) targets.set(key, { title, range: item.range });
+    } else {
+      runIndividually.push(item);
+    }
+  });
+
+  const results = new Map<string, string[][]>();
+  if (targets.size > 0) {
+    try {
+      const targetList = [...targets.values()];
+      const ranges = targetList.map((t) => quotedA1(t.title, t.range));
+      let valueRanges: { values?: string[][] }[] = [];
+      if (hasServiceAccountCredentials()) {
+        const response = await withRetry(() =>
+          getSheetsClient().spreadsheets.values.batchGet({
+            spreadsheetId: SPREADSHEET_ID,
+            ranges,
+          })
+        );
+        valueRanges = (response.data.valueRanges ?? []) as { values?: string[][] }[];
+      } else {
+        const params = new URLSearchParams();
+        for (const r of ranges) params.append("ranges", r);
+        params.set("key", process.env.GOOGLE_API_KEY ?? "");
+        const res = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${params.toString()}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) throw new Error(`batchGet HTTP ${res.status}`);
+        const json = await res.json();
+        valueRanges = (json.valueRanges ?? []) as { values?: string[][] }[];
+      }
+      targetList.forEach((t, i) => {
+        results.set(fetchKey(t.title, t.range), (valueRanges[i]?.values as string[][]) ?? []);
+      });
+    } catch (err) {
+      console.warn("[GoogleSheets] batchGet failed, falling back to individual reads:", err);
+      results.clear();
+    }
+  }
+
+  await Promise.all(
+    paired.map(async ({ item, title }) => {
+      const key = fetchKey(title, item.range);
+      const rows = results.get(key);
+      if (rows) {
+        item.resolve(
+          await settleFetchedRows(
+            item.sheetName,
+            item.range,
+            item.options,
+            stripHeaderRowIfPresent(rows, item.options?.keepHeader)
+          )
+        );
+      } else {
+        item.resolve(await fetchAndCacheRead(item.sheetName, item.range, item.options));
+      }
+    })
+  );
+
+  await Promise.all(
+    runIndividually.map(async (item) => {
+      item.resolve(await fetchAndCacheRead(item.sheetName, item.range, item.options));
+    })
+  );
+}
+
 export async function readSheet(
   sheetName: string,
   range?: string,
@@ -353,11 +805,8 @@ export async function readSheet(
     return [];
   }
 
-  // keepHeader=true ต้องแยก cache เพราะข้อมูลที่ได้ (มีหัวตาราง) ต่างจากปกติ
-  const cacheKey = options?.keepHeader
-    ? `${sheetName}:${range || "ALL"}:raw`
-    : `${sheetName}:${range || "ALL"}`;
-  const maxAgeMs = options?.forceFresh ? 0 : options?.maxAgeMs ?? CACHE_TTL_MS;
+  const cacheKey = sheetReadCacheKey(sheetName, range, options?.keepHeader);
+  const maxAgeMs = options?.forceFresh ? 0 : options?.maxAgeMs ?? getCacheTtlMs(sheetName);
 
   const cached = sheetCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < maxAgeMs) {
@@ -369,137 +818,11 @@ export async function readSheet(
   const inFlight = inFlightSheetReads.get(cacheKey);
   if (inFlight) return inFlight;
 
-  const fetchPromise = (async (): Promise<string[][]> => {
-    const fetchFreshRows = async (): Promise<string[][]> => {
-    const cleanSheet = sheetName.replace(/^'|'$/g, "").trim();
-    const safeSheet = cleanSheet.includes(" ") || cleanSheet.includes("-") ? `'${cleanSheet}'` : cleanSheet;
-    const fullRange = range ? `${safeSheet}!${range}` : `${safeSheet}!A1:Z5000`;
-
-    if (process.env.GOOGLE_API_KEY) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${process.env.GOOGLE_API_KEY}`;
-          const res = await fetch(url, { cache: "no-store" });
-          if (res.ok) {
-            const json = await res.json();
-            let googleRows = (json.values as string[][]) ?? [];
-            if (googleRows.length > 0 && !options?.keepHeader) {
-              const firstCell = (googleRows[0][0] ?? "").toLowerCase().trim();
-              const secondCell = (googleRows[0][1] ?? "").toLowerCase().trim();
-              if (
-                firstCell.includes("_id") ||
-                firstCell.includes("sku") ||
-                firstCell.includes("รหัส") ||
-                firstCell.includes("ลำดับ") ||
-                firstCell.includes("header") ||
-                firstCell.includes("bom") ||
-                firstCell.includes("id") ||
-                secondCell.includes("sku") ||
-                secondCell.includes("รหัส") ||
-                secondCell.includes("barcode")
-              ) {
-                googleRows = googleRows.slice(1);
-              }
-            }
-            return googleRows;
-          } else if (res.status === 429 || res.status === 503) {
-            // Rate limited by Google Sheets - back off and retry
-            const backoff = 500 * Math.pow(2, attempt);
-            await new Promise((resolve) => setTimeout(resolve, backoff));
-            continue;
-          } else {
-            console.warn(`[GoogleSheets API Key] HTTP ${res.status} for ${url}:`, await res.text());
-            break;
-          }
-        } catch (e) {
-          if (attempt < 2) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            continue;
-          }
-          console.warn(`[GoogleSheets API Key] ${sheetName} read failed:`, e);
-        }
-      }
-    }
-
-    if (hasServiceAccountCredentials()) {
-      const readViaServiceAccount = async (cand: string): Promise<string[][]> => {
-        const sheets = getSheetsClient();
-        const safeCand = cand.startsWith("'") ? cand : `'${cand.replace(/'/g, "")}'`;
-        const candRange = range ? `${safeCand}!${range}` : `${safeCand}`;
-        const response = await withRetry(() =>
-          sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: candRange,
-          })
-        );
-        let googleRows = (response.data.values as string[][]) ?? [];
-        if (googleRows.length > 0 && !options?.keepHeader && (googleRows[0][0]?.includes("_id") || googleRows[0][0]?.toLowerCase().includes("sku") || googleRows[0][0]?.includes("รหัสสินค้า"))) {
-          googleRows = googleRows.slice(1);
-        }
-        return googleRows;
-      };
-
-      const resolved = getResolvedSheetName(sheetName);
-      if (resolved) {
-        try {
-          const rows = await readViaServiceAccount(resolved);
-          if (rows.length > 0) return rows;
-          // Resolved tab exists but is empty — re-probe in case the tab moved.
-          forgetResolvedSheetName(sheetName);
-        } catch {
-          forgetResolvedSheetName(sheetName);
-        }
-      }
-
-      const candidates = getPossibleSheetNames(sheetName);
-      for (const cand of candidates) {
-        try {
-          const googleRows = await readViaServiceAccount(cand);
-          if (googleRows.length > 0) rememberResolvedSheetName(sheetName, cand);
-          return googleRows;
-        } catch (err) {
-          // Try next candidate
-        }
-      }
-    }
-
-    return readPublicSheetCsv(sheetName);
-    };
-
-    try {
-      const freshRows = await fetchFreshRows();
-      if (freshRows && freshRows.length > 0) {
-        sheetCache.set(cacheKey, { data: freshRows, timestamp: Date.now() });
-        persistentSheetData.set(cacheKey, freshRows);
-        persistentSheetData.set(sheetName, freshRows);
-        return freshRows;
-      }
-
-      // If freshRows returned empty but we previously had good data, preserve the good data
-      const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
-      if (lastGood && lastGood.length > 0) {
-        console.warn(`[GoogleSheets readSheet] Fresh fetch returned 0 rows for ${sheetName}, preserving ${lastGood.length} existing rows`);
-        sheetCache.set(cacheKey, { data: lastGood, timestamp: Date.now() });
-        return lastGood;
-      }
-
-      sheetCache.set(cacheKey, { data: [], timestamp: Date.now() });
-      return [];
-    } catch (error) {
-      const cached = sheetCache.get(cacheKey);
-      if (cached && cached.data.length > 0) {
-        console.warn(`[GoogleSheets readSheet] Using memory cached rows for ${sheetName} (${cached.data.length} rows)`);
-        return cached.data;
-      }
-      const lastGood = persistentSheetData.get(cacheKey) || persistentSheetData.get(sheetName);
-      if (lastGood && lastGood.length > 0) {
-        console.warn(`[GoogleSheets readSheet] Using persistent fallback rows for ${sheetName} (${lastGood.length} rows)`);
-        return lastGood;
-      }
-      console.warn(`[GoogleSheets readSheet] Could not fetch ${sheetName}, returning empty fallback:`, error);
-      return [];
-    }
-  })();
+  const fetchPromise = batchReadsSupported()
+    ? new Promise<string[][]>((resolve) => {
+        enqueueSheetRead({ sheetName, range, options, resolve });
+      })
+    : fetchAndCacheRead(sheetName, range, options);
 
   inFlightSheetReads.set(cacheKey, fetchPromise);
   try {
@@ -535,7 +858,7 @@ export async function appendRows(
     };
 
     let lastAppendErr: unknown = null;
-    const resolved = getResolvedSheetName(sheetName);
+    const resolved = await resolveSheetTitle(sheetName);
     if (resolved) {
       try {
         await appendToCandidate(resolved);
@@ -602,7 +925,7 @@ export async function updateRow(
     };
 
     let lastUpdateErr: unknown = null;
-    const resolved = getResolvedSheetName(sheetName);
+    const resolved = await resolveSheetTitle(sheetName);
     if (resolved) {
       try {
         await updateCandidate(resolved);
@@ -678,7 +1001,7 @@ export async function batchUpdateRows(
     };
 
     let lastBatchErr: unknown = null;
-    const resolved = getResolvedSheetName(sheetName);
+    const resolved = await resolveSheetTitle(sheetName);
     if (resolved) {
       try {
         await batchUpdateCandidate(resolved);
@@ -719,6 +1042,12 @@ export async function batchAppendRows(
 export async function getSheetId(sheetName: string): Promise<number | null> {
   if (!SPREADSHEET_ID) return null;
   try {
+    // metadata cache มี sheetId ครบ — ไม่ต้องยิง spreadsheets.get ทุกครั้ง
+    const tabs = await getSpreadsheetTabs();
+    if (tabs) {
+      const title = (await resolveSheetTitle(sheetName)) ?? null;
+      if (title) return tabs.byTitle.get(title)?.sheetId ?? null;
+    }
     const sheets = getSheetsClient();
     const meta = await withRetry(() =>
       sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID })

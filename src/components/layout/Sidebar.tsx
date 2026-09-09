@@ -110,7 +110,9 @@ export default function Sidebar({
           .catch(() => {});
       };
       fetchPending();
-      const interval = setInterval(fetchPending, 30000);
+      // 60 วินาที: badge รออนุมัติไม่จำเป็นต้องสดทุก 30 วินาที และแท็บที่เปิดหลายเครื่อง
+      // รวมกันเป็นภาระ Google Sheets quota ที่ดึงรายการหลักให้ช้าลง
+      const interval = setInterval(fetchPending, 60000);
       return () => clearInterval(interval);
     }
   }, [role]);

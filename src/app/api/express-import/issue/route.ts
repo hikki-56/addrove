@@ -7,6 +7,8 @@ import { parseTransferMetadata } from "@/lib/transfer-notification-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
 
+export const maxDuration = 60;
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

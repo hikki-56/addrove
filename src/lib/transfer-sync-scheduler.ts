@@ -6,7 +6,7 @@ import { fetchAndSyncTransferNotifications } from "./transfer-notification-utils
 // — ทุก component ที่ต้องการข้อมูล transfer ควร subscribe ที่นี่แทน
 // เพื่อให้หนึ่งแท็บมี timer และ request เดียวร่วมกัน
 // และหยุด interval ชั่วคราวระหว่างที่แท็บถูกซ่อน เพื่อไม่ให้แท็บที่ไม่ได้ดูกิน CPU/เครือข่าย
-const SYNC_INTERVAL_MS = 30_000;
+const SYNC_INTERVAL_MS = 60_000;
 
 type SyncListener = () => void;
 

@@ -9,6 +9,8 @@ import {
   serverErrorResponse,
 } from "@/lib/api-response";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Auth check — get session (allow all roles)

@@ -18,6 +18,8 @@ import { appendRows, SHEETS } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
 
+export const maxDuration = 60;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

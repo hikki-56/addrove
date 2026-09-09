@@ -9,6 +9,8 @@ import {
   serverErrorResponse,
 } from "@/lib/api-response";
 
+export const maxDuration = 60;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

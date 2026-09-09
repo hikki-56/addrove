@@ -14,6 +14,8 @@ import {
 } from "@/lib/api-response";
 import { setDocumentStatus } from "@/lib/document-status-store";
 
+export const maxDuration = 60;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
