@@ -60,9 +60,34 @@
 
 ---
 
+## 🗺️ 6. สรุปทางลัดเมนูทั้งหมดในระบบ (All 18 System Menus)
+
+| ลำดับ | ชื่อเมนูในระบบ | เส้นทาง URL | ผู้มีสิทธิ์เข้าถึง |
+|:---:|:---|:---|:---|
+| 1 | **หน้าหลัก** | `/dashboard` | ADMIN, VIEWER, STAFF |
+| 2 | **รับสินค้าเข้าโกดัง** | `/movements/receive` | ADMIN, STAFF |
+| 3 | **ประวัติรับสินค้าเข้าโกดัง** | `/movements/receive/history` | ADMIN |
+| 4 | **ผลิตสินค้า** | `/production` | ADMIN |
+| 5 | **ประวัติการสั่งผลิต** | `/production/history` | ADMIN |
+| 6 | **จัดตำแหน่งสินค้า** | `/movements/move` | ADMIN, STAFF |
+| 7 | **เบิกสินค้า** | `/movements/transfer` | ADMIN, STAFF, APPROVER |
+| 8 | **ประวัติเบิกสินค้า** | `/movements/transfer/history` | ADMIN |
+| 9 | **สินค้าทั้งหมด** | `/products` | ADMIN, VIEWER, STAFF |
+| 10 | **อนุมัติการรับเข้า** | `/approvals` | ADMIN |
+| 11 | **ประวัติการเคลื่อนไหว** | `/movements/history` | ADMIN, VIEWER |
+| 12 | **ตำแหน่งสินค้าในโกดัง** | `/locations` | ADMIN |
+| 13 | **QR Code คลังสินค้า** | `/warehouses/qr` | ADMIN |
+| 14 | **บาร์โค้ดชั้นวางสินค้า** | `/shelves/qr` | ADMIN |
+| 15 | **จัดการพนักงาน** | `/users` | ADMIN |
+| 16 | **ประวัติการเข้าระบบ** | `/login-logs` | ADMIN |
+| 17 | **รับสินค้า เข้า Express** | `/express-import/receive` | ADMIN |
+| 18 | **เบิกสินค้า เข้า Express** | `/express-import/issue` | ADMIN |
+
+---
+
 ## ⚠️ รหัสเอกสารและเบอร์ติดต่อช่วยเหลือ
 - **`RCV-...`** = ใบรับสินค้าเข้า
 - **`TRF-...`** = ใบเบิก/โอนย้ายสินค้า
 - **`MOV-...`** = ใบย้ายชั้นวางสินค้า
 - **`OP-...`**  = ใบสั่งผลิตสินค้าสำเร็จรูป
-- **พบปัญหาหน้างานติดต่อ:** ฝ่ายไอที / ผู้ดูแลระบบคลังสินค้า
+- **พบปัญหาหน้างานติดต่อ:** ฝ่ายไอที / ผู้ดูแลระบบคลังสินค้า (Admin: `ty@stockify.com`)
