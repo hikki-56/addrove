@@ -548,58 +548,73 @@ export default function TransferStaffWorkflowModal({
         )}
         */}
 
-        {/* Step 3: Destination Location Confirmation (ช่องสแกนอยู่บนการ์ดรายละเอียดสินค้าแล้ว) */}
-        {staffStep === 3 && (
-          <div className="space-y-4 pt-1">
-            {/* If shelf/destination location has been scanned -> Show confirmation UI */}
-            {scannedToLocation ? (
-              <div className="p-4 sm:p-5 rounded-2xl bg-[#EAF2EE]/90 border-2 border-[#06402B] shadow-sm space-y-3 scale-in">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-6 h-6 rounded-full bg-[#053425] text-white flex items-center justify-center text-sm font-bold shadow-2xs shrink-0">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </span>
-                    <span className="text-sm font-bold text-[#031B14]">สแกนชั้นวางปลายทางสำเร็จ:</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScannedToLocation?.("");
-                      setStaffScanDestLocationInput("");
-                      setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
-                    }}
-                    className="inline-flex items-center justify-center min-h-[44px] px-3 rounded-xl text-sm text-[#052B1F] hover:text-[#031B14] underline font-bold cursor-pointer"
-                  >
-                    สแกนใหม่
-                  </button>
+        {/* Step 3: Destination Location Confirmation (เด้งมาตรงกลางจอเมื่อสแกนสำเร็จ) */}
+        {staffStep === 3 && scannedToLocation && (
+          <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-[#06402B] space-y-4 animate-in zoom-in-95 duration-200 text-left">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8ECEA]">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-full bg-[#EAF2EE] text-[#053425] flex items-center justify-center text-sm font-bold shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                  <span className="text-base font-extrabold text-slate-900">สแกนชั้นวางปลายทางสำเร็จ</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScannedToLocation?.("");
+                    setStaffScanDestLocationInput("");
+                    setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
+                  }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                  title="ปิด / สแกนใหม่"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-                <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-[#C9DFD4] shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <svg className="w-6 h-6 text-[#053425] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {/* Target Shelf Box */}
+              <div className="bg-[#F7F9F8] p-4 rounded-2xl border border-[#C9DFD4] shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#EAF2EE] text-[#053425] flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-[#053425]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <div>
-                      <div className="text-sm text-slate-600 font-bold">ตำแหน่งปลายทาง</div>
-                      <div className="font-mono font-black text-2xl text-[#031B14] tracking-wider">
-                        {scannedToLocation}
-                      </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">ตำแหน่งปลายทาง</div>
+                    <div className="font-mono font-black text-2xl sm:text-3xl text-[#031B14] tracking-wider">
+                      {scannedToLocation}
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-[#052B1F] bg-[#DFEDE6] px-3 py-1.5 rounded-xl border border-[#C9DFD4]">
-                    {selectedTask.to_warehouse_name}
-                  </span>
                 </div>
+                <span className="text-xs sm:text-sm font-bold text-[#052B1F] bg-[#DFEDE6] px-3 py-1.5 rounded-xl border border-[#C9DFD4] shrink-0">
+                  {selectedTask.to_warehouse_name}
+                </span>
+              </div>
 
-                {/* Confirm & Submit Button */}
+              {/* Product Summary Mini Card */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-sm space-y-1">
+                <div className="font-bold text-slate-800 line-clamp-1">{selectedTask.product_name}</div>
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <span className="font-mono">SKU: <strong className="text-slate-900">{selectedTask.sku}</strong></span>
+                  <span>จำนวน: <strong className="text-slate-900 font-mono text-sm font-bold">{selectedTask.qty.toLocaleString()}</strong> ชิ้น</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   disabled={isSubmittingTransfer}
                   onClick={onSubmitTransfer}
-                  className="w-full py-4 px-4 rounded-2xl bg-[#06402B] hover:bg-[#053425] active:scale-95 text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-[#06402B]/30 cursor-pointer transition-colors disabled:opacity-50"
+                  className="w-full py-4 px-4 rounded-2xl bg-[#06402B] hover:bg-[#053425] active:scale-95 text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-[#06402B]/30 cursor-pointer transition-all disabled:opacity-50"
                 >
                   {isSubmittingTransfer ? (
                     <>
@@ -615,30 +630,55 @@ export default function TransferStaffWorkflowModal({
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  disabled={isSubmittingTransfer}
+                  onClick={() => {
+                    setScannedToLocation?.("");
+                    setStaffScanDestLocationInput("");
+                    setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
+                  }}
+                  className="w-full py-2.5 text-center text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  ต้องการเปลี่ยนตำแหน่ง / สแกนใหม่
+                </button>
               </div>
-            ) : null}
+            </div>
           </div>
         )}
 
-        {/* Step 4: Submission to Admin Completion */}
+        {/* Step 4: Submission to Admin Completion Popup (เด้งมาตรงกลางจอ) */}
         {staffStep === 4 && (
-          <div className="p-6 text-center space-y-4 bg-[#EAF2EE] border border-[#C9DFD4] rounded-[20px] scale-in">
-            <div className="w-14 h-14 rounded-full bg-[#DFEDE6] text-[#053425] flex items-center justify-center mx-auto shadow-sm">
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
+          <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#C9DFD4] text-center space-y-4 animate-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 rounded-full bg-[#EAF2EE] text-[#053425] flex items-center justify-center mx-auto shadow-sm ring-8 ring-[#EAF2EE]/50">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              <div className="space-y-1">
+                <span className="px-3 py-1 rounded-full bg-[#EAF2EE] text-[#053425] font-mono font-bold text-xs border border-[#C9DFD4] inline-block">
+                  {selectedTask.doc_no}
+                </span>
+                <h4 className="text-xl sm:text-2xl font-extrabold text-slate-900 pt-1">
+                  เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว
+                </h4>
+              </div>
+
+              <p className="text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
+                การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
+              </p>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-4 px-6 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base cursor-pointer shadow-lg shadow-[#06402B]/20 active:scale-95 transition-all"
+              >
+                ปิดหน้าต่าง / กลับสู่รายการ
+              </button>
             </div>
-            <h4 className="text-lg sm:text-xl font-extrabold text-slate-900">เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว</h4>
-            <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
-              การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
-            </p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-4 px-6 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-base cursor-pointer shadow-md active:scale-95 transition-colors"
-            >
-              ปิดหน้าต่าง / กลับสู่รายการ
-            </button>
           </div>
         )}
         </div>
