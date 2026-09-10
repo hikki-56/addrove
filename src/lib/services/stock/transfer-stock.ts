@@ -624,6 +624,12 @@ export async function completeTransfer(
         throw new InvalidTransferStateError("ไม่สามารถเปลี่ยนใบย้ายที่ยกเลิกแล้วเป็น COMPLETED");
       }
 
+      // ต้องเช็ค movement เดิมก่อนการตรวจยอดสต๊อก: รอบก่อนอาจสร้าง movement สำเร็จแล้ว
+      // แต่ตายก่อนอัปเดตสถานะเอกสาร ยอดต้นทางที่ถูกหักไปแล้วจะทำให้การกดอนุมัติซ้ำ
+      // ชน InsufficientStock ทั้งที่งานนั้นบันทึกสต๊อกครบแล้ว
+      const existingMovements = await repo.movements.findByDocumentId(doc.document_id);
+      const hasIn = existingMovements.some((m: StockMovement) => m.movement_type === "TRANSFER_IN");
+
       // Check if multi-source location picking allocations are provided
       const allocations = (Array.isArray(sourceAllocations) && sourceAllocations.length > 0)
         ? sourceAllocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
@@ -631,7 +637,7 @@ export async function completeTransfer(
         ? meta.source_allocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
         : [];
 
-      if (allocations.length > 0) {
+      if (!hasIn && allocations.length > 0) {
         const totalAllocatedQty = allocations.reduce((sum, a) => sum + Number(a.qty), 0);
         if (totalAllocatedQty !== meta.qty) {
           throw new InvalidTransferStateError(
@@ -660,7 +666,7 @@ export async function completeTransfer(
             );
           }
         }
-      } else {
+      } else if (!hasIn) {
         // Single location fallback
         let currentSourceBalance = await repo.movements.getBalance(
           meta.product_id,
@@ -683,10 +689,6 @@ export async function completeTransfer(
           );
         }
       }
-
-      // Check if movements already exist (single stock effect guarantee)
-      const existingMovements = await repo.movements.findByDocumentId(doc.document_id);
-      const hasIn = existingMovements.some((m: StockMovement) => m.movement_type === "TRANSFER_IN");
 
       if (!hasIn) {
         const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [];

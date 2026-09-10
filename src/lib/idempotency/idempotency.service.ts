@@ -7,6 +7,19 @@ import {
 
 export { IdempotencyConflictError, IdempotencyInProgressError };
 
+/**
+ * อายุที่ถือว่าสถานะ PROCESSING ค้างจากรอบที่ตายกลางทาง (timeout/restart ก่อนจะเขียน
+ * COMPLETED/FAILED) — request ของระบบจำกัดที่ 60 วินาที (maxDuration) เกิน 5 นาที
+ * จึงปลอดภัยที่จะยึด key คืนแล้วรันใหม่ มิฉะนั้นเอกสารจะติดล็อกถาวรและกดอนุมัติซ้ำไม่ได้อีก
+ */
+const STALE_PROCESSING_MS = 5 * 60 * 1000;
+
+function isStaleProcessing(record: IdempotencyRecord): boolean {
+  const updatedAt = Date.parse(record.updated_at || "");
+  if (Number.isNaN(updatedAt)) return false;
+  return Date.now() - updatedAt > STALE_PROCESSING_MS;
+}
+
 export function computePayloadHash(payload: unknown): string {
   try {
     const canonicalString = JSON.stringify(payload, Object.keys(payload as object || {}).sort());
@@ -42,6 +55,19 @@ export async function claimIdempotencyKey<T = unknown>(
   if (existing) {
     // If previous attempt failed => allow retry with new/updated payload
     if (existing.status === "FAILED") {
+      await repo.update(key, {
+        status: "PROCESSING",
+        payload_hash: payloadHash,
+        error_message: "",
+      });
+      return { isReplay: false };
+    }
+
+    // PROCESSING ที่เก่าเกิน STALE_PROCESSING_MS คือรอบที่ตายกลางทางแน่นอน
+    // (ผลลัพธ์ไม่เคยถูกบันทึกเป็น COMPLETED) ต้องยึด key คืนได้เสมอ แม้ payload
+    // จะต่างจากรอบก่อน ไม่เช่นนั้นเอกสารจะติดล็อกถาวรและต้องแก้ในชีตด้วยมือ
+    // — ตรวจก่อนการเช็ค hash conflict
+    if (existing.status === "PROCESSING" && isStaleProcessing(existing)) {
       await repo.update(key, {
         status: "PROCESSING",
         payload_hash: payloadHash,

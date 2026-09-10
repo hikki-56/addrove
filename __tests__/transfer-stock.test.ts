@@ -1111,5 +1111,63 @@ describe("transferStock Use Cases & Authorization Rules", () => {
     expect(meta.sku).toBe("SKU001");
     expect(meta.product_name).toBe("ก๊อกน้ำ EAN-13 8851234567890");
   });
+
+  test("25. Retry approval after movements already recorded (crash before status update) completes without re-validating the deducted balance", async () => {
+    // Regression TRF-20260910-000272: รอบแรกสร้าง movement สำเร็จแล้วตายก่อน
+    // updateStatus(COMPLETED) การกดอนุมัติซ้ำต้องปิดงานให้เลย ห้ามไปเช็คยอดต้นทาง
+    // ที่ถูกหักไปแล้วจนติดลบแล้วโยน InsufficientStock
+    const input = CreateTransferSchema.parse({
+      product_id: "prod-001",
+      from_warehouse_id: "wh-1",
+      to_warehouse_id: "wh-2",
+      qty: 5,
+      moved_by: "สมศักดิ์ ขยันยิ่ง",
+      assigned_to_user_id: "staff-2",
+      document_date: "2026-09-10",
+      idempotency_key: "idem-crash-retry",
+    });
+
+    const doc = await createTransfer({ repo }, { ...input, user_id: "admin-1", role: "ADMIN" });
+
+    const crashedAt = new Date().toISOString();
+    repo.movementsList.push(
+      {
+        movement_id: "m-crash-out",
+        document_id: doc.document_id,
+        product_id: "prod-001",
+        warehouse_id: "wh-01",
+        location_id: "loc-A",
+        qty_change: -5,
+        movement_type: "TRANSFER_OUT",
+        created_at: crashedAt,
+        created_by: "staff-2",
+      },
+      {
+        movement_id: "m-crash-in",
+        document_id: doc.document_id,
+        product_id: "prod-001",
+        warehouse_id: "wh-02",
+        location_id: "DEST-B1",
+        qty_change: 5,
+        movement_type: "TRANSFER_IN",
+        created_at: crashedAt,
+        created_by: "staff-2",
+      }
+    );
+
+    const completed = await completeTransfer(
+      { repo },
+      doc.document_id,
+      "DEST-B1",
+      "loc-A",
+      "admin-1",
+      "ADMIN"
+    );
+
+    expect(completed.status).toBe("COMPLETED");
+
+    const docMovements = repo.movementsList.filter((m) => m.document_id === doc.document_id);
+    expect(docMovements.length).toBe(2);
+  });
 });
 

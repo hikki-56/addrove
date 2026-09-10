@@ -1,6 +1,7 @@
 import {
   claimIdempotencyKey,
   completeIdempotencyKey,
+  computePayloadHash,
   failIdempotencyKey,
   IdempotencyConflictError,
   IdempotencyInProgressError,
@@ -72,5 +73,33 @@ describe("Idempotency Service Integration Tests", () => {
     const record = await repo.findByKey("key-005");
     expect(record?.status).toBe("FAILED");
     expect(record?.error_message).toBe("Insufficient stock");
+  });
+
+  test("Stale PROCESSING record (crashed attempt) is reclaimed instead of throwing forever", async () => {
+    await claimIdempotencyKey(repo, "key-006", "RECEIVE", "user-1", { qty: 10 });
+
+    // จำลองรอบก่อนตายกลางทาง (timeout/restart ก่อนจะเขียน COMPLETED/FAILED):
+    // record ค้าง PROCESSING มานานเกิน 5 นาที
+    const stored = (repo as any).records.get("key-006");
+    stored.updated_at = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+    const reclaim = await claimIdempotencyKey(repo, "key-006", "RECEIVE", "user-1", { qty: 10 });
+    expect(reclaim.isReplay).toBe(false);
+
+    const record = await repo.findByKey("key-006");
+    expect(record?.status).toBe("PROCESSING");
+    expect(record?.error_message).toBe("");
+  });
+
+  test("Stale PROCESSING reclaim adopts the new payload hash", async () => {
+    await claimIdempotencyKey(repo, "key-007", "RECEIVE", "user-1", { qty: 10 });
+    const stored = (repo as any).records.get("key-007");
+    stored.updated_at = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+    const newPayload = { qty: 20 };
+    await claimIdempotencyKey(repo, "key-007", "RECEIVE", "user-1", newPayload);
+
+    const record = await repo.findByKey("key-007");
+    expect(record?.payload_hash).toBe(computePayloadHash(newPayload));
   });
 });

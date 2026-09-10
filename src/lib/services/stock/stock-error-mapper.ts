@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { StockError } from "./stock-errors";
+import {
+  IdempotencyConflictError,
+  IdempotencyInProgressError,
+} from "@/lib/idempotency/idempotency.types";
 
 export interface StockErrorResponseBody {
   success: false;
@@ -49,7 +53,21 @@ export function mapStockErrorToResponse(error: unknown): NextResponse<StockError
     );
   }
 
-  // 3. Fallback generic error — never leak raw library/infra messages to the UI
+  // 3. Idempotency state errors — retryable conflict, not a server crash.
+  //    ต้อง map ไว้ก่อน fallback ไม่เช่นนั้นผู้ใช้จะเห็น 500 ข้อความกลางๆ
+  //    แทนสาเหตุจริงว่าคำสั่งกำลังประมวลผลอยู่หรือ key ชนกัน
+  if (error instanceof IdempotencyConflictError || error instanceof IdempotencyInProgressError) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message,
+        code: "STOCK_CONFLICT",
+      },
+      { status: 409 }
+    );
+  }
+
+  // 4. Fallback generic error — never leak raw library/infra messages to the UI
   const rawMessage = error instanceof Error ? error.message : String(error);
   console.error("[StockErrorMapper] Unmapped error:", rawMessage);
   return NextResponse.json(
