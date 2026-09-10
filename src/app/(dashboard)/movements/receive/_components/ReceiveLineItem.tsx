@@ -413,9 +413,19 @@ export default function ReceiveLineItem({
             </span>
           )}
 
-          <div className="px-3 py-1.5 rounded-xl bg-[#EAF2EE] border border-[#DFEDE6] text-[#052B1F] shrink-0 flex items-baseline gap-1">
-            <span className="disp num text-lg font-bold">{(currentQty || 0).toLocaleString()}</span>
-            <span className="text-sm font-bold">ชิ้น</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-baseline gap-1"
+              title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} กล่อง`}
+            >
+              <span className="disp num text-base sm:text-lg font-bold">{(currentBoxes || 0).toLocaleString()}</span>
+              <span className="text-xs sm:text-sm font-bold">กล่อง</span>
+            </div>
+
+            <div className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#EAF2EE] border border-[#DFEDE6] text-[#052B1F] flex items-baseline gap-1">
+              <span className="disp num text-lg font-bold">{(currentQty || 0).toLocaleString()}</span>
+              <span className="text-sm font-bold">ชิ้น</span>
+            </div>
           </div>
 
           <svg
@@ -458,7 +468,7 @@ export default function ReceiveLineItem({
             <div className="text-sm text-[#667085] font-semibold text-right">
               รวม{" "}
               <span className="disp num text-[#053425] font-bold text-xl">{(currentQty || 0).toLocaleString()}</span>{" "}
-              ชิ้น · {1 + extraLocations.length} ตำแหน่ง
+              ชิ้น · {(currentBoxes || 0).toLocaleString()} กล่อง · {1 + extraLocations.length} ตำแหน่ง
             </div>
           </div>
 
