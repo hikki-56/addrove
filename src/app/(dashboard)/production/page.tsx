@@ -229,23 +229,13 @@ export default function ProductionPage() {
         </div>
       )}
 
-      {/* Top Banner / Header — sm: breakpoint only (stockify-ui rule 1) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
-            🏭
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center flex-wrap gap-2">
-              สั่งผลิตสินค้า
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4]">
-                โกดัง 2 (สินค้าสำเร็จรูป)
-              </span>
-            </h1>
-            <p className="text-sm font-medium text-slate-600 pt-0.5">
-              เลือกสินค้าสำเร็จรูปที่ต้องการ ระบุจำนวน และเพิ่มลงในตะกร้าเพื่อเริ่มสั่งผลิต
-            </p>
-          </div>
+      {/* Top Toolbar */}
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xl">🏭</span>
+          <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4]">
+            โกดัง 2 (สินค้าสำเร็จรูป)
+          </span>
         </div>
 
         {/* Right side controls: History Link, Cart Button & Refresh */}

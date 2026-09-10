@@ -365,28 +365,18 @@ export default function LoginNotificationsPage() {
 
   return (
     <div className="w-full max-w-full space-y-4 sm:space-y-5">
-      {/* Page Header */}
-      <div className="pb-3 border-b border-[#E8ECEA] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              ประวัติการเข้าสู่ระบบ
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] animate-pulse" />
-              <span>เรียลไทม์</span>
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 font-normal mt-0.5">
-            บันทึกประวัติการเข้าใช้งานระบบและรายชื่อผู้ใช้งานทั้งหมด
-          </p>
-        </div>
+      {/* Top Action Row */}
+      <div className="pb-1 flex items-center justify-between gap-3">
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4] flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0F5C3F] animate-pulse" />
+          <span>เรียลไทม์</span>
+        </span>
 
         <button
           type="button"
           onClick={() => fetchLogs(true)}
           disabled={isRefreshing}
-          className="px-3 py-2 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-sm font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
+          className="px-3 py-2 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-sm font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
         >
           <svg
             className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`}

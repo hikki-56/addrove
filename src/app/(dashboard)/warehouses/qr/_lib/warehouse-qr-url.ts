@@ -32,6 +32,32 @@ export function getWarehouseQrProductionOrigin(
   return origin;
 }
 
+/**
+ * แปลง URL ปกติเป็น Android Chrome Intent URL เพื่อบังคับให้กล้อง Android
+ * เปิดลิงก์ใน Chrome โดยตรงแม้เบราว์เซอร์เริ่มต้นของเครื่องไม่ใช่ Chrome
+ * (iOS ไม่รองรับ intent:// — iPhone จะเปิดตามเบราว์เซอร์เริ่มต้นของเครื่องเสมอ)
+ *
+ * ตัวอย่าง:
+ *   https://addrove.vercel.app/w/wh-01
+ *     -> intent://addrove.vercel.app/w/wh-01#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=...;end
+ *
+ * S.browser_fallback_url = ถ้าเครื่องไม่มี Chrome จะเปิด URL ต้นฉบับด้วยเบราว์เซอร์ที่มีแทน
+ */
+export function toChromeIntentUrl(targetUrl: string): string {
+  try {
+    const url = new URL(targetUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return targetUrl;
+
+    const scheme = url.protocol.replace(":", "");
+    const pathAndQuery = `${url.pathname}${url.search}`;
+    const fallback = encodeURIComponent(targetUrl);
+
+    return `intent://${url.host}${pathAndQuery}#Intent;scheme=${scheme};package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+  } catch {
+    return targetUrl;
+  }
+}
+
 export function resolveWarehouseQrBaseUrl(
   candidate: string,
   configuredOrigin = process.env.NEXT_PUBLIC_APP_URL

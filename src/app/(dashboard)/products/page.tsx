@@ -193,31 +193,19 @@ export default function ProductsPage() {
 
   return (
     <div className="w-full space-y-6 print:hidden">
-      {/* Top Header Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            สินค้าทั้งหมด
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">
-            รายการสินค้าและยอดคงเหลือรวมทุกคลัง — กดที่ชื่อสินค้าเพื่อดูแยกตามโกดัง
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
-          {/* Action: เพิ่มสินค้าใหม่ */}
-          <button
-            type="button"
-            onClick={() => router.push("/products/new")}
-            className="px-4 py-2.5 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>เพิ่มสินค้าใหม่</span>
-          </button>
-
-        </div>
+      {/* Top Action Row */}
+      <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-1">
+        {/* Action: เพิ่มสินค้าใหม่ */}
+        <button
+          type="button"
+          onClick={() => router.push("/products/new")}
+          className="px-4 py-2.5 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="M12 4v16m8-8H4" />
+          </svg>
+          <span>เพิ่มสินค้าใหม่</span>
+        </button>
       </div>
 
       {/* Filter and Search Bar Row */}

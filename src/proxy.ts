@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { detectWarehouseCode, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { decode } from "next-auth/jwt";
 import { getAuthSecret } from "@/lib/server-secrets";
 
@@ -56,11 +56,18 @@ export async function proxy(request: NextRequest) {
     request.cookies.get("next-auth.session-token")?.value ||
     request.cookies.get("__Secure-next-auth.session-token")?.value;
 
+  // โกดังที่ผู้ใช้กำลังจะเข้า — จาก query param หรือ short link เช่น /w/wh-03
+  // ต้องส่งต่อให้หน้า login ทุกกรณี ไม่งั้นหลังกรอก PIN ระบบจะย้อนกลับไปใช้
+  // โกดังเดิมที่เคยเก็บไว้ในเครื่องแทนโกดังที่เพิ่งสแกน
+  const targetWh =
+    request.nextUrl.searchParams.get("warehouse_id") ||
+    request.nextUrl.searchParams.get("wh") ||
+    detectWarehouseCode(pathname);
+
   if (!sessionToken) {
     if (!pathname.startsWith("/api/")) {
       const loginUrl = new URL("/employee-login", request.nextUrl.origin);
       loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
-      const targetWh = request.nextUrl.searchParams.get("warehouse_id") || request.nextUrl.searchParams.get("wh");
       if (targetWh) {
         loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
       }
@@ -75,6 +82,10 @@ export async function proxy(request: NextRequest) {
   if (!(await isValidSessionToken(sessionToken))) {
     if (!pathname.startsWith("/api/")) {
       const loginUrl = new URL("/employee-login", request.nextUrl.origin);
+      loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
+      if (targetWh) {
+        loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
+      }
       loginUrl.searchParams.set("expired", "true");
       return NextResponse.redirect(loginUrl);
     }

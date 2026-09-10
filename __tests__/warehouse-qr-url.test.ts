@@ -1,6 +1,7 @@
 import {
   getWarehouseQrProductionOrigin,
   resolveWarehouseQrBaseUrl,
+  toChromeIntentUrl,
 } from "@/app/(dashboard)/warehouses/qr/_lib/warehouse-qr-url";
 
 describe("warehouse QR URL resolution", () => {
@@ -41,11 +42,34 @@ describe("warehouse QR URL resolution", () => {
     expect(resolveWarehouseQrBaseUrl("http://localhost:3000", productionUrl)).toBe(
       productionUrl
     );
-    expect(resolveWarehouseQrBaseUrl("http://127.0.0.1:3000", productionUrl)).toBe(
+    expect(resolveWarehouseQrBaseUrl("http://127.0.0.1", productionUrl)).toBe(
       productionUrl
     );
     expect(
       getWarehouseQrProductionOrigin("http://localhost:3000")
     ).toBe(productionUrl);
+  });
+});
+
+describe("toChromeIntentUrl", () => {
+  test("wraps a production short URL as a Chrome intent with fallback", () => {
+    expect(toChromeIntentUrl("https://addrove.vercel.app/w/wh-01")).toBe(
+      "intent://addrove.vercel.app/w/wh-01#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Faddrove.vercel.app%2Fw%2Fwh-01;end"
+    );
+  });
+
+  test("preserves host port and query string for Wi-Fi URLs", () => {
+    const url = "http://192.168.1.54:3000/employee-login?warehouse_id=wh-01";
+    expect(toChromeIntentUrl(url)).toBe(
+      `intent://192.168.1.54:3000/employee-login?warehouse_id=wh-01#Intent;scheme=http;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(
+        url
+      )};end`
+    );
+  });
+
+  test("returns the original value for non-http(s) or invalid URLs", () => {
+    expect(toChromeIntentUrl("ftp://example.com")).toBe("ftp://example.com");
+    expect(toChromeIntentUrl("not-a-url")).toBe("not-a-url");
+    expect(toChromeIntentUrl("")).toBe("");
   });
 });

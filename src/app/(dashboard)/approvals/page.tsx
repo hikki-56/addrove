@@ -550,12 +550,8 @@ export default function ApprovalsPage() {
         </div>
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-wrap items-center gap-2.5 pt-1">
-        <div className="mr-auto">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">อนุมัติการรับเข้า</h1>
-          <p className="mt-1 text-sm text-slate-500 font-medium">ตรวจสอบเอกสารก่อนเพิ่มยอดสินค้าเข้าคลัง</p>
-        </div>
+      {/* Top Status Row */}
+      <div className="flex items-center justify-end gap-2.5 pt-1">
         <span
           className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${
             pendingDocs.length > 0

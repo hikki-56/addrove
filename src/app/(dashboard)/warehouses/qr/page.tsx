@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   getWarehouseQrProductionOrigin,
   resolveWarehouseQrBaseUrl,
+  toChromeIntentUrl,
 } from "./_lib/warehouse-qr-url";
 
 interface WarehouseItem {
@@ -41,6 +42,7 @@ export default function WarehouseQrPage() {
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState(getWarehouseQrProductionOrigin());
   const [wifiIp, setWifiIp] = useState("192.168.1.54");
+  const [forceChrome, setForceChrome] = useState(true);
   const [printMode, setPrintMode] = useState<WarehouseQrPrintMode | null>(null);
 
   useEffect(() => {
@@ -92,7 +94,13 @@ export default function WarehouseQrPage() {
           : `${qrBaseUrl}/w/${wh.id}`;
 
         try {
-          const dataUrl = await QRCode.toDataURL(fullTargetUrl, {
+          // บังคับเปิดใน Chrome: ฝัง Android Intent URL แทน https ตรงๆ
+          // (สแกนด้วยกล้อง Android ส่วนใหญ่/Google Lens จะเปิดใน Chrome แม้ default ไม่ใช่ Chrome)
+          const qrContent = forceChrome
+            ? toChromeIntentUrl(fullTargetUrl)
+            : fullTargetUrl;
+
+          const dataUrl = await QRCode.toDataURL(qrContent, {
             width: 320,
             margin: 2,
             color: {
@@ -109,7 +117,7 @@ export default function WarehouseQrPage() {
     };
 
     generateQrs();
-  }, [qrBaseUrl, actionObj, isLocalOrWifi]);
+  }, [qrBaseUrl, actionObj, isLocalOrWifi, forceChrome]);
 
   const qrGridCells = WAREHOUSES.flatMap((wh) =>
     Array.from({ length: QR_COPIES_PER_WAREHOUSE }, () => wh)
@@ -168,40 +176,26 @@ export default function WarehouseQrPage() {
           </div>
         )}
 
-        {/* Page Header (Hidden when printing) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8ECEA] pb-5">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <svg className="w-6 h-6 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
-              <span>QR Code ประจำโกดัง (โกดัง 1 - 5)</span>
-            </h1>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1">
-              สแกนเพื่อเปิดหน้าล็อกอินพนักงาน (PIN) และสลับเข้าสู่ระบบโกดังที่เลือกโดยอัตโนมัติ (พิมพ์ได้ทั้งแบบสติกเกอร์ 3×3 ละ 3 ชุด และโปสเตอร์โกดังละหน้า)
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
-            <button
-              onClick={() => handlePrint("grid")}
-              className="px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span>พิมพ์ QR 3×3 (ละ 3 ชุด)</span>
-            </button>
-            <button
-              onClick={() => handlePrint("poster")}
-              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D5DDD9] text-slate-700 hover:text-slate-900 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-xs active:scale-95"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h10" />
-              </svg>
-              <span>พิมพ์โปสเตอร์ (โกดังละหน้า)</span>
-            </button>
-          </div>
+        {/* Page Actions (Hidden when printing) */}
+        <div className="flex items-center gap-2 flex-wrap justify-end pb-1">
+          <button
+            onClick={() => handlePrint("grid")}
+            className="px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>พิมพ์ QR 3×3 (ละ 3 ชุด)</span>
+          </button>
+          <button
+            onClick={() => handlePrint("poster")}
+            className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D5DDD9] text-slate-700 hover:text-slate-900 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-xs active:scale-95"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h10" />
+            </svg>
+            <span>พิมพ์โปสเตอร์ (โกดังละหน้า)</span>
+          </button>
         </div>
 
         {/* Target Action & Base URL Selector (Hidden when printing) */}
@@ -235,6 +229,28 @@ export default function WarehouseQrPage() {
               </button>
             </div>
           </div>
+
+          {/* Force Chrome Toggle */}
+          <label className="flex items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-[#E8ECEA] cursor-pointer select-none">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-slate-700 font-semibold flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-[#06402B] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                บังคับเปิดด้วย Chrome (Android)
+              </span>
+              <span className="text-[11px] text-slate-500 leading-relaxed">
+                QR จะฝัง Android Intent URL ให้สแกนแล้วเปิดใน Chrome ทันทีแม้เบราว์เซอร์เริ่มต้นของเครื่องไม่ใช่ Chrome — iPhone ไม่รองรับ จะเปิดตามเบราว์เซอร์เริ่มต้นของเครื่อง
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={forceChrome}
+              onChange={(e) => setForceChrome(e.target.checked)}
+              className="w-4.5 h-4.5 shrink-0 accent-[#06402B] cursor-pointer"
+              aria-label="บังคับเปิดด้วย Chrome บน Android"
+            />
+          </label>
 
           {ACTIONS.length > 1 && (
             <div className="space-y-2">
@@ -303,6 +319,11 @@ export default function WarehouseQrPage() {
                 <div className="w-full text-center space-y-1">
                   <p className="text-xs sm:text-sm font-bold text-[#053425]">
                     สแกนเพื่อ: {actionObj.label} ({wh.name})
+                    {forceChrome && (
+                      <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] text-[10px] font-bold align-middle">
+                        เปิดใน Chrome
+                      </span>
+                    )}
                   </p>
                   <Link
                     href={fullTargetUrl}
@@ -542,6 +563,11 @@ export default function WarehouseQrPage() {
                   <div style={{ fontSize: "10px", color: "#334155", fontWeight: 700 }}>
                     สแกนเพื่อ: {actionObj.label}
                   </div>
+                  {forceChrome && (
+                    <div style={{ fontSize: "8px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>
+                      เปิดใน CHROME (ANDROID)
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

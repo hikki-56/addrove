@@ -73,24 +73,17 @@ export default function StaffMovePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
-      {/* Staff Header Card */}
-      <div className="rounded-3xl bg-white border border-[#E8ECEA] shadow-sm p-5 flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-blue-500" />
-            <h1 className="font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight">
-              สแกนจัดตำแหน่งสินค้า
-            </h1>
-          </div>
-          <p className="text-sm text-slate-600 font-medium mt-1">
-            คลัง: <span className="font-bold text-slate-900">{activeWhName}</span> • ย้ายตำแหน่ง/จัดเข้าเชลฟ์
-          </p>
+      {/* Staff Info Bar */}
+      <div className="rounded-2xl bg-white border border-[#E8ECEA] shadow-sm p-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+          <span>คลัง: <span className="font-bold text-slate-900">{activeWhName}</span></span>
         </div>
 
         <button
           type="button"
           onClick={() => refreshData()}
-          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
+          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
         >
           <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

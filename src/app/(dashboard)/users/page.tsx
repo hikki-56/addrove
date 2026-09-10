@@ -220,15 +220,8 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">จัดการพนักงาน</h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-            จัดการบัญชี สิทธิ์การใช้งาน และโกดังที่รับผิดชอบของพนักงาน
-          </p>
-        </div>
-
+      {/* Top Action Row */}
+      <div className="flex items-center justify-end pb-1">
         <button
           id="btn-add-staff"
           onClick={() => setShowAddModal(true)}

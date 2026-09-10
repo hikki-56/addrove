@@ -86,14 +86,13 @@ export default function NewProductPage() {
       <div>
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-xs sm:text-sm font-semibold mb-3 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           ย้อนกลับ
         </button>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">เพิ่มสินค้าใหม่เข้าคลัง</h1>
       </div>
 
       <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#E8ECEA] shadow-xs w-full">

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { UserRole } from "@/types/models";
 import { useRouter } from "next/navigation";
+import { detectWarehouseCode, normalizeWarehouseId } from "@/lib/warehouse-utils";
 
 export interface TabUser {
   id: string;
@@ -76,9 +77,21 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setStatus("unauthenticated");
     if (typeof window !== "undefined") {
-      const pathname = window.location.pathname;
+      const { pathname, search } = window.location;
       if (pathname !== "/employee-login" && pathname !== "/login" && pathname !== "/admin-login") {
-        window.location.href = "/employee-login?expired=true";
+        // แนบ callbackUrl + warehouse_id ตามหน้าที่ผู้ใช้อยู่ตอนหมดอายุไปด้วย
+        // ไม่งั้นหลังกรอก PIN ระบบจะย้อนกลับไปใช้โกดังเดิมที่เคยเก็บไว้ในเครื่อง
+        const loginUrl = new URL("/employee-login", window.location.origin);
+        loginUrl.searchParams.set("callbackUrl", pathname + search);
+        const targetWh =
+          new URLSearchParams(search).get("warehouse_id") ||
+          new URLSearchParams(search).get("wh") ||
+          detectWarehouseCode(pathname);
+        if (targetWh) {
+          loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
+        }
+        loginUrl.searchParams.set("expired", "true");
+        window.location.href = loginUrl.toString();
       }
     }
   }, []);

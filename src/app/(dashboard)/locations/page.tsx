@@ -180,42 +180,32 @@ export default function LocationsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            ตำแหน่งสินค้าในโกดัง
-          </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-            ดูผังชั้นและล็อกว่าตำแหน่งไหนว่าง ไหนมีของ ไหนเต็ม — โกดัง ➔ ชั้น ➔ ล็อก ➔ ตำแหน่ง (เช่น 1K14-1A)
-          </p>
+      {/* Top Action Row */}
+      {activeTab === "manage" && (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              setError("");
+              setShowLocationForm(!showLocationForm);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer active:scale-95 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            เพิ่มตำแหน่งจัดเก็บ (Location)
+          </button>
+          <button
+            onClick={() => {
+              setError("");
+              setShowShelfForm(!showShelfForm);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm cursor-pointer active:scale-95 transition-all"
+          >
+            เพิ่มชั้นวาง (Shelf)
+          </button>
         </div>
-        {activeTab === "manage" && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setError("");
-                setShowLocationForm(!showLocationForm);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer active:scale-95 transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              เพิ่มตำแหน่งจัดเก็บ (Location)
-            </button>
-            <button
-              onClick={() => {
-                setError("");
-                setShowShelfForm(!showShelfForm);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm cursor-pointer active:scale-95 transition-all"
-            >
-              เพิ่มชั้นวาง (Shelf)
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-[#E8ECEA] gap-6 text-xs sm:text-sm font-bold">

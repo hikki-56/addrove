@@ -85,29 +85,12 @@ export default function ExpressImportWorkspaceHeader({
   };
 
   return (
-    <header className="print:hidden" aria-labelledby={`express-${mode}-title`}>
+    <header className="print:hidden">
       <div className="rounded-2xl border border-[#E0E6E3] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_1px_2px_rgba(16,24,40,0.03)] overflow-hidden transition-all">
-        {/* Top Deck: Context, Title, Navigation Tabs & Interactive KPI Filters */}
-        <div className="p-5 sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8">
-          {/* Left: Mode Icon & Prominent Title */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#EAF2EE] text-[#06402B] grid place-items-center shrink-0">
-                <WorkspaceIcon mode={mode} />
-              </div>
-              <h1 id={`express-${mode}-title`} className="text-[32px] sm:text-[38px] font-black tracking-tight text-[#101828] leading-tight">
-                {isReceive ? "รับสินค้าเข้า Express" : "เบิกสินค้าเข้า Express"}
-              </h1>
-            </div>
-            <p className="mt-2 text-base sm:text-lg text-[#344054] leading-relaxed">
-              {isReceive
-                ? "ตรวจรายการรับสินค้า คัดลอกข้อมูลไปยัง Express และปิดงานเมื่อบันทึกเรียบร้อย"
-                : "ตรวจรายการเบิกสินค้า สแกนบาร์โค้ดเข้าโปรแกรม Express และติดตามงานที่ยังรอดำเนินการ"}
-            </p>
-          </div>
-
+        {/* Top Deck: Interactive KPI Filters */}
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-end">
           {/* Right: Connected KPI Metric Strip */}
-          <div className="mt-4 lg:mt-0 shrink-0 w-full lg:w-auto">
+          <div className="shrink-0 w-full sm:w-auto">
             <div className="rounded-xl border border-[#E4EAE6] bg-[#F7F9F8] p-3 sm:p-3.5">
               <div className="flex items-center gap-2.5 sm:gap-3" role="group" aria-label="กรองรายการตามสถานะ Express">
                 {STATUS_OPTIONS.map((option) => {

@@ -438,8 +438,17 @@ export function useTransferMovement({
   }, [tabUser, activeWhId]);
 
   useEffect(() => {
-    setSourceAllocations([]);
+    // รีเซ็ตสถานะการสแกนทั้งหมดทุกครั้งที่เปิดใบงานใหม่/ปิด modal
+    // กันค่าที่สแกนไว้ของรายการก่อนหน้า (เช่น ตำแหน่งปลายทาง) ค้างไปรายการถัดไป
+    setStaffScanProductInput("");
+    setStaffScanSourceLocationInput("");
+    setStaffScanDestLocationInput("");
+    setScannedFromLocation("");
     setScannedToLocation("");
+    setSourceAllocations([]);
+    setStaffError("");
+    setStaffSuccess("");
+    isStepTransitioningRef.current = false;
     if (selectedTask?.to_warehouse_id) {
       const destWhId = normalizeWarehouseId(selectedTask.to_warehouse_id);
       fetch(`/api/locations?warehouse_id=${destWhId}`)

@@ -73,13 +73,8 @@ export default function StaffReceivePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24 sm:pb-10">
       <section className={`${cardClass} p-4 flex items-center justify-between gap-3`}>
-        <div className="min-w-0 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F] shrink-0" />
-            <h1 className="font-extrabold text-[#111827] text-base sm:text-xl tracking-tight truncate">
-              รับสินค้าเข้าคลัง
-            </h1>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F] shrink-0" />
           <span className="inline-block max-w-full truncate bg-[#EAF2EE] px-3 py-1 rounded-full border border-[#DFEDE6] text-sm font-bold text-[#052B1F]">
             {activeWhName}
           </span>
