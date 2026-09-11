@@ -42,7 +42,9 @@ export default function WarehouseQrPage() {
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState(getWarehouseQrProductionOrigin());
   const [wifiIp, setWifiIp] = useState("192.168.1.54");
-  const [forceChrome, setForceChrome] = useState(true);
+  // Default OFF: intent:// QR สแกนไม่ได้บน iPhone/กล้องบางรุ่น/LINE scanner
+  // QR แบบ https ตรงเปิดได้ทุกอุปกรณ์ เปิด toggle นี้เฉพาะเมื่อพนักงานใช้ Android + Chrome เท่านั้น
+  const [forceChrome, setForceChrome] = useState(false);
   const [printMode, setPrintMode] = useState<WarehouseQrPrintMode | null>(null);
 
   useEffect(() => {
@@ -58,6 +60,9 @@ export default function WarehouseQrPage() {
       } else {
         setBaseUrl(resolveWarehouseQrBaseUrl(origin));
       }
+      try {
+        setForceChrome(window.localStorage.getItem("warehouseQrForceChrome") === "true");
+      } catch {}
     }
     // Auto-detect server Wi-Fi IP
     fetch("/api/system/ip")
@@ -237,16 +242,22 @@ export default function WarehouseQrPage() {
                 <svg className="w-4 h-4 text-[#06402B] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                บังคับเปิดด้วย Chrome (Android)
+                บังคับเปิดด้วย Chrome (Android เท่านั้น)
               </span>
               <span className="text-[11px] text-slate-500 leading-relaxed">
-                QR จะฝัง Android Intent URL ให้สแกนแล้วเปิดใน Chrome ทันทีแม้เบราว์เซอร์เริ่มต้นของเครื่องไม่ใช่ Chrome — iPhone ไม่รองรับ จะเปิดตามเบราว์เซอร์เริ่มต้นของเครื่อง
+                แนะนำให้ปิดไว้ — QR แบบ https ตรงสแกนได้ทุกอุปกรณ์ (iPhone, กล้อง Android ทุกรุ่น, LINE scanner)
+                เมื่อเปิด QR จะฝัง Android Intent URL ซึ่ง iPhone และแอปสแกนบางตัว "สแกนแล้วไม่เปิด" — ใช้เฉพาะเมื่อพนักงานใช้ Android ทุกคน
               </span>
             </span>
             <input
               type="checkbox"
               checked={forceChrome}
-              onChange={(e) => setForceChrome(e.target.checked)}
+              onChange={(e) => {
+                setForceChrome(e.target.checked);
+                try {
+                  window.localStorage.setItem("warehouseQrForceChrome", String(e.target.checked));
+                } catch {}
+              }}
               className="w-4.5 h-4.5 shrink-0 accent-[#06402B] cursor-pointer"
               aria-label="บังคับเปิดด้วย Chrome บน Android"
             />
