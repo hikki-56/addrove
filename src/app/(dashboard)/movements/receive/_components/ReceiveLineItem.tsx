@@ -301,7 +301,7 @@ export default function ReceiveLineItem({
               type="number"
               min="1"
               inputMode="numeric"
-              value={(isPrimary ? currentPrimaryQty : extraQtys[extraIdx!]) ?? 0}
+              value={(isPrimary ? currentPrimaryQty : extraQtys[extraIdx!]) || ""}
               onContextMenu={(e) => e.preventDefault()}
               onChange={(e) => {
                 const val = e.target.value;
