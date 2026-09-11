@@ -1091,3 +1091,10 @@ html.light button.bg-red-600 * {
 @media (min-width: 640px) {
   .admin-panel { padding: 1.5rem; }
 }
+
+/* ปิดเมนูตัด/คัดลอก (text-selection toolbar) ของช่องกรอกตัวเลขบนมือถือ */
+input[type="number"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

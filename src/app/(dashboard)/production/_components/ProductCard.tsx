@@ -85,8 +85,7 @@ export default function ProductCard({
               max={maxProducible > 0 ? maxProducible : 1}
               disabled={maxProducible <= 0}
               value={maxProducible > 0 ? (currentQty === 0 ? "" : currentQty) : 0}
-              onFocus={(e) => e.target.select()}
-              onClick={(e) => (e.target as HTMLInputElement).select()}
+              onContextMenu={(e) => e.preventDefault()}
               onChange={(e) => {
                 const raw = e.target.value;
                 if (raw === "") return;

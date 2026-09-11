@@ -302,8 +302,7 @@ export default function ReceiveLineItem({
               min="1"
               inputMode="numeric"
               value={(isPrimary ? currentPrimaryQty : extraQtys[extraIdx!]) ?? 0}
-              onFocus={(e) => (e.target as HTMLInputElement).select()}
-              onClick={(e) => (e.target as HTMLInputElement).select()}
+              onContextMenu={(e) => e.preventDefault()}
               onChange={(e) => {
                 const val = e.target.value;
                 const parsed = val === "" ? 0 : parseInt(val, 10) || 0;
@@ -316,7 +315,7 @@ export default function ReceiveLineItem({
                 }
               }}
               aria-label={`จำนวนของตำแหน่งที่ ${slotNo}`}
-              className="w-24 text-center py-2 bg-transparent font-mono font-bold text-2xl text-slate-900 focus:outline-none"
+              className="w-24 text-center py-2 bg-transparent font-mono font-bold text-2xl text-slate-900 focus:outline-none select-none [-webkit-touch-callout:none]"
             />
             <span className="text-base text-slate-700 font-bold pr-1">ชิ้น</span>
           </div>

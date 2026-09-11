@@ -120,8 +120,7 @@ export default function CartDrawer({
                           min={1}
                           max={item.bom.maxProducible || 9999}
                           value={item.quantity === 0 ? "" : item.quantity}
-                          onFocus={(e) => e.target.select()}
-                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          onContextMenu={(e) => e.preventDefault()}
                           onChange={(e) => {
                             const raw = e.target.value;
                             if (raw === "") {

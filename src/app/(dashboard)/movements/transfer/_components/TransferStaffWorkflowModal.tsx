@@ -484,8 +484,7 @@ export default function TransferStaffWorkflowModal({
                           min={1}
                           max={alloc.max_qty || undefined}
                           value={alloc.qty}
-                          onFocus={(e) => (e.target as HTMLInputElement).select()}
-                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          onContextMenu={(e) => e.preventDefault()}
                           onChange={(e) => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, parseInt(e.target.value) || 0)}
                           className="w-24 text-center font-mono font-bold text-lg bg-slate-50 border border-[#D5DDD9] rounded-xl px-2 py-2 text-[#04231A] focus:outline-none focus:ring-2 focus:ring-[#0F5C3F]"
                         />

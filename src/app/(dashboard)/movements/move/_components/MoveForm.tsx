@@ -178,8 +178,7 @@ export default function MoveForm({
                   step="1"
                   inputMode="numeric"
                   placeholder="ระบุจำนวน..."
-                  onFocus={(e) => (e.target as HTMLInputElement).select()}
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  onContextMenu={(e) => e.preventDefault()}
                   max={maxAvailableQty && maxAvailableQty > 0 ? maxAvailableQty : undefined}
                   {...register("qty", {
                     valueAsNumber: true,
