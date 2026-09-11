@@ -100,6 +100,54 @@ describe("transfer notifications & warehouse detection", () => {
     expect(tasks[0].current_step).toBe(3);
   });
 
+  it("does not demote a locally WAITING_APPROVAL task back to PENDING when the server sheet is stale", () => {
+    // สถานการณ์จริง: พนักงานกดยืนยันการเบิกสำเร็จ (เครื่อง mark WAITING_APPROVAL แล้ว)
+    // แต่แถวในชีตถูก progress PATCH เก่าเขียนทับกลับเป็น PENDING — sync ต้องไม่ดึง
+    // รายการออกจากคิวรออนุมัติ (สถานะเดินหน้าได้อย่างเดียว ยกเว้น COMPLETED)
+    (globalThis as any).localStorage.setItem(
+      "stockify_transfer_notifications",
+      JSON.stringify([
+        {
+          id: "doc-3",
+          doc_no: "TRF-0003",
+          product_id: "prod-3",
+          product_name: "สินค้า C",
+          sku: "SKU-3",
+          from_warehouse_id: "wh-01",
+          from_warehouse_name: "โกดัง1",
+          to_warehouse_id: "wh-02",
+          to_warehouse_name: "โกดัง2",
+          qty: 135,
+          moved_by: "พนักงาน",
+          created_at: "2026-09-11T02:18:42.660Z",
+          status: "WAITING_APPROVAL",
+          current_step: 4,
+          to_location_id: "2K44-1A",
+        },
+      ])
+    );
+
+    syncServerTransferNotifications([
+      {
+        document_id: "doc-3",
+        document_no: "TRF-0003",
+        note: '{"current_step":3}',
+        created_at: "2026-09-11T02:18:42.660Z",
+        status: "PENDING",
+      },
+    ]);
+
+    // ต้องยังอยู่ในคิวรออนุมัติ ไม่เด้งกลับไปรายการที่ต้องไปเบิก
+    expect(getPendingTransferNotifications()).toHaveLength(0);
+    const waiting = JSON.parse(
+      (globalThis as any).localStorage.getItem("stockify_transfer_notifications")
+    );
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0].status).toBe("WAITING_APPROVAL");
+    expect(waiting[0].current_step).toBe(4);
+    expect(waiting[0].to_location_id).toBe("2K44-1A");
+  });
+
   it("recovers sku/barcode from the notification's own note when task fields are empty", () => {
     syncServerTransferNotifications([
       {

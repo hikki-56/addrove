@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, type NavItem } from "@/lib/nav-items";
+import { getNavItems, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -100,6 +100,9 @@ export default function Sidebar({
 
   const [pendingApprovalCount, setPendingApprovalCount] = useState<number>(0);
 
+  // แผนรับสินค้าที่ยังเปิดอยู่ (รอรับ/กำลังรับ) — badge เมนู "รับสินค้าเข้าโกดัง"
+  const [openPlanCount, setOpenPlanCount] = useState<number>(0);
+
   const [expressTagCounts, setExpressTagCounts] = useState<{ receive: number; issue: number; transfer: number }>(() => {
     const rec = getExpressTagCounts("RECEIVE").pending;
     const iss = getExpressTagCounts("ISSUE").pending;
@@ -159,6 +162,25 @@ export default function Sidebar({
     }
   }, [role]);
 
+  // แผนรับสินค้าที่ยังเปิดอยู่ — สำหรับแอดมินและพนักงานโกดังที่ต้องลงมือรับ
+  useEffect(() => {
+    if (role === "ADMIN" || role === "WAREHOUSE_STAFF") {
+      const fetchOpenPlans = () => {
+        fetch(`/api/receiving-plans?status=OPEN`, { cache: "no-store" })
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.success && Array.isArray(res.data)) {
+              setOpenPlanCount(res.data.length);
+            }
+          })
+          .catch(() => {});
+      };
+      fetchOpenPlans();
+      const interval = setInterval(fetchOpenPlans, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [role]);
+
   const itemsForRole = getNavItems(role);
   const visibleItems = itemsForRole.filter(
     (item) => !item.roles || item.roles.includes(role)
@@ -186,7 +208,9 @@ export default function Sidebar({
       ].includes(i.href)
     )
     .sort(byOperationOrder);
-  const systemNav = visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href));
+  const systemNav = isSystemMenuUser(tabUser?.email)
+    ? visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href))
+    : [];
   const expressNav = visibleItems.filter((i) =>
     ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
   );
@@ -194,6 +218,7 @@ export default function Sidebar({
   const badgeFor = (href: string): number | undefined => {
     if (href === "/approvals" && pendingApprovalCount > 0) return pendingApprovalCount;
     if (href === "/movements/transfer" && pendingTransferCount > 0 && role !== "ADMIN") return pendingTransferCount;
+    if ((href === "/movements/receive" || href === "/staff/receive") && openPlanCount > 0) return openPlanCount;
     if (href === "/express-import/receive" && expressTagCounts.receive > 0) return expressTagCounts.receive;
     if (href === "/express-import/transfer" && expressTagCounts.transfer > 0) return expressTagCounts.transfer;
     if (href === "/express-import/issue" && expressTagCounts.issue > 0) return expressTagCounts.issue;
@@ -248,11 +273,15 @@ export default function Sidebar({
 
       {/* Bottom: ระบบ + โปรไฟล์ */}
       <div className="border-t border-(--sidebar-divider) shrink-0 px-2.5 lg:px-3.5 py-3">
-        <div className="hidden lg:block">
-          <GroupLabel label="ระบบ" />
-        </div>
-        <div className="flex flex-col gap-1">{renderRows(systemNav)}</div>
-        <div className="border-t border-(--sidebar-divider) mt-3 pt-3">
+        {systemNav.length > 0 && (
+          <div className="hidden lg:block">
+            <GroupLabel label="ระบบ" />
+          </div>
+        )}
+        {systemNav.length > 0 && (
+          <div className="flex flex-col gap-1">{renderRows(systemNav)}</div>
+        )}
+        <div className={`mt-3 pt-3 ${systemNav.length > 0 ? "border-t border-(--sidebar-divider)" : ""}`}>
           <div className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-(--sidebar-item-bg-hover) justify-center lg:justify-start">
             <span className="size-9 2xl:size-10 rounded-full bg-(--sidebar-active-bg) grid place-items-center text-sm 2xl:text-base font-bold text-(--sidebar-active-text) shrink-0">
               {userInitial}

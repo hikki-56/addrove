@@ -11,6 +11,8 @@ export const PERMISSIONS = {
   STOCK_REVERSE: "stock.reverse",
   STOCK_COUNT: "stock.count",
   STOCK_COUNT_APPROVE: "stock.count.approve",
+  RECEIVE_PLAN_CREATE: "receive.plan.create",
+  RECEIVE_PLAN_CANCEL: "receive.plan.cancel",
 
   // Stock Read Operations
   STOCK_VIEW: "stock.view",
@@ -51,6 +53,8 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.USER_MANAGE,
     PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.RECOVERY_MANAGE,
+    PERMISSIONS.RECEIVE_PLAN_CREATE,
+    PERMISSIONS.RECEIVE_PLAN_CANCEL,
   ],
   MANAGER: [
     PERMISSIONS.STOCK_RECEIVE,

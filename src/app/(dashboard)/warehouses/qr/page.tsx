@@ -246,7 +246,7 @@ export default function WarehouseQrPage() {
               </span>
               <span className="text-[11px] text-slate-500 leading-relaxed">
                 แนะนำให้ปิดไว้ — QR แบบ https ตรงสแกนได้ทุกอุปกรณ์ (iPhone, กล้อง Android ทุกรุ่น, LINE scanner)
-                เมื่อเปิด QR จะฝัง Android Intent URL ซึ่ง iPhone และแอปสแกนบางตัว "สแกนแล้วไม่เปิด" — ใช้เฉพาะเมื่อพนักงานใช้ Android ทุกคน
+                เมื่อเปิด QR จะฝัง Android Intent URL ซึ่ง iPhone และแอปสแกนบางตัว &ldquo;สแกนแล้วไม่เปิด&rdquo; — ใช้เฉพาะเมื่อพนักงานใช้ Android ทุกคน
               </span>
             </span>
             <input

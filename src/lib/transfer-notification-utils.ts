@@ -477,16 +477,43 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
       headers["Authorization"] = `Bearer ${storedToken}`;
     }
 
-    fetch(`/api/movements/transfer/${encodeURIComponent(id)}/progress`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ step, step_text: stepText }),
-    }).catch((err) => {
-      console.warn("[TransferNotification] API sync progress failed:", err);
+    enqueueProgressSync(id, async () => {
+      try {
+        await fetch(`/api/movements/transfer/${encodeURIComponent(id)}/progress`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ step, step_text: stepText }),
+        });
+      } catch (err) {
+        console.warn("[TransferNotification] API sync progress failed:", err);
+      }
     });
   } catch (e) {
     console.error("[TransferNotification] Update progress error:", e);
   }
+}
+
+// คิว PATCH progress ต่อเอกสาร — กัน request เปลี่ยนขั้นตอนสองอันย้อนหลัง/ซ้อนกัน
+// ยิงชนกันจนอันที่อ่านข้อมูลเก่ากว่าเขียนทับอันใหม่ (ลำดับเขียนชีตไม่รับประกัน)
+const progressSyncChains = new Map<string, Promise<void>>();
+
+/** รอจน PATCH progress ที่ค้างอยู่ทั้งหมดของเอกสารนี้เขียนเสร็จ (ใช้ก่อน submit เพื่อไม่ให้ชนกัน) */
+export function whenTransferProgressSettled(id?: string): Promise<void> {
+  if (!id) return Promise.resolve();
+  const chain = progressSyncChains.get(String(id).trim().toLowerCase());
+  return chain ? chain.catch(() => undefined) : Promise.resolve();
+}
+
+function enqueueProgressSync(id: string, run: () => Promise<void>): void {
+  const key = String(id).trim().toLowerCase();
+  const previous = progressSyncChains.get(key) ?? Promise.resolve();
+  const task = previous.catch(() => undefined).then(run);
+  progressSyncChains.set(key, task);
+  task.finally(() => {
+    if (progressSyncChains.get(key) === task) {
+      progressSyncChains.delete(key);
+    }
+  });
 }
 
 export function getPendingTransferNotifications(staffName?: string, warehouseId?: string): TransferNotification[] {
@@ -851,6 +878,17 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
           existingTask.note && !serverNoteMeta.sku && (existingNoteMeta.sku || existingHasProduct)
         );
 
+        // สถานะต้องเดินหน้าได้อย่างเดียว: PENDING → WAITING_APPROVAL → COMPLETED/CANCELLED/REJECTED
+        // เซิร์ฟเวอร์ไม่มี flow ไหนเปลี่ยน WAITING_APPROVAL กลับเป็น PENDING — ถ้าเจอแปลว่า
+        // ข้อมูลชีตเพิ่งถูก request อื่น (เช่น progress PATCH เก่า) เขียนทับให้คง WAITING_APPROVAL ไว้
+        // ไม่งั้นรายการจะเด้งกลับไปอยู่ "รายการที่ต้องไปเบิก" แทนที่จะขึ้นหน้ารออนุมัติ
+        const mergedStatus: TransferNotification["status"] =
+          existingTask.status === "COMPLETED"
+            ? "COMPLETED"
+            : existingTask.status === "WAITING_APPROVAL" && serverTask.status === "PENDING"
+              ? "WAITING_APPROVAL"
+              : serverTask.status;
+
         // ตำแหน่ง/ผู้เบิกที่พนักงานสแกนไว้ตอน submit — server ส่งว่างเมื่อ note โดนทับ ห้ามลบของเดิม
         const merged: TransferNotification = {
           ...serverTask,
@@ -871,7 +909,7 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
           moved_by: !serverTask.moved_by.trim() ? existingTask.moved_by : serverTask.moved_by,
           assigned_to_name: !serverTask.assigned_to_name?.trim() ? existingTask.assigned_to_name : serverTask.assigned_to_name,
           note: keepExistingNote ? existingTask.note : serverTask.note,
-          status: existingTask.status === "COMPLETED" ? "COMPLETED" : serverTask.status,
+          status: mergedStatus,
           current_step: existingTask.current_step !== undefined ? existingTask.current_step : serverTask.current_step,
           current_step_text: existingTask.current_step_text || serverTask.current_step_text,
           last_active_at: existingTask.last_active_at || serverTask.last_active_at,

@@ -130,6 +130,8 @@ export const ReceiveDocumentSchema = z.object({
   note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").default(""),
   idempotency_key: z.string().min(1),
   created_by_name: z.string().optional(),
+  // เมื่อรับสินค้า "ตามแผนรับสินค้า" จะอ้างอิงเอกสารแผน (RECEIVE_PLAN)
+  plan_document_id: z.string().optional(),
   lines: z.array(ReceiveLineSchema).min(1, "กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ"),
 });
 export type ReceiveDocumentInput = z.infer<typeof ReceiveDocumentSchema>;
@@ -137,6 +139,44 @@ export type ReceiveDocumentInput = z.infer<typeof ReceiveDocumentSchema>;
 // Alias for domain service
 export const ReceiveStockSchema = ReceiveDocumentSchema;
 export type ReceiveStockInput = z.infer<typeof ReceiveStockSchema>;
+
+// ------ Receiving Plan (แผนรับสินค้า) ------
+export const ReceivingPlanLineSchema = z.object({
+  product_id: z.string().min(1, "กรุณาเลือกสินค้า"),
+  // ไม่ระบุได้ — รายการนั้นจะเป็นเพียงเช็คลิสต์ (ไม่มีเป้าจำนวน)
+  expected_qty: z
+    .number()
+    .int("จำนวนที่คาดหวังต้องเป็นจำนวนเต็ม")
+    .positive("จำนวนที่คาดหวังต้องมากกว่า 0")
+    .optional(),
+  expected_boxes: z
+    .number()
+    .int("จำนวนกล่องที่คาดหวังต้องเป็นจำนวนเต็ม")
+    .positive("จำนวนกล่องที่คาดหวังต้องมากกว่า 0")
+    .optional(),
+  note: z.string().max(200, "หมายเหตุรายการต้องไม่เกิน 200 ตัวอักษร").optional().default(""),
+});
+export type ReceivingPlanLineInput = z.infer<typeof ReceivingPlanLineSchema>;
+
+export const ReceivingPlanCreateSchema = z.object({
+  warehouse_id: z.string().min(1, "กรุณาเลือกโกดัง"),
+  reference_no: z.string().max(100, "รหัสอ้างอิงต้องไม่เกิน 100 ตัวอักษร").default(""),
+  expected_date: z.string().optional().default(""),
+  note: z.string().max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร").default(""),
+  idempotency_key: z.string().optional(),
+  lines: z.array(ReceivingPlanLineSchema).min(1, "กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ"),
+});
+export type ReceivingPlanCreateInput = z.infer<typeof ReceivingPlanCreateSchema>;
+
+export const CancelReceivingPlanSchema = z.object({
+  reason: z.string().max(500, "เหตุผลต้องไม่เกิน 500 ตัวอักษร").optional().default(""),
+});
+export type CancelReceivingPlanInput = z.infer<typeof CancelReceivingPlanSchema>;
+
+export const CloseReceivingPlanSchema = z.object({
+  reason: z.string().max(500, "เหตุผลต้องไม่เกิน 500 ตัวอักษร").optional().default(""),
+});
+export type CloseReceivingPlanInput = z.infer<typeof CloseReceivingPlanSchema>;
 
 // ------ Movement: Issue ------
 export const IssueLineSchema = z.object({

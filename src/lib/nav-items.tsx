@@ -8,6 +8,16 @@ export interface NavItem {
   roles?: UserRole[];
 }
 
+// เมนูหมวด "ระบบ" แสดงเฉพาะบัญชีผู้ดูแลที่กำหนดไว้เท่านั้น
+export const SYSTEM_MENU_EMAILS = ["ty@stockify.com"];
+export const SYSTEM_MENU_HREFS = ["/users", "/login-logs"];
+
+export function isSystemMenuUser(email?: string | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return SYSTEM_MENU_EMAILS.some((e) => e.toLowerCase() === normalized);
+}
+
 // ไอคอนแบบ Lucide (inline SVG — ไม่ติดตั้ง library ตามกติกา stockify-ui)
 function Icon({ children, className = "w-[18px] h-[18px]" }: { children: React.ReactNode; className?: string }) {
   return (

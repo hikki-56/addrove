@@ -17,6 +17,7 @@ import {
   markTransferCompleted,
   unmarkTransferCompleted,
   updateTransferTaskProgress,
+  whenTransferProgressSettled,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
@@ -1193,6 +1194,13 @@ export function useTransferMovement({
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
+      // รอ PATCH progress (เปลี่ยนขั้นตอน) ที่ยิงค้างไว้ของใบนี้ให้เขียนชีตจบก่อน
+      // — ไม่งั้นมันจะไปอ่านแถวก่อน submit แล้วกลับมาเขียนทับสถานะ WAITING_APPROVAL ทิ้ง
+      await Promise.race([
+        whenTransferProgressSettled(selectedTask.id),
+        new Promise<void>((resolve) => setTimeout(resolve, 8000)),
+      ]);
+
       const res = await fetch(`/api/movements/transfer/${selectedTask.id}/submit`, {
         method: "POST",
         headers,
@@ -1221,9 +1229,8 @@ export function useTransferMovement({
       });
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
-      if (selectedTask?.id) {
-        updateTransferTaskProgress(selectedTask.id, 4, "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)");
-      }
+      // ไม่ต้องยิง updateTransferTaskProgress(4) ซ้ำ — submitTransferMove บันทึก step 4 + text
+      // ลงชีตแล้ว และ markTransferWaitingApproval ด้านบนอัปเดต localStorage ให้ครบแล้ว
     } catch (err: unknown) {
       const message = err instanceof Error && err.message ? err.message : "ไม่สามารถส่งข้อมูลการเบิกสินค้าได้";
       setStaffError(`เกิดข้อผิดพลาด: ${message}`);

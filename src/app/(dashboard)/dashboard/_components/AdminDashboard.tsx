@@ -503,27 +503,28 @@ export default function AdminDashboard() {
                 <SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" hint="ยอดรวมทุกโกดังเป็น 0 — ยังไม่มีสต็อกให้แสดงสัดส่วน" />
               ) : (
                 <>
-                  <div className="relative size-[240px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={donut.slices}
-                          dataKey="segmentValue"
-                          nameKey="warehouseName"
-                          innerRadius={84}
-                          outerRadius={113}
-                          paddingAngle={2}
-                          cornerRadius={2}
-                          strokeWidth={0}
-                          startAngle={90}
-                          endAngle={-270}
-                        >
-                          {donut.slices.map((slice) => (
-                            <Cell key={slice.warehouseId} fill={slice.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <div className="relative w-[240px] h-[240px] flex items-center justify-center">
+                    <PieChart width={240} height={240}>
+                      <Pie
+                        data={donut.slices}
+                        dataKey="segmentValue"
+                        nameKey="warehouseName"
+                        cx={120}
+                        cy={120}
+                        innerRadius={84}
+                        outerRadius={113}
+                        paddingAngle={2}
+                        cornerRadius={2}
+                        strokeWidth={0}
+                        startAngle={90}
+                        endAngle={-270}
+                        isAnimationActive={false}
+                      >
+                        {donut.slices.map((slice) => (
+                          <Cell key={slice.warehouseId} fill={slice.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                       <span className="max-w-[132px] truncate text-2xl font-semibold tracking-tight text-[#111827] tabular-nums">
                         {donut.total.toLocaleString()}

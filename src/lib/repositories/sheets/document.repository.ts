@@ -5,8 +5,17 @@ import {
   SHEETS,
   clearSheetCache,
 } from "@/lib/google-sheets/client";
+import { withKeyedLock } from "@/lib/keyed-lock";
 import type { IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
+
+// ทุก write ของชีต Documents เป็น read-modify-write "ทั้งแถว" (สถานะ+note อยู่แถวเดียวกัน)
+// เดิม PATCH /progress (พนักงานเปลี่ยนขั้นตอน) ชนกับ POST /submit ทำให้สถานะ
+// WAITING_APPROVAL ที่ submit เพิ่งเขียน ถูก progress ที่อ่านข้อมูลก่อนหน้าเขียนทับกลับเป็น PENDING
+// — serialize ด้วย key ต่อเอกสาร (ครอบคลุม traffic บน instance เดียวกัน)
+function documentRowLockKey(id: string): string {
+  return `sheet-doc-row:${String(id || "").trim().toLowerCase()}`;
+}
 import type { MovementFilterInput } from "@/types/api";
 
 function generateUuid(): string {
@@ -48,6 +57,7 @@ function documentToRow(d: Document): string[] {
 const TYPE_PREFIX: Record<DocumentType, string> = {
   OPENING: "OP",
   RECEIVE: "RCV",
+  RECEIVE_PLAN: "PLN",
   ISSUE: "ISS",
   MOVE: "MOV",
   TRANSFER: "TRF",
@@ -135,116 +145,127 @@ export class SheetsDocumentRepository implements IDocumentRepository {
   async create(
     doc: Omit<Document, "document_id" | "document_no" | "created_at">
   ): Promise<Document> {
-    const document_no = await this.generateDocumentNo(doc.document_type);
-    const now = new Date().toISOString();
-    const newDoc: Document = {
-      ...doc,
-      document_id: `doc-${generateUuid()}`,
-      document_no,
-      created_at: now,
-    };
+    // ออกเลข + append ต้องอยู่ใน lock เดียวกัน (ต่อประเภทเอกสาร) — ไม่งั้นสอง request ที่
+    // สร้างพร้อมกัน (client ยิงหลายรายการด้วย Promise.all) อ่าน maxSeq พร้อมกันแล้วได้
+    // document_no เดียวกันหลายแถว ทำให้ findByNo ชี้แถวผิดและรายการโชว์ซ้ำในหน้ารออนุมัติ
+    return withKeyedLock(`sheet-docno:${doc.document_type}`, async () => {
+      const document_no = await this.generateDocumentNo(doc.document_type);
+      const now = new Date().toISOString();
+      const newDoc: Document = {
+        ...doc,
+        document_id: `doc-${generateUuid()}`,
+        document_no,
+        created_at: now,
+      };
 
-    inMemoryDocs.unshift(newDoc);
+      inMemoryDocs.unshift(newDoc);
 
-    try {
-      await appendRows(SHEETS.DOCUMENTS, [documentToRow(newDoc)]);
-      // Doc ถูก sync ลง Sheets สำเร็จแล้ว → ลบออกจาก inMemoryDocs
-      // เพื่อป้องกัน race condition ระหว่าง server restart (HMR/cold-start)
-      const syncedIdx = inMemoryDocs.findIndex((d) => d.document_id === newDoc.document_id);
-      if (syncedIdx !== -1) inMemoryDocs.splice(syncedIdx, 1);
-      // Clear cache หลัง write สำเร็จ เพื่อให้ read ถัดไปได้ข้อมูลใหม่
-      clearSheetCache(SHEETS.DOCUMENTS);
-    } catch (err) {
-      console.warn("[SheetsDocumentRepository] Google Sheets append failed, stored in memory fallback:", err);
-    }
+      try {
+        await appendRows(SHEETS.DOCUMENTS, [documentToRow(newDoc)]);
+        // Doc ถูก sync ลง Sheets สำเร็จแล้ว → ลบออกจาก inMemoryDocs
+        // เพื่อป้องกัน race condition ระหว่าง server restart (HMR/cold-start)
+        const syncedIdx = inMemoryDocs.findIndex((d) => d.document_id === newDoc.document_id);
+        if (syncedIdx !== -1) inMemoryDocs.splice(syncedIdx, 1);
+        // Clear cache หลัง write สำเร็จ เพื่อให้ read ถัดไปได้ข้อมูลใหม่
+        clearSheetCache(SHEETS.DOCUMENTS);
+      } catch (err) {
+        console.warn("[SheetsDocumentRepository] Google Sheets append failed, stored in memory fallback:", err);
+      }
 
-    return newDoc;
+      return newDoc;
+    });
   }
 
   async updateStatus(
     id: string,
     status: Document["status"]
   ): Promise<void> {
-    // Update in-memory document status
-    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
-    if (memDoc) {
-      memDoc.status = status;
-    }
-
-    // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
-    const sheetRows = await this.getSheetRows({ forceFresh: true });
-    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
-
-    if (idx === -1) {
-      // ห้ามแค่ warn แล้วตอบสำเร็จ — ไม่งั้นผู้เรียก (เช่น route อนุมัติ) จะบอกผู้ใช้ว่าสำเร็จ
-      // ทั้งที่สถานะในชีตยังเดิม ทำให้เอกสารติดหน้ารออนุมัติ
-      throw new Error(`อัปเดตสถานะไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
-    }
-
-    {
-      const doc = rowToDocument(sheetRows[idx]);
-      doc.status = status;
-      // สำคัญ: ถ้า memDoc มี note ที่ถูกอัปเดตแล้ว (เช่น moved_by ถูก set โดย submitTransferMove/completeTransfer)
-      // ให้ sync note นั้นกลับลงไปใน Sheets ด้วย เพื่อไม่ให้ข้อมูล metadata หาย
-      if (memDoc?.note && memDoc.note !== doc.note) {
-        doc.note = memDoc.note;
+    return withKeyedLock(documentRowLockKey(id), async () => {
+      // Update in-memory document status
+      const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+      if (memDoc) {
+        memDoc.status = status;
       }
-      // idx is 0-based from row 2 in sheets, so actual row = idx + 2
-      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
-      // Clear cache หลัง write สำเร็จ เพื่อป้องกัน stale read จาก race condition
-      clearSheetCache(SHEETS.DOCUMENTS);
-    }
+
+      // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
+      const sheetRows = await this.getSheetRows({ forceFresh: true });
+      const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+
+      if (idx === -1) {
+        // ห้ามแค่ warn แล้วตอบสำเร็จ — ไม่งั้นผู้เรียก (เช่น route อนุมัติ) จะบอกผู้ใช้ว่าสำเร็จ
+        // ทั้งที่สถานะในชีตยังเดิม ทำให้เอกสารติดหน้ารออนุมัติ
+        throw new Error(`อัปเดตสถานะไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
+      }
+
+      {
+        const doc = rowToDocument(sheetRows[idx]);
+        doc.status = status;
+        // สำคัญ: ถ้า memDoc มี note ที่ถูกอัปเดตแล้ว (เช่น moved_by ถูก set โดย submitTransferMove/completeTransfer)
+        // ให้ sync note นั้นกลับลงไปใน Sheets ด้วย เพื่อไม่ให้ข้อมูล metadata หาย
+        if (memDoc?.note && memDoc.note !== doc.note) {
+          doc.note = memDoc.note;
+        }
+        // idx is 0-based from row 2 in sheets, so actual row = idx + 2
+        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+        // Clear cache หลัง write สำเร็จ เพื่อป้องกัน stale read จาก race condition
+        clearSheetCache(SHEETS.DOCUMENTS);
+      }
+    });
   }
 
   async updateNote(
     id: string,
     note: string
   ): Promise<void> {
-    // Update in-memory document note
-    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
-    if (memDoc) {
-      memDoc.note = note;
-    }
+    return withKeyedLock(documentRowLockKey(id), async () => {
+      // Update in-memory document note
+      const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+      if (memDoc) {
+        memDoc.note = note;
+      }
 
-    // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
-    const sheetRows = await this.getSheetRows({ forceFresh: true });
-    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+      // Use raw sheet rows to get correct row index for Google Sheets (fresh read, not 30s cache)
+      const sheetRows = await this.getSheetRows({ forceFresh: true });
+      const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
 
-    if (idx === -1) {
-      throw new Error(`อัปเดต note ไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
-    }
+      if (idx === -1) {
+        throw new Error(`อัปเดต note ไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
+      }
 
-    {
-      const doc = rowToDocument(sheetRows[idx]);
-      doc.note = note;
-      // idx is 0-based from row 2 in sheets, so actual row = idx + 2
-      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
-      clearSheetCache(SHEETS.DOCUMENTS);
-    }
+      {
+        const doc = rowToDocument(sheetRows[idx]);
+        doc.note = note;
+        // idx is 0-based from row 2 in sheets, so actual row = idx + 2
+        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+        clearSheetCache(SHEETS.DOCUMENTS);
+      }
+    });
   }
 
   async updateDoc(
     id: string,
     updates: Partial<Document>
   ): Promise<void> {
-    const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
-    if (memDoc) {
-      Object.assign(memDoc, updates);
-    }
+    return withKeyedLock(documentRowLockKey(id), async () => {
+      const memDoc = inMemoryDocs.find((d) => d.document_id === id || d.document_no === id);
+      if (memDoc) {
+        Object.assign(memDoc, updates);
+      }
 
-    const sheetRows = await this.getSheetRows({ forceFresh: true });
-    const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
+      const sheetRows = await this.getSheetRows({ forceFresh: true });
+      const idx = sheetRows.findIndex((r) => r[0] === id || r[1] === id);
 
-    if (idx === -1) {
-      throw new Error(`อัปเดตเอกสารไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
-    }
+      if (idx === -1) {
+        throw new Error(`อัปเดตเอกสารไม่สำเร็จ: ไม่พบเอกสาร "${id}" ในชีต Documents`);
+      }
 
-    {
-      const doc = rowToDocument(sheetRows[idx]);
-      Object.assign(doc, updates);
-      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
-      clearSheetCache(SHEETS.DOCUMENTS);
-    }
+      {
+        const doc = rowToDocument(sheetRows[idx]);
+        Object.assign(doc, updates);
+        await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
+        clearSheetCache(SHEETS.DOCUMENTS);
+      }
+    });
   }
 
   async generateDocumentNo(type: DocumentType): Promise<string> {

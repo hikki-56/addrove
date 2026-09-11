@@ -10,6 +10,7 @@ import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
 import { useTabAuth } from "@/context/TabAuthContext";
+import type { ReceivingPlanView } from "./use-receiving-plans";
 
 export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v1";
 
@@ -41,6 +42,22 @@ function matchesProductExact(p: Product, code: string): boolean {
     (!!p.sku && p.sku.trim().toLowerCase() === c) ||
     (!!p.product_id && p.product_id.trim().toLowerCase() === c) ||
     (!!p.product_id && p.product_id.trim().toLowerCase() === `prod-${c}`)
+  );
+}
+
+function normSkuCode(v?: string): string {
+  return (v || "").trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
+}
+
+// หารายการในแผนที่ตรงกับสินค้าที่สแกน (เทียบ product_id / SKU / บาร์โค้ด)
+function findPlanLineInPlan(plan: ReceivingPlanView, product: Product) {
+  return plan.lines.find(
+    (pl) =>
+      pl.product_id === product.product_id ||
+      (pl.sku && product.sku && normSkuCode(pl.sku) === normSkuCode(product.sku)) ||
+      (pl.barcode &&
+        product.barcode &&
+        pl.barcode.trim().toLowerCase() === product.barcode.trim().toLowerCase())
   );
 }
 
@@ -77,6 +94,8 @@ export function useReceiveMovement({
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  // โหมดรับตามแผน: ไม่ null = กำลังรับสินค้า "ตามแผนรับสินค้า" นี้อยู่
+  const [activePlan, setActivePlan] = useState<ReceivingPlanView | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
@@ -151,6 +170,9 @@ export function useReceiveMovement({
       localStorage.removeItem(RECEIVE_DRAFT_KEY);
       return;
     }
+    // เซสชันรับตามแผนเป็นงานสั้นที่ส่งทีเดียวจบ — ไม่ผสมกับ draft ของโหมดรับทั่วไป
+    // (startPlanReceive ล้าง draft เดิมตอนเริ่มแผนอยู่แล้ว)
+    if (activePlan) return;
     if (!watchLines || watchLines.length === 0) {
       localStorage.removeItem(RECEIVE_DRAFT_KEY);
       return;
@@ -166,7 +188,7 @@ export function useReceiveMovement({
     } catch (e) {
       console.warn("[Receive Page] Failed to save draft:", e);
     }
-  }, [watchLines, activeWhId, step, watch, submitted]);
+  }, [watchLines, activeWhId, step, watch, submitted, activePlan]);
 
   // Restoring a draft only brings back the line rows. Products scanned in the previous
   // session may not be in the warehouse product list after a refresh (refreshData
@@ -331,6 +353,18 @@ export function useReceiveMovement({
     // 0. Check if scanned code is a Warehouse Barcode (e.g. WH-01..WH-05, WH1..WH5, โกดัง1..5)
     const detectedWh = detectWarehouseCode(code);
     if (detectedWh) {
+      // กำลังรับตามแผนอยู่ — ห้ามสลับโกดังกลางคัน (เอกสารรับต้องอยู่โกดังเดียวกับแผน)
+      if (activePlan) {
+        setScanFeedback({
+          type: "error",
+          title: "กำลังรับสินค้าตามแผนอยู่",
+          message: `แผน ${activePlan.document_no} เป็นของ${activePlan.warehouse_name} — กด "ออกจากโหมดแผน" ก่อนจึงจะสลับโกดังได้`,
+        });
+        setBarcodeInput("");
+        setTimeout(() => setScanFeedback(null), 5000);
+        isProcessingRef.current = false;
+        return;
+      }
       if (setActiveWhId) {
         setActiveWhId(detectedWh);
       }
@@ -369,7 +403,37 @@ export function useReceiveMovement({
     // IF PRODUCT MATCHED -> ADD (duplicate scan adds one box only — จำนวนชิ้น is counted manually)
     if (matched) {
       const pid = matched.product_id || matched.sku;
+
+      // โหมดรับตามแผน — นโยบายเข้มงวด: รับได้เฉพาะสินค้าที่อยู่ในแผน
+      // (เซิร์ฟเวอร์บังคับซ้ำอีกชั้นใน receive-stock — นี่คือชั้น UX)
+      const planLine = activePlan ? findPlanLineInPlan(activePlan, matched) : undefined;
+      if (activePlan && !planLine) {
+        setScanFeedback({
+          type: "error",
+          title: "สินค้าไม่อยู่ในแผนรับสินค้า",
+          message: `[${matched.sku}] ${shortName(matched.product_name)} ไม่ได้อยู่ในแผน ${activePlan.document_no} — รับตามแผนได้เฉพาะสินค้าในแผน หากของจริงมาเกินแผนกรุณาแจ้งแอดมินปรับแผนก่อน`,
+          scannedCode: code.trim(),
+        });
+        setBarcodeInput("");
+        setTimeout(() => setScanFeedback(null), 5000);
+        isProcessingRef.current = false;
+        return;
+      }
+
       const currentLines = watchLines || [];
+
+      // แสดงเป้าแผนใน feedback และเตือนเมื่อยอดรวมแตะ/เกินเป้า (ยังบันทึกได้ตามของจริง)
+      let planSuffix = "";
+      if (planLine && typeof planLine.expected_qty === "number") {
+        const inFormQty = currentLines
+          .filter((l) => l.product_id === pid)
+          .reduce((s, l) => s + (Number(l.qty) || 0), 0);
+        const alreadyCounted = (planLine.received_qty || 0) + inFormQty;
+        planSuffix = ` — เป้าแผน ${planLine.expected_qty} ชิ้น รับไปแล้ว ${planLine.received_qty || 0} ชิ้น`;
+        if (alreadyCounted >= planLine.expected_qty) {
+          planSuffix = ` — ยอดรวมแล้ว ${alreadyCounted} ชิ้นแตะเป้า ${planLine.expected_qty} ชิ้น การเพิ่มอีกจะบันทึกเกินจำนวนแผน`;
+        }
+      }
 
       const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
       if (existingIdx !== -1) {
@@ -378,7 +442,7 @@ export function useReceiveMovement({
         moveLineToTop(existingIdx);
         setScanFeedback({
           type: "success",
-          title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง`,
+          title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง${planSuffix}`,
           message: `[${matched.sku}] ${shortName(matched.product_name)}`,
         });
       } else {
@@ -395,7 +459,7 @@ export function useReceiveMovement({
         setError("");
         setScanFeedback({
           type: "success",
-          title: "นำเข้าสำเร็จ",
+          title: `นำเข้าสำเร็จ${planSuffix}`,
           message: `[${matched.sku}] ${shortName(matched.product_name)}`,
         });
       }
@@ -543,7 +607,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [step, locations, products, activeWhId, watchLines, confirmedLines, setValue, insert, moveLineToTop, setLocations, setProducts]);
+  }, [step, locations, products, activeWhId, watchLines, confirmedLines, activePlan, setValue, insert, moveLineToTop, setLocations, setProducts]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);
@@ -644,6 +708,8 @@ export function useReceiveMovement({
           lines: cleanedLines,
           created_by_name: user?.name || undefined,
           user_name: user?.name || undefined,
+          // รับตามแผน — เซิร์ฟเวอร์จะตรวจสมาชิกแผน + อัปเดตความคืบหน้าของแผนให้
+          ...(activePlan ? { plan_document_id: activePlan.document_id } : {}),
         }),
       });
       const json = await res.json();
@@ -677,6 +743,7 @@ export function useReceiveMovement({
     setSubmitted(false);
     setStep(1);
     setSuccessMessage("");
+    setActivePlan(null);
     reset({
       warehouse_id: activeWhId,
       document_date: new Date().toISOString().slice(0, 10),
@@ -687,8 +754,48 @@ export function useReceiveMovement({
     setLocationInputs({});
   };
 
+  // เริ่มเซสชัน "รับตามแผน" — ล้างรายการ/draft เดิมเพื่อไม่ให้ปนกับการรับแบบไม่มีแผน
+  const startPlanReceive = (plan: ReceivingPlanView) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(RECEIVE_DRAFT_KEY);
+    }
+    setActivePlan(plan);
+    setSubmitted(false);
+    setSuccessMessage("");
+    setError("");
+    setStep(1);
+    setValue("lines", [] as unknown as ReceiveDocumentInput["lines"]);
+    setValue("reference_no", "");
+    setValue("idempotency_key", uuidv4());
+    setConfirmedLines({});
+    setLocationInputs({});
+  };
+
+  const exitPlanMode = () => {
+    setActivePlan(null);
+    setValue("lines", [] as unknown as ReceiveDocumentInput["lines"]);
+    setValue("reference_no", "");
+    setValue("idempotency_key", uuidv4());
+    setConfirmedLines({});
+    setLocationInputs({});
+  };
+
   const handleProductSelect = (product: Product) => {
     const pid = product.product_id || product.sku;
+
+    // โหมดรับตามแผน — เลือกได้เฉพาะสินค้าในแผนเช่นเดียวกับการสแกน
+    if (activePlan && !findPlanLineInPlan(activePlan, product)) {
+      setScanFeedback({
+        type: "error",
+        title: "สินค้าไม่อยู่ในแผนรับสินค้า",
+        message: `[${product.sku}] ${shortName(product.product_name)} ไม่ได้อยู่ในแผน ${activePlan.document_no} — หากของจริงมาเกินแผนกรุณาแจ้งแอดมินปรับแผนก่อน`,
+      });
+      setSearchOpen(false);
+      setSearchQuery("");
+      setTimeout(() => setScanFeedback(null), 5000);
+      return;
+    }
+
     const currentLines = watchLines || [];
 
     const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
@@ -771,5 +878,9 @@ export function useReceiveMovement({
     onSubmit,
     resetForm,
     handleProductSelect,
+    activePlan,
+    setActivePlan,
+    startPlanReceive,
+    exitPlanMode,
   };
 }

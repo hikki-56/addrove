@@ -86,6 +86,7 @@ export interface Product {
 export type DocumentType =
   | "OPENING"
   | "RECEIVE"
+  | "RECEIVE_PLAN"
   | "ISSUE"
   | "MOVE"
   | "TRANSFER"

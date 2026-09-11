@@ -16,6 +16,12 @@ import {
   StockValidationError,
 } from "./stock-errors";
 import { executeAtomicOperation } from "./atomic-stock-executor";
+import {
+  applyReceivingPlanReceipt,
+  assertLinesInPlan,
+  loadPlanForReceive,
+  type LoadPlanForReceiveResult,
+} from "./receiving-plan";
 
 export { ReceiveStockSchema, ReceiveLineSchema, type ReceiveStockInput, type ReceiveLineInput };
 
@@ -33,6 +39,11 @@ export async function receiveStock(
   const lockKeys = input.lines.map((l) =>
     formatStockLockKey(input.warehouse_id, l.location_id, l.product_id)
   );
+  // รับตามแผน → ล็อกระดับแผนด้วย เพื่อกันการอัปเดต progress ของแผนเดียวกันพร้อมกัน
+  const planDocumentId = (input as any).plan_document_id?.trim() || "";
+  if (planDocumentId) {
+    lockKeys.push(`plan:${planDocumentId}`);
+  }
 
   return executeAtomicOperation({
     repo: deps.repo,
@@ -88,6 +99,18 @@ export async function receiveStock(
         allLocations = await repo.locations.findAll().catch(() => []);
       } catch {
         // Non-critical: approval page will still work with raw IDs
+      }
+
+      // 3.1 รับตามแผนรับสินค้า — ตรวจแผน + บังคับนโยบาย "รับได้เฉพาะสินค้าในแผน"
+      let planCtx: LoadPlanForReceiveResult | null = null;
+      if (planDocumentId) {
+        planCtx = await loadPlanForReceive(repo, planDocumentId, warehouse.warehouse_id);
+        assertLinesInPlan(
+          planCtx.payload,
+          input.lines,
+          (pid) =>
+            allProducts.find((p: any) => p.product_id === pid || p.sku === pid) || null
+        );
       }
 
       // Locations of this warehouse only — reject allocations pointing at another
@@ -231,18 +254,55 @@ export async function receiveStock(
         note: input.note,
         lines: expandedLines,
         rows: approvalRows,
+        ...(planCtx
+          ? { plan_document_id: planCtx.doc.document_id, plan_document_no: planCtx.doc.document_no }
+          : {}),
       });
 
       // 4. Create PENDING document — this is the only write operation
       const doc = await repo.documents.create({
         document_type: "RECEIVE",
-        reference_no: input.reference_no,
+        // รับตามแผน: ถ้าผู้ใช้ไม่ได้กรอกเลขอ้างอิงเอง ใช้เลขที่แผนเป็นอ้างอิง
+        reference_no: input.reference_no || planCtx?.doc.document_no || "",
         document_date: input.document_date,
         status: "PENDING",
         note: notePayload,
         created_by: input.user_id,
         created_by_name: creatorName,
       });
+
+      // 5. อัปเดตความคืบหน้าของแผน (append receipt log + สถานะ PROCESSING/COMPLETED)
+      //    ทำภายใต้ lock เดียวกัน — ถ้าแผนอัปเดตไม่สำเร็จ ให้ fail ทั้ง op เพื่อไม่ให้
+      //    เอกสารรับเข้าหลุดจากแผน (idempotency key เดิม retry ได้)
+      if (planCtx) {
+        const receivedByProduct = new Map<string, number>();
+        for (const expanded of expandedLines) {
+          const prod = allProducts.find(
+            (p: any) => p.product_id === expanded.product_id || p.sku === expanded.product_id
+          );
+          const canonicalId = prod?.product_id || expanded.product_id;
+          receivedByProduct.set(
+            canonicalId,
+            (receivedByProduct.get(canonicalId) || 0) + (Number(expanded.qty) || 0)
+          );
+        }
+        await applyReceivingPlanReceipt(
+          { repo },
+          {
+            plan: planCtx.doc,
+            receipt: {
+              document_id: doc.document_id,
+              document_no: doc.document_no,
+              received_at: new Date().toISOString(),
+              received_by_name: creatorName,
+            },
+            lines: Array.from(receivedByProduct.entries()).map(([product_id, qty]) => ({
+              product_id,
+              qty,
+            })),
+          }
+        );
+      }
 
       return doc;
     },

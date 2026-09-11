@@ -608,6 +608,14 @@ export default function TransferStaffWorkflowModal({
                 </div>
               </div>
 
+              {/* Submit error — ปกติ staffError ถูก render อยู่หลัง overlay นี้มองไม่เห็น
+                  ต้องโชว์ในป๊อปอัปด้วย ไม่งั้นพนักงานกดยืนยันแล้วเงียบจะคิดว่าเสร็จแล้ว */}
+              {staffError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold leading-relaxed" role="alert">
+                  {staffError}
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="space-y-2 pt-1">
                 <button

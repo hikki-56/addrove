@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems } from "@/lib/nav-items";
+import { getNavItems, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
@@ -131,8 +131,11 @@ export default function DashboardHeader({
   };
 
   const itemsForRole = getNavItems(user.role);
+  const systemMenuVisible = isSystemMenuUser(user.email);
   const visibleItems = itemsForRole.filter(
-    (item) => !item.roles || item.roles.includes(user.role)
+    (item) =>
+      (!item.roles || item.roles.includes(user.role)) &&
+      (systemMenuVisible || !SYSTEM_MENU_HREFS.includes(item.href))
   );
 
   const headerNotificationCount = isAdmin ? pendingApprovalCount : pendingTransferCount;

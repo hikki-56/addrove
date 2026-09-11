@@ -78,6 +78,10 @@ export async function GET(req: NextRequest) {
       const overrideStatus = getDocumentStatus(doc.document_id) || getDocumentStatus(doc.document_no);
       const docStatus = overrideStatus || rawDocStatus;
 
+      // แผนรับสินค้า (RECEIVE_PLAN) เป็นเอกสารตั้งต้น ไม่ใช่การรับเข้าที่ต้องอนุมัติ
+      // ต้องกันก่อนเช็ค isReceive เพราะ "RECEIVE_PLAN".includes("RECEIVE") เป็น true
+      if (docType === "RECEIVE_PLAN") continue;
+
       // Approvals page is for RECEIVE documents
       const isReceive = docType.includes("RECEIVE") || docType.includes("RCV") || (doc.note && doc.note.includes("target_sheet"));
       if (!isReceive) continue;
