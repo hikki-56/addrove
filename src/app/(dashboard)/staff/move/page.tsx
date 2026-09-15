@@ -72,7 +72,7 @@ export default function StaffMovePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
+    <div className="scale-original max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
       {/* Staff Info Bar */}
       <div className="rounded-2xl bg-white border border-[#E8ECEA] shadow-sm p-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">

@@ -263,9 +263,11 @@
   --text-6xl--line-height: 1;
 }
 
-/* แผ่นปรินท์/สติกเกอร์/บัตร — คงสเกลตัวอักษรและระยะห่างดั้งเดิม
-   เพราะผูกกับขนาดกระดาษจริง ใส่คลาสนี้ที่ root ของ container ที่ใช้พิมพ์เท่านั้น */
-.print-sheet {
+/* คืนสเกล UI ดั้งเดิม (ก่อนขยาย +3 ระดับ) — ใช้กับส่วนที่ "ไม่ต้องการ" ขยาย:
+   .print-sheet    = แผ่นปรินท์/สติกเกอร์/บัตร ที่ผูกกับขนาดกระดาษจริง (ใส่ที่ root ของ container พิมพ์)
+   .scale-original = หน้าพนักงานคลังบนมือถือ (ส่วน /staff) ที่ให้คงขนาดเดิมเพื่อใช้งานสแกนหน้างาน */
+.print-sheet,
+.scale-original {
   --spacing: 0.25rem;
   font-size: 1rem;
   --text-xs: 0.75rem;
@@ -288,6 +290,16 @@
   --text-5xl--line-height: 1;
   --text-6xl: 3.75rem;
   --text-6xl--line-height: 1;
+}
+
+/* เฉพาะ .scale-original — คืนความสูงแถบหัวเดิม (72px) และขนาดองค์ประกอบ Navbar
+   เดิม เมื่อใช้กับ header หน้า /staff แผ่นปรินท์ไม่เกี่ยวกับค่าเหล่านี้ */
+.scale-original {
+  --header-height: 4.5rem;
+  --nav-icon: 18px;
+  --nav-fine: 10px;
+  --nav-small: 11px;
+  --nav-drawer: 280px;
 }
 
 @utility disp {
@@ -343,6 +355,13 @@
      ทั้งสองส่วนต้องอ้าง token นี้เสมอ เพื่อให้เส้นขอบล่างอยู่ระดับเดียวกันพอดี
      (ขยาย 72px → 112px เพื่อให้ชื่อหน้า + subtitle ใหญ่มีที่หายใจ) */
   --header-height: 7rem;
+
+  /* ขนาดองค์ประกอบใน Navbar ที่ระบุเป็น px — คุมผ่านตัวแปรเพื่อให้หน้า /staff
+     (ใส่คลาส scale-original ที่ header) กลับไปใช้ขนาดดั้งเดิมได้ */
+  --nav-icon: 26px;    /* ไอคอนกระดิ่ง (เดิม 18px) */
+  --nav-fine: 18px;    /* badge/ชิป/kbd (เดิม 10px) */
+  --nav-small: 18px;   /* อีเมล/ป้ายกำกับเล็ก (เดิม 11px) */
+  --nav-drawer: 340px; /* ความกว้าง drawer เมนูมือถือ (เดิม 280px) */
 
   /* ── Sidebar (พื้นดำ) — state tokens ──
      รวมสีทุกสถานะไว้ที่นี่เพื่อให้ desktop sidebar และ mobile drawer ใช้ธีมเดียวกัน

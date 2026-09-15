@@ -53,7 +53,7 @@ export default function StaffTransferPage() {
     getWarehouseName(activeWhId);
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-2 sm:px-4 pb-20 sm:pb-8 space-y-4">
+    <div className="scale-original max-w-2xl mx-auto w-full px-2 sm:px-4 pb-20 sm:pb-8 space-y-4">
       {/* Staff Info Bar */}
       <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">

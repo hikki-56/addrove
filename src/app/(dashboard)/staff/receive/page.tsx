@@ -5,8 +5,11 @@ import ReceiveWorkspace from "../../movements/receive/_components/ReceiveWorkspa
 
 export default function StaffReceivePage() {
   return (
-    <Suspense fallback={null}>
-      <ReceiveWorkspace />
-    </Suspense>
+    /* scale-original — หน้าพนักงานมือถือคงขนาด UI ดั้งเดิม (ไม่ขยายตามสเกลใหม่) */
+    <div className="scale-original">
+      <Suspense fallback={null}>
+        <ReceiveWorkspace />
+      </Suspense>
+    </div>
   );
 }
