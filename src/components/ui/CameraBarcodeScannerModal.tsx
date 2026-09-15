@@ -233,7 +233,7 @@ export default function CameraBarcodeScannerModal({
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
-              <p className="text-[10px] sm:text-xs text-slate-500 truncate">สแกนกล้องสด หรือ ถ่ายรูปบาร์โค้ดด่วน</p>
+              <p className="text-[18px] sm:text-xs text-slate-500 truncate">สแกนกล้องสด หรือ ถ่ายรูปบาร์โค้ดด่วน</p>
             </div>
           </div>
 
@@ -241,7 +241,7 @@ export default function CameraBarcodeScannerModal({
             <button
               type="button"
               onClick={() => setIsContinuous(!isContinuous)}
-              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all border cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[18px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all border cursor-pointer ${
                 isContinuous
                   ? "bg-[#EAF2EE] text-[#053425] border-[#8FB3A3] shadow-2xs"
                   : "bg-white text-slate-500 border-[#E8ECEA] hover:bg-slate-50"

@@ -244,7 +244,7 @@ export default function WarehouseQrPage() {
                 </svg>
                 บังคับเปิดด้วย Chrome (Android เท่านั้น)
               </span>
-              <span className="text-[11px] text-slate-500 leading-relaxed">
+              <span className="text-[18px] text-slate-500 leading-relaxed">
                 แนะนำให้ปิดไว้ — QR แบบ https ตรงสแกนได้ทุกอุปกรณ์ (iPhone, กล้อง Android ทุกรุ่น, LINE scanner)
                 เมื่อเปิด QR จะฝัง Android Intent URL ซึ่ง iPhone และแอปสแกนบางตัว &ldquo;สแกนแล้วไม่เปิด&rdquo; — ใช้เฉพาะเมื่อพนักงานใช้ Android ทุกคน
               </span>
@@ -331,7 +331,7 @@ export default function WarehouseQrPage() {
                   <p className="text-xs sm:text-sm font-bold text-[#053425]">
                     สแกนเพื่อ: {actionObj.label} ({wh.name})
                     {forceChrome && (
-                      <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] text-[10px] font-bold align-middle">
+                      <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] text-[18px] font-bold align-middle">
                         เปิดใน Chrome
                       </span>
                     )}
@@ -366,7 +366,7 @@ export default function WarehouseQrPage() {
       {/* Rendered only when printing in "poster" mode             */}
       {/* ======================================================== */}
       {printMode === "poster" && (
-      <div id="warehouse-print-container" className="hidden print:block print:w-full print:m-0 print:p-0">
+      <div id="warehouse-print-container" className="print-sheet hidden print:block print:w-full print:m-0 print:p-0">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             @page {
@@ -467,7 +467,7 @@ export default function WarehouseQrPage() {
       {/* 9 QR labels per A4 page, each warehouse x 3 sets         */}
       {/* ======================================================== */}
       {printMode === "grid" && (
-        <div id="warehouse-grid-print-container" className="hidden print:block print:w-full print:m-0 print:p-0">
+        <div id="warehouse-grid-print-container" className="print-sheet hidden print:block print:w-full print:m-0 print:p-0">
           <style dangerouslySetInnerHTML={{ __html: `
             @media print {
               @page {

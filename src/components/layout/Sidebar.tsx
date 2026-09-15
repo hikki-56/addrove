@@ -42,7 +42,7 @@ const byOperationOrder = (a: NavItem, b: NavItem) => {
 
 function GroupLabel({ label }: { label: string }) {
   return (
-    <p className="hidden lg:block px-3 pt-5 pb-1.5 text-[11px] 2xl:text-xs font-medium uppercase tracking-wider text-(--sidebar-text-muted)">
+    <p className="hidden lg:block px-3 pt-5 pb-1.5 text-[18px] 2xl:text-xs font-medium uppercase tracking-wider text-(--sidebar-text-muted)">
       {label}
     </p>
   );
@@ -74,7 +74,7 @@ function NavRow({
         {item.label}
       </span>
       {showBadge && (
-        <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 grid place-items-center rounded-full bg-(--sidebar-active-bg) text-(--sidebar-active-text) font-semibold text-[10px] num lg:static lg:ml-auto lg:h-5 lg:min-w-5 lg:px-1.5 lg:text-[11px] 2xl:h-6 2xl:min-w-6 2xl:px-2 2xl:text-xs">
+        <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 grid place-items-center rounded-full bg-(--sidebar-active-bg) text-(--sidebar-active-text) font-semibold text-[18px] num lg:static lg:ml-auto lg:h-5 lg:min-w-5 lg:px-1.5 lg:text-[18px] 2xl:h-6 2xl:min-w-6 2xl:px-2 2xl:text-xs">
           {badge}
         </span>
       )}
@@ -237,7 +237,7 @@ export default function Sidebar({
     ));
 
   return (
-    <aside className="relative hidden md:flex flex-col bg-(--sidebar-surface) text-(--sidebar-text) select-none overflow-x-visible w-[72px] lg:w-64 2xl:w-80 shrink-0 transition-[width] duration-300 ease-in-out border-r border-(--sidebar-edge)">
+    <aside className="relative hidden md:flex flex-col bg-(--sidebar-surface) text-(--sidebar-text) select-none overflow-x-visible w-[100px] lg:w-64 2xl:w-80 shrink-0 transition-[width] duration-300 ease-in-out border-r border-(--sidebar-edge)">
       {/* Brand — ความสูงผูกกับ --header-height เพื่อให้เส้นขอบล่างตรงกับ Top Navbar */}
       <div className="flex h-(--header-height) items-center justify-center border-b border-(--sidebar-divider) shrink-0 overflow-hidden">
         <img
@@ -299,7 +299,7 @@ export default function Sidebar({
               aria-label="ออกจากระบบ"
               className="hidden lg:grid shrink-0 place-items-center size-8 rounded-lg text-(--sidebar-text-muted) hover:text-(--sidebar-text-hover) hover:bg-(--sidebar-item-bg-hover) transition-colors duration-150 cursor-pointer"
             >
-              <svg style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <svg style={{ width: 22, height: 22 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" x2="9" y1="12" y2="12" />

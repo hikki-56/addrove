@@ -267,7 +267,7 @@ export default function TransferNotificationList({
                   <span className={`h-2.5 w-2.5 rounded-full ${stepConfig.dot}`} />
                   <span>{stepConfig.title}</span>
                   {step > 0 && step < 3 && (
-                    <span className="font-mono text-[13px]">({step}/3)</span>
+                    <span className="font-mono text-[20px]">({step}/3)</span>
                   )}
                 </div>
               </div>
@@ -277,7 +277,7 @@ export default function TransferNotificationList({
                 <div className="space-y-1.5 flex-1 min-w-0">
                   {/* Barcode */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-bold text-slate-700 bg-slate-100 border border-[#E8ECEA] px-2 py-0.5 rounded-lg shrink-0">
+                    <span className="text-[20px] font-bold text-slate-700 bg-slate-100 border border-[#E8ECEA] px-2 py-0.5 rounded-lg shrink-0">
                       บาร์โค้ด
                     </span>
                     <span className="font-mono font-bold text-lg sm:text-xl text-slate-900 tracking-wide truncate">
@@ -351,13 +351,13 @@ export default function TransferNotificationList({
                     {t.source_allocations && t.source_allocations.length > 0 ? (
                       <div className="flex flex-wrap items-center gap-2">
                         {t.source_allocations.map((a, idx) => (
-                          <span key={idx} className="bg-white px-2.5 py-1 rounded-lg border border-[#E8ECEA] font-mono text-[13px] text-slate-800 font-bold">
+                          <span key={idx} className="bg-white px-2.5 py-1 rounded-lg border border-[#E8ECEA] font-mono text-[20px] text-slate-800 font-bold">
                             ต้นทาง: {a.location_name || a.location_id} ({a.qty.toLocaleString()} ชิ้น)
                           </span>
                         ))}
                       </div>
                     ) : t.from_location_id ? (
-                      <span className="bg-white px-2.5 py-1 rounded-lg border border-[#E8ECEA] font-mono text-[13px] text-slate-800 font-bold">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-[#E8ECEA] font-mono text-[20px] text-slate-800 font-bold">
                         ต้นทาง: {t.from_location_id}
                       </span>
                     ) : null}
@@ -365,7 +365,7 @@ export default function TransferNotificationList({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                     {t.to_location_id && (
-                      <span className="bg-white px-2.5 py-1 rounded-lg border border-[#C9DFD4] font-mono text-[13px] text-[#052B1F] font-bold">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-[#C9DFD4] font-mono text-[20px] text-[#052B1F] font-bold">
                         ปลายทาง: {t.to_location_id}
                       </span>
                     )}

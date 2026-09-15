@@ -203,7 +203,7 @@ export default function TransferForm({
                     <div className="min-w-0 flex-1 space-y-1.5">
                       {/* Barcode */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[13px] font-bold text-slate-700 bg-slate-100 border border-[#E8ECEA] px-2 py-0.5 rounded-md shrink-0">
+                        <span className="text-[20px] font-bold text-slate-700 bg-slate-100 border border-[#E8ECEA] px-2 py-0.5 rounded-md shrink-0">
                           บาร์โค้ด
                         </span>
                         <span className="font-mono font-bold text-lg sm:text-xl text-slate-900 tracking-wide truncate">

@@ -90,7 +90,7 @@ export default function StaffDashboard() {
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
               รับสินค้าเข้าโกดัง
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">สแกนและนำเข้า</p>
+            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">สแกนและนำเข้า</p>
           </Link>
 
           {/* Square 2: จัดตำแหน่งสินค้า */}
@@ -106,7 +106,7 @@ export default function StaffDashboard() {
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
               จัดตำแหน่งสินค้า
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">จัดตำแหน่งจัดเก็บ</p>
+            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">จัดตำแหน่งจัดเก็บ</p>
           </Link>
 
           {/* Square 3: ย้ายสินค้า */}
@@ -127,7 +127,7 @@ export default function StaffDashboard() {
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">
               ย้ายสินค้า
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">ย้ายระหว่างโกดัง</p>
+            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">ย้ายระหว่างโกดัง</p>
           </Link>
 
           {/* Square 4: สินค้าทั้งหมด */}
@@ -145,7 +145,7 @@ export default function StaffDashboard() {
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">
               สินค้าทั้งหมด
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">ค้นหาและดูสต็อก</p>
+            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">ค้นหาและดูสต็อก</p>
           </Link>
 
         </div>

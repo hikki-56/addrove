@@ -126,7 +126,7 @@ export default function ExpressImportWorkspaceHeader({
                         <div className="skeleton mt-2 h-8 w-14" aria-hidden="true" />
                       ) : (
                         <span
-                          className={`mt-1.5 block font-mono text-3xl sm:text-[34px] font-black leading-none ${
+                          className={`mt-1.5 block font-mono text-3xl sm:text-[72px] font-black leading-none ${
                             isActive ? "text-[#06402B]" : "text-[#101828]"
                           }`}
                         >
@@ -176,7 +176,7 @@ export default function ExpressImportWorkspaceHeader({
                   onChange={(e) => onSearchQueryChange(e.target.value)}
                   placeholder="ค้นหาเอกสาร, SKU, บาร์โค้ด…"
                   aria-label="ค้นหารายการ"
-                  className="w-full min-h-[46px] pl-11 pr-9 rounded-xl border border-[#D5DDD9] bg-white py-2.5 text-base sm:text-[17px] font-medium text-[#101828] placeholder:text-slate-400 focus:border-[#06402B] focus:outline-none focus:ring-2 focus:ring-[#06402B]/15 transition-all"
+                  className="w-full min-h-[46px] pl-11 pr-9 rounded-xl border border-[#D5DDD9] bg-white py-2.5 text-base sm:text-[30px] font-medium text-[#101828] placeholder:text-slate-400 focus:border-[#06402B] focus:outline-none focus:ring-2 focus:ring-[#06402B]/15 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -243,7 +243,7 @@ export default function ExpressImportWorkspaceHeader({
               )}
 
               <div
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#EAF2EE] text-[#06402B] text-base sm:text-[17px] font-bold font-mono"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#EAF2EE] text-[#06402B] text-base sm:text-[30px] font-bold font-mono"
                 aria-live="polite"
               >
                 <span>{visibleCount.toLocaleString()}</span>

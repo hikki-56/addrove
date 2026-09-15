@@ -114,7 +114,7 @@ function BarcodeSvgComponent({
           }}
         />
         {!disableZoom && (
-          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[9px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
+          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-[18px] font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
             <span>🔍</span> ขยาย
           </div>
         )}

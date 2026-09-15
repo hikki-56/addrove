@@ -137,7 +137,7 @@ export default function TransferPage() {
             </svg>
             <span className="leading-tight">รายการที่ต้องไปเบิก</span>
             {pendingTasks.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[13px] font-black bg-rose-600 text-white shadow-xs">
+              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[20px] font-black bg-rose-600 text-white shadow-xs">
                 {pendingTasks.length}
               </span>
             )}
@@ -158,7 +158,7 @@ export default function TransferPage() {
               </svg>
               <span className="leading-tight">รออนุมัติ</span>
               {waitingApprovalTasks.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[13px] font-black bg-amber-500 text-slate-950 shadow-xs">
+                <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[20px] font-black bg-amber-500 text-slate-950 shadow-xs">
                   {waitingApprovalTasks.length}
                 </span>
               )}

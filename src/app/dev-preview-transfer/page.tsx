@@ -255,8 +255,8 @@ function DevPreviewTransferContent() {
               }`}
             >
               <span className="leading-tight">{label}</span>
-              {i === 1 && <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[13px] font-black bg-rose-600 text-white shadow-xs">3</span>}
-              {i === 2 && <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[13px] font-black bg-amber-500 text-slate-950 shadow-xs">2</span>}
+              {i === 1 && <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[20px] font-black bg-rose-600 text-white shadow-xs">3</span>}
+              {i === 2 && <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[20px] font-black bg-amber-500 text-slate-950 shadow-xs">2</span>}
             </button>
           ))}
         </div>

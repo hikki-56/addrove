@@ -102,21 +102,21 @@ export default function ReceiveLinesTable({
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-[13px] sm:text-sm text-[#667085] font-semibold leading-tight">รายการ</div>
+          <div className="text-[20px] sm:text-sm text-[#667085] font-semibold leading-tight">รายการ</div>
           <div className="disp num text-xl sm:text-2xl font-bold text-[#111827] leading-tight">
             {totalLines.toLocaleString()}
           </div>
         </div>
 
         <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-[13px] sm:text-sm text-[#667085] font-semibold leading-tight">กล่องรวม</div>
+          <div className="text-[20px] sm:text-sm text-[#667085] font-semibold leading-tight">กล่องรวม</div>
           <div className="disp num text-xl sm:text-2xl font-bold text-[#111827] leading-tight">
             {totalBoxes.toLocaleString()}
           </div>
         </div>
 
         <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-[13px] sm:text-sm text-[#667085] font-semibold leading-tight">จำนวนรวม</div>
+          <div className="text-[20px] sm:text-sm text-[#667085] font-semibold leading-tight">จำนวนรวม</div>
           <div className="disp num text-xl sm:text-2xl font-bold text-[#053425] leading-tight">
             {totalQty.toLocaleString()}
             <span className="text-sm font-bold text-[#667085] ml-1">ชิ้น</span>

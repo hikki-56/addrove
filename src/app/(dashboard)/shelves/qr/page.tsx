@@ -249,7 +249,7 @@ export default function ShelfQrPage() {
         key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
         className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-[#E8ECEA] shadow-sm flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:border-[#D5DDD9] select-none"
       >
-        <h2 className="text-3xl sm:text-4xl md:text-[2.6rem] font-black text-slate-900 tracking-wide font-mono select-none flex items-center justify-center gap-2 sm:gap-3 flex-nowrap w-full whitespace-nowrap overflow-hidden">
+        <h2 className="text-3xl sm:text-4xl md:text-[4.5rem] font-black text-slate-900 tracking-wide font-mono select-none flex items-center justify-center gap-2 sm:gap-3 flex-nowrap w-full whitespace-nowrap overflow-hidden">
           {arrowDir === "down" && (
             <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#06402B] inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
               <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
@@ -407,7 +407,7 @@ export default function ShelfQrPage() {
       {/* ======================================================== */}
       {/* Print View (A4 3x3 Grid Template with CSS Page-Breaks)   */}
       {/* ======================================================== */}
-      <div id="print-sticker-container" className="hidden print:block">
+      <div id="print-sticker-container" className="print-sheet hidden print:block">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             @page {

@@ -238,7 +238,7 @@ export default function ProductSearchInput({
             </button>
           )}
 
-          <div className="px-3.5 py-1.5 text-[11px] font-medium text-slate-600 bg-slate-100 border-b border-[#E8ECEA] flex justify-between items-center">
+          <div className="px-3.5 py-1.5 text-[18px] font-medium text-slate-600 bg-slate-100 border-b border-[#E8ECEA] flex justify-between items-center">
             <span>
               {/^\d{4}$/.test(query.trim()) ? "ผลลัพธ์ค้นหาจาก 4 ตัวท้ายบาร์โค้ด" : "รายการสินค้า (จาก Google Sheet)"}
             </span>
@@ -294,7 +294,7 @@ export default function ProductSearchInput({
                       </div>
 
                       {/* บรรทัดที่ 2: [ผู้จำหน่าย] | [SKU] */}
-                      <div className="flex items-center gap-x-1.5 sm:gap-x-2 text-[11px] sm:text-sm text-slate-500 font-medium truncate">
+                      <div className="flex items-center gap-x-1.5 sm:gap-x-2 text-[18px] sm:text-sm text-slate-500 font-medium truncate">
                         {p.supplier ? (
                           <>
                             <span className="text-slate-800 font-bold truncate">{p.supplier}</span>
@@ -308,13 +308,13 @@ export default function ProductSearchInput({
                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       {/* Far Right: Stock Balance Text (Black & Frameless) */}
                       <div className="text-right shrink-0">
-                        <span className="text-[10px] sm:text-xs text-black font-bold">
-                          คงเหลือ <strong className="text-black font-mono font-extrabold text-[11px] sm:text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
+                        <span className="text-[18px] sm:text-xs text-black font-bold">
+                          คงเหลือ <strong className="text-black font-mono font-extrabold text-[18px] sm:text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
                         </span>
                       </div>
 
                       {isSelected && (
-                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#8FB3A3] shrink-0">
+                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[18px] sm:text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#8FB3A3] shrink-0">
                           ✓ เลือกแล้ว
                         </span>
                       )}

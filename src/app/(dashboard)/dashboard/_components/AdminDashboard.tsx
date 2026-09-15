@@ -305,7 +305,7 @@ export default function AdminDashboard() {
             <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-[#B42318]" />
             <div>
               <p className="text-sm font-semibold text-[#B42318]">โหลดข้อมูล Dashboard ไม่สำเร็จ</p>
-              <p className="mt-0.5 text-[13px] text-[#912018]">
+              <p className="mt-0.5 text-[20px] text-[#912018]">
                 {dashError} — ตัวเลขด้านล่างอาจไม่ครบถ้วน ไม่ใช่ข้อมูลจริงทั้งหมด
               </p>
             </div>
@@ -339,10 +339,10 @@ export default function AdminDashboard() {
                     // โหลดไม่สำเร็จ → แสดง — แทนเลข 0 ที่ทำให้เข้าใจว่าไม่มีสินค้า/ไม่มีรายการจริง
                     <p className="text-3xl font-semibold tracking-tight text-[#667085]">—</p>
                   ) : (
-                    <p className={`whitespace-nowrap text-3xl lg:text-[20px] xl:text-[28px] 2xl:text-[32px] font-semibold tracking-tight tabular-nums ${kpiItem.hero ? "text-white" : "text-[#111827]"}`}>
+                    <p className={`whitespace-nowrap text-3xl lg:text-[36px] xl:text-[60px] 2xl:text-[60px] font-semibold tracking-tight tabular-nums ${kpiItem.hero ? "text-white" : "text-[#111827]"}`}>
                       <span ref={kpiItem.valueRef} />
                       {kpiItem.unit ? (
-                        <span className={`ml-1.5 text-base lg:text-[13px] xl:text-sm 2xl:text-base font-medium ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`}>
+                        <span className={`ml-1.5 text-base lg:text-[20px] xl:text-sm 2xl:text-base font-medium ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`}>
                           {kpiItem.unit}
                         </span>
                       ) : null}
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
                   <KpiIcon />
                 </div>
               </div>
-              <p className={`mt-4 truncate text-sm 2xl:text-[15px] ${
+              <p className={`mt-4 truncate text-sm 2xl:text-[24px] ${
                 dashError ? "font-medium text-[#B54708]" : kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"
               }`} title={dashError ? undefined : kpiItem.caption}>
                 {dashError ? "ไม่สามารถโหลดข้อมูลส่วนนี้ได้" : kpiItem.caption}
@@ -424,16 +424,16 @@ export default function AdminDashboard() {
                         dataKey="label"
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fontSize: 12, fill: "#667085" }}
+                        tick={{ fontSize: 18, fill: "#667085" }}
                         dy={8}
                         interval="preserveStartEnd"
                         minTickGap={24}
                       />
                       <YAxis
-                        width={44}
+                        width={64}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fontSize: 12, fill: "#667085" }}
+                        tick={{ fontSize: 18, fill: "#667085" }}
                         tickFormatter={(val: number) => {
                           if (val >= 1000000) return `${(val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1)}M`;
                           if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
@@ -447,7 +447,7 @@ export default function AdminDashboard() {
                           backgroundColor: "#ffffff",
                           border: "1px solid #E8ECEA",
                           borderRadius: "12px",
-                          fontSize: "12px",
+                          fontSize: "18px",
                           fontWeight: "600",
                           boxShadow: "0 8px 24px rgba(16,24,40,0.12)",
                           padding: "6px 10px",
@@ -490,7 +490,7 @@ export default function AdminDashboard() {
             <div className="flex flex-1 flex-col items-center gap-6 px-6 py-6">
               {loading ? (
                 <>
-                  <div className="size-[240px] rounded-full skeleton opacity-40" />
+                  <div className="size-[320px] rounded-full skeleton opacity-40" />
                   <div className="w-full space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div key={`sk-donut-${i}`} className="h-6 rounded skeleton opacity-40" />
@@ -503,30 +503,32 @@ export default function AdminDashboard() {
                 <SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" hint="ยอดรวมทุกโกดังเป็น 0 — ยังไม่มีสต็อกให้แสดงสัดส่วน" />
               ) : (
                 <>
-                  <div className="relative w-[240px] h-[240px] flex items-center justify-center">
-                    <PieChart width={240} height={240}>
-                      <Pie
-                        data={donut.slices}
-                        dataKey="segmentValue"
-                        nameKey="warehouseName"
-                        cx={120}
-                        cy={120}
-                        innerRadius={84}
-                        outerRadius={113}
-                        paddingAngle={2}
-                        cornerRadius={2}
-                        strokeWidth={0}
-                        startAngle={90}
-                        endAngle={-270}
-                        isAnimationActive={false}
-                      >
-                        {donut.slices.map((slice) => (
-                          <Cell key={slice.warehouseId} fill={slice.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
+                  <div className="relative w-full max-w-[360px]">
+                    <ResponsiveContainer width="100%" height={320}>
+                      <PieChart>
+                        <Pie
+                          data={donut.slices}
+                          dataKey="segmentValue"
+                          nameKey="warehouseName"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="70%"
+                          outerRadius="94%"
+                          paddingAngle={2}
+                          cornerRadius={2}
+                          strokeWidth={0}
+                          startAngle={90}
+                          endAngle={-270}
+                          isAnimationActive={false}
+                        >
+                          {donut.slices.map((slice) => (
+                            <Cell key={slice.warehouseId} fill={slice.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="max-w-[132px] truncate text-2xl font-semibold tracking-tight text-[#111827] tabular-nums">
+                      <span className="max-w-[200px] truncate text-2xl font-semibold tracking-tight text-[#111827] tabular-nums">
                         {donut.total.toLocaleString()}
                       </span>
                       <span className="text-xs 2xl:text-sm text-[#667085]">ชิ้น</span>
@@ -576,7 +578,7 @@ export default function AdminDashboard() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm 2xl:text-base font-semibold text-[#111827]">{doc.document_no} · เป้าหมาย {doc.target_sheet || "-"}</p>
-                          <p className="mt-0.5 text-[13px] 2xl:text-sm text-[#667085]">
+                          <p className="mt-0.5 text-[20px] 2xl:text-sm text-[#667085]">
                             {ageHrs !== null ? `รอ ${ageHrs} ชม.` : "รอดำเนินการ"}
                           </p>
                         </div>
@@ -942,7 +944,7 @@ function WarehouseLegendRow({ slice }: { slice: WarehouseDonutSlice }) {
         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
         <span className="truncate text-sm 2xl:text-base text-[#667085]">{slice.warehouseName}</span>
         {slice.isNegative ? (
-          <span className="shrink-0 rounded-full bg-[#FCEFED] px-1.5 py-0.5 text-[10px] font-semibold text-[#B42318]">
+          <span className="shrink-0 rounded-full bg-[#FCEFED] px-1.5 py-0.5 text-[18px] font-semibold text-[#B42318]">
             ยอดติดลบ
           </span>
         ) : null}
@@ -972,7 +974,7 @@ function SectionStateBox({
       }`}
     >
       <p className={`text-sm font-semibold ${tone === "error" ? "text-[#B42318]" : "text-[#344054]"}`}>{title}</p>
-      {hint ? <p className="mt-1 text-[13px] text-[#667085]">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[20px] text-[#667085]">{hint}</p> : null}
     </div>
   );
 }

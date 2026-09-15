@@ -637,7 +637,7 @@ export default function LoginNotificationsPage() {
                         <div className="font-bold text-slate-800 text-sm">
                           {formatThaiDate(log.login_at)}
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
+                        <div className="text-[18px] text-slate-400 mt-0.5">
                           {getRelativeTime(log.login_at)}
                         </div>
                       </td>

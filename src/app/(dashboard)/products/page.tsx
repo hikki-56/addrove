@@ -520,7 +520,7 @@ export default function ProductsPage() {
 
                           {/* Status Badge */}
                           <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${meta.badge}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[18px] font-bold border whitespace-nowrap ${meta.badge}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                               {meta.label}
                             </span>
@@ -684,13 +684,13 @@ export default function ProductsPage() {
 
                     <div className="mt-3 flex items-center justify-between gap-3 text-xs">
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-slate-500">ขั้นต่ำ</span>
+                        <span className="text-[18px] font-bold text-slate-500">ขั้นต่ำ</span>
                         <span className="font-mono num font-bold text-slate-700">
                           {(Number(p.minimum_stock) || 0).toLocaleString()}
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-slate-500">คงเหลือ</span>
+                        <span className="text-[18px] font-bold text-slate-500">คงเหลือ</span>
                         <span
                           className={`font-mono num font-extrabold ${
                             totalStock < 0 ? "text-rose-600" : totalStock === 0 ? "text-slate-500" : "text-[#053425]"
@@ -700,17 +700,17 @@ export default function ProductsPage() {
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 min-w-0">
-                        <span className="text-[11px] font-bold text-slate-500 shrink-0">หน่วย</span>
+                        <span className="text-[18px] font-bold text-slate-500 shrink-0">หน่วย</span>
                         <span className="font-bold text-slate-700 truncate">{p.base_unit || "ชิ้น"}</span>
                       </span>
                     </div>
 
                     <div className="mt-2.5 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-500 font-medium truncate">
+                      <span className="text-[18px] text-slate-500 font-medium truncate">
                         {p.category || "ไม่ระบุหมวดหมู่"}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${meta.badge}`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[18px] font-bold border whitespace-nowrap ${meta.badge}`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                         {meta.label}

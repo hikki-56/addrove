@@ -156,7 +156,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer watermark */}
-          <div className="relative z-10 text-[#8FB3A3]/60 text-[11px] font-mono">
+          <div className="relative z-10 text-[#8FB3A3]/60 text-[18px] font-mono">
             © Stockify — Warehouse Management Platform
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
                     className="w-full bg-[#EFF3F1] border border-[#E8ECEA] rounded-full px-5 py-3.5 text-slate-800 text-base placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F5C3F] focus:bg-white transition-all shadow-inner"
                   />
                 </div>
-                {errors.email && <p className="mt-1 ml-4 text-[11px] text-red-500">{(errors.email as any).message}</p>}
+                {errors.email && <p className="mt-1 ml-4 text-[18px] text-red-500">{(errors.email as any).message}</p>}
               </div>
 
               {/* Password Pill Input */}
@@ -246,7 +246,7 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
-                {errors.password && <p className="mt-1 ml-4 text-[11px] text-red-500">{(errors.password as any).message}</p>}
+                {errors.password && <p className="mt-1 ml-4 text-[18px] text-red-500">{(errors.password as any).message}</p>}
               </div>
 
               {/* Sign In Button */}
@@ -277,7 +277,7 @@ export default function LoginPage() {
         </div>
 
         {/* Mobile Footer (จอ < lg) */}
-        <p className="lg:hidden relative z-10 shrink-0 pb-5 text-center text-[#8FB3A3]/60 text-[11px] font-mono">
+        <p className="lg:hidden relative z-10 shrink-0 pb-5 text-center text-[#8FB3A3]/60 text-[18px] font-mono">
           © Stockify — Warehouse Management Platform
         </p>
 

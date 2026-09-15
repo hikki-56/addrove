@@ -236,7 +236,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{product.product_name}</h1>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusMeta.badge}`}>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[18px] font-bold border ${statusMeta.badge}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
                 {statusMeta.label}
               </span>
