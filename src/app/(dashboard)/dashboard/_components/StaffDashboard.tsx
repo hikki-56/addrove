@@ -59,7 +59,7 @@ export default function StaffDashboard() {
   const pendingCount = pendingTransfers.length;
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center py-8 px-4 w-full">
+    <div className="min-h-[75vh] flex flex-col items-center justify-center py-4 sm:py-8 w-full">
       <div className="w-full max-w-md space-y-6 text-center">
 
         {/* Warehouse Header Title */}
@@ -75,77 +75,84 @@ export default function StaffDashboard() {
         </div>
 
         {/* 4 Centered Square Buttons (2x2 Grid) */}
-        <div className="grid grid-cols-2 gap-4 w-full pt-2">
+        <div className="grid grid-cols-2 auto-rows-fr gap-3.5 sm:gap-4 w-full pt-2">
 
-          {/* Square 1: รับสินค้าเข้าคลัง */}
+          {/* Square 1: รับสินค้าเข้าโกดัง */}
           <Link
             href={`/movements/receive?warehouse_id=${activeWh}`}
             id="staff-btn-receive"
-            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "90ms" }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
-              <img src="/receive-stock-icon.png" alt="รับสินค้าเข้าคลัง" className="w-full h-full object-contain" />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
+              <img src="/receive-stock-icon.png" alt="รับสินค้าเข้าโกดัง" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
-              รับสินค้าเข้าโกดัง
-            </h2>
-            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">สแกนและนำเข้า</p>
+            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors leading-tight text-center">
+                <span>รับสินค้าเข้า</span>
+                <span className="block">โกดัง</span>
+              </h2>
+            </div>
           </Link>
 
           {/* Square 2: จัดตำแหน่งสินค้า */}
           <Link
             href={`/movements/move?warehouse_id=${activeWh}`}
             id="staff-btn-move"
-            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "180ms" }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
               <img src="/move-location-icon.png" alt="จัดตำแหน่งสินค้า" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
-              จัดตำแหน่งสินค้า
-            </h2>
-            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">จัดตำแหน่งจัดเก็บ</p>
+            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors leading-tight text-center">
+                <span>จัดตำแหน่ง</span>
+                <span className="block">สินค้า</span>
+              </h2>
+            </div>
           </Link>
 
           {/* Square 3: ย้ายสินค้า */}
           <Link
             href={`/movements/transfer?warehouse_id=${activeWh}`}
             id="staff-btn-transfer"
-            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "270ms" }}
           >
-            <div className="relative w-14 h-14 rounded-2xl bg-sky-50 border border-sky-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-sky-50 border border-sky-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
               <img src="/transfer-stock-icon.png" alt="ย้ายสินค้า" className="w-full h-full object-contain" />
               {pendingCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-black text-white shadow-md animate-pulse">
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-red-500 text-[10px] sm:text-xs font-black text-white shadow-md animate-pulse">
                   {pendingCount}
                 </span>
               )}
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">
-              ย้ายสินค้า
-            </h2>
-            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">ย้ายระหว่างโกดัง</p>
+            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors leading-tight text-center">
+                ย้ายสินค้า
+              </h2>
+            </div>
           </Link>
 
           {/* Square 4: สินค้าทั้งหมด */}
           <Link
             href="/products"
             id="staff-btn-products"
-            className="rise-in group relative aspect-square w-full rounded-3xl p-5 bg-white border border-[#E8ECEA]/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "360ms" }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-3">
-              <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 border border-amber-100 p-2 sm:p-2.5 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">
-              สินค้าทั้งหมด
-            </h2>
-            <p className="text-[18px] text-slate-500 mt-1 line-clamp-1">ค้นหาและดูสต็อก</p>
+            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors leading-tight text-center">
+                <span>สินค้า</span>
+                <span className="block">ทั้งหมด</span>
+              </h2>
+            </div>
           </Link>
 
         </div>

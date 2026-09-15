@@ -220,19 +220,12 @@ export default function ReceiveLineItem({
           </span>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isScanned ? (
+            {isScanned && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#DFEDE6] text-[#053425] text-sm font-bold border border-[#C9DFD4] max-w-[180px] sm:max-w-none">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="font-mono truncate">{getLocationDisplay(scannedLoc!)}</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-bold border border-amber-200">
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span>รอสแกนตำแหน่ง</span>
               </span>
             )}
 
@@ -284,7 +277,7 @@ export default function ReceiveLineItem({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 bg-white p-2 rounded-xl border border-[#E8ECEA]">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 bg-white p-1.5 sm:p-2 rounded-xl border border-[#E8ECEA] w-full min-w-0">
           <button
             type="button"
             aria-label="ลดจำนวน"
@@ -293,10 +286,10 @@ export default function ReceiveLineItem({
                 ? handleUpdatePrimaryQty(Math.max(0, (currentPrimaryQty ?? 0) - 1))
                 : handleUpdateExtraQty(extraIdx!, Math.max(1, (extraQtys[extraIdx!] || 1) - 1))
             }
-            className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xl sm:text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
           >−</button>
 
-          <div className="flex items-baseline gap-2">
+          <div className="flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-1">
             <input
               type="number"
               min="1"
@@ -315,9 +308,9 @@ export default function ReceiveLineItem({
                 }
               }}
               aria-label={`จำนวนของตำแหน่งที่ ${slotNo}`}
-              className="w-24 text-center py-2 bg-transparent font-mono font-bold text-2xl text-slate-900 focus:outline-none select-none [-webkit-touch-callout:none]"
+              className="w-full max-w-[90px] sm:max-w-[120px] text-center py-1.5 bg-transparent font-mono font-bold text-xl sm:text-2xl text-slate-900 focus:outline-none select-none [-webkit-touch-callout:none]"
             />
-            <span className="text-base text-slate-700 font-bold pr-1">ชิ้น</span>
+            <span className="text-sm sm:text-base text-slate-700 font-bold shrink-0">ชิ้น</span>
           </div>
 
           <button
@@ -328,7 +321,7 @@ export default function ReceiveLineItem({
                 ? handleUpdatePrimaryQty((currentPrimaryQty || 0) + 1)
                 : handleUpdateExtraQty(extraIdx!, (extraQtys[extraIdx!] || 0) + 1)
             }
-            className="w-12 h-12 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xl sm:text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
           >+</button>
         </div>
       </div>
@@ -464,49 +457,46 @@ export default function ReceiveLineItem({
               </svg>
               <span>เพิ่มตำแหน่ง</span>
             </button>
-            <div className="text-sm text-[#667085] font-semibold text-right">
-              รวม{" "}
-              <span className="disp num text-[#053425] font-bold text-xl">{(currentQty || 0).toLocaleString()}</span>{" "}
-              ชิ้น · {(currentBoxes || 0).toLocaleString()} กล่อง · {1 + extraLocations.length} ตำแหน่ง
-            </div>
           </div>
 
-          <button
-            type="button"
-            disabled={hasUnscannedSlot || hasNoQty}
-            onClick={() => {
-              if (hasUnscannedSlot || hasNoQty) return;
-              onToggleConfirm(index);
-              setIsExpanded(false);
-            }}
-            className={`w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed ${
-              hasUnscannedSlot || hasNoQty
-                ? "bg-amber-50 border border-amber-200 text-amber-800"
-                : "bg-[#06402B] hover:bg-[#053425] text-white shadow-lg shadow-[#06402B]/20 active:scale-[.98] transition-transform cursor-pointer"
-            }`}
-          >
-            {hasUnscannedSlot ? (
-              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <div className="flex items-stretch gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="flex-1 px-4 py-3.5 rounded-xl bg-white text-rose-700 text-base font-bold flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-            ) : (
-              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-            <span>{hasUnscannedSlot ? "สแกนตำแหน่งก่อน" : hasNoQty ? "ระบุจำนวนก่อน" : "ยืนยันรายการนี้"}</span>
-          </button>
+              <span>ลบรายการนี้</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setShowCancelModal(true)}
-            className="w-full min-h-11 py-2 rounded-xl bg-white text-rose-700 text-sm font-bold flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span>ลบรายการนี้</span>
-          </button>
+            <button
+              type="button"
+              disabled={hasUnscannedSlot || hasNoQty}
+              onClick={() => {
+                if (hasUnscannedSlot || hasNoQty) return;
+                onToggleConfirm(index);
+                setIsExpanded(false);
+              }}
+              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed ${
+                hasUnscannedSlot || hasNoQty
+                  ? "bg-amber-50 border border-amber-200 text-amber-800"
+                  : "bg-[#06402B] hover:bg-[#053425] text-white shadow-lg shadow-[#06402B]/20 active:scale-[.98] transition-transform cursor-pointer"
+              }`}
+            >
+              {hasUnscannedSlot ? (
+                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              <span>{hasUnscannedSlot ? "สแกนตำแหน่งก่อน" : hasNoQty ? "ระบุจำนวนก่อน" : "ยืนยันรายการนี้"}</span>
+            </button>
+          </div>
         </div>
       )}
 

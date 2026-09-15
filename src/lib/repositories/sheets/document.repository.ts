@@ -63,6 +63,10 @@ const TYPE_PREFIX: Record<DocumentType, string> = {
   TRANSFER: "TRF",
   ADJUST: "ADJ",
   REVERSAL: "REV",
+  OUTBOUND_ORDER: "BIL",
+  OUTBOUND_BOX: "BX",
+  SHIPMENT: "SHP",
+  WORK_ORDER: "TV",
 };
 
 const globalForDocs = globalThis as unknown as {

@@ -18,6 +18,7 @@ const roleLabel: Record<UserRole, string> = {
   MANAGER: "ผู้จัดการคลัง",
   APPROVER: "ผู้อนุมัติ",
   WAREHOUSE_STAFF: "พนักงานคลัง",
+  PACKER: "พนักงานแพ็กของ",
   STAFF: "เจ้าหน้าที่",
   VIEWER: "ผู้ดูข้อมูล",
 };
@@ -209,10 +210,13 @@ export default function Sidebar({
     )
     .sort(byOperationOrder);
   const systemNav = isSystemMenuUser(tabUser?.email)
-    ? visibleItems.filter((i) => ["/users", "/login-logs"].includes(i.href))
+    ? visibleItems.filter((i) => ["/users", "/login-logs", "/users/cards"].includes(i.href))
     : [];
   const expressNav = visibleItems.filter((i) =>
     ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
+  );
+  const outboundNav = visibleItems.filter((i) =>
+    ["/outbound", "/outbound/work-orders", "/outbound/pick", "/outbound/pack", "/outbound/loading"].includes(i.href)
   );
 
   const badgeFor = (href: string): number | undefined => {
@@ -254,14 +258,21 @@ export default function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2.5 lg:px-3.5 py-3">
-        <GroupLabel label="ภาพรวม" />
-        <div className="flex flex-col gap-1">{renderRows(mainNav)}</div>
+        {mainNav.length > 0 && <GroupLabel label="ภาพรวม" />}
+        {mainNav.length > 0 && <div className="flex flex-col gap-1">{renderRows(mainNav)}</div>}
 
-        <GroupLabel label="คลังสินค้า" />
-        <div className="flex flex-col gap-1">{renderRows(inventoryNav)}</div>
+        {inventoryNav.length > 0 && <GroupLabel label="คลังสินค้า" />}
+        {inventoryNav.length > 0 && <div className="flex flex-col gap-1">{renderRows(inventoryNav)}</div>}
 
-        <GroupLabel label="การทำรายการ" />
-        <div className="flex flex-col gap-1">{renderRows(movementNav)}</div>
+        {movementNav.length > 0 && <GroupLabel label="การทำรายการ" />}
+        {movementNav.length > 0 && <div className="flex flex-col gap-1">{renderRows(movementNav)}</div>}
+
+        {outboundNav.length > 0 && (
+          <>
+            <GroupLabel label="ส่งของออก" />
+            <div className="flex flex-col gap-1">{renderRows(outboundNav)}</div>
+          </>
+        )}
 
         {role === "ADMIN" && (
           <>

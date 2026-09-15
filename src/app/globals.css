@@ -302,6 +302,43 @@
   --nav-drawer: 280px;
 }
 
+/* ── บนอุปกรณ์มือถือ (หน้าจอ ≤ 768px): ปรับลดขนาดตัวอักษรลง 2 ระดับทุกหน้าทั้งระบบ ──
+   จากสเกลจอใหญ่ (+3 ระดับ) ให้ปรับลดลง 2 ระดับ (+1 จากสเกลดั้งเดิม)
+   (xs 18px→14px, sm 20px→16px, base 24px→18px, lg 30px→20px, xl 36px→24px, 2xl 48px→30px, 3xl 60px→36px)
+   ช่วยให้ทุกหน้าบนมือถือมีสัดส่วนที่พอดี สวยงาม อ่านง่าย ไม่ล้นจอ */
+@media (max-width: 768px) {
+  :root,
+  :host {
+    --spacing: 0.25rem;                         /* คืน spacing มาตรฐาน (0.25rem/4px) บนมือถือ เพื่อไม่ให้ padding/ปุ่ม/ช่องกรอกล้นจอ */
+    --text-xs: 0.875rem;                        /* 14px (ลดลง 2 ระดับจาก 18px) */
+    --text-xs--line-height: calc(1.25 / 0.875);
+    --text-sm: 1rem;                            /* 16px (ลดลง 2 ระดับจาก 20px) */
+    --text-sm--line-height: calc(1.5 / 1);
+    --text-base: 1.125rem;                      /* 18px (ลดลง 2 ระดับจาก 24px) */
+    --text-base--line-height: calc(1.75 / 1.125);
+    --text-lg: 1.25rem;                         /* 20px (ลดลง 2 ระดับจาก 30px) */
+    --text-lg--line-height: calc(1.75 / 1.25);
+    --text-xl: 1.5rem;                          /* 24px (ลดลง 2 ระดับจาก 36px) */
+    --text-xl--line-height: calc(2 / 1.5);
+    --text-2xl: 1.875rem;                       /* 30px (ลดลง 2 ระดับจาก 48px) */
+    --text-2xl--line-height: calc(2.25 / 1.875);
+    --text-3xl: 2.25rem;                        /* 36px (ลดลง 2 ระดับจาก 60px) */
+    --text-3xl--line-height: calc(2.5 / 2.25);
+    --text-4xl: 3rem;                           /* 48px (ลดลง 2 ระดับจาก 72px) */
+    --text-4xl--line-height: 1;
+    --text-5xl: 3.75rem;                        /* 60px (ลดลง 2 ระดับจาก 96px) */
+    --text-5xl--line-height: 1;
+    --text-6xl: 4.5rem;                         /* 72px (ลดลง 2 ระดับจาก 128px) */
+    --text-6xl--line-height: 1;
+
+    --header-height: 4.5rem;                    /* 72px บนมือถือเพื่อให้ Navbar พอดี */
+    --nav-icon: 20px;
+    --nav-fine: 12px;
+    --nav-small: 13px;
+    --nav-drawer: 280px;
+  }
+}
+
 @utility disp {
   font-family: var(--font-disp);
   font-variant-numeric: tabular-nums;

@@ -29,7 +29,16 @@ const ACTIONS = [
   { id: "receive", label: "รับสินค้าเข้า", path: "/movements/receive" },
 ];
 
-type WarehouseQrPrintMode = "poster" | "grid";
+// บาร์โค้ดประจำจุดพนักงานแพ็กของ — ใบเดียว ไม่แยกตามโกดัง
+// สแกน → /w/packer → หน้า login ของส่วนพนักงานแพ็กของ (เฉพาะ role PACKER เข้าได้)
+const PACKER_SECTION = {
+  id: "packer",
+  code: "PKR",
+  name: "ส่วนพนักงานแพ็กของ",
+  desc: "จุดเดียว — สแกนเข้าระบบเพื่อหยิบของ/แพ็กใส่กล่อง/ของขึ้นรถ",
+};
+
+type WarehouseQrPrintMode = "poster" | "grid" | "packer";
 
 // Sticker-sheet layout: 3x3 grid = 9 labels per A4 page,
 // each warehouse QR repeated QR_COPIES_PER_WAREHOUSE times ("ละ 3 ชุด")
@@ -118,6 +127,26 @@ export default function WarehouseQrPage() {
           console.error("Failed to generate QR for", wh.id, e);
         }
       }
+
+      // บาร์โค้ดจุดพนักงานแพ็กของ (ใบเดียว) — สแกนแล้วเข้า login ส่วนพนักงานแพ็กของ
+      const packerTargetUrl = isLocalOrWifi
+        ? `${qrBaseUrl}/employee-login?section=packer`
+        : `${qrBaseUrl}/w/packer`;
+      try {
+        const packerQrContent = forceChrome
+          ? toChromeIntentUrl(packerTargetUrl)
+          : packerTargetUrl;
+        urls[PACKER_SECTION.id] = await QRCode.toDataURL(packerQrContent, {
+          width: 320,
+          margin: 2,
+          color: {
+            dark: "#0f172a",
+            light: "#ffffff",
+          },
+        });
+      } catch (e) {
+        console.error("Failed to generate QR for packer section", e);
+      }
       setQrUrls(urls);
     };
 
@@ -160,6 +189,17 @@ export default function WarehouseQrPage() {
     document.body.removeChild(a);
   };
 
+  const handleDownloadPacker = () => {
+    const dataUrl = qrUrls[PACKER_SECTION.id];
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "QR-พนักงานแพ็กของ.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <>
       {/* ======================================================== */}
@@ -183,6 +223,17 @@ export default function WarehouseQrPage() {
 
         {/* Page Actions (Hidden when printing) */}
         <div className="flex items-center gap-2 flex-wrap justify-end pb-1">
+          <button
+            onClick={() => handlePrint("packer")}
+            className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-sky-600/20 active:scale-95"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3.3 7 8.7 5 8.7-5" />
+            </svg>
+            <span>พิมพ์ QR พนักงานแพ็กของ (1 หน้า)</span>
+          </button>
           <button
             onClick={() => handlePrint("grid")}
             className="px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
@@ -358,6 +409,55 @@ export default function WarehouseQrPage() {
               </div>
             );
           })}
+
+          {/* บาร์โค้ดจุดพนักงานแพ็กของ — ใบเดียว แยกจาก QR โกดัง */}
+          <div className="bg-white rounded-2xl p-6 border border-sky-200 flex flex-col items-center justify-between text-center space-y-4 shadow-xs hover:border-sky-400 hover:shadow-md transition-all">
+            <div className="space-y-1 w-full border-b border-sky-100 pb-3">
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                {PACKER_SECTION.code} · ใบเดียว
+              </span>
+              <h2 className="text-xl font-bold text-slate-900 mt-1">{PACKER_SECTION.name}</h2>
+              <p className="text-xs text-slate-500 font-medium">{PACKER_SECTION.desc}</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs flex items-center justify-center min-h-[200px] min-w-[200px]">
+              {qrUrls[PACKER_SECTION.id] ? (
+                <img src={qrUrls[PACKER_SECTION.id]} alt={`QR ${PACKER_SECTION.name}`} className="w-44 h-44 object-contain" />
+              ) : (
+                <div className="w-44 h-44 bg-slate-100 rounded flex items-center justify-center text-slate-400 text-xs">
+                  กำลังสร้าง QR...
+                </div>
+              )}
+            </div>
+
+            <div className="w-full text-center space-y-1">
+              <p className="text-xs sm:text-sm font-bold text-sky-800">
+                สแกนเพื่อ: เข้าระบบส่วนพนักงานแพ็กของ (PIN 4 หลัก)
+                {forceChrome && (
+                  <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-800 text-[18px] font-bold align-middle">
+                    เปิดใน Chrome
+                  </span>
+                )}
+              </p>
+              <Link
+                href={isLocalOrWifi ? `${qrBaseUrl}/employee-login?section=packer` : `${qrBaseUrl}/w/packer`}
+                target="_blank"
+                className="text-xs text-sky-700 hover:underline font-mono truncate block px-2"
+              >
+                {isLocalOrWifi ? `${qrBaseUrl}/employee-login?section=packer` : `${qrBaseUrl}/w/packer`}
+              </Link>
+            </div>
+
+            <div className="w-full pt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadPacker}
+                className="w-full py-2 rounded-xl bg-white hover:bg-sky-50 border border-sky-200 text-sky-800 hover:text-sky-900 text-xs font-bold transition-colors cursor-pointer shadow-xs active:scale-95"
+              >
+                ดาวน์โหลด PNG
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -459,6 +559,101 @@ export default function WarehouseQrPage() {
             </div>
           );
         })}
+      </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* Packer Section Poster Print View (single page)           */}
+      {/* บาร์โค้ดประจำจุดพนักงานแพ็กของ — ใบเดียว ติดไว้ที่จุดแพ็กของ */}
+      {/* ======================================================== */}
+      {printMode === "packer" && (
+      <div id="warehouse-print-container" className="print-sheet hidden print:block print:w-full print:m-0 print:p-0">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 12mm 15mm;
+            }
+            html, body {
+              height: auto !important;
+              min-height: 100% !important;
+              overflow: visible !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            #__next, main, .admin-shell, .flex, .flex-col, .overflow-hidden, .overflow-y-auto {
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              overflow: visible !important;
+              display: block !important;
+              position: static !important;
+            }
+            header, nav, aside, footer, .sidebar, .navbar, .print\\:hidden {
+              display: none !important;
+            }
+            #warehouse-print-container {
+              display: block !important;
+              position: static !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .warehouse-print-page {
+              width: 100% !important;
+              max-width: 180mm !important;
+              height: 260mm !important;
+              max-height: 268mm !important;
+              margin: 0 auto !important;
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: center !important;
+              justify-content: center !important;
+              gap: 14mm !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              box-sizing: border-box !important;
+              padding: 8mm 5mm !important;
+              text-align: center !important;
+            }
+            .warehouse-print-page:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
+            }
+          }
+        `}} />
+
+        <div className="warehouse-print-page">
+          <h1
+            className="text-slate-900 font-black tracking-wide leading-none select-none"
+            style={{ fontSize: "46px", fontWeight: 900 }}
+          >
+            ส่วนพนักงานแพ็กของ
+          </h1>
+          <p className="text-slate-700 font-bold" style={{ fontSize: "20px" }}>
+            สแกนเพื่อเข้าระบบ — กรอกรหัส PIN 4 หลัก
+          </p>
+
+          <div className="p-6 sm:p-8 bg-white rounded-3xl border-2 border-[#D5DDD9] shadow-sm flex items-center justify-center">
+            {qrUrls[PACKER_SECTION.id] ? (
+              <img
+                src={qrUrls[PACKER_SECTION.id]}
+                alt={`QR ${PACKER_SECTION.name}`}
+                className="w-[145mm] h-[145mm] max-w-[540px] max-h-[540px] object-contain"
+              />
+            ) : (
+              <div className="w-[145mm] h-[145mm] flex items-center justify-center text-slate-400 text-sm">
+                กำลังสร้าง QR Code...
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       )}
 

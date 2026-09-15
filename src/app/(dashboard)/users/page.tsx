@@ -259,6 +259,7 @@ export default function UsersPage() {
             <option value="ADMIN">ผู้ดูแลระบบ (Admin)</option>
             <option value="APPROVER">ผู้อนุมัติ (Approver)</option>
             <option value="WAREHOUSE_STAFF">พนักงานคลัง (Staff)</option>
+            <option value="PACKER">พนักงานแพ็กของ (Packer)</option>
             <option value="VIEWER">ผู้ชม (Viewer)</option>
           </select>
         </div>
@@ -314,6 +315,11 @@ export default function UsersPage() {
                       {u.role === "WAREHOUSE_STAFF" && (
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]">
                           พนักงานคลัง
+                        </span>
+                      )}
+                      {u.role === "PACKER" && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                          พนักงานแพ็กของ
                         </span>
                       )}
                       {u.role === "VIEWER" && (
@@ -426,6 +432,7 @@ export default function UsersPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
+                  <option value="PACKER">พนักงานแพ็กของ (หยิบ/แพ็ก/ของขึ้นรถ)</option>
                   <option value="APPROVER">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
                   <option value="ADMIN">ผู้ดูแลระบบ (สิทธิ์จัดการเต็มรูปแบบ)</option>
                   <option value="VIEWER">ผู้ชม (ดูข้อมูลได้อย่างเดียว)</option>
@@ -542,6 +549,7 @@ export default function UsersPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
+                  <option value="PACKER">พนักงานแพ็กของ (หยิบ/แพ็ก/ของขึ้นรถ)</option>
                   <option value="APPROVER">ผู้อนุมัติ (อนุมัติรายการเบิกสินค้า)</option>
                   <option value="ADMIN">ผู้ดูแลระบบ (สิทธิ์จัดการเต็มรูปแบบ)</option>
                   <option value="VIEWER">ผู้ชม (ดูข้อมูลได้อย่างเดียว)</option>

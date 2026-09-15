@@ -127,4 +127,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: "/login",
   },
   secret: getAuthSecret(),
+  logger: {
+    // A session cookie that cannot be decrypted (e.g. issued under a previous
+    // AUTH_SECRET) surfaces as JWTSessionError. Callers already treat it as
+    // "not signed in", so skip the noisy red log for that case only.
+    error(error) {
+      const name = (error as { type?: string }).type ?? error.name;
+      if (name === "JWTSessionError") return;
+      console.error(`[auth][error] ${name}: ${error.message}`, error.cause ?? "");
+    },
+  },
 });

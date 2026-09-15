@@ -10,7 +10,7 @@ export interface NavItem {
 
 // เมนูหมวด "ระบบ" แสดงเฉพาะบัญชีผู้ดูแลที่กำหนดไว้เท่านั้น
 export const SYSTEM_MENU_EMAILS = ["ty@stockify.com"];
-export const SYSTEM_MENU_HREFS = ["/users", "/login-logs"];
+export const SYSTEM_MENU_HREFS = ["/users", "/login-logs", "/users/cards"];
 
 export function isSystemMenuUser(email?: string | null): boolean {
   if (!email) return false;
@@ -62,7 +62,7 @@ export const navItems: NavItem[] = [
         </svg>
       </div>
     ),
-    roles: ["ADMIN", "VIEWER", "WAREHOUSE_STAFF"],
+    roles: ["ADMIN", "VIEWER", "WAREHOUSE_STAFF", "PACKER"],
   },
   {
     href: "/movements/receive",
@@ -183,6 +183,99 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     roles: ["ADMIN"],
+  },
+  // ---- ส่งของออก: บิลจาก Express → หยิบ → แพ็ก → ขึ้นรถ ----
+  {
+    href: "/outbound",
+    label: "ส่งของออก (บิล)",
+    icon: (
+      <Icon>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 2v6h6" />
+        <path d="m9 15 2 2 4-4" />
+      </Icon>
+    ),
+    roles: ["ADMIN", "MANAGER", "VIEWER"],
+  },
+  {
+    href: "/outbound/work-orders",
+    label: "กล่อง Q (QR Code)",
+    icon: (
+      <Icon>
+        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+        <path d="M12 22V12" />
+        <path d="m3.3 7 8.7 5 8.7-5" />
+      </Icon>
+    ),
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/outbound/pick",
+    label: "หยิบของ",
+    icon: (
+      <Icon>
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="m12 2v3" />
+        <path d="m12 19v3" />
+        <path d="m2 12h3" />
+        <path d="m19 12h3" />
+      </Icon>
+    ),
+    staffIcon: (
+      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="12" cy="12" r="8" />
+          <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="12" cy="12" r="3" />
+        </svg>
+      </div>
+    ),
+    roles: ["ADMIN", "WAREHOUSE_STAFF", "PACKER"],
+  },
+  {
+    href: "/outbound/pack",
+    label: "แพ็กใส่กล่อง",
+    icon: (
+      <Icon>
+        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+        <path d="M12 22V12" />
+        <path d="m3.3 7 8.7 5 8.7-5" />
+      </Icon>
+    ),
+    staffIcon: (
+      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3.3 7 8.7 5 8.7-5" />
+        </svg>
+      </div>
+    ),
+    roles: ["ADMIN", "WAREHOUSE_STAFF", "PACKER"],
+  },
+  {
+    href: "/outbound/loading",
+    label: "ของขึ้นรถ",
+    icon: (
+      <Icon>
+        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+        <path d="M15 18h-5" />
+        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35a1 1 0 0 0-.78-.38H16" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+      </Icon>
+    ),
+    staffIcon: (
+      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35a1 1 0 0 0-.78-.38H16" />
+          <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="7" cy="18" r="2" />
+          <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="17" cy="18" r="2" />
+        </svg>
+      </div>
+    ),
+    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF", "PACKER"],
   },
   {
     href: "/products",

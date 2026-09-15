@@ -2,8 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Server components can import googleapis (server-only)
-  serverExternalPackages: ["googleapis", "bcryptjs"],
+  // pdf-parse (pdf.js) ใช้ dynamic import ภายใน — ห้ามให้ webpack bundle
+  serverExternalPackages: ["googleapis", "bcryptjs", "pdf-parse"],
   allowedDevOrigins: [
+    "192.168.1.40",
+    "192.168.1.40:3000",
     "192.168.1.54",
     "192.168.1.54:3000",
     "192.168.1.44",

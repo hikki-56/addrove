@@ -7,6 +7,7 @@ import type { User } from "@/types/models";
 import { getAuthSecret } from "@/lib/server-secrets";
 import { getAccessibleWarehouseIds } from "@/lib/api-response";
 import { verifyEmployeeQrToken } from "@/lib/qr-token";
+import { parseEmployeeCardCode } from "@/lib/employee-card";
 import {
   clearFailedAttempts,
   getClientIp,
@@ -38,7 +39,7 @@ function checkPinMatch(user: User, inputPin: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    const { token, pin } = await req.json();
+    const { token, card_code: cardCode, pin, section } = await req.json();
 
     if (typeof pin !== "string" && typeof pin !== "number") {
       return NextResponse.json(
@@ -73,6 +74,18 @@ export async function POST(req: Request) {
       const payload = verifyEmployeeQrToken(token);
       if (payload && payload.employee_id) {
         const u = await repo.users.findById(payload.employee_id).catch(() => null);
+        if (u && u.active && u.role !== "ADMIN" && checkPinMatch(u, cleanPin)) {
+          targetUser = u;
+        }
+      }
+    }
+
+    // บัตรบาร์โค้ดประจำตัวพนักงาน (EMP-<user_id>) — ผูก PIN เข้ากับบัญชีเจ้าของบัตร
+    // (บัตรเป็นเพียงตัวระบุตัวตน ยังต้องมี PIN ถูกต้องเสมอ)
+    if (!targetUser && cardCode && typeof cardCode === "string") {
+      const userId = parseEmployeeCardCode(cardCode);
+      if (userId) {
+        const u = await repo.users.findById(userId).catch(() => null);
         if (u && u.active && u.role !== "ADMIN" && checkPinMatch(u, cleanPin)) {
           targetUser = u;
         }
@@ -118,6 +131,18 @@ export async function POST(req: Request) {
       );
     }
     clearFailedAttempts(rateLimitKey);
+
+    // บาร์โค้ดประจำจุดพนักงานแพ็กของ (section=packer) — เข้าได้เฉพาะบัญชี role PACKER
+    // พนักงานคลังใช้ QR ประจำโกดังของตนเองเข้าระบบตามปกติ
+    if (String(section || "").trim().toLowerCase() === "packer" && targetUser.role !== "PACKER") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "บาร์โค้ดนี้สำหรับพนักงานแพ็กของเท่านั้น — พนักงานคลังให้สแกน QR ประจำโกดังของตน",
+        },
+        { status: 403 }
+      );
+    }
 
     // Build session token for the matched employee using the same helper the authorize layer
     // uses, so "*", '["*"]', JSON arrays and comma-separated values behave identically (fail closed)

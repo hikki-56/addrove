@@ -20,6 +20,11 @@ export const PERMISSIONS = {
   DOCUMENT_APPROVE: "document.approve",
   DOCUMENT_REJECT: "document.reject",
 
+  // Outbound (ส่งของออก: นำเข้าบิล Express → หยิบ → แพ็ก → ขึ้นรถ)
+  OUTBOUND_IMPORT: "outbound.import",
+  OUTBOUND_APPROVE: "outbound.approve",
+  OUTBOUND_SHIP: "outbound.ship",
+
   // Master Data & Administration
   PRODUCT_MANAGE: "product.manage",
   LOCATION_MANAGE: "location.manage",
@@ -55,6 +60,9 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.RECOVERY_MANAGE,
     PERMISSIONS.RECEIVE_PLAN_CREATE,
     PERMISSIONS.RECEIVE_PLAN_CANCEL,
+    PERMISSIONS.OUTBOUND_IMPORT,
+    PERMISSIONS.OUTBOUND_APPROVE,
+    PERMISSIONS.OUTBOUND_SHIP,
   ],
   MANAGER: [
     PERMISSIONS.STOCK_RECEIVE,
@@ -71,6 +79,9 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.PRODUCT_MANAGE,
     PERMISSIONS.LOCATION_MANAGE,
     PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.OUTBOUND_IMPORT,
+    PERMISSIONS.OUTBOUND_APPROVE,
+    PERMISSIONS.OUTBOUND_SHIP,
   ],
   APPROVER: [
     PERMISSIONS.STOCK_VIEW,
@@ -79,6 +90,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.DOCUMENT_REJECT,
     PERMISSIONS.STOCK_TRANSFER_COMPLETE,
     PERMISSIONS.STOCK_TRANSFER_CANCEL,
+    PERMISSIONS.OUTBOUND_APPROVE,
   ],
   WAREHOUSE_STAFF: [
     PERMISSIONS.STOCK_RECEIVE,
@@ -88,6 +100,14 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.STOCK_COUNT,
     PERMISSIONS.STOCK_VIEW,
     PERMISSIONS.DOCUMENT_VIEW,
+    PERMISSIONS.OUTBOUND_SHIP,
+  ],
+  // พนักงานแพ็กของ — ทำงานเฉพาะสายส่งของออก: หยิบ → แพ็ก → ขึ้นรถ
+  PACKER: [
+    PERMISSIONS.STOCK_VIEW,
+    PERMISSIONS.STOCK_ISSUE,
+    PERMISSIONS.DOCUMENT_VIEW,
+    PERMISSIONS.OUTBOUND_SHIP,
   ],
   STAFF: [
     PERMISSIONS.STOCK_RECEIVE,

@@ -453,3 +453,110 @@ export function matchesBarcodeLast4(
 }
 
 
+
+// ============================================================
+// สติกเกอร์กล่องส่งของออก (outbound box sticker)
+// เนื้อหา: เลขบิล + กล่องที่ n (หรือ n/m ถ้ารู้ total) + บาร์โค้ด BX + จำนวนชิ้น
+// หมายเหตุ: ตอนปิดกล่องแรกยังไม่รู้ m — พิมพ์เป็น "BOX 01" เฉยๆ
+// แล้วพิมพ์ชุดเต็ม n/m ด้วยปุ่ม Print all labels หลังแพ็กเสร็จ
+// ============================================================
+export function generateBoxStickerDataUrl(options: {
+  billNo: string;
+  boxLabel: string; // เช่น "BOX 01" ตอนปิดกล่อง หรือ "1 / 3" ตอนพิมพ์ชุดเต็ม
+  boxCode: string; // BX-YYYYMMDD-NNNNNN (บาร์โค้ดจริง)
+  itemCount: number;
+  customer?: string;
+}): string {
+  if (typeof document === "undefined") return "";
+
+  const boxCodeClean = (options.boxCode || "").trim().toUpperCase();
+  if (!boxCodeClean) return "";
+
+  const modules = encodeCode128Modules(boxCodeClean);
+  const barUnitWidth = 3;
+  const quietZoneUnits = 10;
+  const totalUnits = modules.reduce((sum, m) => sum + m.width, 0);
+  const barcodeCoreWidth = (totalUnits + quietZoneUnits * 2) * barUnitWidth;
+  const barcodeHeight = 96;
+
+  const cardWidth = Math.max(560, barcodeCoreWidth + 120);
+  const padX = 36;
+  const lineH = 44;
+
+  // แถวบน: เลขบิล (บรรทัดเดียว ตัดถ้ายาว) + ลูกค้า
+  const billText = options.billNo || "-";
+  const customerText = options.customer ? options.customer.slice(0, 40) : "";
+
+  const rowsTop = customerText ? 2 : 1;
+  const topBlockH = rowsTop * lineH + 14;
+  const boxLabelH = 84;
+  const barcodeBlockH = barcodeHeight + 74; // barcode + code text ด้านล่าง
+  const qtyH = 58;
+  const cardHeight = 26 + topBlockH + 12 + boxLabelH + 14 + barcodeBlockH + 12 + qtyH + 26;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cardWidth;
+  canvas.height = cardHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  // พื้นการ์ดขาว ขอบมน
+  const drawRoundRect = (x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    if (typeof (ctx as unknown as { roundRect?: unknown }).roundRect === "function") {
+      (ctx as unknown as { roundRect: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect(x, y, w, h, r);
+    } else {
+      ctx.rect(x, y, w, h);
+    }
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+    ctx.strokeStyle = "#CBD5D1";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  };
+  drawRoundRect(2, 2, cardWidth - 4, cardHeight - 4, 24);
+
+  ctx.textAlign = "center";
+  let y = 26;
+
+  // เลขบิล
+  ctx.fillStyle = "#0F3D2E";
+  ctx.font = '700 34px "Sarabun", "IBM Plex Mono Thai", monospace, sans-serif';
+  ctx.fillText(billText, cardWidth / 2, y + lineH - 14);
+  y += lineH;
+  if (customerText) {
+    ctx.fillStyle = "#475467";
+    ctx.font = '500 24px "Sarabun", sans-serif';
+    ctx.fillText(customerText, cardWidth / 2, y + lineH - 18);
+    y += lineH;
+  }
+  y += 14;
+
+  // กล่องที่ n (/m) — กล่องดำตัวเลขใหญ่
+  ctx.fillStyle = "#06402B";
+  ctx.font = '900 56px "Space Grotesk", "IBM Plex Mono", monospace, sans-serif';
+  ctx.fillText(options.boxLabel, cardWidth / 2, y + boxLabelH - 20);
+  y += boxLabelH + 14;
+
+  // บาร์โค้ด (วาด module เอง ไม่ผ่าน to8DigitBarcode ซึ่งเป็นของสินค้า)
+  let x = (cardWidth - barcodeCoreWidth) / 2;
+  const barcodeTop = y + 18;
+  ctx.fillStyle = "#111827";
+  for (const m of modules) {
+    if (m.isBar) {
+      ctx.fillRect(x, barcodeTop, m.width * barUnitWidth, barcodeHeight);
+    }
+    x += m.width * barUnitWidth;
+  }
+  ctx.fillStyle = "#111827";
+  ctx.font = '700 26px "IBM Plex Mono", monospace';
+  ctx.fillText(boxCodeClean, cardWidth / 2, barcodeTop + barcodeHeight + 40);
+  y = barcodeTop + barcodeHeight + 74 + 12;
+
+  // จำนวนชิ้น
+  ctx.fillStyle = "#0F3D2E";
+  ctx.font = '700 30px "Sarabun", sans-serif';
+  ctx.fillText(`จำนวน ${options.itemCount.toLocaleString("th-TH")} ชิ้น`, cardWidth / 2, y + qtyH - 18);
+
+  return canvas.toDataURL("image/png");
+}

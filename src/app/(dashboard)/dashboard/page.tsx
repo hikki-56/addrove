@@ -3,6 +3,7 @@
 import { useTabAuth } from "@/context/TabAuthContext";
 import AdminDashboard from "./_components/AdminDashboard";
 import StaffDashboard from "./_components/StaffDashboard";
+import PackerDashboard from "./_components/PackerDashboard";
 
 export default function DashboardPage() {
   const { user, status } = useTabAuth();
@@ -26,6 +27,11 @@ export default function DashboardPage() {
         <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // พนักงานแพ็กของมีหน้าหลักของตัวเอง — ไม่ใช้หน้าเดียวกับพนักงานคลัง
+  if (role === "PACKER") {
+    return <PackerDashboard />;
   }
 
   if (role === "WAREHOUSE_STAFF") {

@@ -15,6 +15,9 @@ function PinScreen() {
   const tokenParam = searchParams.get("token") || searchParams.get("emp_id") || "";
   const callbackUrl = searchParams.get("callbackUrl") || searchParams.get("redirect") || "/dashboard";
   const whParam = searchParams.get("warehouse_id") || searchParams.get("wh");
+  // section=packer — มาจากบาร์โค้ดประจำจุดพนักงานแพ็กของ (/w/packer)
+  const sectionParam = searchParams.get("section") || "";
+  const isPackerSection = sectionParam.trim().toLowerCase() === "packer";
 
   const { login: tabLogin } = useTabAuth();
 
@@ -92,7 +95,7 @@ function PinScreen() {
       const res = await fetch("/api/auth/qr-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenParam, pin }),
+        body: JSON.stringify({ token: tokenParam, pin, section: sectionParam }),
       });
       const json = await res.json();
 
@@ -127,7 +130,7 @@ function PinScreen() {
       setPin("");
       setSubmitting(false);
     }
-  }, [pin, submitting, tokenParam, tabLogin, whParam, attempts]);
+  }, [pin, submitting, tokenParam, sectionParam, tabLogin, whParam, attempts]);
 
   const handleNumClick = useCallback((k: string) => {
     if (locked || submitting) return;
@@ -207,8 +210,29 @@ function PinScreen() {
             />
           </div>
 
-          {/* Reassurance Beacon: Warehouse context confirmation */}
-          {warehouseDisplayName ? (
+          {/* Reassurance Beacon: Section/Warehouse context confirmation */}
+          {isPackerSection ? (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-sky-900 text-sm font-medium shadow-xs">
+              <svg
+                className="w-4 h-4 text-sky-700 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3.3 7 8.7 5 8.7-5" />
+              </svg>
+              <span>
+                เข้าปฏิบัติงาน: <strong className="font-semibold text-sky-900">ส่วนพนักงานแพ็กของ</strong>
+              </span>
+            </div>
+          ) : warehouseDisplayName ? (
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-medium shadow-xs">
               <svg
                 className="w-4 h-4 text-[#053425] flex-shrink-0"

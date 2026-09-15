@@ -91,7 +91,11 @@ export type DocumentType =
   | "MOVE"
   | "TRANSFER"
   | "ADJUST"
-  | "REVERSAL";
+  | "REVERSAL"
+  | "OUTBOUND_ORDER"
+  | "OUTBOUND_BOX"
+  | "SHIPMENT"
+  | "WORK_ORDER";
 
 export type DocumentStatus = "DRAFT" | "PENDING" | "PROCESSING" | "WAITING_APPROVAL" | "POSTED" | "COMPLETED" | "REJECTED" | "CANCELLED";
 
@@ -170,7 +174,7 @@ export interface StockCount {
 }
 
 // ------ User ------
-export type UserRole = "ADMIN" | "MANAGER" | "APPROVER" | "WAREHOUSE_STAFF" | "STAFF" | "VIEWER";
+export type UserRole = "ADMIN" | "MANAGER" | "APPROVER" | "WAREHOUSE_STAFF" | "PACKER" | "STAFF" | "VIEWER";
 
 export interface User {
   user_id: UserId;
@@ -324,5 +328,202 @@ export interface BomFormula {
     waste_percentage: number;
     note: string;
   }>;
+}
+
+// ============================================================
+// Outbound (ส่งของออก): บิลจาก Express → หยิบ → แพ็กกล่อง → ขึ้นรถ
+// ทุก entity เป็น record ในแท็บ Documents (type OUTBOUND_ORDER /
+// OUTBOUND_BOX / SHIPMENT) — ข้อมูลละเอียดอยู่ใน note (JSON)
+// ============================================================
+
+// ---- สถานะของบิล (state machine คุมโดย API เท่านั้น) ----
+export type OutboundBillStatus =
+  | "DRAFT"                    // ใบงาน Q ที่ Admin สร้างไว้ยังไม่ส่ง (ยังไม่ตัดสต็อก)
+  | "IMPORTED"                 // นำเข้าจากไฟล์แล้ว ยังไม่เปิดงานหยิบ
+  | "READY_TO_PICK"            // พร้อมหยิบ (ยังไม่จองสต็อก)
+  | "PICKING"                  // กำลังหยิบ (สต็อกถูกจองแล้ว)
+  | "PICKED_WAITING_APPROVAL"  // หยิบครบ รอแอดมินอนุมัติบิล (ยืนยันแล้วตัดสต็อก)
+  | "READY_TO_PACK"            // อนุมัติแล้ว สต็อกถูกตัด พร้อมแพ็ก
+  | "PACKING"                  // กำลังแพ็กใส่กล่อง
+  | "PACKED"                   // ของอยู่ในกล่องครบทุกรายการ
+  | "ASSIGNED_TO_SHIPMENT"     // ถูกเลือกเข้ารอบรถแล้ว
+  | "LOADING"                  // รอบรถกำลังสแกนกล่องขึ้นรถ
+  | "SHIPPED"                  // ขึ้นรถครบทุกกล่องและปิดรอบแล้ว
+  | "PARTIALLY_SHIPPED"        // ขึ้นรถบางกล่อง ที่เหลือรอ rollover ไปรอบถัดไป
+  | "HOLD"                     // มีปัญหาระหว่างทาง รอหัวหน้า/แอดมินสั่งต่อ
+  | "SHORTAGE"                 // ของไม่ครบระหว่างหยิบ รอแอดมินตัดสิน
+  | "CANCELLED";               // ยกเลิก (ปล่อยการจองสต็อกอัตโนมัติ)
+
+export type OutboundBoxStatus =
+  | "OPEN"       // กำลังรับของเข้ากล่องอยู่
+  | "CLOSED"     // ปิดกล่องแล้ว (มีบาร์โค้ด พิมพ์สติกเกอร์ได้)
+  | "LOADED"     // สแกนขึ้นรถแล้ว
+  | "SHIPPED"    // รอบรถปิดแล้ว กล่องนี้ออกจริง
+  | "ROLLOVER"   // ปิดรอบโดยกล่องนี้ยังไม่ขึ้นรถ → กลับคิวรอขึ้นรอบถัดไป
+  | "CANCELLED"; // ยืนยันไม่ส่งจริง (Manager + เหตุผล)
+
+export type ShipmentStatus =
+  | "OPEN"      // สร้างรอบ เลือกบิลแล้ว ยังไม่เริ่มสแกน
+  | "LOADING"   // กำลังสแกนกล่องขึ้นรถ
+  | "CLOSED"    // ปิดรอบแล้ว (กล่องครบ = SHIPPED / ขาด = ROLLOVER)
+  | "CANCELLED";
+
+export type OutboundItemStatus = "PENDING" | "PICKED" | "PROBLEM";
+
+export type OutboundExceptionType =
+  | "NOT_FOUND"     // หาไม่เจอ
+  | "INSUFFICIENT"  // จำนวนไม่ครบ
+  | "DAMAGED"       // สินค้าชำรุด
+  | "BAD_BARCODE"   // บาร์โค้ดอ่านไม่ได้
+  | "OTHER";        // อื่นๆ
+
+export interface OutboundException {
+  type: OutboundExceptionType;
+  sku: string;
+  reported_qty?: number;   // จำนวนที่หยิบได้จริง (ถ้ามี)
+  note?: string;
+  reported_by: string;
+  reported_by_name?: string;
+  reported_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  resolution?: "REDUCE_QTY" | "CONTINUE" | "CANCEL";
+}
+
+export interface OutboundBillItem {
+  sku: string;
+  product_id?: string;
+  barcode?: string;
+  product_name?: string;
+  qty_required: number;
+  qty_picked: number;
+  status: OutboundItemStatus;
+  location_hint?: string;   // ตำแหน่งจากไฟล์ Express (ถ้ามี)
+  location_id?: string;     // ตำแหน่งจริงที่เลือกหยิบ (จาก stock)
+  location_wh?: string;     // คลังเจ้าของตำแหน่งที่หยิบ (อาจต่างจากคลังของบิล เมื่อหยิบข้ามคลัง/สำนักงานใหญ่)
+}
+
+export interface OutboundBillNote {
+  kind: "outbound_bill";
+  outbound_status: OutboundBillStatus;
+  express_bill_no: string;
+  customer?: string;
+  warehouse_id: string;
+  source_file?: string;
+  imported_at?: string;
+  imported_by?: string;
+  items: OutboundBillItem[];
+  pick_assigned_to?: string;
+  pick_assigned_to_name?: string;
+  pick_started_at?: string;
+  pick_completed_at?: string;
+  issue_document_id?: string;
+  issue_document_no?: string;
+  approved_by?: string;
+  approved_at?: string;
+  packed_at?: string;
+  box_document_ids: string[];
+  exceptions: OutboundException[];
+  held_from?: OutboundBillStatus; // HOLD → กลับสู่สถานะเดิมเมื่อ resume
+  hold_reason?: string;
+  cancel_reason?: string;
+  /** วันที่ส่งยอดบิลนี้เข้าแท็บ เบิกสินค้าเข้าExpress (กันส่งซ้ำข้ามรอบรถ) */
+  express_synced_at?: string;
+  /** ที่มาของบิล: ไฟล์ Express (default) หรือ ใบงานกล่อง Q ที่ Admin สร้าง */
+  source?: "EXPRESS" | "WORK_ORDER";
+  /** ใบงานกล่อง Q — รายการแยกตามกล่อง (items ด้านบนคือยอดรวมทุกกล่องเพื่อให้ขั้นแพ็ก/ขึ้นรถใช้ของเดิมได้) */
+  q_boxes?: WorkOrderQBox[];
+  /** การแบ่งกล่อง Q ของบิล Express (จัดให้อัตโนมัติตอนนำเข้า — ใช้อ้างอิงตอนจัดของ ไม่เปลี่ยนขั้นตอนการหยิบ) */
+  q_assignments?: BillQAssignment[];
+  /** ใคร/เมื่อไร่ที่กดส่งใบงาน Q (พร้อมตัดสต็อก) */
+  sent_by?: string;
+  sent_at?: string;
+}
+
+// ---- ใบงานกล่อง Q (WORK_ORDER) ----
+// Admin กำหนดล่วงหน้าว่าแต่ละกล่อง Q (ป้ายถาวร เช่น Q1, Q2) ต้องมีสินค้าอะไร
+// พนักงานเพียงสแกนกล่อง Q → หยิบตามรายการ → สแกนสินค้ายืนยันทีละชิ้น
+export type WorkOrderQBoxStatus = "PENDING" | "PICKING" | "DONE";
+
+export interface WorkOrderQItem {
+  sku: string;
+  product_id?: string;
+  barcode?: string;
+  product_name?: string;
+  qty_required: number;
+  qty_picked: number;
+  status: OutboundItemStatus;
+  location_id?: string; // ตำแหน่งจัดเก็บ (stamp ตอนส่งใบงาน)
+  location_wh?: string; // คลังเจ้าของตำแหน่ง (อาจต่างจากคลังของใบงาน เมื่อหยิบข้ามคลัง/สำนักงานใหญ่)
+}
+
+export interface WorkOrderQBox {
+  q_code: string; // รหัสกล่องถาวร เช่น Q1 (ห้ามซ้ำข้ามใบงานที่ยังไม่จบ)
+  status: WorkOrderQBoxStatus;
+  items: WorkOrderQItem[];
+  picked_by?: string;
+  picked_by_name?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+/** การแบ่งกล่อง Q ของบิล Express — รายการของบิลถูกจัดกลุ่มลงกล่อง Q ล่วงหน้า */
+export interface BillQAssignment {
+  q_code: string;
+  items: Array<{ sku: string; qty: number }>;
+  status?: WorkOrderQBoxStatus;
+  picked_by?: string;
+  picked_by_name?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export interface OutboundBoxNote {
+  kind: "outbound_box";
+  box_status: OutboundBoxStatus;
+  bill_document_id: string;
+  bill_document_no: string;
+  box_no: number;             // ลำดับกล่องในบิล (1, 2, 3, ...)
+  items: Array<{ sku: string; product_id?: string; qty: number }>;
+  sticker_printed_at?: string;
+  shipment_id?: string;
+  shipment_no?: string;
+  loaded_at?: string;
+  loaded_by?: string;
+  rollover_count?: number;
+  cancel_reason?: string;
+  cancelled_by?: string;
+  cancelled_at?: string;
+}
+
+export interface ShipmentSkipConfirmation {
+  box_id: string;
+  box_no: string;
+  bill_no: string;
+  action: "ROLLOVER" | "CANCELLED";
+  reason: string;
+  confirmed_by: string;
+  confirmed_by_name?: string;
+  confirmed_at: string;
+}
+
+export interface ShipmentNote {
+  kind: "shipment";
+  shipment_status: ShipmentStatus;
+  truck_plate: string;
+  destination?: string;
+  bill_document_ids: string[];
+  expected_box_ids: string[];
+  loaded_box_ids: string[];
+  created_by?: string;
+  created_by_name?: string;
+  created_at?: string;
+  closed_at?: string;
+  closed_by?: string;
+  closed_by_name?: string;
+  skip_confirmations: ShipmentSkipConfirmation[];
+  cancel_reason?: string;
+  /** วันที่ส่งยอดรอบนี้เข้าแท็บ เบิกสินค้าเข้าExpress */
+  express_synced_at?: string;
 }
 

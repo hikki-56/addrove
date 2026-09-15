@@ -20,6 +20,7 @@ const roleLabel: Record<string, string> = {
   MANAGER: "ผู้จัดการคลัง (Manager)",
   APPROVER: "ผู้อนุมัติ (Approver)",
   WAREHOUSE_STAFF: "พนักงานคลัง (Staff)",
+  PACKER: "พนักงานแพ็กของ (Packer)",
   STAFF: "พนักงานคลัง (Staff)",
   VIEWER: "ผู้ดูข้อมูล (Viewer)",
 };
@@ -218,6 +219,7 @@ export default function LoginNotificationsPage() {
       { value: "ALL", label: "บทบาททั้งหมด" },
       { value: "ADMIN", label: "ผู้ดูแลระบบ (Admin)" },
       { value: "WAREHOUSE_STAFF", label: "พนักงานคลัง (Staff)" },
+      { value: "PACKER", label: "พนักงานแพ็กของ (Packer)" },
       { value: "VIEWER", label: "ผู้ดูข้อมูล (Viewer)" },
     ],
     []

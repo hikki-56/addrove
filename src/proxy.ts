@@ -12,7 +12,7 @@ async function isValidSessionToken(token: string): Promise<boolean> {
     const expiresAt = Number(decoded?.exp || 0);
     if (
       typeof id === "string" &&
-      ["ADMIN", "MANAGER", "APPROVER", "WAREHOUSE_STAFF", "STAFF", "VIEWER"].includes(String(role)) &&
+      ["ADMIN", "MANAGER", "APPROVER", "WAREHOUSE_STAFF", "PACKER", "STAFF", "VIEWER"].includes(String(role)) &&
 
       Number.isFinite(expiresAt) &&
       expiresAt > Date.now() / 1000
@@ -66,14 +66,27 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.searchParams.get("wh") ||
     detectWarehouseCode(pathname);
 
+  // บาร์โค้ดประจำจุดพนักงานแพ็กของ (/w/packer) — ส่ง context ส่วนงานต่อให้หน้า login
+  const isPackerSection = /^\/w\/packer\/?$/i.test(pathname);
+
+  const redirectToLogin = (expired: boolean) => {
+    const loginUrl = new URL("/employee-login", request.nextUrl.origin);
+    loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
+    if (targetWh) {
+      loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
+    }
+    if (isPackerSection) {
+      loginUrl.searchParams.set("section", "packer");
+    }
+    if (expired) {
+      loginUrl.searchParams.set("expired", "true");
+    }
+    return NextResponse.redirect(loginUrl);
+  };
+
   if (!sessionToken) {
     if (!pathname.startsWith("/api/")) {
-      const loginUrl = new URL("/employee-login", request.nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
-      if (targetWh) {
-        loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
-      }
-      return NextResponse.redirect(loginUrl);
+      return redirectToLogin(false);
     }
     return NextResponse.json(
       { success: false, message: "กรุณากรอกรหัส PIN เพื่อเข้าสู่ระบบ" },
@@ -83,13 +96,7 @@ export async function proxy(request: NextRequest) {
 
   if (!(await isValidSessionToken(sessionToken))) {
     if (!pathname.startsWith("/api/")) {
-      const loginUrl = new URL("/employee-login", request.nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
-      if (targetWh) {
-        loginUrl.searchParams.set("warehouse_id", normalizeWarehouseId(targetWh));
-      }
-      loginUrl.searchParams.set("expired", "true");
-      return NextResponse.redirect(loginUrl);
+      return redirectToLogin(true);
     }
     return NextResponse.json(
       { success: false, message: "โทเคนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่" },

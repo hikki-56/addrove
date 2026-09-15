@@ -9,6 +9,7 @@ const USER_ROLES = new Set<UserRole>([
   "MANAGER",
   "APPROVER",
   "WAREHOUSE_STAFF",
+  "PACKER",
   "STAFF",
   "VIEWER",
 ]);

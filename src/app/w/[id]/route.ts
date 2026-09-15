@@ -7,6 +7,15 @@ export async function GET(
 ) {
   const resolvedParams = await params;
   const rawId = resolvedParams?.id || "";
+
+  // บาร์โค้ดประจำจุดพนักงานแพ็กของ (ใบเดียว ไม่แยกตามโกดัง)
+  // สแกนแล้วเข้าหน้า login ของส่วนพนักงานแพ็กของโดยเฉพาะ
+  if (rawId.toLowerCase() === "packer") {
+    const packerLoginUrl = new URL("/employee-login", req.nextUrl.origin);
+    packerLoginUrl.searchParams.set("section", "packer");
+    return NextResponse.redirect(packerLoginUrl);
+  }
+
   const whId = normalizeWarehouseId(rawId);
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get("action") || searchParams.get("act") || "receive";

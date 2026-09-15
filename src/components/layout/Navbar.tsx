@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getNavItems, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/lib/nav-items";
@@ -16,6 +16,7 @@ const roleLabel: Record<UserRole, string> = {
   MANAGER: "ผู้จัดการคลัง",
   APPROVER: "ผู้อนุมัติ",
   WAREHOUSE_STAFF: "พนักงานคลัง",
+  PACKER: "พนักงานแพ็กของ",
   STAFF: "เจ้าหน้าที่",
   VIEWER: "ผู้ดูข้อมูล",
 };
@@ -46,24 +47,14 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/login-logs": { parent: "การแจ้งเตือน", title: "ประวัติการเข้าระบบ" },
 };
 
-function SearchIcon({ className = "size-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  );
-}
-
 export default function DashboardHeader({
   user,
 }: {
   user: { name: string; email: string; role: UserRole };
 }) {
   const { logout: tabLogout } = useTabAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -123,17 +114,6 @@ export default function DashboardHeader({
       ? { parent: "สินค้าทั้งหมด", title: "รายละเอียดสินค้า" }
       : { parent: "Stockify", title: "ภาพรวม" });
 
-  /* หน้าพนักงานคลังบนมือถือ (/staff) — คืนขนาด UI ดั้งเดิมผ่านคลาส scale-original
-     (รีเซ็ต --header-height, สเกลตัวอักษร, spacing และตัวแปรขนาดองค์ประกอบ Navbar) */
-  const isStaffSection = pathname.startsWith("/staff");
-
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = search.trim();
-    router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
-    setMobileOpen(false);
-  };
-
   const itemsForRole = getNavItems(user.role);
   const systemMenuVisible = isSystemMenuUser(user.email);
   const visibleItems = itemsForRole.filter(
@@ -146,7 +126,7 @@ export default function DashboardHeader({
 
   return (
     <>
-      <header className={`bg-white border-b border-[#E8ECEA] flex-shrink-0 z-20 md:h-(--header-height) ${isStaffSection ? "scale-original" : ""}`}>
+      <header className="bg-white border-b border-[#E8ECEA] flex-shrink-0 z-20 md:h-(--header-height)">
         {/* Mobile */}
         <div className="flex h-(--header-height) items-center justify-between gap-3 px-4 md:hidden">
           <div className="flex min-w-0 items-center gap-2">
@@ -175,7 +155,7 @@ export default function DashboardHeader({
                   title="รายการรออนุมัติ"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
                 >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {headerNotificationCount > 0 && (
@@ -192,11 +172,11 @@ export default function DashboardHeader({
                   aria-label="การแจ้งเตือนงานเบิกสินค้า"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150 cursor-pointer"
                 >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[18px] font-bold text-white">
                       {pendingTransferCount}
                     </span>
                   )}
@@ -224,8 +204,8 @@ export default function DashboardHeader({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-fine) font-semibold text-[#053425]">
+                      <p className="truncate text-[18px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[18px] font-semibold text-[#053425]">
                         {roleLabel[user.role]}
                       </span>
                     </div>
@@ -245,19 +225,6 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        {/* Mobile: search อยู่ใต้ header */}
-        <form onSubmit={submitSearch} className="px-4 pb-3 md:hidden">
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="ค้นหาสินค้า, เอกสาร…"
-              className="h-10 w-full rounded-xl border border-[#E8ECEA] bg-white pl-9 pr-3 text-sm text-[#111827] placeholder:text-[#98A2B3] outline-none transition-shadow duration-150 focus:border-[#06402B] focus:shadow-[0_0_0_3px_rgba(6,64,43,0.10)]"
-            />
-          </div>
-        </form>
-
         {/* Tablet / Desktop */}
         <div className="hidden h-(--header-height) items-center justify-between gap-6 px-6 md:flex xl:px-8">
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -267,19 +234,6 @@ export default function DashboardHeader({
             <p className="truncate text-sm text-[#667085]">{breadcrumb.parent}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <form onSubmit={submitSearch} className="relative w-64 xl:w-72">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#98A2B3]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ค้นหาสินค้า, เอกสาร…"
-                className="h-9 w-full rounded-xl border border-[#E8ECEA] bg-white pl-9 pr-12 text-sm text-[#111827] placeholder:text-[#98A2B3] outline-none transition-shadow duration-150 focus:border-[#06402B] focus:shadow-[0_0_0_3px_rgba(6,64,43,0.10)]"
-              />
-              <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-[#E8ECEA] bg-[#EFF3F1] px-1.5 py-0.5 text-(length:--nav-fine) font-medium text-[#98A2B3] lg:block">
-                ⏎
-              </kbd>
-            </form>
-
             {/* Notification */}
             <div className="relative">
               {isAdmin ? (
@@ -289,7 +243,7 @@ export default function DashboardHeader({
                   title="รายการรออนุมัติ"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
                 >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {headerNotificationCount > 0 && (
@@ -310,11 +264,11 @@ export default function DashboardHeader({
                       : "border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827]"
                   }`}
                 >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[18px] font-bold text-white">
                       {pendingTransferCount}
                     </span>
                   )}
@@ -347,18 +301,18 @@ export default function DashboardHeader({
                           className="block space-y-1 rounded-xl border border-[#E8ECEA] bg-white p-2.5 text-xs transition-colors duration-150 hover:border-[#D5DDD9] hover:bg-[#F3F6F4]"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-(length:--nav-small) font-bold text-[#111827]">
+                            <span className="font-mono text-[18px] font-bold text-[#111827]">
                               {t.doc_no || "TRF"}
                             </span>
-                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-(length:--nav-fine) font-bold text-[#B54708]">
+                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-[18px] font-bold text-[#B54708]">
                               {Number(t.qty || 0).toLocaleString()} ชิ้น
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 text-(length:--nav-small)">
+                          <div className="flex items-center justify-between gap-2 text-[18px]">
                             <span className="flex-1 truncate font-medium text-[#344054]">
                               {getDisplayProductName(t)}
                             </span>
-                            <span className="shrink-0 text-(length:--nav-fine) text-[#667085]">
+                            <span className="shrink-0 text-[18px] text-[#667085]">
                               {t.from_warehouse_name} ➔ <strong className="text-[#06402B]">{t.to_warehouse_name}</strong>
                             </span>
                           </div>
@@ -398,8 +352,8 @@ export default function DashboardHeader({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-fine) font-semibold text-[#053425]">
+                      <p className="truncate text-[18px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[18px] font-semibold text-[#053425]">
                         {roleLabel[user.role]}
                       </span>
                     </div>
@@ -428,7 +382,7 @@ export default function DashboardHeader({
       >
         <div className="fixed inset-0 bg-[#101828]/40" onClick={() => setMobileOpen(false)} />
         <div
-          className={`absolute left-0 top-0 h-full w-(--nav-drawer) max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${isStaffSection ? "scale-original" : ""} ${
+          className={`absolute left-0 top-0 h-full w-[340px] max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -446,7 +400,7 @@ export default function DashboardHeader({
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <p className="mb-2 px-3 text-(length:--nav-small) font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
+            <p className="mb-2 px-3 text-[18px] font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
             {visibleItems.map((item) => {
               const isActive =
                 pathname === item.href ||

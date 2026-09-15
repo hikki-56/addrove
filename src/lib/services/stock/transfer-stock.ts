@@ -6,7 +6,6 @@ import {
   failIdempotencyKey,
   computePayloadHash,
 } from "@/lib/idempotency";
-import { logAudit } from "@/lib/audit";
 import {
   CreateTransferSchema,
   SubmitTransferSchema,
