@@ -444,15 +444,15 @@ export default function ApprovalsPage() {
     <>
       {/* Desktop: ตาราง */}
       <div className="hidden md:block overflow-x-auto rounded-xl border border-[#E8ECEA] bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-base">
           <thead>
             <tr className="bg-slate-50/70 text-slate-500 border-b border-[#EEF1EF]">
-              <th className="py-2.5 px-3 font-semibold whitespace-nowrap">รหัสสินค้า</th>
-              <th className="py-2.5 px-3 font-semibold whitespace-nowrap">ชื่อสินค้า</th>
-              <th className="py-2.5 px-3 font-semibold whitespace-nowrap">ตำแหน่ง</th>
-              <th className="py-2.5 px-3 font-semibold whitespace-nowrap">บาร์โค้ด</th>
-              <th className="py-2.5 px-3 font-semibold whitespace-nowrap">ผู้จำหน่าย</th>
-              <th className="py-2.5 px-3 font-semibold text-center whitespace-nowrap">จำนวน</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">บาร์โค้ด</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">รหัสสินค้า</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ชื่อสินค้า</th>
+              <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">จำนวน</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ตำแหน่ง</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ผู้จำหน่าย</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#EEF1EF]">
@@ -460,18 +460,18 @@ export default function ApprovalsPage() {
               const qtyNum = !isNaN(Number(row[4])) && String(row[4]).trim() !== "" ? Number(row[4]) : 1;
               return (
                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors text-slate-700">
-                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{row[0] || "-"}</td>
-                  <td className="py-2.5 px-3 font-bold text-slate-900 max-w-[360px] truncate" title={row[3]}>
-                    {row[3] || "-"}
-                  </td>
-                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{row[1] || "-"}</td>
-                  <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
+                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
                     {row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-")}
                   </td>
-                  <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">{formatSupplierName(row[6])}</td>
-                  <td className="py-2.5 px-3 text-center font-mono font-extrabold text-sm text-slate-900 whitespace-nowrap tabular-nums">
+                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{row[0] || "-"}</td>
+                  <td className="py-3.5 px-4 font-bold text-slate-900 max-w-[360px] truncate" title={row[3]}>
+                    {row[3] || "-"}
+                  </td>
+                  <td className="py-3.5 px-4 text-center font-mono font-extrabold text-lg text-slate-900 whitespace-nowrap tabular-nums">
                     {qtyNum.toLocaleString()}
                   </td>
+                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{row[1] || "-"}</td>
+                  <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">{formatSupplierName(row[6])}</td>
                 </tr>
               );
             })}
@@ -480,28 +480,28 @@ export default function ApprovalsPage() {
       </div>
 
       {/* Mobile: การ์ดรายการ */}
-      <div className="md:hidden space-y-2.5">
+      <div className="md:hidden space-y-3">
         {(doc.rows || []).map((row, idx) => {
           const qtyNum = !isNaN(Number(row[4])) && String(row[4]).trim() !== "" ? Number(row[4]) : 1;
           const barcodeVal =
             row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-");
           return (
-            <div key={idx} className="rounded-xl border border-[#E8ECEA] p-3 space-y-1.5">
+            <div key={idx} className="rounded-xl border border-[#E8ECEA] p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold text-slate-900 leading-snug min-w-0">{row[3] || "-"}</p>
-                <span className="font-mono font-extrabold text-[#053425] text-sm shrink-0">
+                <p className="text-base font-bold text-slate-900 leading-snug min-w-0">{row[3] || "-"}</p>
+                <span className="font-mono font-extrabold text-[#053425] text-lg shrink-0">
                   {qtyNum.toLocaleString()}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-base">
+                <span className="text-slate-500">
+                  บาร์โค้ด: <span className="font-mono font-bold text-slate-800">{barcodeVal}</span>
+                </span>
                 <span className="text-slate-500">
                   รหัส: <span className="font-mono font-bold text-slate-800">{row[0] || "-"}</span>
                 </span>
                 <span className="text-slate-500">
                   ตำแหน่ง: <span className="font-mono font-bold text-slate-800">{row[1] || "-"}</span>
-                </span>
-                <span className="text-slate-500">
-                  บาร์โค้ด: <span className="font-mono text-slate-700">{barcodeVal}</span>
                 </span>
                 <span className="text-slate-500">
                   ผู้จำหน่าย: <span className="font-bold text-slate-800">{formatSupplierName(row[6])}</span>
