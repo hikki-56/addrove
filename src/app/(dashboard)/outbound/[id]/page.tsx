@@ -233,11 +233,14 @@ export default function OutboundBillDetailPage({ params }: { params: Promise<{ i
                   {q.q_code} <span className="font-normal text-slate-400">· {q.items.length} รายการ</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {q.items.map((it) => (
-                    <span key={it.sku} className="px-1.5 py-0.5 rounded bg-white border border-sky-100 text-[18px] font-mono text-slate-600">
-                      {it.sku} ×{it.qty}
-                    </span>
-                  ))}
+                  {q.items.map((it) => {
+                    const itDetail = note.items.find((x) => x.sku === it.sku);
+                    return (
+                      <span key={it.sku} className="px-2 py-0.5 rounded bg-white border border-sky-100 text-xs text-slate-700">
+                        {itDetail?.product_name || it.sku} ×{it.qty}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -257,7 +260,6 @@ export default function OutboundBillDetailPage({ params }: { params: Promise<{ i
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#F7F9F8] text-left text-slate-500">
-                <th className="px-4 py-2.5 font-medium">SKU</th>
                 <th className="px-4 py-2.5 font-medium">ชื่อสินค้า</th>
                 <th className="px-4 py-2.5 font-medium">ตำแหน่ง</th>
                 <th className="px-4 py-2.5 font-medium text-right">ต้องหยิบ</th>
@@ -271,8 +273,7 @@ export default function OutboundBillDetailPage({ params }: { params: Promise<{ i
                 const av = availBySku.get(it.sku);
                 return (
                   <tr key={`${it.sku}-${i}`} className="border-t border-[#E8ECEA]">
-                    <td className="px-4 py-2.5 font-mono font-semibold text-slate-800">{it.sku}</td>
-                    <td className="px-4 py-2.5 text-slate-600">{it.product_name || "-"}</td>
+                    <td className="px-4 py-2.5 text-slate-800 font-medium">{it.product_name || it.sku || "-"}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{it.location_id || it.location_hint || "-"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-semibold">{it.qty_required.toLocaleString("th-TH")}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{it.qty_picked.toLocaleString("th-TH")}</td>

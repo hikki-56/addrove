@@ -53,10 +53,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden w-full max-w-full">
         <DashboardHeader user={user} />
         <main
-          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain overflow-x-hidden w-full max-w-full bg-[#EFF3F1]"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain w-full max-w-full bg-[#EFF3F1]"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <div className="mx-auto w-full px-4 py-6 md:px-6 md:py-8 xl:px-8">
+          {/* จอกว้างมาก (≥1536) จำกัดความกว้างเนื้อหาแล้วจัดกึ่งกลาง — การ์ด/ตารางไม่ถูกยืด
+              จนดูโหว่ สัดส่วนคงกระชับ (cap 2200px ให้การ์ด 3 คอลัมน์กว้างขึ้นพอดีจอใหญ่) */}
+          <div className="mx-auto w-full max-w-full px-4 py-6 md:px-6 md:py-8 xl:px-8 2xl:max-w-[2200px]">
             {children}
           </div>
         </main>

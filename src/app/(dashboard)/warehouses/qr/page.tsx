@@ -295,7 +295,7 @@ export default function WarehouseQrPage() {
                 </svg>
                 บังคับเปิดด้วย Chrome (Android เท่านั้น)
               </span>
-              <span className="text-[18px] text-slate-500 leading-relaxed">
+              <span className="text-xs text-slate-500 leading-relaxed">
                 แนะนำให้ปิดไว้ — QR แบบ https ตรงสแกนได้ทุกอุปกรณ์ (iPhone, กล้อง Android ทุกรุ่น, LINE scanner)
                 เมื่อเปิด QR จะฝัง Android Intent URL ซึ่ง iPhone และแอปสแกนบางตัว &ldquo;สแกนแล้วไม่เปิด&rdquo; — ใช้เฉพาะเมื่อพนักงานใช้ Android ทุกคน
               </span>
@@ -382,7 +382,7 @@ export default function WarehouseQrPage() {
                   <p className="text-xs sm:text-sm font-bold text-[#053425]">
                     สแกนเพื่อ: {actionObj.label} ({wh.name})
                     {forceChrome && (
-                      <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] text-[18px] font-bold align-middle">
+                      <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EAF2EE] border border-[#C9DFD4] text-[#053425] text-xs font-bold align-middle">
                         เปิดใน Chrome
                       </span>
                     )}
@@ -434,7 +434,7 @@ export default function WarehouseQrPage() {
               <p className="text-xs sm:text-sm font-bold text-sky-800">
                 สแกนเพื่อ: เข้าระบบส่วนพนักงานแพ็กของ (PIN 4 หลัก)
                 {forceChrome && (
-                  <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-800 text-[18px] font-bold align-middle">
+                  <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold align-middle">
                     เปิดใน Chrome
                   </span>
                 )}

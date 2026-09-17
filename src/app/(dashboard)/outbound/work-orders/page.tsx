@@ -174,41 +174,6 @@ function QCard({
       className="bg-white rounded-2xl border border-[#E8ECEA] p-5 lg:p-6 shadow-xs hover:shadow-md transition cursor-pointer group"
       title="คลิกเพื่อดูรายการสินค้าในกล่องและ QR Code"
     >
-      {/* หัวการ์ด */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-[#EAF2EE] text-[#06402B] flex items-center justify-center text-xl font-bold group-hover:scale-105 transition">
-            📦
-          </div>
-          <div>
-            <div className="text-xl font-black text-slate-800 tracking-tight font-mono">
-              กล่อง {qCode}
-            </div>
-            {isBusy && busyInfo?.document_no && (
-              <div className="text-[18px] lg:text-base font-mono text-slate-500 truncate max-w-[150px] lg:max-w-[260px]">
-                {busyInfo.document_no}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* สถานะ */}
-        {isBusy ? (
-          <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200"
-            title={`ผูกอยู่กับ ${busyInfo?.document_no}`}
-          >
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            ติดงาน
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            ว่าง พร้อมใช้
-          </span>
-        )}
-      </div>
-
       {/* พื้นที่แสดง QR Code */}
       <div
         className="my-2 py-4 px-2 rounded-xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center group-hover:bg-slate-100 transition min-h-[200px] lg:min-h-[240px] 2xl:min-h-[280px]"
@@ -387,18 +352,18 @@ function ZoomQRModal({
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-bold font-mono text-slate-900">{item.sku}</span>
                                 {item.location && (
-                                  <span className="text-[18px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-mono">
+                                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-mono">
                                     📍 {item.location}
                                   </span>
                                 )}
                               </div>
                               {item.product_name && (
-                                <div className="text-[18px] text-slate-500 truncate mt-1" title={item.product_name}>
+                                <div className="text-xs text-slate-500 truncate mt-1" title={item.product_name}>
                                   {item.product_name}
                                 </div>
                               )}
                               {item.barcode && (
-                                <div className="text-[18px] text-slate-400 font-mono mt-0.5">บาร์โค้ด {item.barcode}</div>
+                                <div className="text-xs text-slate-400 font-mono mt-0.5">บาร์โค้ด {item.barcode}</div>
                               )}
                             </div>
 

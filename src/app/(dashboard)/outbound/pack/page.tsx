@@ -290,13 +290,13 @@ export default function OutboundPackPage() {
         </button>
         <div className="text-center">
           <div className="text-xl font-extrabold text-slate-800 tabular-nums">{note?.express_bill_no}</div>
-          <div className="text-[18px] text-slate-400">{note?.customer}</div>
+          <div className="text-xs text-slate-400">{note?.customer}</div>
         </div>
         <div className="text-right">
           <div className="text-2xl font-black tabular-nums text-[#06402B]">
             {boxes.filter((b) => b.box_status !== "CANCELLED").length}
           </div>
-          <div className="text-[18px] text-slate-400">กล่อง · {totalBoxed.toLocaleString("th-TH")} ชิ้น</div>
+          <div className="text-xs text-slate-400">กล่อง · {totalBoxed.toLocaleString("th-TH")} ชิ้น</div>
         </div>
       </div>
 
@@ -309,7 +309,7 @@ export default function OutboundPackPage() {
           {/* กล่องปัจจุบัน */}
           {openBox ? (
             <div className="bg-white rounded-2xl border-2 border-[#06402B]/30 p-5 text-center">
-              <div className="text-[18px] text-slate-400 tracking-widest">BOX กำลังรับของ</div>
+              <div className="text-xs text-slate-400 tracking-widest">BOX กำลังรับของ</div>
               <div className="text-4xl font-black font-mono text-[#06402B]">#{openBox.box_no}</div>
               <div className="text-xs font-mono text-slate-400">{openBox.document_no}</div>
               <div className="mt-2 text-2xl font-black tabular-nums text-slate-900">
@@ -318,11 +318,14 @@ export default function OutboundPackPage() {
 
               {openBox.items.length > 0 && (
                 <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                  {openBox.items.map((it, i) => (
-                    <span key={i} className="px-2 py-1 rounded-lg bg-[#F7F9F8] text-xs font-mono text-slate-600">
-                      {it.sku} ×{it.qty}
-                    </span>
-                  ))}
+                  {openBox.items.map((it, i) => {
+                    const itDetail = note?.items.find((x) => x.sku === it.sku);
+                    return (
+                      <span key={i} className="px-2 py-1 rounded-lg bg-[#F7F9F8] text-xs text-slate-700">
+                        {itDetail?.product_name || it.sku} ×{it.qty}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -348,8 +351,7 @@ export default function OutboundPackPage() {
                   className="w-full flex items-center justify-between px-3 py-3 rounded-xl bg-[#F7F9F8] hover:bg-emerald-50 disabled:opacity-50 text-left"
                 >
                   <div>
-                    <div className="font-mono font-bold text-slate-800">{it.sku}</div>
-                    <div className="text-[18px] text-slate-400">{it.product_name}</div>
+                    <div className="font-bold text-slate-800 text-sm lg:text-base">{it.product_name || it.sku}</div>
                   </div>
                   <div className="text-3xl font-black tabular-nums text-[#06402B]">{it.remaining}</div>
                 </button>
@@ -434,8 +436,8 @@ export default function OutboundPackPage() {
               >
                 <div className="text-2xl">📦</div>
                 <div className="font-bold text-slate-800">กล่อง {b.box_no} · {b.total_qty} ชิ้น</div>
-                <div className="text-[18px] font-mono text-slate-400">{b.document_no}</div>
-                <div className="text-[18px] text-slate-500">{b.box_status}</div>
+                <div className="text-xs font-mono text-slate-400">{b.document_no}</div>
+                <div className="text-xs text-slate-500">{b.box_status}</div>
               </button>
             ))}
           </div>

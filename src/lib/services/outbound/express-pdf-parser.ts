@@ -144,10 +144,12 @@ export function parseExpressPdfText(rawText: string): ExpressPdfBill {
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
     const codePart = tokens.slice(0, firstThaiIdx).join(" ").replace(/\s+/g, " ").trim();
-    const name = tokens.slice(firstThaiIdx, qtyIdx).join(" ").replace(/\s+/g, " ").trim();
     if (!codePart || codePart.length < 2) continue;
 
-    items.push({ sku: codePart, qty, product_name: name || undefined });
+    // ชื่อสินค้าใน Express: ข้อความรายการสินค้าทั้งหมดจนถึงก่อนตัวเลขจำนวน (รวมรหัสและชื่อไทย)
+    const fullName = tokens.slice(0, qtyIdx).join(" ").replace(/\s+/g, " ").trim();
+
+    items.push({ sku: codePart, qty, product_name: fullName });
   }
 
   if (items.length === 0) {

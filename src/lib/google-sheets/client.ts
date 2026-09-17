@@ -55,6 +55,7 @@ export const SHEETS = {
   BOM: "BOM",
   BOM_HEADERS: "BOM_Headers",
   BOM_ITEMS: "BOM_Items",
+  OUTBOUND_Q_ITEMS: "รายการสินค้ากล่อง_Q",
 } as const;
 
 // Helper to map warehouse ID to Google Sheets tab name (e.g. wh-5 -> โกดัง5)
@@ -106,6 +107,16 @@ export function getPossibleSheetNames(sheetName: string): string[] {
     names.add("ย้ายสินค้าเข้าExpress");
     names.add("ย้ายสินค้าเข้า Express");
     names.add("ย้ายสินค้า เข้า Express");
+  }
+
+  // Q Box tab variations
+  if (sheetName.includes("กล่อง") || sheetName.toLowerCase().includes("_q") || sheetName.toLowerCase().includes("q_item")) {
+    names.add("รายการสินค้ากล่อง_Q");
+    names.add("รายการสินค้ากล่องQ");
+    names.add("รายการกล่อง_Q");
+    names.add("รายการกล่องQ");
+    names.add("กล่อง_Q");
+    names.add("กล่องQ");
   }
 
   // Thai warehouse tab variations: โกดัง4 <-> โกดัง 4 <-> WH-04 <-> WH4 <-> WH-4
@@ -1119,6 +1130,73 @@ export async function deleteRows(
   }
 
   throw new Error("ไม่ได้ตั้งค่าช่องทางเขียน Google Sheets");
+}
+
+/**
+ * ตรวจสอบว่ามีแท็บนี้ใน Google Sheets หรือยัง ถ้ายังไม่มีจะสร้างแท็บใหม่พร้อมใส่หัวตารางให้อัตโนมัติ
+ */
+export async function ensureSheetTabExists(
+  sheetName: string,
+  headers: string[] = []
+): Promise<string> {
+  if (!SPREADSHEET_ID) return sheetName;
+
+  try {
+    const resolved = await resolveSheetTitle(sheetName);
+    if (resolved) {
+      return resolved;
+    }
+
+    if (hasServiceAccountCredentials()) {
+      const sheets = getSheetsClient();
+      try {
+        await withRetry(() =>
+          sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            requestBody: {
+              requests: [
+                {
+                  addSheet: {
+                    properties: {
+                      title: sheetName,
+                    },
+                  },
+                },
+              ],
+            },
+          })
+        );
+
+        // Invalidate tabs cache
+        globalForTabs.spreadsheetTabs = undefined;
+
+        if (headers.length > 0) {
+          const safeName = `'${sheetName.replace(/'/g, "")}'`;
+          const endCol = columnLetter(headers.length);
+          await withRetry(() =>
+            sheets.spreadsheets.values.update({
+              spreadsheetId: SPREADSHEET_ID,
+              range: `${safeName}!A1:${endCol}1`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: {
+                values: [headers],
+              },
+            })
+          );
+        }
+        return sheetName;
+      } catch (err: any) {
+        if (String(err?.message || "").includes("already exists")) {
+          return sheetName;
+        }
+        console.warn(`[GoogleSheets ensureSheetTabExists failed for ${sheetName}]:`, err);
+      }
+    }
+  } catch (e) {
+    console.warn(`[GoogleSheets ensureSheetTabExists error for ${sheetName}]:`, e);
+  }
+
+  return sheetName;
 }
 
 function columnLetter(colIndex: number): string {

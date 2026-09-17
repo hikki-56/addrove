@@ -29,6 +29,10 @@ import {
 } from "./stock-reservation.service";
 import { findBillItemByScan } from "./picking.service";
 import { getBusyQCodes } from "./q-assignment.service";
+import {
+  updateQItemScanInSheet,
+  markQBoxStatusInSheet,
+} from "./q-sheets-sync.service";
 
 // ============================================================
 // ใบงานกล่อง Q (WORK_ORDER / เลขที่ TV-...)
@@ -56,7 +60,12 @@ function cleanSku(v: string): string {
   return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
 }
 
-function isWorkOrderNote(note: OutboundBillNote | null): note is OutboundBillNote {
+export type WorkOrderNote = OutboundBillNote & {
+  source: "WORK_ORDER";
+  q_boxes: WorkOrderQBox[];
+};
+
+function isWorkOrderNote(note: OutboundBillNote | null): note is WorkOrderNote {
   return Boolean(note && note.source === "WORK_ORDER" && Array.isArray(note.q_boxes));
 }
 
@@ -393,102 +402,99 @@ async function findActiveQ(repo: IStockRepository, rawQCode: string): Promise<Ac
     throw new WorkOrderError(`รหัสกล่องต้องอยู่ในรูป Q1, Q2, ... (สแกนได้: ${rawQCode})`);
   }
 
-  // 1. ค้นหาในใบงาน Q (WORK_ORDER)
-  const woDocs = await listWorkOrderDocuments(repo);
-  for (const doc of woDocs) {
+  let doneIn: string | undefined;
+  // ดึงรายการเอกสารทั้งหมด (ทั้ง OUTBOUND_ORDER และ WORK_ORDER) ครั้งเดียว
+  const allDocs = await listBillDocuments(repo);
+
+  for (const doc of allDocs) {
     const note = parseBillNote(doc);
-    if (!isWorkOrderNote(note)) continue;
-    const q = note.q_boxes!.find((b) => b.q_code === qCode);
-    if (!q) continue;
-    if (note.outbound_status === "DRAFT") {
-      throw new WorkOrderError(`กล่อง ${qCode} อยู่ในใบงาน ${doc.document_no} ที่ยังไม่ถูกส่ง — ให้แอดมินกดส่งใบงานก่อน`);
-    }
-    if (q.status === "DONE") {
-      if (note.outbound_status === "PICKING" || note.outbound_status === "SHORTAGE") continue;
-      return { doneIn: doc.document_no };
-    }
-    if (note.outbound_status === "READY_TO_PICK" || note.outbound_status === "PICKING") {
-      return { doc, note, q, isBill: false };
-    }
-    if (note.outbound_status === "SHORTAGE") {
-      throw new WorkOrderError(`ใบงาน ${doc.document_no} ติดปัญหาของไม่ครบ — รอหัวหน้าตัดสินก่อน`);
-    }
-  }
+    if (!note) continue;
 
-  // 2. ค้นหาในบิล Express ที่มีการแบ่งกล่อง Q (OUTBOUND_ORDER ที่มี q_assignments)
-  const billDocs = await listBillDocuments(repo);
-  for (const doc of billDocs) {
-    const note = parseBillNote(doc);
-    if (!note || !Array.isArray(note.q_assignments) || note.q_assignments.length === 0) continue;
-    const assignment = note.q_assignments.find((a) => a.q_code === qCode);
-    if (!assignment) continue;
-
-    if (note.outbound_status === "CANCELLED") continue;
-    if (note.outbound_status === "HOLD") {
-      throw new WorkOrderError(`บิล ${doc.document_no} พักงานอยู่ (HOLD)`);
-    }
-    if (note.outbound_status === "SHORTAGE") {
-      throw new WorkOrderError(`บิล ${doc.document_no} ติดปัญหาของไม่ครบ — รอหัวหน้าตัดสินก่อน`);
+    // 1. ตรวจสอบใบงาน Work Order (TV-...) ที่มี q_boxes
+    if (isWorkOrderNote(note)) {
+      const q = note.q_boxes?.find((b) => b.q_code === qCode);
+      if (q) {
+        if (note.outbound_status === "CANCELLED" || note.outbound_status === "HOLD") continue;
+        if (note.outbound_status === "DRAFT") {
+          throw new WorkOrderError(`กล่อง ${qCode} อยู่ในใบงาน ${doc.document_no} ที่ยังไม่ถูกส่ง — ให้แอดมินกดส่งใบงานก่อน`);
+        }
+        if (q.status === "DONE") {
+          doneIn ??= doc.document_no;
+          continue;
+        }
+        if (note.outbound_status === "READY_TO_PICK" || note.outbound_status === "PICKING") {
+          return { doc, note, q, isBill: false };
+        }
+        if (note.outbound_status === "SHORTAGE") {
+          throw new WorkOrderError(`ใบงาน ${doc.document_no} ติดปัญหาของไม่ครบ — รอหัวหน้าตัดสินก่อน`);
+        }
+      }
+      continue;
     }
 
-    // สร้าง Map รายการของบิลเพื่อดึง barcode, product_name, location_hint/id, qty_picked
-    const itemsMap = new Map<string, typeof note.items[0]>();
-    for (const it of note.items || []) {
-      itemsMap.set(cleanSku(it.sku), it);
-    }
+    // 2. ตรวจสอบบิล Express ที่มีการแบ่งกล่อง Q (OUTBOUND_ORDER ที่มี q_assignments)
+    if (Array.isArray(note.q_assignments) && note.q_assignments.length > 0) {
+      const assignment = note.q_assignments.find((a) => a.q_code === qCode);
+      if (!assignment) continue;
 
-    const qBoxItems: WorkOrderQItem[] = assignment.items.map((qItem) => {
-      const detail = itemsMap.get(cleanSku(qItem.sku));
-      return {
-        sku: qItem.sku,
-        product_id: detail?.product_id,
-        barcode: detail?.barcode,
-        product_name: detail?.product_name,
-        qty_required: qItem.qty,
-        qty_picked: detail?.qty_picked ?? 0,
-        status: (detail?.status as OutboundItemStatus) ?? "PENDING",
-        location_id: detail?.location_id || detail?.location_hint,
-        location_wh: detail?.location_wh,
-      };
-    });
+      if (note.outbound_status === "CANCELLED" || note.outbound_status === "HOLD") continue;
+      if (note.outbound_status === "SHORTAGE") {
+        throw new WorkOrderError(`บิล ${doc.document_no} ติดปัญหาของไม่ครบ — รอหัวหน้าตัดสินก่อน`);
+      }
 
-    const isDone =
-      assignment.status === "DONE" ||
-      (qBoxItems.length > 0 && qBoxItems.every((it) => it.qty_picked >= it.qty_required));
+      const itemsMap = new Map<string, typeof note.items[0]>();
+      for (const it of note.items || []) {
+        itemsMap.set(cleanSku(it.sku), it);
+      }
 
-    if (isDone) {
-      if (
-        note.outbound_status === "PICKING" ||
-        note.outbound_status === "IMPORTED" ||
-        note.outbound_status === "READY_TO_PICK"
-      ) {
+      const qBoxItems: WorkOrderQItem[] = assignment.items.map((qItem) => {
+        const detail = itemsMap.get(cleanSku(qItem.sku));
+        return {
+          sku: qItem.sku,
+          product_id: detail?.product_id,
+          barcode: detail?.barcode,
+          product_name: detail?.product_name,
+          qty_required: qItem.qty,
+          qty_picked: detail?.qty_picked ?? 0,
+          status: (detail?.status as OutboundItemStatus) ?? "PENDING",
+          location_id: detail?.location_id || detail?.location_hint,
+          location_wh: detail?.location_wh,
+        };
+      });
+
+      const isDone =
+        assignment.status === "DONE" ||
+        (qBoxItems.length > 0 && qBoxItems.every((it) => it.qty_picked >= it.qty_required));
+
+      if (isDone) {
+        doneIn ??= doc.document_no;
         continue;
       }
-      return { doneIn: doc.document_no };
-    }
 
-    if (["IMPORTED", "READY_TO_PICK", "PICKING"].includes(note.outbound_status)) {
-      const q: WorkOrderQBox = {
-        q_code: assignment.q_code,
-        status: (assignment.status as WorkOrderQBoxStatus) || "PENDING",
-        items: qBoxItems,
-        picked_by: assignment.picked_by,
-        picked_by_name: assignment.picked_by_name,
-        started_at: assignment.started_at,
-        completed_at: assignment.completed_at,
-      };
-      return { doc, note, q, isBill: true };
-    }
+      if (["IMPORTED", "READY_TO_PICK", "PICKING"].includes(note.outbound_status)) {
+        const q: WorkOrderQBox = {
+          q_code: assignment.q_code,
+          status: (assignment.status as WorkOrderQBoxStatus) || "PENDING",
+          items: qBoxItems,
+          picked_by: assignment.picked_by,
+          picked_by_name: assignment.picked_by_name,
+          started_at: assignment.started_at,
+          completed_at: assignment.completed_at,
+        };
+        return { doc, note, q, isBill: true };
+      }
 
-    if (
-      ["PACKED", "ASSIGNED_TO_SHIPMENT", "LOADING", "SHIPPED", "READY_TO_PACK", "PACKING"].includes(
-        note.outbound_status
-      )
-    ) {
-      return { doneIn: doc.document_no };
+      if (
+        ["PACKED", "ASSIGNED_TO_SHIPMENT", "LOADING", "SHIPPED", "READY_TO_PACK", "PACKING"].includes(
+          note.outbound_status
+        )
+      ) {
+        doneIn ??= doc.document_no;
+      }
     }
   }
 
+  if (doneIn) return { doneIn };
   throw new WorkOrderError(`ไม่พบงานของกล่อง ${qCode} — ให้แอดมินสร้างใบงานหรือนำเข้าบิลก่อน`);
 }
 
@@ -532,12 +538,19 @@ export async function startQBox(
   }
 
   if (isBill) {
-    if (note.outbound_status === "IMPORTED" || note.outbound_status === "READY_TO_PICK") {
-      await assertAvailableForPick(repo, note.warehouse_id, note);
+    const targetAssignment = note.q_assignments?.find((a) => a.q_code === q.q_code);
+    const isAlreadyPicking = note.outbound_status === "PICKING" && targetAssignment?.status === "PICKING";
+
+    // ถ้าบิลและกล่องนี้อยู่ในสถานะ PICKING อยู่แล้ว ให้คืนค่าทันที ไม่ต้องเขียน Google Sheets ซ้ำ
+    if (isAlreadyPicking) {
+      return toQView(doc, note, q);
     }
-    const summaries: StockSummary[] = await repo.stockSummary
-      .findAll()
-      .catch(() => [] as StockSummary[]);
+
+    // แนะนำโลเคชันเฉพาะรายการที่ยังไม่มีโลเคชัน
+    const needsLocation = note.items?.some((it) => !it.location_id && it.product_id);
+    const summaries: StockSummary[] = needsLocation
+      ? await repo.stockSummary.findAll().catch(() => [] as StockSummary[])
+      : [];
 
     const result = await mutateBillNote(
       repo,
@@ -553,22 +566,24 @@ export async function startQBox(
           n.pick_started_at = new Date().toISOString();
           n.pick_assigned_to = actor.id;
           n.pick_assigned_to_name = actor.username;
-          for (const item of n.items) {
-            if (!item.location_id && item.product_id) {
-              const sug = suggestPickLocationAll(summaries, n.warehouse_id, item.product_id);
-              if (sug) {
-                item.location_id = sug.location_id;
-                item.location_wh = sug.warehouse_id;
+          if (summaries.length > 0) {
+            for (const item of n.items) {
+              if (!item.location_id && item.product_id) {
+                const sug = suggestPickLocationAll(summaries, n.warehouse_id, item.product_id);
+                if (sug) {
+                  item.location_id = sug.location_id;
+                  item.location_wh = sug.warehouse_id;
+                }
               }
             }
           }
         }
-        const targetAssignment = n.q_assignments?.find((a) => a.q_code === q.q_code);
-        if (targetAssignment && targetAssignment.status !== "DONE") {
-          targetAssignment.status = "PICKING";
-          targetAssignment.picked_by = actor.id;
-          targetAssignment.picked_by_name = actor.username;
-          if (!targetAssignment.started_at) targetAssignment.started_at = new Date().toISOString();
+        const target = n.q_assignments?.find((a) => a.q_code === q.q_code);
+        if (target && target.status !== "DONE") {
+          target.status = "PICKING";
+          target.picked_by = actor.id;
+          target.picked_by_name = actor.username;
+          if (!target.started_at) target.started_at = new Date().toISOString();
         }
       },
       { alsoStatus: billStatusToDocumentStatus("PICKING") }
@@ -603,7 +618,17 @@ export async function startQBox(
       started_at: updatedAssignment?.started_at,
       completed_at: updatedAssignment?.completed_at,
     };
+    void markQBoxStatusInSheet({
+      q_code: q.q_code,
+      newStatus: "กำลังหยิบ",
+      billNo: doc.reference_no || doc.document_no,
+    });
     return toQView(result.doc, result.note, updatedQ);
+  }
+
+  // สำหรับ Work Order
+  if (note.outbound_status === "PICKING" && q.status === "PICKING") {
+    return toQView(doc, note, q);
   }
 
   // สำหรับ Work Order
@@ -632,6 +657,11 @@ export async function startQBox(
   if (!result) throw new WorkOrderError("ไม่พบใบงานนี้");
 
   const updatedQ = result.note.q_boxes!.find((b) => b.q_code === q.q_code)!;
+  void markQBoxStatusInSheet({
+    q_code: q.q_code,
+    newStatus: "กำลังหยิบ",
+    billNo: doc.reference_no || doc.document_no,
+  });
   return toQView(result.doc, result.note, updatedQ);
 }
 
@@ -671,7 +701,7 @@ export async function confirmQItemScan(
   }
   const remaining = item.qty_required - item.qty_picked;
   if (remaining <= 0) {
-    throw new WorkOrderError(`รายการ ${item.sku} ในกล่อง ${q.q_code} หยิบครบแล้ว`);
+    throw new WorkOrderError(`รายการ ${item.product_name || item.sku} ในกล่อง ${q.q_code} หยิบครบแล้ว`);
   }
 
   let message = "";
@@ -685,7 +715,7 @@ export async function confirmQItemScan(
         const target = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
         if (!target) throw new WorkOrderError("ไม่พบรายการ");
         if (target.qty_picked >= target.qty_required) {
-          throw new WorkOrderError(`รายการ ${target.sku} หยิบครบแล้ว`);
+          throw new WorkOrderError(`รายการ ${target.product_name || target.sku} หยิบครบแล้ว`);
         }
         target.qty_picked += 1;
         target.status = target.qty_picked >= target.qty_required ? "PICKED" : "PENDING";
@@ -702,7 +732,8 @@ export async function confirmQItemScan(
           targetAssignment.completed_at = new Date().toISOString();
         }
 
-        message = `${target.sku}: ${target.qty_picked}/${target.qty_required}${
+        const displayName = target.product_name || target.sku;
+        message = `${displayName}: ${target.qty_picked}/${target.qty_required}${
           target.qty_picked >= target.qty_required ? " ✓ หยิบครบ" : ""
         }`;
 
@@ -741,6 +772,14 @@ export async function confirmQItemScan(
         ? "DONE"
         : "PICKING");
 
+    void updateQItemScanInSheet({
+      q_code: q.q_code,
+      scanned: item.sku,
+      qtyPicked: itemAfter.qty_picked,
+      qtyRequired: item.qty_required,
+      status: itemAfter.status,
+    });
+
     return {
       q_code: q.q_code,
       sku: itemAfter.sku,
@@ -763,7 +802,7 @@ export async function confirmQItemScan(
       const target = targetQ.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
       if (!target) throw new WorkOrderError("ไม่พบรายการ");
       if (target.qty_picked >= target.qty_required) {
-        throw new WorkOrderError(`รายการ ${target.sku} หยิบครบแล้ว`);
+        throw new WorkOrderError(`รายการ ${target.product_name || target.sku} หยิบครบแล้ว`);
       }
       target.qty_picked += 1;
       target.status = target.qty_picked >= target.qty_required ? "PICKED" : "PENDING";
@@ -782,7 +821,8 @@ export async function confirmQItemScan(
         targetQ.completed_at = new Date().toISOString();
       }
 
-      message = `${target.sku}: ${target.qty_picked}/${target.qty_required}${
+      const displayName = target.product_name || target.sku;
+      message = `${displayName}: ${target.qty_picked}/${target.qty_required}${
         target.qty_picked >= target.qty_required ? " ✓ หยิบครบ" : ""
       }`;
 
@@ -812,6 +852,15 @@ export async function confirmQItemScan(
 
   const qAfter = result.note.q_boxes!.find((b) => b.q_code === q.q_code)!;
   const itemAfter = qAfter.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku))!;
+
+  void updateQItemScanInSheet({
+    q_code: qAfter.q_code,
+    scanned: itemAfter.sku,
+    qtyPicked: itemAfter.qty_picked,
+    qtyRequired: itemAfter.qty_required,
+    status: itemAfter.status,
+  });
+
   return {
     q_code: qAfter.q_code,
     sku: itemAfter.sku,
@@ -881,6 +930,15 @@ export async function reportQProblem(
     if (result.note.outbound_status === "SHORTAGE") {
       await repo.documents.updateStatus(result.doc.document_id, billStatusToDocumentStatus("SHORTAGE")).catch(() => {});
     }
+
+    void updateQItemScanInSheet({
+      q_code: q.q_code,
+      scanned: item.sku,
+      qtyPicked: typeof input.picked_qty === "number" ? input.picked_qty : 0,
+      qtyRequired: item.qty_required,
+      status: "SHORTAGE",
+    });
+
     return { work_order_status: result.note.outbound_status };
   }
 
@@ -920,6 +978,15 @@ export async function reportQProblem(
   if (result.note.outbound_status === "SHORTAGE") {
     await repo.documents.updateStatus(result.doc.document_id, billStatusToDocumentStatus("SHORTAGE")).catch(() => {});
   }
+
+  void updateQItemScanInSheet({
+    q_code: q.q_code,
+    scanned: item.sku,
+    qtyPicked: typeof input.picked_qty === "number" ? input.picked_qty : 0,
+    qtyRequired: item.qty_required,
+    status: "SHORTAGE",
+  });
+
   return { work_order_status: result.note.outbound_status };
 }
 

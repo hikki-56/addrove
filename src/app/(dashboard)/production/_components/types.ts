@@ -3,6 +3,7 @@ export interface EnrichedBomItem {
   rm_barcode: string;
   rm_name: string;
   rm_wh: string;
+  is_primary?: number; // 1 = ตัวหลัก, 0 = ตัวรอง
   rm_qty_required: number;
   rm_unit: string;
   waste_percentage: number;
@@ -21,6 +22,8 @@ export interface EnrichedBomFormula {
   active: boolean;
   image: string;
   maxProducible: number;
+  has_primary_designated?: boolean;
+  primary_items?: Array<{ rm_sku: string; rm_name: string }>;
   fg_wh2_stock?: number;
   items: EnrichedBomItem[];
 }
@@ -36,4 +39,5 @@ export interface ConsumedMaterial {
   rm_unit: string;
   total_required: number;
   available_qty?: number;
+  is_primary?: number;
 }

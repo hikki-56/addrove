@@ -1199,7 +1199,7 @@ export default function TransferHistoryPage() {
                       <div className="font-bold text-slate-900 truncate" title={item.product_name}>
                         {item.product_name || "-"}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[18px] text-slate-500">
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
                         <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-700">
                           {item.sku || "-"}
                         </span>
@@ -1230,7 +1230,7 @@ export default function TransferHistoryPage() {
                     {/* Created By */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5" title={item.created_by_name}>
-                        <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-[18px] shrink-0">
+                        <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
                           {item.created_by_name?.charAt(0) || "A"}
                         </div>
                         <span className="truncate max-w-[130px] text-slate-700 text-xs font-medium">
@@ -1243,7 +1243,7 @@ export default function TransferHistoryPage() {
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       {item.moved_by && item.moved_by !== "-" && item.moved_by !== "พนักงาน" ? (
                         <div className="flex items-center gap-1.5" title={item.moved_by}>
-                          <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#053425] flex items-center justify-center font-bold text-[18px] shrink-0">
+                          <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#053425] flex items-center justify-center font-bold text-xs shrink-0">
                             {item.moved_by.charAt(0)}
                           </div>
                           <span className="truncate max-w-[130px] text-slate-700 text-xs font-medium">
@@ -1441,7 +1441,7 @@ export default function TransferHistoryPage() {
                       <td className="py-2.5 px-3 font-mono">
                         <div className="font-bold text-slate-800">{selectedRecord.sku || "-"}</div>
                         {selectedRecord.barcode && selectedRecord.barcode !== "-" && selectedRecord.barcode !== selectedRecord.sku && (
-                          <div className="text-[18px] text-slate-400">{selectedRecord.barcode}</div>
+                          <div className="text-xs text-slate-400">{selectedRecord.barcode}</div>
                         )}
                       </td>
                       <td className="py-2.5 px-3 font-semibold text-slate-800">

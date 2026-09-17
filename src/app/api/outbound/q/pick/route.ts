@@ -14,8 +14,10 @@ import {
   confirmQItemScan,
   reportQProblem,
   startQBox,
+  WorkOrderError,
 } from "@/lib/services/outbound/work-order.service";
 import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+import { OutboundReservationError } from "@/lib/services/outbound/stock-reservation.service";
 
 export const maxDuration = 60;
 
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
     switch (input.action) {
       case "start": {
         const view = await startQBox(repo, input.q_code, actor);
-        return successResponse(view, `กล่อง ${view.q_code} — ใบงาน ${view.document_no}`);
+        return successResponse(view);
       }
       case "confirm-item": {
         if (!input.scan) return errorResponse("กรุณาสแกนสินค้า", 400);
@@ -86,6 +88,9 @@ export async function POST(req: NextRequest) {
     }
   } catch (e) {
     if (e instanceof OutboundStateError) return errorResponse(e.message, 409);
+    if (e instanceof WorkOrderError || e instanceof OutboundReservationError) {
+      return errorResponse(e.message, e.message.startsWith("ไม่พบ") ? 404 : 409);
+    }
     const message = e instanceof Error ? e.message : String(e);
     if (message.startsWith("ไม่พบ")) return errorResponse(message, 404);
     return serverErrorResponse(e);

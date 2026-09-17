@@ -210,7 +210,7 @@ export default function ReceiveLineItem({
       <div className="bg-black/[.015] border border-[#E8ECEA] rounded-2xl p-3.5 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-bold text-slate-900 flex items-center gap-2 min-w-0">
-            <span className="px-2 py-0.5 rounded-lg bg-[#111827] text-white font-mono text-[20px] font-bold shrink-0">
+            <span className="px-2 py-0.5 rounded-lg bg-[#111827] text-white font-mono text-sm font-bold shrink-0">
               {slotNo}
             </span>
             <span className="truncate">

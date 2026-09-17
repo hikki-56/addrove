@@ -560,23 +560,23 @@ export default function ExpressReceivePage() {
         id: "no",
         header: "ลำดับ",
         enableSorting: false,
-        meta: { th: "text-center w-16 text-base sm:text-[30px] font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center w-16 text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
         // ลำดับที่มองเห็น = ตำแหน่งในลิสต์ที่เรียงแล้ว (นับต่อเนื่องข้ามหน้า)
         cell: ({ row, table }) => {
           const { pageIndex, pageSize } = table.getState().pagination;
           const visibleIndex = table.getPaginationRowModel().rows.findIndex((r) => r.id === row.id);
-          return <span className="disp text-base sm:text-[30px] font-bold num text-slate-700">{pageIndex * pageSize + visibleIndex + 1}</span>;
+          return <span className="disp text-base sm:text-lg font-bold num text-slate-700">{pageIndex * pageSize + visibleIndex + 1}</span>;
         },
       },
       {
         accessorKey: "document_no",
         header: "เลขที่เอกสาร",
-        meta: { th: "text-left text-base sm:text-[30px] font-bold text-slate-900", td: "whitespace-nowrap" },
+        meta: { th: "text-left text-base sm:text-lg font-bold text-slate-900", td: "whitespace-nowrap" },
         cell: ({ row }) => {
           const item = row.original;
           return (
             <>
-              <div className="font-mono font-bold text-slate-900 text-[30px] sm:text-lg">{item.document_no}</div>
+              <div className="font-mono font-bold text-slate-900 text-lg">{item.document_no}</div>
               {item.document_date && item.document_date !== "-" && (
                 <div className="text-base font-medium text-slate-600 font-mono mt-1">{item.document_date.slice(0, 10)}</div>
               )}
@@ -588,7 +588,7 @@ export default function ExpressReceivePage() {
         id: "barcode",
         header: "บาร์โค้ด",
         enableSorting: false,
-        meta: { th: "text-center text-base sm:text-[30px] font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
         cell: ({ row }) => {
           const item = row.original;
           const barcodeValue = item.barcode || item.sku;
@@ -628,15 +628,15 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "sku",
         header: "รหัสสินค้า",
-        meta: { th: "text-left text-base sm:text-[30px] font-bold text-slate-900", td: "font-mono font-bold text-slate-900 text-base sm:text-lg" },
+        meta: { th: "text-left text-base sm:text-lg font-bold text-slate-900", td: "font-mono font-bold text-slate-900 text-base sm:text-lg" },
         cell: ({ getValue }) => getValue<string>() || "-",
       },
       {
         accessorKey: "product_name",
         header: "ชื่อสินค้า",
-        meta: { th: "min-w-[260px] text-left text-base sm:text-[30px] font-bold text-slate-900", td: "min-w-[260px] whitespace-nowrap" },
+        meta: { th: "min-w-[260px] text-left text-base sm:text-lg font-bold text-slate-900", td: "min-w-[260px] whitespace-nowrap" },
         cell: ({ row }) => (
-          <div className="text-slate-900 font-bold text-[30px] sm:text-[30px] leading-snug" title={row.original.product_name}>
+          <div className="text-slate-900 font-bold text-lg leading-snug" title={row.original.product_name}>
             {row.original.product_name}
           </div>
         ),
@@ -644,9 +644,9 @@ export default function ExpressReceivePage() {
       {
         id: "warehouse",
         header: "คลังสินค้า",
-        meta: { th: "text-center text-base sm:text-[30px] font-bold text-slate-900", td: "text-center whitespace-nowrap" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center whitespace-nowrap" },
         cell: ({ row }) => (
-          <div className="inline-flex items-center gap-1.5 text-slate-800 text-base sm:text-[30px] font-semibold">
+          <div className="inline-flex items-center gap-1.5 text-slate-800 text-base sm:text-lg font-semibold">
             <span>{getWarehouseDisplayName(row.original.target_sheet)}</span>
           </div>
         ),
@@ -654,12 +654,12 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "location",
         header: "ตำแหน่ง",
-        meta: { th: "text-center text-base sm:text-[30px] font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
         cell: ({ getValue }) => {
           const val = getValue<string>();
           const hasVal = val && val !== "-";
           return (
-            <span className={`font-mono font-bold text-base sm:text-[30px] ${hasVal ? "text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/70" : "text-slate-400"}`}>
+            <span className={`font-mono font-bold text-base sm:text-lg ${hasVal ? "text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/70" : "text-slate-400"}`}>
               {hasVal ? val : "-"}
             </span>
           );
@@ -668,11 +668,11 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "quantity",
         header: "จำนวน",
-        meta: { th: "text-right text-base sm:text-[30px] font-bold text-slate-900", td: "text-right whitespace-nowrap" },
+        meta: { th: "text-right text-base sm:text-lg font-bold text-slate-900", td: "text-right whitespace-nowrap" },
         cell: ({ getValue }) => (
           <>
             <span className="disp font-black num text-slate-900 text-[48px] sm:text-[48px]">{Number(getValue()).toLocaleString()}</span>
-            <span className="font-bold text-slate-600 text-base sm:text-[30px] ml-1.5">ชิ้น</span>
+            <span className="font-bold text-slate-600 text-base sm:text-lg ml-1.5">ชิ้น</span>
           </>
         ),
       },
@@ -680,7 +680,7 @@ export default function ExpressReceivePage() {
         id: "status",
         header: "สถานะ Express",
         enableSorting: false,
-        meta: { th: "text-center text-base sm:text-[30px] font-bold text-slate-900 print:hidden", td: "text-center print:hidden" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900 print:hidden", td: "text-center print:hidden" },
         cell: ({ row }) => {
           const item = row.original;
           const tagged = taggedItemsMap.get(item.id);
@@ -691,7 +691,7 @@ export default function ExpressReceivePage() {
               value={effectiveStatus}
               onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
               aria-label={`สถานะ Express ของเอกสาร ${item.document_no} สินค้า ${item.product_name}`}
-              className={`px-4 min-h-[46px] rounded-full text-base sm:text-[30px] font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
+              className={`px-4 min-h-[46px] rounded-full text-base sm:text-lg font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
                 isImported
                   ? "bg-[#DFEDE6] text-[#052B1F] border-[#8FB3A3] hover:bg-[#C9DFD4]/60"
                   : "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200/60"

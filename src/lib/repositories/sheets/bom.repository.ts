@@ -64,6 +64,35 @@ export function isBomHeaderRow(str: string): boolean {
   );
 }
 
+function parseItemColIndices(headerRow: string[] = []) {
+  const norm = headerRow.map((c) => (c || "").trim().toLowerCase());
+  const findIndex = (predicate: (s: string) => boolean) => norm.findIndex(predicate);
+
+  const bomIdIdx = findIndex((s) => s.includes("bom"));
+  const rmSkuIdx = findIndex((s) => s.includes("sku"));
+  const rmBarcodeIdx = findIndex((s) => s.includes("barcode") || s.includes("บาร์โค้ด"));
+  const rmNameIdx = findIndex((s) => s.includes("ชื่อ") || s.includes("name"));
+  const isPrimaryIdx = findIndex((s) => s.includes("ตัวหลัก") || s.includes("หลัก") || s.includes("primary"));
+  const rmWhIdx = findIndex((s) => s.includes("คลัง") || s.includes("โกดัง") || s.includes("wh"));
+  const qtyIdx = findIndex((s) => s.includes("จำนวน") || s.includes("qty"));
+  const unitIdx = findIndex((s) => s.includes("หน่วย") || s.includes("unit"));
+  const wasteIdx = findIndex((s) => s.includes("สูญเสีย") || s.includes("waste"));
+  const noteIdx = findIndex((s) => s.includes("หมายเหตุ") || s.includes("note"));
+
+  return {
+    bomId: bomIdIdx >= 0 ? bomIdIdx : 0,
+    rmSku: rmSkuIdx >= 0 ? rmSkuIdx : 1,
+    rmBarcode: rmBarcodeIdx >= 0 ? rmBarcodeIdx : 2,
+    rmName: rmNameIdx >= 0 ? rmNameIdx : 3,
+    isPrimary: isPrimaryIdx,
+    rmWh: rmWhIdx,
+    qty: qtyIdx >= 0 ? qtyIdx : 5,
+    unit: unitIdx >= 0 ? unitIdx : 6,
+    waste: wasteIdx,
+    note: noteIdx >= 0 ? noteIdx : 7,
+  };
+}
+
 export class SheetsBomRepository {
   async getAllItems(): Promise<BomItem[]> {
     try {
@@ -106,23 +135,31 @@ export class SheetsBomRepository {
           });
         });
 
-        // Process Items: [0] bom_id, [1] rm_sku, [2] rm_barcode, [3] rm_name, [4] rm_wh, [5] rm_qty_required, [6] rm_unit, [7] waste_percentage, [8] note, [9] updated_at
+        // Dynamic header mapping for items
+        const headerRow = itemRows.find((r) => r.some((c) => isBomHeaderRow(c))) || itemRows[0];
+        const colMap = parseItemColIndices(headerRow);
+
+        // Process Items
         itemRows.forEach((row) => {
-          const bomId = (row[0] ?? "").trim();
-          const rmSku = (row[1] ?? "").trim();
+          const bomId = (row[colMap.bomId] ?? "").trim();
+          const rmSku = (row[colMap.rmSku] ?? "").trim();
           if (!bomId || !rmSku || isBomHeaderRow(bomId) || isBomHeaderRow(rmSku)) return;
 
           const formula = formulaMap.get(bomId);
           if (formula) {
+            const rawPrimary = colMap.isPrimary >= 0 ? (row[colMap.isPrimary] ?? "").trim() : "";
+            const isPrimary = rawPrimary === "1" || rawPrimary.toLowerCase() === "true" ? 1 : 0;
+
             formula.items.push({
               rm_sku: rmSku,
-              rm_barcode: (row[2] ?? "").trim(),
-              rm_name: (row[3] ?? "").trim() || rmSku,
-              rm_wh: (row[4] ?? "โกดัง2").trim(),
-              rm_qty_required: Number(row[5]) || 1,
-              rm_unit: (row[6] ?? "ชิ้น").trim(),
-              waste_percentage: Number(row[7]) || 0,
-              note: (row[8] ?? "").trim(),
+              rm_barcode: (row[colMap.rmBarcode] ?? "").trim(),
+              rm_name: (row[colMap.rmName] ?? "").trim() || rmSku,
+              rm_wh: (colMap.rmWh >= 0 ? row[colMap.rmWh] : "โกดัง2")?.trim() || "โกดัง2",
+              is_primary: isPrimary,
+              rm_qty_required: Number(row[colMap.qty]) || 1,
+              rm_unit: (row[colMap.unit] ?? "ชิ้น").trim(),
+              waste_percentage: colMap.waste >= 0 ? Number(row[colMap.waste]) || 0 : 0,
+              note: (colMap.note >= 0 ? row[colMap.note] ?? "" : "").trim(),
             });
           }
         });
@@ -165,6 +202,7 @@ export class SheetsBomRepository {
         rm_qty_required: item.rm_qty_required,
         rm_unit: item.rm_unit,
         waste_percentage: item.waste_percentage,
+        is_primary: item.is_primary ?? 0,
         note: item.note,
       });
     }

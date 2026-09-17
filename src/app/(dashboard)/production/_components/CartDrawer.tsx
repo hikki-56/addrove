@@ -169,16 +169,41 @@ export default function CartDrawer({
                   </div>
 
                   <div className="space-y-1.5 divide-y divide-amber-200/80 pt-1">
-                    {consumedMaterials.map((c) => (
-                      <div key={c.rm_sku} className="flex items-baseline justify-between gap-3 pt-1.5 first:pt-0">
-                        <span className="text-sm font-semibold text-slate-900 min-w-0 truncate">
-                          {c.rm_name}
-                        </span>
-                        <span className="text-base font-mono font-bold text-amber-900 shrink-0">
-                          −{Math.ceil(c.total_required).toLocaleString()} {c.rm_unit}
-                        </span>
-                      </div>
-                    ))}
+                    {consumedMaterials.map((c) => {
+                      const isPrimary = Number(c.is_primary) === 1;
+                      const reqQty = Math.ceil(c.total_required);
+                      const available = c.available_qty ?? 0;
+                      const isShort = available < reqQty;
+
+                      return (
+                        <div key={c.rm_sku} className="flex flex-col gap-0.5 pt-2 first:pt-0">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[10px] font-bold shrink-0 ${
+                                  isPrimary
+                                    ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                    : "bg-slate-200/80 text-slate-700 border border-slate-300"
+                                }`}
+                              >
+                                {isPrimary ? "ตัวหลัก" : "ตัวรอง"}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-900 min-w-0 truncate" title={c.rm_name}>
+                                {c.rm_name}
+                              </span>
+                            </div>
+                            <span className="text-base font-mono font-bold text-amber-900 shrink-0">
+                              −{reqQty.toLocaleString()} {c.rm_unit}
+                            </span>
+                          </div>
+                          {!isPrimary && isShort && (
+                            <div className="text-[11px] text-amber-800 pl-1">
+                              (มีในคลัง {available.toLocaleString()} {c.rm_unit} — สั่งผลิตได้ตามตัวหลัก)
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <p className="text-sm text-slate-600 pt-1">

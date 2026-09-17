@@ -62,7 +62,10 @@ export default function ProductsPage() {
       fetch("/api/warehouses").then((r) => r.json()).catch(() => ({ success: false })),
       fetch("/api/locations").then((r) => r.json()).catch(() => ({ success: false })),
       fetch("/api/products?limit=1000").then((r) => r.json()).catch(() => ({ success: false })),
-    ]).then(([whRes, locRes, prodRes]) => {
+      // ยอดคงเหลือรวมที่ server รวมทุกแถวทุกแท็บมาให้แล้ว — ครบทุกจำนวนสินค้า
+      // (ไม่จำกัด 1,000 รายการแบบการบวกเองที่ client)
+      fetch("/api/dashboard?days=1").then((r) => r.json()).catch(() => ({ success: false })),
+    ]).then(([whRes, locRes, prodRes, dashRes]) => {
       if (whRes.success && Array.isArray(whRes.data)) {
         setWarehouses(whRes.data);
       }
@@ -75,12 +78,22 @@ export default function ProductsPage() {
           : prodRes.data?.items || [];
         const cats = Array.from(new Set(items.map((p) => p.category).filter(Boolean)));
         setCategories(cats as string[]);
-        setGrandProductCount(items.length);
-        const sum = items.reduce(
-          (acc, p) => acc + (Number(p.total_quantity ?? p.quantity ?? 0) || 0),
-          0
+        // จำนวนสินค้าทั้งหมดใช้ field total ที่ API นับครบทุกรายการ
+        // แทน items.length ที่ถูกตัดที่ 1,000 รายการแรก
+        setGrandProductCount(
+          typeof prodRes.data?.total === "number" ? prodRes.data.total : items.length
         );
-        setTotalStockSum(sum);
+        // ยอดคงเหลือรวม: ใช้ตัวเลขจาก /api/dashboard (รวมครบทุกแถว)
+        // หากไม่มีสิทธิ์เรียก (non-admin ไม่ระบุโกดัง) ค่อย fallback เป็นผลบวกจากลิสต์เหมือนเดิม
+        if (dashRes.success && typeof dashRes.data?.total_remaining_quantity === "number") {
+          setTotalStockSum(dashRes.data.total_remaining_quantity);
+        } else {
+          const sum = items.reduce(
+            (acc, p) => acc + (Number(p.total_quantity ?? p.quantity ?? 0) || 0),
+            0
+          );
+          setTotalStockSum(sum);
+        }
       }
     });
   }, []);
@@ -520,7 +533,7 @@ export default function ProductsPage() {
 
                           {/* Status Badge */}
                           <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[18px] font-bold border whitespace-nowrap ${meta.badge}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${meta.badge}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                               {meta.label}
                             </span>
@@ -684,13 +697,13 @@ export default function ProductsPage() {
 
                     <div className="mt-3 flex items-center justify-between gap-3 text-xs">
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-[18px] font-bold text-slate-500">ขั้นต่ำ</span>
+                        <span className="text-xs font-bold text-slate-500">ขั้นต่ำ</span>
                         <span className="font-mono num font-bold text-slate-700">
                           {(Number(p.minimum_stock) || 0).toLocaleString()}
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-[18px] font-bold text-slate-500">คงเหลือ</span>
+                        <span className="text-xs font-bold text-slate-500">คงเหลือ</span>
                         <span
                           className={`font-mono num font-extrabold ${
                             totalStock < 0 ? "text-rose-600" : totalStock === 0 ? "text-slate-500" : "text-[#053425]"
@@ -700,17 +713,17 @@ export default function ProductsPage() {
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 min-w-0">
-                        <span className="text-[18px] font-bold text-slate-500 shrink-0">หน่วย</span>
+                        <span className="text-xs font-bold text-slate-500 shrink-0">หน่วย</span>
                         <span className="font-bold text-slate-700 truncate">{p.base_unit || "ชิ้น"}</span>
                       </span>
                     </div>
 
                     <div className="mt-2.5 flex items-center justify-between gap-2">
-                      <span className="text-[18px] text-slate-500 font-medium truncate">
+                      <span className="text-xs text-slate-500 font-medium truncate">
                         {p.category || "ไม่ระบุหมวดหมู่"}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[18px] font-bold border whitespace-nowrap ${meta.badge}`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${meta.badge}`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                         {meta.label}

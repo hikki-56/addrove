@@ -89,9 +89,7 @@ export async function getAvailability(
   options?: { excludeBillId?: string; allWarehouses?: boolean }
 ): Promise<AvailabilityRow[]> {
   const [summaries, reservedEntries] = await Promise.all([
-    repo.stockSummary
-      .findAll(options?.allWarehouses ? undefined : warehouseId)
-      .catch(() => [] as StockSummary[]),
+    repo.stockSummary.findAll(options?.allWarehouses ? undefined : warehouseId),
     getReservedEntries(repo),
   ]);
   const onHand = summarizeOnHand(summaries);
@@ -136,6 +134,13 @@ export async function assertAvailableForPick(
     .filter((it) => it.status !== "PICKED" && it.qty_required > it.qty_picked)
     .map((it) => ({ sku: it.sku, product_id: it.product_id, qty: it.qty_required - it.qty_picked }));
   if (items.length === 0) return [];
+
+  const unlinked = items.filter((it) => !it.product_id?.trim());
+  if (unlinked.length > 0) {
+    throw new OutboundReservationError(
+      `รายการในบิลยังไม่ได้เชื่อมกับสินค้าในระบบ: ${unlinked.map((it) => it.sku).join(", ")} — ให้แอดมินตรวจสอบรหัสสินค้าก่อนเริ่มหยิบ`
+    );
+  }
 
   // บิลนี้ยังไม่ถูกนับเป็น "จอง" (สถานะ READY_TO_PICK) จึงไม่ต้อง exclude ตัวเอง
   const rows = await getAvailability(repo, warehouseId, items, { allWarehouses: true });

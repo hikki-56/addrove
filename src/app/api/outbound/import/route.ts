@@ -27,6 +27,10 @@ import {
   parseMaxItemsPerQ,
   planBillQAssignments,
 } from "@/lib/services/outbound/q-assignment.service";
+import {
+  syncBillQAssignmentsToSheet,
+  type SyncBillEntry,
+} from "@/lib/services/outbound/q-sheets-sync.service";
 import type { OutboundBillItem } from "@/types/models";
 
 export const maxDuration = 60;
@@ -108,7 +112,7 @@ export async function POST(req: NextRequest) {
         items: pdfBill.items.map((it, i) => ({
           no: i + 1,
           sku: it.sku,
-          product_name: it.product_name ?? "",
+          product_name: it.product_name ?? it.sku,
           qty: it.qty,
         })),
         sheets: [
@@ -116,11 +120,10 @@ export async function POST(req: NextRequest) {
             name: "PDF",
             totalRows: pdfBill.items.length,
             suggestedHeaderRow: 1,
-            headers: ["ลำดับ", "รหัสสินค้า", "ชื่อสินค้า", "จำนวน"],
+            headers: ["ลำดับ", "ชื่อสินค้า", "จำนวน"],
             sampleRows: pdfBill.items.slice(0, 8).map((it, i) => [
               String(i + 1),
-              it.sku,
-              it.product_name ?? "",
+              it.product_name ?? it.sku,
               String(it.qty),
             ]),
           },
@@ -235,6 +238,7 @@ export async function POST(req: NextRequest) {
     }
 
     const created: Array<{ document_no: string; express_bill_no: string; item_count: number; q_codes?: string[] }> = [];
+    const syncEntries: SyncBillEntry[] = [];
     const nowIso = new Date().toISOString();
     const busyQs = autoAssignQ
       ? await getBusyQCodes(repo).catch(() => new Map())
@@ -296,6 +300,20 @@ export async function POST(req: NextRequest) {
         item_count: items.length,
         q_codes: qAssignments?.map((q) => q.q_code),
       });
+
+      if (qAssignments && qAssignments.length > 0) {
+        syncEntries.push({
+          express_bill_no: b.express_bill_no,
+          customer: b.customer,
+          items,
+          q_assignments: qAssignments,
+          imported_at: nowIso,
+        });
+      }
+    }
+
+    if (syncEntries.length > 0) {
+      void syncBillQAssignmentsToSheet(syncEntries);
     }
 
     return successResponse(

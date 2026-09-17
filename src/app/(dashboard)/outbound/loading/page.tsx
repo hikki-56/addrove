@@ -187,7 +187,7 @@ export default function OutboundLoadingPage() {
             </button>
             <div className="text-center">
               <div className="text-2xl font-extrabold text-slate-800">🚚 {active.note.truck_plate}</div>
-              <div className="text-[18px] text-slate-400">{active.doc.document_no}{active.note.destination ? ` · ${active.note.destination}` : ""}</div>
+              <div className="text-xs text-slate-400">{active.doc.document_no}{active.note.destination ? ` · ${active.note.destination}` : ""}</div>
             </div>
             <div className="text-right text-xs text-slate-400">
               {active.bills.length} บิล
@@ -201,7 +201,7 @@ export default function OutboundLoadingPage() {
 
         {/* ตัวนับใหญ่ */}
         <div className="bg-white rounded-2xl border-2 border-[#06402B]/30 p-6 text-center">
-          <div className="text-[18px] text-slate-400 tracking-widest">กล่องที่ขึ้นรถแล้ว</div>
+          <div className="text-xs text-slate-400 tracking-widest">กล่องที่ขึ้นรถแล้ว</div>
           <div className="text-6xl font-black tabular-nums text-[#06402B] leading-none">
             {loaded}<span className="text-3xl text-slate-300">/{expected}</span>
           </div>
@@ -449,7 +449,7 @@ export default function OutboundLoadingPage() {
                         <span className="font-bold text-slate-800">{b.express_bill_no}</span>
                         <span className="ml-2 text-xs text-slate-400">{b.customer}</span>
                         {b.outbound_status === "PARTIALLY_SHIPPED" && (
-                          <span className="ml-2 text-[18px] font-bold text-orange-600">กล่องค้างจากรอบก่อน</span>
+                          <span className="ml-2 text-xs font-bold text-orange-600">กล่องค้างจากรอบก่อน</span>
                         )}
                       </span>
                       <span className="text-2xl font-black tabular-nums text-[#06402B]">{b.box_count}</span>

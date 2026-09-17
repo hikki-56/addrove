@@ -461,7 +461,7 @@ export default function ApprovalsPage() {
               return (
                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors text-slate-700">
                   <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{row[0] || "-"}</td>
-                  <td className="py-2.5 px-3 font-bold text-slate-900 max-w-[220px] truncate" title={row[3]}>
+                  <td className="py-2.5 px-3 font-bold text-slate-900 max-w-[360px] truncate" title={row[3]}>
                     {row[3] || "-"}
                   </td>
                   <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{row[1] || "-"}</td>
@@ -694,16 +694,13 @@ export default function ApprovalsPage() {
                   <tr className="bg-slate-50/70 border-b border-[#EEF1EF] text-slate-500 font-semibold">
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">เลขที่เอกสาร</th>
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ผู้ขออนุมัติ</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">วันที่</th>
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">คลัง</th>
                     <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap">รายการ</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">สถานะ</th>
                     <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">ตรวจสอบ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EEF1EF]">
                   {filteredDocs.map((doc, idx) => {
-                    const meta = statusMetaFor(doc);
                     return (
                       <tr
                         key={`${doc.document_id}-${idx}`}
@@ -715,9 +712,6 @@ export default function ApprovalsPage() {
                         <td className="py-3.5 px-4 text-slate-700 font-semibold whitespace-nowrap">
                           {formatUserName(doc.created_by, doc.created_by_name)}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500 font-medium whitespace-nowrap">
-                          {formatDocDate(doc)}
-                        </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#DFEDE6]/80">
                             {doc.target_sheet}
@@ -725,12 +719,6 @@ export default function ApprovalsPage() {
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
                           สินค้า {docSkuCount(doc).toLocaleString()} ชนิด / {docTotalQty(doc).toLocaleString()} ชิ้น
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${meta.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                            {meta.label}
-                          </span>
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <button
@@ -796,7 +784,7 @@ export default function ApprovalsPage() {
       {/* Review Document Modal */}
       {reviewDoc && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="review-dialog-title" className="bg-white rounded-3xl border border-[#E8ECEA] shadow-2xl w-full max-w-4xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+          <div role="dialog" aria-modal="true" aria-labelledby="review-dialog-title" className="bg-white rounded-3xl border border-[#E8ECEA] shadow-2xl w-full max-w-6xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-[#EEF1EF] flex items-start justify-between gap-3">
               <div className="min-w-0">

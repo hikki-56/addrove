@@ -31,6 +31,7 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/express-import/issue": { parent: "นำเข้า Express", title: "เบิกสินค้า เข้า Express" },
   "/stock": { parent: "คลังสินค้า", title: "ตรวจสอบสต็อก" },
   "/stock-counts": { parent: "การตรวจนับ", title: "ผลการตรวจนับสต็อก" },
+  "/temporary-stock-cuts": { parent: "การทำรายการ", title: "ตัดสต็อกชั่วคราว" },
   "/locations": { parent: "คลังสินค้า", title: "ตำแหน่งสินค้าในโกดัง" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
   "/movements/receive/history": { parent: "การเคลื่อนไหว", title: "ประวัติรับสินค้าเข้าโกดัง" },
@@ -155,7 +156,7 @@ export default function DashboardHeader({
                   title="รายการรออนุมัติ"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
                 >
-                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {headerNotificationCount > 0 && (
@@ -172,11 +173,11 @@ export default function DashboardHeader({
                   aria-label="การแจ้งเตือนงานเบิกสินค้า"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150 cursor-pointer"
                 >
-                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[18px] font-bold text-white">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
                       {pendingTransferCount}
                     </span>
                   )}
@@ -204,8 +205,8 @@ export default function DashboardHeader({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-[18px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[18px] font-semibold text-[#053425]">
+                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-small) font-semibold text-[#053425]">
                         {roleLabel[user.role]}
                       </span>
                     </div>
@@ -228,10 +229,10 @@ export default function DashboardHeader({
         {/* Tablet / Desktop */}
         <div className="hidden h-(--header-height) items-center justify-between gap-6 px-6 md:flex xl:px-8">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-[#111827]">
+            <h1 className="truncate text-lg 2xl:text-xl font-semibold tracking-tight text-[#111827]">
               {breadcrumb.title}
             </h1>
-            <p className="truncate text-sm text-[#667085]">{breadcrumb.parent}</p>
+            <p className="truncate text-xs 2xl:text-sm text-[#667085]">{breadcrumb.parent}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {/* Notification */}
@@ -243,7 +244,7 @@ export default function DashboardHeader({
                   title="รายการรออนุมัติ"
                   className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
                 >
-                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {headerNotificationCount > 0 && (
@@ -264,11 +265,11 @@ export default function DashboardHeader({
                       : "border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827]"
                   }`}
                 >
-                  <svg className="size-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-[18px] font-bold text-white">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
                       {pendingTransferCount}
                     </span>
                   )}
@@ -301,18 +302,18 @@ export default function DashboardHeader({
                           className="block space-y-1 rounded-xl border border-[#E8ECEA] bg-white p-2.5 text-xs transition-colors duration-150 hover:border-[#D5DDD9] hover:bg-[#F3F6F4]"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-[18px] font-bold text-[#111827]">
+                            <span className="font-mono text-xs font-bold text-[#111827]">
                               {t.doc_no || "TRF"}
                             </span>
-                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-[18px] font-bold text-[#B54708]">
+                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-xs font-bold text-[#B54708]">
                               {Number(t.qty || 0).toLocaleString()} ชิ้น
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 text-[18px]">
+                          <div className="flex items-center justify-between gap-2 text-xs">
                             <span className="flex-1 truncate font-medium text-[#344054]">
                               {getDisplayProductName(t)}
                             </span>
-                            <span className="shrink-0 text-[18px] text-[#667085]">
+                            <span className="shrink-0 text-xs text-[#667085]">
                               {t.from_warehouse_name} ➔ <strong className="text-[#06402B]">{t.to_warehouse_name}</strong>
                             </span>
                           </div>
@@ -352,8 +353,8 @@ export default function DashboardHeader({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-[18px] font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-[18px] font-semibold text-[#053425]">
+                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
+                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-small) font-semibold text-[#053425]">
                         {roleLabel[user.role]}
                       </span>
                     </div>
@@ -382,7 +383,7 @@ export default function DashboardHeader({
       >
         <div className="fixed inset-0 bg-[#101828]/40" onClick={() => setMobileOpen(false)} />
         <div
-          className={`absolute left-0 top-0 h-full w-[340px] max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
+          className={`absolute left-0 top-0 h-full w-(--nav-drawer) max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -400,7 +401,7 @@ export default function DashboardHeader({
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <p className="mb-2 px-3 text-[18px] font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
+            <p className="mb-2 px-3 text-(length:--nav-small) font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
             {visibleItems.map((item) => {
               const isActive =
                 pathname === item.href ||

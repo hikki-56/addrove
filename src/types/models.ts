@@ -301,6 +301,7 @@ export interface BomItem {
   rm_barcode: string;
   rm_name: string;
   rm_wh: string;
+  is_primary?: number; // 1 = ตัวหลัก, 0 = ตัวรอง
   rm_qty_required: number;
   rm_unit: string;
   waste_percentage: number;
@@ -323,6 +324,7 @@ export interface BomFormula {
     rm_barcode: string;
     rm_name: string;
     rm_wh: string;
+    is_primary?: number; // 1 = ตัวหลัก, 0 = ตัวรอง
     rm_qty_required: number;
     rm_unit: string;
     waste_percentage: number;

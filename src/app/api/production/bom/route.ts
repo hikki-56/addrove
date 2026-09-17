@@ -80,26 +80,35 @@ export async function GET(req: NextRequest) {
     };
 
     const enrichFormula = (f: any) => {
-      let minProducible = Infinity;
       const enrichedItems = (f.items || []).map((item: any) => {
         const availableInWh2 = getWh2Stock(item.rm_sku, item.rm_barcode, item.rm_name);
         const perUnit = Number(item.rm_qty_required) || 1;
         const possible = Math.floor(availableInWh2 / perUnit);
 
-        if (possible < minProducible) {
-          minProducible = possible;
-        }
-
         return {
           ...item,
+          is_primary: Number(item.is_primary) === 1 ? 1 : 0,
           available_wh2_qty: availableInWh2,
           possible_units: Math.max(0, possible),
         };
       });
 
-      // Strict calculation from actual stock in Warehouse 2 (no fake fallback!)
+      // Filter primary items (ตัวหลัก = 1)
+      const primaryItems = enrichedItems.filter((item: any) => item.is_primary === 1);
+      // If primary items are designated, calculate maxProducible solely from primary items!
+      // Otherwise, fallback to all enriched items (for backward compatibility with untagged formulas)
+      const itemsToCalculate = primaryItems.length > 0 ? primaryItems : enrichedItems;
+
+      let minProducible = Infinity;
+      for (const it of itemsToCalculate) {
+        if (it.possible_units < minProducible) {
+          minProducible = it.possible_units;
+        }
+      }
+
+      // Calculation from Warehouse 2 inventory
       const maxProducible =
-        enrichedItems.length > 0 && Number.isFinite(minProducible)
+        itemsToCalculate.length > 0 && Number.isFinite(minProducible)
           ? Math.max(0, minProducible)
           : 0;
 
@@ -113,6 +122,8 @@ export async function GET(req: NextRequest) {
         ...f,
         image,
         maxProducible,
+        has_primary_designated: primaryItems.length > 0,
+        primary_items: primaryItems.map((p: any) => ({ rm_sku: p.rm_sku, rm_name: p.rm_name })),
         fg_wh2_stock: fgWh2Stock,
         target_warehouse_id: "wh-02",
         target_warehouse_name: "โกดัง 2 (สินค้าสำเร็จรูป)",

@@ -7,7 +7,7 @@ import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/lib/feedback";
-import { generateCode128PngDataUrl } from "@/lib/barcode-utils";
+import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { getWarehouseDisplayName } from "@/lib/warehouse-utils";
 import { queuedScan } from "@/lib/offline-scan-queue";
 
@@ -56,13 +56,13 @@ export default function QPickingPanel() {
     setBusy(true);
     setFeedback(null);
     try {
-      const { data, message } = await outboundApi.qPickAction({ q_code: code, action: "start" });
+      const { data } = await outboundApi.qPickAction({ q_code: code, action: "start" });
       setQData(data as unknown as QPickViewData);
       setView("picking");
       setItemScanValue("");
       feedbackSuccess();
       doFlash("ok");
-      setFeedback({ tone: "success", message });
+      setFeedback(null);
     } catch (e) {
       feedbackError();
       doFlash("bad");
@@ -73,77 +73,120 @@ export default function QPickingPanel() {
     }
   }, []);
 
-  // ---------- สแกนสินค้ายืนยัน 1 ชิ้น ----------
+  const qDataRef = useRef<QPickViewData | null>(null);
+  qDataRef.current = qData;
+  const scanQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  // ---------- สแกนสินค้ายืนยัน 1 ชิ้น (Optimistic Instant Update — 0ms ทันที) ----------
   const handleItemScan = useCallback(
-    async (code: string) => {
+    (code: string) => {
       setItemScanValue("");
-      if (!qData || lockRef.current) return;
-      lockRef.current = true;
-      try {
-        // ตรวจฝั่ง client ก่อน (server ตรวจซ้ำอีกชั้นเสมอ)
-        const item = qData.items.find(
-          (it) => norm(it.sku) === norm(code) || (it.barcode ? norm(it.barcode) === norm(code) : false)
-        );
-        if (!item) {
-          throw new Error(`✗ ไม่อยู่ในกล่อง ${qData.q_code} (${code})`);
+      const currentQData = qDataRef.current;
+      if (!currentQData) return;
+
+      // ตรวจฝั่ง client ทันที (0ms)
+      const codeClean = norm(code);
+      const item = currentQData.items.find((it) => {
+        if (areBarcodesMatching(code, [it.sku, it.barcode, it.product_id])) return true;
+        if (it.product_name) {
+          const pn = norm(it.product_name);
+          if (pn === codeClean) return true;
+          if (codeClean.length >= 3 && (pn.includes(codeClean) || codeClean.includes(pn))) return true;
         }
-        if (item.qty_picked >= item.qty_required) {
-          throw new Error(`✗ ${item.sku} หยิบครบแล้ว`);
-        }
+        return false;
+      });
 
-        const result = await queuedScan({
-          url: "/api/outbound/q/pick",
-          body: { q_code: qData.q_code, action: "confirm-item", scan: item.sku },
-          label: `Q ${qData.q_code}: หยิบ ${item.sku} (1 ชิ้น)`,
-        });
-
-        if (result.status === "queued") {
-          feedbackWarn();
-          setFeedback({
-            tone: "success",
-            message: `🟠 ออฟไลน์ — บันทึก "${result.label}" ไว้ในเครื่องแล้ว จะส่งเองเมื่อเน็ตกลับ`,
-          });
-          return;
-        }
-
-        const payload = result.data as {
-          sku: string;
-          qty_picked: number;
-          q_status: string;
-          work_order_status: string;
-        };
-
-        // อัปเดตตัวนับในหน้าจอจากผลลัพธ์ server
-        setQData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            items: prev.items.map((it) =>
-              norm(it.sku) === norm(payload.sku)
-                ? { ...it, qty_picked: payload.qty_picked, remaining: Math.max(0, it.qty_required - payload.qty_picked) }
-                : it
-            ),
-          };
-        });
-
-        feedbackSuccess();
-        doFlash("ok");
-        setFeedback({ tone: "success", message: result.message ?? "✓ ถูกต้อง" });
-
-        if (payload.q_status === "DONE") {
-          feedbackDone();
-          setDoneMessage(result.message ?? `กล่อง ${qData.q_code} หยิบเสร็จ`);
-          setView("done");
-        }
-      } catch (e) {
+      if (!item) {
         feedbackError();
         doFlash("bad");
-        setFeedback({ tone: "error", message: e instanceof Error ? e.message : "✗ สแกนไม่ถูกต้อง" });
-      } finally {
-        lockRef.current = false;
+        setFeedback({ tone: "error", message: `✗ ไม่อยู่ในกล่อง ${currentQData.q_code} (${code})` });
+        return;
       }
+
+      if (item.qty_picked >= item.qty_required) {
+        feedbackWarn();
+        doFlash("bad");
+        setFeedback({ tone: "error", message: `✗ ${item.product_name || item.sku} หยิบครบแล้ว` });
+        return;
+      }
+
+      // 1. ตอบสนองทันทีแบบ Real-time (0ms Optimistic UI)
+      item.qty_picked += 1;
+      item.remaining = Math.max(0, item.qty_required - item.qty_picked);
+      const isBoxDone = currentQData.items.every(
+        (it) => it.qty_picked >= it.qty_required || it.status === "PROBLEM"
+      );
+
+      // อัปเดตหน้าจอทันที ไม่ต้องรอผลจาก Server
+      setQData({
+        ...currentQData,
+        items: [...currentQData.items],
+      });
+      feedbackSuccess();
+      doFlash("ok");
+      setFeedback({
+        tone: "success",
+        message: `✓ หยิบ ${item.product_name || item.sku}: ${item.qty_picked}/${item.qty_required} ชิ้น${
+          item.qty_picked >= item.qty_required ? " (ครบแล้ว)" : ""
+        }`,
+      });
+
+      if (isBoxDone) {
+        feedbackDone();
+        setDoneMessage(`กล่อง ${currentQData.q_code} หยิบเสร็จสมบูรณ์`);
+        setView("done");
+      }
+
+      // 2. ส่งคำขอยืนยันไปที่ Server ในเบื้องหลังผ่านคิวเรียงลำดับ (Sequential Queue)
+      scanQueueRef.current = scanQueueRef.current
+        .then(async () => {
+          const result = await queuedScan({
+            url: "/api/outbound/q/pick",
+            body: { q_code: currentQData.q_code, action: "confirm-item", scan: item.sku },
+            label: `Q ${currentQData.q_code}: หยิบ ${item.product_name || item.sku} (1 ชิ้น)`,
+          });
+
+          if (result.status === "queued") return;
+
+          const payload = result.data as {
+            sku: string;
+            qty_picked: number;
+            q_status: string;
+            work_order_status: string;
+          };
+
+          // ซิงค์ยอดที่ถูกต้องจาก server หากมีค่าที่มากกว่า
+          if (qDataRef.current) {
+            const serverItem = qDataRef.current.items.find((it) => norm(it.sku) === norm(payload.sku));
+            if (serverItem && serverItem.qty_picked < payload.qty_picked) {
+              serverItem.qty_picked = payload.qty_picked;
+              serverItem.remaining = Math.max(0, serverItem.qty_required - payload.qty_picked);
+              setQData({ ...qDataRef.current, items: [...qDataRef.current.items] });
+            }
+          }
+        })
+        .catch((err) => {
+          // หาก Server ปฏิเสธ (เช่น เกิดข้อผิดพลาดจริง): Rollback ยอดที่เพิ่มไว้กลับ
+          if (qDataRef.current) {
+            const rollbackItem = qDataRef.current.items.find((it) => norm(it.sku) === norm(item.sku));
+            if (rollbackItem && rollbackItem.qty_picked > 0) {
+              rollbackItem.qty_picked -= 1;
+              rollbackItem.remaining = Math.min(
+                rollbackItem.qty_required,
+                rollbackItem.qty_required - rollbackItem.qty_picked
+              );
+              setQData({ ...qDataRef.current, items: [...qDataRef.current.items] });
+            }
+          }
+          feedbackError();
+          doFlash("bad");
+          setFeedback({
+            tone: "error",
+            message: err instanceof Error ? err.message : "✗ สแกนไม่สำเร็จ ระบบยกเลิกยอดที่เพิ่ม",
+          });
+        });
     },
-    [qData]
+    []
   );
 
   // ---------- แจ้งปัญหา ----------
@@ -207,13 +250,13 @@ export default function QPickingPanel() {
   if (view === "scan") {
     return (
       <div className="space-y-3">
-        <div className="bg-gradient-to-br from-sky-600 to-sky-700 rounded-2xl p-6 sm:p-10 text-white space-y-4 shadow-md">
+        <div className="bg-gradient-to-br from-sky-600 to-sky-700 rounded-2xl p-6 sm:p-8 text-white space-y-4 shadow-md">
           <div className="flex items-center gap-4">
             <span className="text-5xl">📦</span>
             <div>
               <div className="text-xl sm:text-2xl font-extrabold">งานกล่อง Q (Q1 - Q6)</div>
               <div className="text-xs sm:text-sm text-sky-100">
-                สแกน QR Code หรือบาร์โค้ดกล่อง Q เพื่อเปิดรายการสินค้าที่ต้องหยิบ
+                สแกน QR Code / บาร์โค้ดหน้ากล่องเพื่อเปิดรายการสินค้า
               </div>
             </div>
           </div>
@@ -227,6 +270,15 @@ export default function QPickingPanel() {
               isProcessing={busy}
             />
           </div>
+          {busy && (
+            <div className="flex items-center justify-center gap-2.5 py-1 text-white text-sm sm:text-base font-bold animate-pulse">
+              <svg className="w-5 h-5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <span>กำลังโหลดข้อมูลกล่อง Q...</span>
+            </div>
+          )}
         </div>
         {feedback && (
           <ScanFeedbackBanner
@@ -291,27 +343,29 @@ export default function QPickingPanel() {
         flash === "ok" ? "bg-emerald-50" : flash === "bad" ? "bg-red-50" : ""
       }`}
     >
-      {/* หัวกล่อง + progress */}
-      <div className="bg-white rounded-2xl border border-sky-200 p-4">
+      {/* หัวกล่อง + บาร์โค้ดประจำกล่อง Q + progress */}
+      <div className="bg-white rounded-2xl border border-sky-200 p-4 sm:p-5 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
-          <button onClick={resetToScan} className="text-slate-400 hover:text-slate-600 text-sm">
+          <button onClick={resetToScan} className="text-slate-400 hover:text-slate-600 text-sm font-semibold flex items-center gap-1">
             ✕ ปิด
           </button>
           <div className="text-center">
             <div className="text-3xl lg:text-5xl font-black text-sky-700 tabular-nums">📦 {qData.q_code}</div>
-            <div className="text-[18px] lg:text-2xl text-slate-400 font-mono">ใบงาน {qData.document_no}</div>
           </div>
           <div className="text-right">
             <div className="text-2xl lg:text-4xl font-black tabular-nums text-sky-700">
               {pickedCount}/{totalCount}
             </div>
-            <div className="text-[18px] lg:text-xl text-slate-400">รายการ</div>
+            <div className="text-xs lg:text-sm text-slate-400">รายการ</div>
           </div>
         </div>
-        <div className="mt-2 h-3 rounded-full bg-slate-100 overflow-hidden">
+
+
+        {/* แถบ Progress */}
+        <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
           <div
             className="h-full bg-sky-600 rounded-full transition-all duration-300"
-            style={{ width: `${totalCount === 0 ? 0 : Math.round((pickedCount / totalCount) * 100)}%}` }}
+            style={{ width: `${totalCount === 0 ? 0 : Math.round((pickedCount / totalCount) * 100)}%` }}
           />
         </div>
       </div>
@@ -322,114 +376,109 @@ export default function QPickingPanel() {
         />
       )}
 
-      {/* การ์ดรายการปัจจุบัน */}
-      {current ? (
-        <>
-          <div className="bg-white rounded-2xl border-2 border-sky-500/30 p-6 lg:p-10 lg:flex-[3] lg:flex lg:flex-col lg:justify-center text-center space-y-3 lg:space-y-5">
-            <div>
-              <div className="text-[18px] lg:text-2xl text-slate-400 tracking-widest">LOCATION ตำแหน่ง</div>
-              <div className="text-5xl sm:text-6xl lg:text-8xl font-black font-mono text-sky-700 tabular-nums leading-tight">
-                {current.location_id || (current as unknown as { location_hint?: string }).location_hint || "—"}
-              </div>
-              {current.location_wh && (
-                <div className="mt-1 text-sm lg:text-2xl font-bold text-amber-600">
-                  🏬 {getWarehouseDisplayName(current.location_wh)}
-                </div>
-              )}
-            </div>
+      {/* ช่องสแกนบาร์โค้ดเร็ว — 1 สแกน = 1 ชิ้น */}
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-3">
+        <BarcodeScanInput
+          value={itemScanValue}
+          onChange={setItemScanValue}
+          onScanSubmit={(code) => void handleItemScan(code)}
+          onOpenScannerModal={() => setCameraMode("item")}
+          placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อสินค้าเพื่อตัดยอดหยิบทันที…"
+          isProcessing={busy}
+        />
+      </div>
 
-            <div className="h-px bg-[#E8ECEA]" />
+      {/* แสดงรายการสินค้าที่จะต้องไปหยิบใส่ในกล่อง Q นี้ให้ครบทุกรายการ */}
+      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4 space-y-3 shadow-sm">
 
-            <div>
-              <div className="text-[18px] lg:text-2xl text-slate-400 tracking-widest">QTY จำนวนที่ต้องหยิบ</div>
-              <div className="text-6xl lg:text-8xl font-black text-slate-900 tabular-nums leading-none">
-                {(current.qty_required - current.qty_picked).toLocaleString("th-TH")}
-              </div>
-              <div className="mt-1 text-sm lg:text-2xl font-bold text-sky-700 tabular-nums">
-                หยิบแล้ว {current.qty_picked}/{current.qty_required}
-              </div>
-            </div>
-
-            {current.barcode && (
-              <div className="flex justify-center">
-                <img
-                  src={generateCode128PngDataUrl(current.barcode, { height: 56, scale: 3 })}
-                  alt={`บาร์โค้ด ${current.sku}`}
-                  className="h-14 lg:h-24"
-                />
-              </div>
-            )}
-            <div className="font-mono text-sm lg:text-2xl text-slate-500">{current.sku}</div>
-            <div className="text-xs lg:text-xl text-slate-400">{current.product_name}</div>
-          </div>
-
-          {/* ช่องสแกน — 1 สแกน = 1 ชิ้น */}
-          <BarcodeScanInput
-            value={itemScanValue}
-            onChange={setItemScanValue}
-            onScanSubmit={(code) => void handleItemScan(code)}
-            onOpenScannerModal={() => setCameraMode("item")}
-            placeholder="สแกนสินค้าทุกครั้งที่หยิบ 1 ชิ้น…"
-            isProcessing={busy}
-          />
-
-          {/* ปุ่มปัญหา */}
-          <button
-            onClick={() => setProblemFor(current.sku)}
-            disabled={busy}
-            className="w-full py-5 lg:py-7 rounded-2xl bg-amber-400 text-amber-950 text-2xl lg:text-4xl font-black disabled:opacity-50 active:scale-[0.98] transition-transform"
-          >
-            ⚠️ มีปัญหา
-          </button>
-        </>
-      ) : (
-        // ทุกรายการครบหรือแจ้งปัญหาหมดแล้ว (เช่น ติดปัญหา → รอหัวหน้า)
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 text-center space-y-2">
-          <div className="text-5xl">⚠️</div>
-          <div className="font-bold text-orange-900">รายการในกล่องนี้เหลือแต่ที่แจ้งปัญหา — รอหัวหน้าตัดสิน</div>
-          <div className="text-sm text-orange-700">เมื่อหัวหน้าตัดสินแล้ว กล่องจะถูกปิดให้อัตโนมัติ</div>
-        </div>
-      )}
-
-      {/* รายการทั้งหมดในกล่อง Q นี้ */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
-        <div className="text-[18px] lg:text-xl text-slate-400 mb-1.5">
-          รายการทั้งหมดในกล่อง {qData.q_code} ({totalCount})
-        </div>
-        <div className="space-y-1 lg:flex-1 lg:overflow-y-auto">
+        <div className="space-y-3">
           {items.map((it, i) => {
             const done = it.qty_picked >= it.qty_required;
             const problem = it.status === "PROBLEM";
+            const remaining = Math.max(0, it.qty_required - it.qty_picked);
             const isCurrent = Boolean(current) && norm(it.sku) === norm(current.sku);
+
             return (
               <div
                 key={`${it.sku}-${i}`}
-                className={`flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-1.5 lg:py-2.5 rounded-lg text-xs lg:text-lg font-mono ${
+                className={`p-3.5 lg:p-5 rounded-2xl border transition-all ${
                   isCurrent
-                    ? "bg-sky-50 border border-sky-200"
+                    ? "bg-sky-50/70 border-sky-300 ring-2 ring-sky-200/80 shadow-sm"
                     : done
-                      ? "bg-emerald-50/60"
+                      ? "bg-emerald-50/40 border-emerald-200"
                       : problem
-                        ? "bg-orange-50"
-                        : "bg-[#F7F9F8]"
+                        ? "bg-orange-50/50 border-orange-200"
+                        : "bg-[#F7F9F8] border-slate-200"
                 }`}
               >
-                <span>{done ? "✅" : problem ? "⚠️" : isCurrent ? "🔵" : "⬜"}</span>
-                <span className="font-bold w-14 lg:w-28 shrink-0">{it.location_id || "—"}</span>
-                {it.location_wh && (
-                  <span className="text-[18px] lg:text-base px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 shrink-0">
-                    {getWarehouseDisplayName(it.location_wh)}
+                <div className="flex items-start gap-3">
+                  <span className="text-xl sm:text-2xl shrink-0 mt-0.5">
+                    {done ? "✅" : problem ? "⚠️" : isCurrent ? "🔵" : "⬜"}
                   </span>
-                )}
-                <span className="flex-1 min-w-0 truncate text-slate-600">{it.sku}</span>
-                <span className={`tabular-nums shrink-0 ${done ? "text-emerald-700" : "text-slate-500"}`}>
-                  {it.qty_picked}/{it.qty_required}
-                </span>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    {/* แท็กตำแหน่งชั้นวาง */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-sky-100 text-sky-900 font-mono font-black text-xs sm:text-sm">
+                        📍 {it.location_id || (it as unknown as { location_hint?: string }).location_hint || "ไม่ระบุตำแหน่ง"}
+                      </span>
+                      {it.location_wh && (
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-xs font-medium">
+                          🏬 {getWarehouseDisplayName(it.location_wh)}
+                        </span>
+                      )}
+                      {done && (
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">
+                          ✓ หยิบครบแล้ว
+                        </span>
+                      )}
+                      {problem && (
+                        <span className="px-2 py-0.5 rounded-lg bg-orange-100 text-orange-800 text-xs font-bold">
+                          ⚠️ แจ้งปัญหาแล้ว
+                        </span>
+                      )}
+                    </div>
+
+                    {/* ชื่อสินค้า + จำนวน (อยู่บรรทัดเดียวกัน) */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="font-bold text-slate-900 text-base sm:text-lg leading-snug break-words flex-1 min-w-0">
+                        {it.product_name || it.sku}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleItemScan(it.sku)}
+                          disabled={done || problem}
+                          className="text-right active:scale-90 transition-transform cursor-pointer px-2.5 py-1 -mr-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200/80 shadow-xs"
+                          title="แตะเพื่อหยิบ 1 ชิ้นทันที"
+                        >
+                          <div className="text-xl sm:text-2xl font-black tabular-nums text-sky-950">
+                            {it.qty_picked}/{it.qty_required} <span className="text-xs font-normal text-slate-500">ชิ้น</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* ปุ่มเมื่อหยิบครบทุกรายการในกล่องนี้ */}
+      {items.every((it) => it.qty_picked >= it.qty_required || it.status === "PROBLEM") && (
+        <button
+          onClick={() => {
+            feedbackDone();
+            setDoneMessage(`กล่อง ${qData.q_code} หยิบเสร็จสมบูรณ์`);
+            setView("done");
+          }}
+          className="w-full py-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xl sm:text-2xl font-black shadow-lg active:scale-[0.98] transition-transform"
+        >
+          ✓ ยืนยัน — กล่อง {qData.q_code} หยิบครบแล้ว (ไปแพ็กของใส่กล่อง)
+        </button>
+      )}
 
       {/* รายการที่มีปัญหาแล้ว */}
       {items.some((it) => it.status === "PROBLEM") && (
@@ -438,8 +487,8 @@ export default function QPickingPanel() {
           {items
             .filter((it) => it.status === "PROBLEM")
             .map((it, i) => (
-              <div key={i} className="text-xs text-orange-800 font-mono">
-                ⚠️ {it.sku} ({it.qty_picked}/{it.qty_required})
+              <div key={i} className="text-xs text-orange-800">
+                ⚠️ {it.product_name || it.sku} ({it.qty_picked}/{it.qty_required})
               </div>
             ))}
         </div>
@@ -461,8 +510,15 @@ export default function QPickingPanel() {
             <div className="text-center">
               <div className="text-4xl mb-1">⚠️</div>
               <div className="font-bold text-slate-800">มีปัญหาอะไรกับ</div>
-              <div className="font-mono font-bold text-slate-900">{problemFor}</div>
-              <div className="text-xs text-slate-400">ในกล่อง {qData.q_code}</div>
+              {(() => {
+                const targetItem = items.find((it) => it.sku === problemFor);
+                return (
+                  <div className="font-bold text-slate-900 text-base lg:text-lg">
+                    {targetItem?.product_name || problemFor}
+                  </div>
+                );
+              })()}
+              <div className="text-xs text-slate-400 mt-1">ในกล่อง {qData.q_code}</div>
             </div>
             {PROBLEM_OPTIONS.map((opt) => (
               <button

@@ -367,23 +367,27 @@ export default function OutboundUploadPage() {
                 <thead>
                   <tr className="bg-[#F7F9F8] text-left text-xs text-slate-500">
                     <th className="px-3 py-2 w-12">ลำดับ</th>
-                    <th className="px-3 py-2">รหัสสินค้า</th>
                     <th className="px-3 py-2">ชื่อสินค้า</th>
                     <th className="px-3 py-2 text-right w-20">จำนวน</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pdfDoc.items.map((it) => (
-                    <tr key={it.no} className="border-t border-[#E8ECEA]">
-                      <td className="px-3 py-2 text-slate-400 tabular-nums">{it.no}</td>
-                      <td className="px-3 py-2 font-mono text-slate-800 whitespace-nowrap">{it.sku}</td>
-                      <td className="px-3 py-2 text-slate-600">{it.product_name || "—"}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-800 tabular-nums">{it.qty.toLocaleString("th-TH")}</td>
-                    </tr>
-                  ))}
+                  {pdfDoc.items.map((it) => {
+                    const displayName =
+                      it.product_name && it.sku && !it.product_name.includes(it.sku)
+                        ? `${it.sku} ${it.product_name}`
+                        : it.product_name || it.sku;
+                    return (
+                      <tr key={it.no} className="border-t border-[#E8ECEA]">
+                        <td className="px-3 py-2 text-slate-400 tabular-nums">{it.no}</td>
+                        <td className="px-3 py-2 text-slate-800 font-medium">{displayName}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-800 tabular-nums">{it.qty.toLocaleString("th-TH")}</td>
+                      </tr>
+                    );
+                  })}
                   {pdfDoc.items.length === 0 && (
                     <tr className="border-t border-[#E8ECEA]">
-                      <td colSpan={4} className="px-3 py-6 text-center text-red-600 text-sm">
+                      <td colSpan={3} className="px-3 py-6 text-center text-red-600 text-sm">
                         ไม่พบรายการสินค้าในเอกสาร — ลองส่งไฟล์ตัวอย่างให้ทีมพัฒนาเพิ่มรูปแบบ
                       </td>
                     </tr>
@@ -458,7 +462,7 @@ export default function OutboundUploadPage() {
                     <option key={h} value={h}>{h || "(ไม่มีชื่อ)"}</option>
                   ))}
                 </select>
-                <div className="text-[18px] text-slate-400 mt-0.5">{f.hint}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{f.hint}</div>
               </div>
             ))}
           </div>
@@ -593,10 +597,10 @@ export default function OutboundUploadPage() {
                     {b.items.map((it) => (
                       <span
                         key={it.sku}
-                        className={`px-2 py-1 rounded-lg text-xs font-mono ${it.matched ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700 line-through"}`}
-                        title={it.product?.product_name || it.product_name || (it.matched ? "" : "ไม่พบรหัสนี้ในระบบ")}
+                        className={`px-2 py-1 rounded-lg text-xs ${it.matched ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700 line-through"}`}
+                        title={it.product?.product_name || it.product_name || (it.matched ? "" : "ไม่พบสินค้านี้ในระบบ")}
                       >
-                        {it.sku} ×{it.qty}
+                        {it.product?.product_name || it.product_name || it.sku} ×{it.qty}
                       </span>
                     ))}
                   </div>
@@ -613,11 +617,14 @@ export default function OutboundUploadPage() {
                             📦 {q.q_code} <span className="font-normal text-slate-400">· {q.items.length} รายการ</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
-                            {q.items.map((it) => (
-                              <span key={it.sku} className="px-1.5 py-0.5 rounded bg-white border border-sky-100 text-[18px] font-mono text-slate-600">
-                                {it.sku} ×{it.qty}
-                              </span>
-                            ))}
+                            {q.items.map((it) => {
+                              const itDetail = b.items.find((x) => x.sku === it.sku);
+                              return (
+                                <span key={it.sku} className="px-1.5 py-0.5 rounded bg-white border border-sky-100 text-xs text-slate-700">
+                                  {itDetail?.product?.product_name || itDetail?.product_name || it.sku} ×{it.qty}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}

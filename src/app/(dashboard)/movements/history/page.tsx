@@ -644,7 +644,7 @@ export default function HistoryPage() {
                       <div className="font-bold text-slate-900 truncate" title={item.product_name}>
                         {item.product_name}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[18px] text-slate-500">
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
                         <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-700">
                           {item.sku}
                         </span>
@@ -654,7 +654,7 @@ export default function HistoryPage() {
                     {/* Warehouse & Location */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="font-bold text-slate-800 text-xs">{item.warehouse_name}</div>
-                      <div className="text-[18px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                      <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-1">
                         <span>ตำแหน่ง:</span>
                         <span className="font-semibold text-slate-700">{item.location_code || "-"}</span>
                       </div>
@@ -678,7 +678,7 @@ export default function HistoryPage() {
                         const displayName = formatCreatorName(item.created_by_name, item.created_by);
                         return (
                           <div className="flex items-center gap-1.5" title={displayName}>
-                            <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#052B1F] flex items-center justify-center font-bold text-[18px] shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#DFEDE6] text-[#052B1F] flex items-center justify-center font-bold text-xs shrink-0">
                               {displayName.slice(0, 1) || "U"}
                             </div>
                             <span className="truncate max-w-[130px] text-slate-700 text-xs font-medium">
@@ -855,7 +855,7 @@ export default function HistoryPage() {
                           {Number(selectedRecord.qty_change) > 0 ? "+" : "−"}
                           {Math.abs(Number(selectedRecord.qty_change || 0)).toLocaleString()} ชิ้น
                         </span>
-                        <div className="text-[18px] text-slate-400 mt-0.5">
+                        <div className="text-xs text-slate-400 mt-0.5">
                           {Number(selectedRecord.qty_change) > 0 ? "เข้าคลัง" : "ออกจากคลัง"}
                         </div>
                       </td>

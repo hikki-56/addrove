@@ -132,9 +132,11 @@ export default function ProductionPage() {
         const key = rm.rm_sku || rm.rm_name;
         const wasteFactor = 1 + (rm.waste_percentage || 0) / 100;
         const needed = item.quantity * rm.rm_qty_required * wasteFactor;
+        const isPrimary = Number(rm.is_primary) === 1 ? 1 : 0;
         if (map.has(key)) {
           const existing = map.get(key)!;
           existing.total_required += needed;
+          if (isPrimary === 1) existing.is_primary = 1;
         } else {
           map.set(key, {
             rm_sku: rm.rm_sku,
@@ -142,6 +144,7 @@ export default function ProductionPage() {
             rm_unit: rm.rm_unit || "ชิ้น",
             total_required: needed,
             available_qty: rm.available_wh2_qty,
+            is_primary: isPrimary,
           });
         }
       }
@@ -331,7 +334,9 @@ export default function ProductionPage() {
           <p className="text-slate-500 text-sm mt-1">ลองเปลี่ยนคำค้นหา หรือกดรีเฟรชข้อมูลใหม่อีกครั้ง</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+        // จอกลางขึ้นไป (≥1024) เรียง 3 คอลัมน์ — การ์ดกว้างพออ่านสูตรได้สบาย
+        // ไม่ยืดแค่ 2 คอลัมน์จนดูโหว่บนจอใหญ่
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {filteredBoms.map((bom) => (
             <ProductCard
               key={bom.fg_sku}

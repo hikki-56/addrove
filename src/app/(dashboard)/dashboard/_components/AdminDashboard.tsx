@@ -305,7 +305,7 @@ export default function AdminDashboard() {
             <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-[#B42318]" />
             <div>
               <p className="text-sm font-semibold text-[#B42318]">โหลดข้อมูล Dashboard ไม่สำเร็จ</p>
-              <p className="mt-0.5 text-[20px] text-[#912018]">
+              <p className="mt-0.5 text-sm text-[#912018]">
                 {dashError} — ตัวเลขด้านล่างอาจไม่ครบถ้วน ไม่ใช่ข้อมูลจริงทั้งหมด
               </p>
             </div>
@@ -320,16 +320,18 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* KPI — 4 ใบ/แถวตั้งแต่ lg (โน้ตบุ๊ตทุกรุ่น) · แคบกว่านั้นเรียง 2×2 · เลข+หน่วยบรรทัดเดียวเสมอ */}
+      {/* KPI — 4 ใบ/แถวเดียวตั้งแต่ lg ขึ้นไป · มือถือ 1 คอลัมน์ / แท็บเล็ตเล็ก 2 คอลัมน์
+          ช่วง lg–2xl ขนาดเลขไหล่ตาม viewport ด้วย clamp เพื่อให้ เลข+หน่วย+ไอคอน
+          อยู่บรรทัดเดียวกันพอดีไม่ทับกัน · จอใหญ่ ≥1536 คงขนาดเดิม (60px) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:gap-6">
         {kpis.map((kpiItem) => {
           const KpiIcon = kpiItem.icon;
           return (
-            <div key={kpiItem.title} className={`rounded-2xl border p-4 lg:p-3 xl:p-4 2xl:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.05)] ${
+            <div key={kpiItem.title} className={`min-w-0 rounded-2xl border p-4 lg:p-3 xl:p-4 2xl:p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05)] ${
               kpiItem.hero ? "border-[#04301F] bg-[#06402B]" : "border-[#E8ECEA] bg-white"
             }`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-2">
+              <div className="flex min-w-0 items-start justify-between gap-3 2xl:gap-4">
+                <div className="flex min-w-0 flex-col gap-2">
                   <p className={`truncate text-sm 2xl:text-base font-medium ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`} title={kpiItem.title}>
                     {kpiItem.title}
                   </p>
@@ -339,25 +341,25 @@ export default function AdminDashboard() {
                     // โหลดไม่สำเร็จ → แสดง — แทนเลข 0 ที่ทำให้เข้าใจว่าไม่มีสินค้า/ไม่มีรายการจริง
                     <p className="text-3xl font-semibold tracking-tight text-[#667085]">—</p>
                   ) : (
-                    <p className={`whitespace-nowrap text-3xl lg:text-[36px] xl:text-[60px] 2xl:text-[60px] font-semibold tracking-tight tabular-nums ${kpiItem.hero ? "text-white" : "text-[#111827]"}`}>
+                    <p className={`whitespace-nowrap text-3xl lg:[font-size:clamp(0.875rem,0.35rem+1vw,1.75rem)] 2xl:text-3xl font-semibold tracking-tight tabular-nums ${kpiItem.hero ? "text-white" : "text-[#111827]"}`}>
                       <span ref={kpiItem.valueRef} />
                       {kpiItem.unit ? (
-                        <span className={`ml-1.5 text-base lg:text-[20px] xl:text-sm 2xl:text-base font-medium ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`}>
+                        <span className={`ml-1.5 text-xs font-medium lg:hidden xl:inline 2xl:text-base ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`}>
                           {kpiItem.unit}
                         </span>
                       ) : null}
                     </p>
                   )}
                 </div>
-                <div className={`grid size-10 shrink-0 place-items-center rounded-lg ${
+                <div className={`grid size-8 lg:size-6 xl:size-8 2xl:size-12 shrink-0 place-items-center rounded-lg ${
                   kpiItem.hero
                     ? "bg-[#0F5C3F] text-[#C9E5D6]"
                     : "bg-[#EAF2EE] text-[#06402B]"
                 }`}>
-                  <KpiIcon />
+                  <KpiIcon className="size-5 2xl:size-8" />
                 </div>
               </div>
-              <p className={`mt-4 truncate text-sm 2xl:text-[24px] ${
+              <p className={`mt-3 truncate text-sm 2xl:text-base ${
                 dashError ? "font-medium text-[#B54708]" : kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"
               }`} title={dashError ? undefined : kpiItem.caption}>
                 {dashError ? "ไม่สามารถโหลดข้อมูลส่วนนี้ได้" : kpiItem.caption}
@@ -370,26 +372,28 @@ export default function AdminDashboard() {
       {/* Analytics 2/3 + Warehouse donut 1/3 — มือถือเรียง: กราฟ → โดนัท → รออนุมัติ → กิจกรรมวันนี้ */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] lg:col-span-2 lg:col-start-1 lg:row-start-1">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-3 px-6 pt-6">
-              <div className="flex min-w-0 flex-col gap-1">
-                <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">ภาพรวมการเคลื่อนไหว</h2>
-                <div className="flex flex-wrap items-center gap-4">
+            {/* หัวการ์ดบรรทัดเดียว: ชื่อ + ตัวอย่างสี + ปุ่มช่วงเวลา เรียงแนวนอนร่วมกัน
+                (ยัง flex-wrap เผื่อจอแคบมากจะได้ตกบรรทัดใหม่อย่างสวย ไม่ล้น) */}
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-6 pt-6">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                <h2 className="text-sm 2xl:text-lg font-semibold tracking-tight text-[#111827]">ภาพรวมการเคลื่อนไหว</h2>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   {CHART_SERIES_META.map((series) => (
-                    <span key={series.key} className="flex items-center gap-1.5 text-sm 2xl:text-base text-[#667085]">
+                    <span key={series.key} className="flex items-center gap-1.5 text-xs 2xl:text-base text-[#667085]">
                       <span className="size-2 rounded-full" style={{ backgroundColor: series.color }} />
                       {series.label}
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="inline-flex h-9 items-center rounded-lg bg-[#F3F6F4] p-1">
+              <div className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[#F3F6F4] p-1">
                 {([["7d", "7 วัน"], ["30d", "30 วัน"], ["90d", "90 วัน"]] as const).map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setTimeframe(key)}
                     aria-pressed={timeframe === key}
-                    className={`h-7 rounded-md px-3 text-xs 2xl:text-sm font-medium transition-colors duration-150 cursor-pointer ${
+                    className={`h-7 rounded-md px-2.5 text-xs 2xl:px-3 2xl:text-sm font-medium transition-colors duration-150 cursor-pointer ${
                       timeframe === key
                         ? "bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
                         : "text-[#667085] hover:text-[#111827]"
@@ -490,7 +494,7 @@ export default function AdminDashboard() {
             <div className="flex flex-1 flex-col items-center gap-6 px-6 py-6">
               {loading ? (
                 <>
-                  <div className="size-[320px] rounded-full skeleton opacity-40" />
+                  <div className="size-[320px] max-w-full rounded-full skeleton opacity-40" />
                   <div className="w-full space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div key={`sk-donut-${i}`} className="h-6 rounded skeleton opacity-40" />
@@ -578,7 +582,7 @@ export default function AdminDashboard() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm 2xl:text-base font-semibold text-[#111827]">{doc.document_no} · เป้าหมาย {doc.target_sheet || "-"}</p>
-                          <p className="mt-0.5 text-[20px] 2xl:text-sm text-[#667085]">
+                          <p className="mt-0.5 text-sm text-[#667085]">
                             {ageHrs !== null ? `รอ ${ageHrs} ชม.` : "รอดำเนินการ"}
                           </p>
                         </div>
@@ -944,7 +948,7 @@ function WarehouseLegendRow({ slice }: { slice: WarehouseDonutSlice }) {
         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
         <span className="truncate text-sm 2xl:text-base text-[#667085]">{slice.warehouseName}</span>
         {slice.isNegative ? (
-          <span className="shrink-0 rounded-full bg-[#FCEFED] px-1.5 py-0.5 text-[18px] font-semibold text-[#B42318]">
+          <span className="shrink-0 rounded-full bg-[#FCEFED] px-1.5 py-0.5 text-xs font-semibold text-[#B42318]">
             ยอดติดลบ
           </span>
         ) : null}
@@ -974,7 +978,7 @@ function SectionStateBox({
       }`}
     >
       <p className={`text-sm font-semibold ${tone === "error" ? "text-[#B42318]" : "text-[#344054]"}`}>{title}</p>
-      {hint ? <p className="mt-1 text-[20px] text-[#667085]">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-sm text-[#667085]">{hint}</p> : null}
     </div>
   );
 }

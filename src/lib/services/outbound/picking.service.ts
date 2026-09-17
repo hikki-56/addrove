@@ -24,22 +24,40 @@ function cleanSku(v: string): string {
   return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
 }
 
-/** หารายการในบิลจากสิ่งที่สแกน (sku ตรง หรือ ตรงกับ barcode ของสินค้า) */
+/** หารายการในบิลจากสิ่งที่สแกนหรือระบุ (ชื่อสินค้า, sku, หรือ barcode) */
 export function findBillItemByScan(
   items: OutboundBillItem[],
   scanned: string
 ): OutboundBillItem | null {
   const key = cleanSku(scanned);
-  // 1) SKU ตรง
+  if (!key) return null;
+
+  // 1) ชื่อสินค้าตรงเป๊ะ
+  const byName = items.find((it) => it.product_name && cleanSku(it.product_name) === key);
+  if (byName) return byName;
+
+  // 2) SKU ตรง
   const bySku = items.find((it) => cleanSku(it.sku) === key);
   if (bySku) return bySku;
-  // 2) barcode ตรง (สแกนบาร์โค้ดของสินค้า)
+
+  // 3) barcode / product_id / sku ตรง
   const scannedNorm = normalizeBarcode(scanned);
-  if (!scannedNorm) return null;
-  for (const it of items) {
-    const targets = [it.barcode, it.sku, it.product_id].filter(Boolean) as string[];
-    if (areBarcodesMatching(scanned, targets)) return it;
+  if (scannedNorm) {
+    for (const it of items) {
+      const targets = [it.barcode, it.sku, it.product_id, it.product_name].filter(Boolean) as string[];
+      if (areBarcodesMatching(scanned, targets)) return it;
+    }
   }
+
+  // 4) ค้นหาจากส่วนหนึ่งของชื่อสินค้า (ถ้ายาว >= 3 ตัวอักษร)
+  if (key.length >= 3) {
+    const bySub = items.find((it) => {
+      const pn = it.product_name ? cleanSku(it.product_name) : "";
+      return pn && (pn.includes(key) || key.includes(pn));
+    });
+    if (bySub) return bySub;
+  }
+
   return null;
 }
 
@@ -62,8 +80,10 @@ export async function startPick(
     throw new Error(`บิลนี้กำลังถูกหยิบโดย ${note.pick_assigned_to_name || note.pick_assigned_to} อยู่`);
   }
 
-  // ตรวจ Available ก่อนเปลี่ยนสถานะ (ไม่พอ → คง READY_TO_PICK พร้อมเหตุผล)
-  await assertAvailableForPick(repo, note.warehouse_id, note);
+  // ตรวจ Available ก่อนเปลี่ยนสถานะ (แจ้งเตือนแต่ไม่บล็อกการหยิบจริงในคลัง)
+  await assertAvailableForPick(repo, note.warehouse_id, note).catch((err) => {
+    console.warn("[startPick] Available stock warning (allowing worker to pick):", err?.message || err);
+  });
 
   const summaries: StockSummary[] = await repo.stockSummary
     .findAll()

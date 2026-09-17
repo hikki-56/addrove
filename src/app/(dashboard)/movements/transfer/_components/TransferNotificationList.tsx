@@ -263,7 +263,7 @@ export default function TransferNotificationList({
                   <span className={`h-1.5 w-1.5 rounded-full ${stepConfig.dot}`} />
                   <span>{stepConfig.title}</span>
                   {step > 0 && step < 3 && (
-                    <span className="font-mono text-[20px] opacity-70">({step}/3)</span>
+                    <span className="font-mono text-sm opacity-70">({step}/3)</span>
                   )}
                 </div>
               </div>

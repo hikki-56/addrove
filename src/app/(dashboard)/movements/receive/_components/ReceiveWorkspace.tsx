@@ -146,7 +146,7 @@ export default function ReceiveWorkspace() {
           >
             <span className="leading-tight">{btn.label}</span>
             {!!btn.badge && btn.badge > 0 && (
-              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-[20px] font-black bg-rose-600 text-white shadow-xs">
+              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-sm font-black bg-rose-600 text-white shadow-xs">
                 {btn.badge}
               </span>
             )}

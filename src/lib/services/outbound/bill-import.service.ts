@@ -275,17 +275,31 @@ export function matchProducts(bills: ParsedBill[], products: Product[]): Preview
   const normName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
   const descPrefixMatch = (key: string): Product | undefined => {
     if (key.length < 4) return undefined;
-    return products.find((p) => normName(p.product_name || "").startsWith(key));
+    return products.find((p) => {
+      const pn = normName(p.product_name || "");
+      if (!pn) return false;
+      return pn === key || pn.startsWith(key) || key.startsWith(pn);
+    });
   };
 
-  const findProduct = (rawSku: string): Product | undefined => {
+  const findProduct = (rawSku: string, rawName?: string): Product | undefined => {
     const key = cleanSku(rawSku);
-    return bySku.get(key) ?? byBarcode.get(key) ?? descPrefixMatch(normName(rawSku));
+    const byExact = bySku.get(key) ?? byBarcode.get(key);
+    if (byExact) return byExact;
+    if (rawName) {
+      const nameKey = cleanSku(rawName);
+      const byNameExact = bySku.get(nameKey) ?? byBarcode.get(nameKey);
+      if (byNameExact) return byNameExact;
+    }
+    return (
+      descPrefixMatch(normName(rawSku)) ??
+      (rawName ? descPrefixMatch(normName(rawName)) : undefined)
+    );
   };
 
   return bills.map((b) => {
     const items: MatchedBillItem[] = b.items.map((it) => {
-      const product = findProduct(it.sku);
+      const product = findProduct(it.sku, it.product_name);
       return { ...it, product, matched: Boolean(product) };
     });
     // รวมรายการ SKU ซ้ำในบิลเดียวกัน (บางไฟล์แยกบรรทัดต่อโปรโมชั่น)

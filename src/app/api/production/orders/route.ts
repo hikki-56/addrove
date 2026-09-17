@@ -242,7 +242,18 @@ export async function POST(req: NextRequest) {
     };
 
     // 2. Validate BOM components and aggregated requirements in Warehouse 2
-    const totalRequiredMaterialsMap = new Map<string, { sku: string; barcode?: string; name: string; unit: string; requiredQty: number; availableQty: number }>();
+    const totalRequiredMaterialsMap = new Map<
+      string,
+      {
+        sku: string;
+        barcode?: string;
+        name: string;
+        unit: string;
+        requiredQty: number;
+        availableQty: number;
+        isPrimary: boolean;
+      }
+    >();
     const formattedItems: ProductionOrderItem[] = [];
 
     for (const item of items) {
@@ -261,12 +272,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Check if formula has designated primary items
+      const hasDesignatedPrimary = formula.items.some((m: any) => Number(m.is_primary) === 1);
+
       const materials: ProductionMaterialItem[] = [];
 
       for (const mat of formula.items) {
         const perUnit = Number(mat.rm_qty_required) || 1;
         const totalRmQty = Number((perUnit * qty).toFixed(4));
         const matKey = cleanCode(mat.rm_sku || mat.rm_barcode || mat.rm_name);
+        // If formula has designated primary items, strictly require only those. Otherwise, require all (fallback).
+        const isPrimaryForThis = hasDesignatedPrimary ? Number(mat.is_primary) === 1 : true;
 
         const currentAgg = totalRequiredMaterialsMap.get(matKey) || {
           sku: mat.rm_sku,
@@ -275,9 +291,13 @@ export async function POST(req: NextRequest) {
           unit: mat.rm_unit || "ชิ้น",
           requiredQty: 0,
           availableQty: getWh2Stock(mat.rm_sku, mat.rm_barcode, mat.rm_name),
+          isPrimary: false,
         };
 
         currentAgg.requiredQty += totalRmQty;
+        if (isPrimaryForThis) {
+          currentAgg.isPrimary = true;
+        }
         totalRequiredMaterialsMap.set(matKey, currentAgg);
 
         materials.push({
@@ -305,13 +325,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if any material is insufficient in Warehouse 2
+    // Check if any PRIMARY material is insufficient in Warehouse 2
     for (const [, reqMat] of totalRequiredMaterialsMap.entries()) {
-      if (reqMat.availableQty < reqMat.requiredQty) {
+      if (reqMat.isPrimary && reqMat.availableQty < reqMat.requiredQty) {
         return NextResponse.json(
           {
             success: false,
-            message: `วัตถุดิบ "${reqMat.name}" (${reqMat.sku}) ในโกดัง 2 มีไม่เพียงพอ (ต้องการ ${reqMat.requiredQty} ${reqMat.unit} แต่มีในโกดัง 2 เพียง ${reqMat.availableQty.toLocaleString()} ${reqMat.unit})`,
+            message: `วัตถุดิบตัวหลัก "${reqMat.name}" (${reqMat.sku}) ในโกดัง 2 มีไม่เพียงพอ (ต้องการ ${reqMat.requiredQty} ${reqMat.unit} แต่มีในโกดัง 2 เพียง ${reqMat.availableQty.toLocaleString()} ${reqMat.unit})`,
           },
           { status: 400 }
         );

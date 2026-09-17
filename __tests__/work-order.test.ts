@@ -160,6 +160,49 @@ describe("ใบงานกล่อง Q — สร้าง/ส่ง", () =>
 });
 
 describe("ใบงานกล่อง Q — พนักงานสแกนกล่อง/สินค้า", () => {
+  it.each(["PACKED", "HOLD", "CANCELLED"])(
+    "ignores an old Express bill in %s when Q1 has a new bill",
+    async (status) => {
+      const { repo, docs } = await createdAndSent([
+        { q_code: "Q1", items: [{ sku: "A", qty: 2 }] },
+      ]);
+      const active = docs[0];
+      const note = JSON.parse(active.note);
+      delete note.source;
+      delete note.q_boxes;
+      note.q_assignments = [{ q_code: "Q1", items: [{ sku: "A", qty: 2 }], status: "PENDING" }];
+      note.outbound_status = "PICKING";
+      active.document_type = "OUTBOUND_ORDER";
+      active.note = JSON.stringify(note);
+      docs.unshift({
+        ...active,
+        document_id: "old-bill",
+        document_no: "OLD-BILL",
+        note: JSON.stringify({ ...note, outbound_status: status }),
+      });
+      const view = await startQBox(repo, "Q1", packerA);
+      expect(view.document_id).toBe(active.document_id);
+      expect((await confirmQItemScan(repo, "Q1", "BC-A", packerA)).qty_picked).toBe(1);
+      expect(JSON.parse(docs[0].note).items[0].qty_picked).toBe(0);
+    }
+  );
+
+  it("opens the new assignment when an older completed work order reused Q1", async () => {
+    const boxes = [{ q_code: "Q1", items: [{ sku: "A", qty: 1 }] }];
+    const { repo, docs } = await createdAndSent(boxes);
+    await startQBox(repo, "Q1", packerA);
+    await confirmQItemScan(repo, "Q1", "A", packerA);
+    const next = await createWorkOrder(repo, input(boxes), admin);
+    await sendWorkOrder(repo, next.document_id, admin);
+    // Exercise both repository orderings; historical rows must never hide active work.
+    for (let i = 0; i < 2; i++) {
+      const view = await startQBox(repo, "Q1", packerA);
+      expect(view.document_id).toBe(next.document_id);
+      docs.reverse();
+    }
+    expect((await confirmQItemScan(repo, "Q1", "prod-a", packerA)).qty_picked).toBe(1);
+  });
+
   beforeEach(() => {
     (issueStock as jest.Mock).mockClear();
     (receiveStock as jest.Mock).mockClear();

@@ -77,6 +77,21 @@ describe("stock reservation — On Hand / Reserved / Available", () => {
   const SKU_A = "prod-a";
   const SKU_B = "prod-b";
 
+  it("does not report zero stock when the stock source fails", async () => {
+    const repo = makeRepo({});
+    repo.stockSummary.findAll = jest.fn().mockRejectedValue(new Error("stock source unavailable"));
+    await expect(getAvailability(repo, "wh-01", [{ sku: "A", product_id: SKU_A, qty: 1 }]))
+      .rejects.toThrow("stock source unavailable");
+  });
+
+  it("reports an unlinked product separately from a real stock shortage", async () => {
+    const doc = billDoc("BIL-UNLINKED", "READY_TO_PICK", [
+      { sku: "UNKNOWN", product_id: "", qty_required: 1, qty_picked: 0 },
+    ]);
+    await expect(assertAvailableForPick(makeRepo({}), "wh-01", JSON.parse(doc.note)))
+      .rejects.toThrow(/ยังไม่ได้เชื่อมกับสินค้า.*UNKNOWN/);
+  });
+
   it("นับ Reserved จากบิลที่อยู่ในสถานะจองเท่านั้น (หักส่วนที่หยิบแล้ว)", async () => {
     const repo = makeRepo({
       docs: [

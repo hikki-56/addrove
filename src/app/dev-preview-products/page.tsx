@@ -156,7 +156,7 @@ export default function DevPreviewProductsPage() {
         <DashboardHeader
           user={{ name: "ผู้ดูแลระบบ", email: "admin@stockify.local", role: "ADMIN" }}
         />
-        <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain overflow-x-hidden w-full max-w-full bg-[#EFF3F1]">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain w-full max-w-full bg-[#EFF3F1]">
           <div className="mx-auto w-full px-4 py-6 md:px-6 md:py-8 xl:px-8">
             {ready ? <ProductsPage /> : null}
           </div>

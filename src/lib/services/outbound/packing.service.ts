@@ -15,6 +15,7 @@ import {
   assertBoxTransition,
   billStatusToDocumentStatus,
 } from "./outbound-state-machine";
+import { markQBoxStatusInSheet } from "./q-sheets-sync.service";
 
 /**
  * Packing — แพ็กของที่หยิบแล้วลงกล่อง (1 บิล = หลายกล่องได้)
@@ -226,6 +227,27 @@ export async function scanItemIntoBox(
       n.packed_at = new Date().toISOString();
     }, { alsoStatus: billStatusToDocumentStatus("PACKED") });
     if (result) billStatus = result.note.outbound_status;
+
+    // อัปเดตสถานะกล่อง Q ใน Google Sheets เป็น "แพ็กเสร็จแล้ว"
+    const billRef = billNote.express_bill_no || billDoc.reference_no || billDoc.document_no;
+    if (billNote.q_assignments && billNote.q_assignments.length > 0) {
+      for (const qa of billNote.q_assignments) {
+        void markQBoxStatusInSheet({
+          q_code: qa.q_code,
+          newStatus: "แพ็กเสร็จแล้ว",
+          billNo: billRef,
+        });
+      }
+    }
+    if (billNote.q_boxes && billNote.q_boxes.length > 0) {
+      for (const qb of billNote.q_boxes) {
+        void markQBoxStatusInSheet({
+          q_code: qb.q_code,
+          newStatus: "แพ็กเสร็จแล้ว",
+          billNo: billRef,
+        });
+      }
+    }
   }
 
   return {

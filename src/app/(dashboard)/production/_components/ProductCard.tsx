@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { EnrichedBomFormula } from "./types";
 
 interface ProductCardProps {
@@ -17,6 +18,7 @@ export default function ProductCard({
   onQuantityChange,
   onAddToCart,
 }: ProductCardProps) {
+  const [showBomDetails, setShowBomDetails] = useState(false);
   return (
     <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs hover:shadow-lg hover:border-[#8FB3A3] transition-all duration-200 flex flex-col justify-between p-4 sm:p-5 space-y-3 group relative overflow-hidden">
       {/* Product Image */}
@@ -30,19 +32,22 @@ export default function ProductCard({
           }}
         />
         {typeof bom.fg_wh2_stock === "number" && (
-          <span className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-slate-900/85 backdrop-blur-xs text-sm font-bold text-white shadow-xs font-mono">
+          <span
+            title={`ในคลัง: ${bom.fg_wh2_stock.toLocaleString()} ${bom.fg_unit}`}
+            className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate px-2.5 py-1 rounded-lg bg-slate-900/85 backdrop-blur-xs text-sm font-bold text-white shadow-xs font-mono"
+          >
             ในคลัง: {bom.fg_wh2_stock.toLocaleString()} {bom.fg_unit}
           </span>
         )}
       </div>
 
       {/* SKU, Barcode, and Name */}
-      <div className="space-y-1 text-center">
-        <div className="font-mono font-bold text-base text-slate-900">
+      <div className="min-w-0 space-y-1 text-center">
+        <div className="font-mono font-bold text-base text-slate-900 break-all" title={bom.fg_sku}>
           {bom.fg_sku}
         </div>
         {bom.fg_barcode && (
-          <div className="text-sm font-mono font-medium text-slate-500">
+          <div className="text-sm font-mono font-medium text-slate-500 break-all" title={bom.fg_barcode}>
             {bom.fg_barcode}
           </div>
         )}
@@ -53,8 +58,18 @@ export default function ProductCard({
 
       {/* Producible Count & Stepper */}
       <div className="bg-slate-50 rounded-xl p-3.5 border border-[#E8ECEA]/90 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-slate-700">ผลิตได้สูงสุด:</span>
+        <div className="flex items-center justify-between gap-1 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-slate-700">ผลิตได้สูงสุด:</span>
+            {bom.has_primary_designated && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#8FB3A3]"
+                title="คำนวณจากชิ้นส่วนตัวหลัก"
+              >
+                อิงตัวหลัก
+              </span>
+            )}
+          </div>
           {maxProducible > 0 ? (
             <span className="text-[#052B1F] bg-[#DFEDE6] border border-[#8FB3A3] px-2.5 py-0.5 rounded-lg text-sm font-bold font-mono">
               {maxProducible.toLocaleString()} {bom.fg_unit}
@@ -125,6 +140,77 @@ export default function ProductCard({
             MAX
           </button>
         </div>
+
+        {/* Collapsible BOM Formula items */}
+        {bom.items && bom.items.length > 0 && (
+          <div className="pt-1 border-t border-slate-200/70">
+            <button
+              type="button"
+              onClick={() => setShowBomDetails((prev) => !prev)}
+              className="w-full text-xs text-slate-500 hover:text-slate-800 flex items-center justify-between py-1 px-1 transition-colors cursor-pointer font-medium"
+            >
+              <span>สูตรวัตถุดิบ ({bom.items.length} รายการ)</span>
+              <span className="flex items-center gap-1 text-[11px] text-[#052B1F] font-semibold">
+                {showBomDetails ? "ซ่อน" : "ดูสูตร"}
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${showBomDetails ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            </button>
+
+            {showBomDetails && (
+              <div className="mt-1.5 p-2 rounded-xl bg-white border border-slate-200 space-y-1.5 text-xs animate-in fade-in duration-150 shadow-inner">
+                <div className="text-[10px] font-bold text-slate-500 pb-1 border-b border-slate-100 flex justify-between">
+                  <span>วัตถุดิบ</span>
+                  <span>มีในคลัง 2</span>
+                </div>
+                <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                  {bom.items.map((item, idx) => {
+                    const isPrimary = Number(item.is_primary) === 1;
+                    const available = item.available_wh2_qty || 0;
+                    const req = item.rm_qty_required || 1;
+                    const hasEnough = available >= req;
+
+                    return (
+                      <div
+                        key={item.rm_sku || idx}
+                        className="flex items-center justify-between gap-1.5 py-0.5 text-[11px]"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                          <span
+                            className={`px-1 py-0.2 rounded text-[9px] font-bold shrink-0 ${
+                              isPrimary
+                                ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
+                            }`}
+                          >
+                            {isPrimary ? "หลัก" : "รอง"}
+                          </span>
+                          <span className="truncate text-slate-800" title={item.rm_name}>
+                            {item.rm_name}
+                          </span>
+                        </div>
+                        <span
+                          className={`font-mono font-bold shrink-0 ${
+                            hasEnough ? "text-slate-700" : isPrimary ? "text-rose-600" : "text-amber-600"
+                          }`}
+                          title={`ต้องใช้ ${req} ${item.rm_unit} ต่อชุด`}
+                        >
+                          {available.toLocaleString()} {item.rm_unit}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add to Cart Button — height ≥ 48px */}
