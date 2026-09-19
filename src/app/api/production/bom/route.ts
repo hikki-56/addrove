@@ -22,9 +22,11 @@ export async function GET(req: NextRequest) {
     const sku = searchParams.get("sku");
 
     // 1. Fetch real inventory in Warehouse 2 (โกดัง 2)
+    //    แคชสั้น 20 วิ — คนเข้าหน้าต่อเนื่องได้ข้อมูลจากแคช ส่วนการสั่งผลิต (orders API)
+    //    อ่านสดและเคลียร์แคชเองหลังตัดสต็อก จึงไม่เห็นยอดเกิน 20 วิหลังธุรกรรม
     const wh2SheetName = getWarehouseSheetName("wh-02");
     const [wh2Rows, stockSummaryRows] = await Promise.all([
-      readSheet(wh2SheetName, "A2:I", { forceFresh: true }).catch(() => []),
+      readSheet(wh2SheetName, "A2:I", { maxAgeMs: 20_000 }).catch(() => []),
       readSheet(SHEETS.STOCK_SUMMARY, "A2:E").catch(() => []),
     ]);
 
@@ -63,13 +65,14 @@ export async function GET(req: NextRequest) {
       if (itemBarcode && wh2StockByCleanSku.has(cleanCode(itemBarcode))) return wh2StockByCleanSku.get(cleanCode(itemBarcode))!;
       if (itemName && wh2StockByName.has(cleanCode(itemName))) return wh2StockByName.get(cleanCode(itemName))!;
 
-      // Fallback to StockSummary for wh-02
+      // Fallback to StockSummary for wh-02 — จับคู่แบบตรงตัวเท่านั้น
+      // (การจับแบบ contains ซึ่งกันและกันเสี่ยงเจอสินค้าผิดตัว เช่น A1 ไปชน A12)
       if (stockSummaryRows && stockSummaryRows.length > 0) {
         const cleanTarget = cleanCode(itemSku || itemBarcode || itemName);
         for (const sr of stockSummaryRows) {
           const sPid = cleanCode(sr[0]);
           const sWh = (sr[1] || "").trim().toLowerCase();
-          if ((sWh === "wh-02" || sWh === "wh-2" || sWh.includes("โกดัง2") || sWh.includes("โกดัง 2")) && (sPid === cleanTarget || sPid.includes(cleanTarget) || cleanTarget.includes(sPid))) {
+          if ((sWh === "wh-02" || sWh === "wh-2" || sWh.includes("โกดัง2") || sWh.includes("โกดัง 2")) && sPid === cleanTarget && cleanTarget) {
             const sq = parseFloat(String(sr[3] || "0").replace(/,/g, "")) || 0;
             if (sq > 0) return sq;
           }
@@ -83,7 +86,10 @@ export async function GET(req: NextRequest) {
       const enrichedItems = (f.items || []).map((item: any) => {
         const availableInWh2 = getWh2Stock(item.rm_sku, item.rm_barcode, item.rm_name);
         const perUnit = Number(item.rm_qty_required) || 1;
-        const possible = Math.floor(availableInWh2 / perUnit);
+        // นับเศษเสียด้วย: ผลิต 1 ชุดต้องสิ้นเปลืองวัตถุดิบจริง perUnit * wasteFactor
+        // ให้ตรงกับการตรวจสอบ/ตัดสต็อกตอนสั่งผลิต (orders API)
+        const wasteFactor = 1 + (Number(item.waste_percentage) || 0) / 100;
+        const possible = Math.floor(availableInWh2 / (perUnit * wasteFactor));
 
         return {
           ...item,
@@ -95,20 +101,18 @@ export async function GET(req: NextRequest) {
 
       // Filter primary items (ตัวหลัก = 1)
       const primaryItems = enrichedItems.filter((item: any) => item.is_primary === 1);
-      // If primary items are designated, calculate maxProducible solely from primary items!
-      // Otherwise, fallback to all enriched items (for backward compatibility with untagged formulas)
-      const itemsToCalculate = primaryItems.length > 0 ? primaryItems : enrichedItems;
 
+      // คำนวณจากวัตถุดิบทุกรายการในสูตร (หลัก + รอง) เพราะการผลิตจริงหักวัตถุดิบรองด้วย
+      // วัตถุดิบรองที่เหลือ 0 หรือน้อยกว่าตัวหลัก จะจำกัดจำนวนที่ผลิตได้จริง
       let minProducible = Infinity;
-      for (const it of itemsToCalculate) {
+      for (const it of enrichedItems) {
         if (it.possible_units < minProducible) {
           minProducible = it.possible_units;
         }
       }
 
-      // Calculation from Warehouse 2 inventory
       const maxProducible =
-        itemsToCalculate.length > 0 && Number.isFinite(minProducible)
+        enrichedItems.length > 0 && Number.isFinite(minProducible)
           ? Math.max(0, minProducible)
           : 0;
 
@@ -140,8 +144,17 @@ export async function GET(req: NextRequest) {
     }
 
     const formulas = await bomRepository.getAllFormulas();
-    const enriched = formulas.map(enrichFormula);
-    return NextResponse.json({ success: true, data: enriched });
+    // หน้า list ส่งเฉพาะหัวสูตร + สรุปจำนวน — ลดขนาด payload จาก Google Sheets ที่โหลดทีเดียวทั้งหมด
+    // (ดึงวัตถุดิบรายสูตรทีหลังผ่าน ?sku= ตอนขยายแถว / เพิ่มตะกร้า)
+    const headers = formulas.map(enrichFormula).map((f: any) => {
+      const { items, ...header } = f;
+      return {
+        ...header,
+        item_count: Array.isArray(items) ? items.length : 0,
+        primary_count: Array.isArray(items) ? items.filter((it: any) => it.is_primary === 1).length : 0,
+      };
+    });
+    return NextResponse.json({ success: true, data: headers });
   } catch (error) {
     console.error("[GET /api/production/bom] Error:", error);
     return NextResponse.json(

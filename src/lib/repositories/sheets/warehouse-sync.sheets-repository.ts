@@ -39,6 +39,11 @@ function cleanSkuCode(sku?: string): string {
     .replace(/[\s\-_]/g, "");
 }
 
+// syncAdd: จำนวนครั้งที่พยายามเขียน+ตรวจยืนยัน, ระยะรอก่อนอ่านกลับตรวจ, และ backoff ต่อรอบ
+const SYNC_ADD_MAX_ATTEMPTS = 3;
+const SYNC_ADD_VERIFY_DELAY_MS = 400;
+const SYNC_ADD_RETRY_DELAY_MS = 600;
+
 export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
   async syncDeduct(
     warehouseId: string,
@@ -198,90 +203,140 @@ export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
     }
   }
 
+  /**
+   * เพิ่มสต็อกลงแท็บโกดังแบบ "เขียนแล้วต้องตรวจยืนยัน" — ทุกรอบหลังเขียนจะอ่านชีต
+   * กลับมาเทียบยอด ถ้าไม่ตรงจะ retry สูงสุด SYNC_ADD_MAX_ATTEMPTS ครั้ง
+   * กลไกกันบวกยอดซ้ำตอน retry: จำยอดเป้าหมายของรอบก่อน (lastTargetQty) ไว้
+   * ถ้าอ่านกลับมาเจอยอดตรงเป้าหมายเดิม = รอบก่อนเขียนสำเร็จแล้ว (แค้ response หาย)
+   * ถือว่าจบ ห้ามบวกซ้ำ และเมื่อหมดทุกรอบยังไม่สำเร็จจะ throw เพื่อให้ caller
+   * เห็นว่าข้อมูลไม่ได้เข้าจริง (เดิม catch กลืน error เงียบ ๆ ทำให้แถวหายโดยไม่มีใครรู้)
+   */
   async syncAdd(
     warehouseId: string,
     product: ProductSyncInfo,
     qty: number,
     locationId?: string
   ): Promise<void> {
-    try {
-      const sheetName = getWarehouseSheetName(warehouseId);
-      clearSheetCache(sheetName);
-      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+    const sheetName = getWarehouseSheetName(warehouseId);
+    const targetSku = cleanSkuCode(product.sku);
+    const targetBarcode = cleanSkuCode(product.barcode);
+    const targetLoc = cleanLocCode(locationId);
+    const qtyOf = (r: string[]): number =>
+      parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim()) || 0;
 
-      const targetSku = cleanSkuCode(product.sku);
-      const targetBarcode = cleanSkuCode(product.barcode);
-      const targetLoc = cleanLocCode(locationId);
-
+    const locate = (
+      rows: string[][] | null | undefined
+    ): { foundIndex: number; firstEmptyIndex: number; existingRow: string[] } => {
       let foundIndex = -1;
       let firstEmptyIndex = -1;
       let existingRow: string[] = [];
+      if (!rows || rows.length === 0) return { foundIndex, firstEmptyIndex, existingRow };
 
-      if (rows && rows.length > 0) {
-        for (let i = 0; i < rows.length; i++) {
-          const r = rows[i];
-          if (!r || !r[0] || !r[0].trim()) {
-            if (firstEmptyIndex === -1) firstEmptyIndex = i;
-            continue;
-          }
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0] || !r[0].trim()) {
+          if (firstEmptyIndex === -1) firstEmptyIndex = i;
+          continue;
+        }
 
-          const rSku = cleanSkuCode(r[0]);
-          const rBarcode = cleanSkuCode(r[1]);
+        const rSku = cleanSkuCode(r[0]);
+        const rBarcode = cleanSkuCode(r[1]);
 
-          const isSkuMatch =
-            (targetSku && rSku === targetSku) ||
-            (targetBarcode && rBarcode === targetBarcode) ||
-            matchSku(r[0], product.sku) ||
-            matchSku(r[1], product.barcode);
+        const isSkuMatch =
+          (targetSku && rSku === targetSku) ||
+          (targetBarcode && rBarcode === targetBarcode) ||
+          matchSku(r[0], product.sku) ||
+          matchSku(r[1], product.barcode);
 
-          if (isSkuMatch) {
-            const rLoc = cleanLocCode(r[6] || "");
-            if (!targetLoc || !rLoc || rLoc === targetLoc) {
-              foundIndex = i;
-              existingRow = [...r];
-              break;
-            }
+        if (isSkuMatch) {
+          const rLoc = cleanLocCode(r[6] || "");
+          if (!targetLoc || !rLoc || rLoc === targetLoc) {
+            foundIndex = i;
+            existingRow = [...r];
+            break;
           }
         }
       }
+      return { foundIndex, firstEmptyIndex, existingRow };
+    };
 
-      if (foundIndex !== -1 && existingRow.length > 0) {
-        const rowNumber = foundIndex + 2;
-        while (existingRow.length < 9) existingRow.push("");
+    let lastTargetQty: number | null = null;
+    let lastError: unknown = null;
 
-        const currentQty = parseFloat((existingRow[5] || existingRow[4] || "0").replace(/,/g, "").trim()) || 0;
-        const newQty = currentQty + qty;
+    for (let attempt = 1; attempt <= SYNC_ADD_MAX_ATTEMPTS; attempt++) {
+      try {
+        clearSheetCache(sheetName);
+        const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+        const { foundIndex, firstEmptyIndex, existingRow } = locate(rows);
 
-        existingRow[5] = String(newQty);
-        if (locationId && locationId.trim()) {
-          existingRow[6] = locationId.replace(/^loc-/, "").trim();
-        }
-        existingRow[8] = new Date().toISOString();
+        if (foundIndex !== -1 && existingRow.length > 0) {
+          const currentQty = qtyOf(existingRow);
+          if (lastTargetQty !== null && Math.abs(currentQty - lastTargetQty) < 0.001) {
+            return; // รอบก่อนเขียนสำเร็จแล้ว แค้อ่านกลับไม่ทัน/คำตอบหาย — ห้ามบวกซ้ำ
+          }
 
-        await updateRow(sheetName, rowNumber, existingRow);
-      } else {
-        const newRow = [
-          product.sku,
-          product.barcode && product.barcode !== product.sku ? product.barcode : (product.barcode || ""),
-          product.product_name,
-          product.category || "ทั่วไป",
-          product.base_unit || "ชิ้น",
-          String(qty),
-          locationId?.replace(/^loc-/, "") || "",
-          product.supplier || "เพิ่มสต็อก",
-          new Date().toISOString(),
-        ];
+          const newQty = currentQty + qty;
+          lastTargetQty = newQty;
 
-        if (firstEmptyIndex !== -1) {
-          const rowNumber = firstEmptyIndex + 2;
-          await updateRow(sheetName, rowNumber, newRow);
+          const rowNumber = foundIndex + 2;
+          while (existingRow.length < 9) existingRow.push("");
+          existingRow[5] = String(newQty);
+          if (locationId && locationId.trim()) {
+            existingRow[6] = locationId.replace(/^loc-/, "").trim();
+          }
+          existingRow[8] = new Date().toISOString();
+
+          await updateRow(sheetName, rowNumber, existingRow);
         } else {
-          await appendRows(sheetName, [newRow]);
+          lastTargetQty = qty;
+          const newRow = [
+            product.sku,
+            product.barcode && product.barcode !== product.sku ? product.barcode : (product.barcode || ""),
+            product.product_name,
+            product.category || "ทั่วไป",
+            product.base_unit || "ชิ้น",
+            String(qty),
+            locationId?.replace(/^loc-/, "") || "",
+            product.supplier || "เพิ่มสต็อก",
+            new Date().toISOString(),
+          ];
+
+          if (firstEmptyIndex !== -1) {
+            await updateRow(sheetName, firstEmptyIndex + 2, newRow);
+          } else {
+            await appendRows(sheetName, [newRow]);
+          }
         }
+
+        // อ่านชีตกลับมาตรวจว่าเขียนลงจริง — กัน "เขียนสำเร็จลอย ๆ" ที่เคยทำให้แถวหาย
+        await new Promise((resolve) => setTimeout(resolve, SYNC_ADD_VERIFY_DELAY_MS));
+        clearSheetCache(sheetName);
+        const verifyRows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+        const verified = locate(verifyRows);
+        if (verified.foundIndex !== -1 && Math.abs(qtyOf(verified.existingRow) - (lastTargetQty ?? 0)) < 0.001) {
+          return;
+        }
+        console.warn(
+          `[SheetsWarehouseSync] syncAdd verify mismatch (attempt ${attempt}/${SYNC_ADD_MAX_ATTEMPTS}) ` +
+            `${product.sku}: expect qty=${lastTargetQty}, sheet has ` +
+            `${verified.foundIndex !== -1 ? qtyOf(verified.existingRow) : "no row"}`
+        );
+      } catch (e) {
+        lastError = e;
+        console.error(
+          `[SheetsWarehouseSync] syncAdd attempt ${attempt}/${SYNC_ADD_MAX_ATTEMPTS} error (${product.sku} +${qty}):`,
+          e
+        );
       }
-    } catch (e) {
-      console.error("[SheetsWarehouseSync] syncAdd error:", e);
+      if (attempt < SYNC_ADD_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, SYNC_ADD_RETRY_DELAY_MS * attempt));
+      }
     }
+
+    throw new Error(
+      `ซิงก์สต็อก ${product.sku} (+${qty}) ลงแท็บ ${sheetName} ไม่สำเร็จหลังพยายาม ${SYNC_ADD_MAX_ATTEMPTS} ครั้ง — ต้องตรวจแถวในชีตด้วยตา`,
+      { cause: lastError }
+    );
   }
 
   async syncMove(

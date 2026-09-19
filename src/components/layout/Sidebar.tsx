@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
+import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -29,6 +29,7 @@ const OPERATION_ORDER = [
   "/movements/transfer",
   "/movements/move",
   "/production",
+  "/production/formula",
   "/stock-counts",
   "/temporary-stock-cuts",
   "/movements/receive/history",
@@ -234,8 +235,12 @@ export default function Sidebar({
   }, [role]);
 
   const itemsForRole = getNavItems(role);
+  // บัญชีแอดมินที่ถูกจำกัดเมนู (เช่น milk) เห็นเฉพาะหน้าที่กำหนด
+  const allowedHrefs = getAllowedMenuHrefs({ email: tabUser?.email, name: userName });
   const visibleItems = itemsForRole.filter(
-    (item) => !item.roles || item.roles.includes(role)
+    (item) =>
+      (!item.roles || item.roles.includes(role)) &&
+      (!allowedHrefs || allowedHrefs.includes(item.href))
   );
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
@@ -249,6 +254,7 @@ export default function Sidebar({
         "/movements/transfer",
         "/movements/move",
         "/production",
+        "/production/formula",
         "/movements/receive/history",
         "/movements/transfer/history",
         "/production/history",
@@ -284,8 +290,13 @@ export default function Sidebar({
   const userInitial = (userName || "ผู้ใช้").trim().charAt(0);
   const userDisplayName = userName || "ผู้ใช้ระบบ";
 
-  const isActiveRoute = (item: NavItem) =>
-    pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+  // เลือกเมนูที่ตรง path ยาวที่สุดตัวเดียว — กันหลายเมนูสว่างพร้อมกัน
+  // (เช่น หน้า /production/formula ต้องสว่างเฉพาะ "แก้ไขสูตร BOM" ไม่ใช่ "ผลิตสินค้า" ด้วย)
+  const activeHref = visibleItems
+    .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+  const isActiveRoute = (item: NavItem) => item.href === activeHref;
 
   const renderRows = (items: NavItem[]) =>
     items.map((item) => (

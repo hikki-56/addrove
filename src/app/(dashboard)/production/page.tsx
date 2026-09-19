@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useTabAuth } from "@/context/TabAuthContext";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ProductCard from "./_components/ProductCard";
-import CartDrawer from "./_components/CartDrawer";
-import ConfirmProductionModal from "./_components/ConfirmProductionModal";
-import SuccessModal from "./_components/SuccessModal";
-import type { EnrichedBomFormula, CartItem, ConsumedMaterial } from "./_components/types";
+import ProductTable from "./_components/ProductTable";
+import type { EnrichedBomFormula } from "./_components/types";
+import { useProductionCart, getCart, setCart } from "./_lib/cart-store";
 
 export default function ProductionPage() {
-  const { user } = useTabAuth();
+  const router = useRouter();
   const [boms, setBoms] = useState<EnrichedBomFormula[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -18,18 +16,14 @@ export default function ProductionPage() {
   // Quantity inputs per product card (keyed by fg_sku)
   const [produceQty, setProduceQty] = useState<Record<string, number>>({});
 
-  // Production Cart State
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  // Pagination — pageSize = 0 คือแสดงทั้งหมด (ALL)
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [page, setPage] = useState<number>(1);
+
+  // ตะกร้าสั่งผลิต — เก็บใน cart store (แชร์กับหน้า /production/cart)
+  const cart = useProductionCart();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
-
-  // Confirmation Modal State (Double-check gate)
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-
-  // Success Modal State
-  const [successOrderNo, setSuccessOrderNo] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchBoms = useCallback(async () => {
     setLoading(true);
@@ -43,9 +37,12 @@ export default function ProductionPage() {
           initialQty[b.fg_sku] = Math.max(1, Math.min(b.maxProducible || 1, produceQty[b.fg_sku] || 1));
         });
         setProduceQty(initialQty);
+      } else {
+        setErrorBanner(json.message || "ดึงข้อมูลสินค้าสำหรับผลิตไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง");
       }
     } catch (e) {
       console.error("Failed to fetch BOM:", e);
+      setErrorBanner("ดึงข้อมูลสินค้าสำหรับผลิตไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -68,91 +65,42 @@ export default function ProductionPage() {
     setProduceQty((prev) => ({ ...prev, [sku]: clamped }));
   };
 
-  const handleAddToCart = (bom: EnrichedBomFormula) => {
+  const handleAddToCart = async (bom: EnrichedBomFormula) => {
     setErrorBanner(null);
     if (bom.maxProducible <= 0) {
       setErrorBanner(`วัตถุดิบในโกดัง 2 สำหรับผลิต ${bom.fg_sku} ไม่เพียงพอ — ไม่สามารถผลิตได้`);
       return;
     }
     const qty = produceQty[bom.fg_sku] || 1;
-    let errorMsg: string | null = null;
 
-    setCart((prev) => {
-      const existing = prev.find((item) => item.bom.fg_sku === bom.fg_sku);
-      if (existing) {
-        const newTotal = existing.quantity + qty;
-        if (newTotal > bom.maxProducible) {
-          errorMsg = `ไม่สามารถเพิ่มเกินจำนวนที่ผลิตได้ (ผลิตได้สูงสุด ${bom.maxProducible.toLocaleString()} ${bom.fg_unit})`;
-          return prev;
-        }
-        return prev.map((item) =>
-          item.bom.fg_sku === bom.fg_sku
-            ? { ...item, quantity: newTotal }
-            : item
-        );
+    // หน้า list ได้แค่หัวสูตร — ดึงสูตรเต็ม (พร้อมวัตถุดิบ) ก่อนเก็บลงตะกร้า
+    // เพื่อให้หน้าตะกร้าคำนวณวัตถุดิบที่จะถูกตัดได้
+    let fullBom = bom;
+    try {
+      const res = await fetch(`/api/production/bom?sku=${encodeURIComponent(bom.fg_sku)}`);
+      const json = await res.json();
+      if (json.success && json.data) fullBom = json.data;
+    } catch {
+      // ใช้หัวสูตรต่อได้ — แค่หน้าตะกร้าจะไม่แสดงสรุปวัตถุดิบชั่วคราว (server ยังตรวจสอบให้อยู่)
+    }
+
+    const current = getCart();
+    const existing = current.find((item) => item.bom.fg_sku === bom.fg_sku);
+
+    if (existing) {
+      const newTotal = existing.quantity + qty;
+      if (newTotal > fullBom.maxProducible) {
+        setErrorBanner(`ไม่สามารถเพิ่มเกินจำนวนที่ผลิตได้ (ผลิตได้สูงสุด ${fullBom.maxProducible.toLocaleString()} ${fullBom.fg_unit})`);
+        return;
       }
-      return [...prev, { bom, quantity: qty }];
-    });
-
-    if (errorMsg) {
-      setErrorBanner(errorMsg);
+      setCart(current.map((item) => (item.bom.fg_sku === bom.fg_sku ? { bom: fullBom, quantity: newTotal } : item)));
     } else {
-      showToast(`เพิ่ม ${bom.fg_name} (+${qty.toLocaleString()} ${bom.fg_unit}) ลงในตะกร้าแล้ว`);
+      setCart([...current, { bom: fullBom, quantity: qty }]);
     }
-  };
-
-  const handleUpdateCartQty = (sku: string, newQty: number) => {
-    if (newQty <= 0) {
-      setCart((prev) => prev.filter((item) => item.bom.fg_sku !== sku));
-    } else {
-      setCart((prev) =>
-        prev.map((item) => {
-          if (item.bom.fg_sku === sku) {
-            const clamped = Math.min(item.bom.maxProducible || 1, newQty);
-            return { ...item, quantity: clamped };
-          }
-          return item;
-        })
-      );
-    }
-  };
-
-  const handleRemoveFromCart = (sku: string) => {
-    setCart((prev) => prev.filter((item) => item.bom.fg_sku !== sku));
+    showToast(`เพิ่ม ${bom.fg_name} (+${qty.toLocaleString()} ${bom.fg_unit}) ลงในตะกร้าแล้ว`);
   };
 
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  // Compute aggregated consumed raw materials for the cart items
-  const getConsumedMaterials = (): ConsumedMaterial[] => {
-    const map = new Map<string, ConsumedMaterial>();
-    for (const item of cart) {
-      if (!item.bom.items) continue;
-      for (const rm of item.bom.items) {
-        const key = rm.rm_sku || rm.rm_name;
-        const wasteFactor = 1 + (rm.waste_percentage || 0) / 100;
-        const needed = item.quantity * rm.rm_qty_required * wasteFactor;
-        const isPrimary = Number(rm.is_primary) === 1 ? 1 : 0;
-        if (map.has(key)) {
-          const existing = map.get(key)!;
-          existing.total_required += needed;
-          if (isPrimary === 1) existing.is_primary = 1;
-        } else {
-          map.set(key, {
-            rm_sku: rm.rm_sku,
-            rm_name: rm.rm_name,
-            rm_unit: rm.rm_unit || "ชิ้น",
-            total_required: needed,
-            available_qty: rm.available_wh2_qty,
-            is_primary: isPrimary,
-          });
-        }
-      }
-    }
-    return Array.from(map.values());
-  };
-
-  const consumedMaterials = getConsumedMaterials();
 
   const filteredBoms = boms.filter(
     (b) =>
@@ -161,58 +109,13 @@ export default function ProductionPage() {
       b.fg_barcode.includes(search)
   );
 
-  const handleConfirmProduction = async () => {
-    if (cart.length === 0) return;
-    setIsSubmitting(true);
-    setErrorBanner(null);
-
-    try {
-      const storedToken =
-        typeof window !== "undefined"
-          ? sessionStorage.getItem("stockify_tab_token") || localStorage.getItem("stockify_tab_token")
-          : null;
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (storedToken) {
-        headers["x-tab-token"] = storedToken;
-        headers["Authorization"] = `Bearer ${storedToken}`;
-      }
-
-      const res = await fetch("/api/production/orders", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          items: cart,
-          created_by_name: user?.name || "ผู้ดูแลระบบ (Admin)",
-        }),
-      });
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        const orderNo = json.data.order_no;
-        setSuccessOrderNo(orderNo);
-        setCart([]);
-        setCartOpen(false);
-        setShowConfirmModal(false);
-
-        // Immediately refresh real-time inventory from Warehouse 2
-        await fetchBoms();
-
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("stockify-production-created", { detail: json.data }));
-        }
-      } else {
-        setErrorBanner(json.message || "เกิดข้อผิดพลาดในการบันทึกคำสั่งผลิต");
-      }
-    } catch (e) {
-      console.error("Failed to submit production order:", e);
-      setErrorBanner("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // คำนวณการแบ่งหน้า (pageSize = 0 → แสดงทั้งหมด)
+  const total = filteredBoms.length;
+  const pageCount = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pagedBoms = pageSize === 0 ? filteredBoms : filteredBoms.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const rangeStart = total === 0 ? 0 : (safePage - 1) * (pageSize || total) + 1;
+  const rangeEnd = pageSize === 0 ? total : Math.min(safePage * pageSize, total);
 
   return (
     <div className="w-full max-w-full space-y-5 pb-16">
@@ -233,12 +136,31 @@ export default function ProductionPage() {
       )}
 
       {/* Top Toolbar */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl">🏭</span>
-          <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4]">
-            โกดัง 2 (สินค้าสำเร็จรูป)
-          </span>
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="text-xl">🏭</span>
+            <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4] whitespace-nowrap">
+              โกดัง 2 (สินค้าสำเร็จรูป)
+            </span>
+          </div>
+
+          {/* ช่องค้นหา — อยู่ในแถบเครื่องมือบนสุด */}
+          <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
+            <input
+              type="text"
+              placeholder="ค้นหารหัสสินค้า, ชื่อสินค้า หรือบาร์โค้ด..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-[#E8ECEA] rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F] focus:bg-white transition-colors"
+            />
+            <svg className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
 
         {/* Right side controls: History Link, Cart Button & Refresh */}
@@ -255,7 +177,7 @@ export default function ProductionPage() {
           </Link>
 
           <button
-            onClick={() => setCartOpen(true)}
+            onClick={() => router.push("/production/cart")}
             className={`relative px-4 py-2.5 sm:py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
               cart.length > 0
                 ? "bg-[#06402B] text-white hover:bg-[#053425] shadow-md shadow-[#06402B]/20"
@@ -308,21 +230,8 @@ export default function ProductionPage() {
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="relative w-full sm:max-w-md">
-        <input
-          type="text"
-          placeholder="ค้นหารหัสสินค้า, ชื่อสินค้า หรือบาร์โค้ด..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-[#E8ECEA] rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F] shadow-2xs"
-        />
-        <svg className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </div>
-
-      {/* Product Cards Grid — Mobile-first sm: only (stockify-ui rule 1) */}
+      {/* Product Table — แสดงรูป/รหัส/บาร์โค้ด/ชื่อ/จำนวนที่ผลิตได้/เพิ่มตะกร้า
+          กดที่แถวเพื่อขยายดูวัตถุดิบที่ใช้ผลิต (สไตล์เดียวกับตารางประวัติ) */}
       {loading ? (
         <div className="py-20 text-center bg-white rounded-2xl border border-[#E8ECEA] shadow-xs">
           <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
@@ -334,58 +243,22 @@ export default function ProductionPage() {
           <p className="text-slate-500 text-sm mt-1">ลองเปลี่ยนคำค้นหา หรือกดรีเฟรชข้อมูลใหม่อีกครั้ง</p>
         </div>
       ) : (
-        // จอกลางขึ้นไป (≥1024) เรียง 3 คอลัมน์ — การ์ดกว้างพออ่านสูตรได้สบาย
-        // ไม่ยืดแค่ 2 คอลัมน์จนดูโหว่บนจอใหญ่
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {filteredBoms.map((bom) => (
-            <ProductCard
-              key={bom.fg_sku}
-              bom={bom}
-              currentQty={produceQty[bom.fg_sku] || 1}
-              maxProducible={bom.maxProducible || 0}
-              onQuantityChange={handleQuantityChange}
-              onAddToCart={() => handleAddToCart(bom)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Cart Drawer */}
-      {cartOpen && (
-        <CartDrawer
-          cart={cart}
-          consumedMaterials={consumedMaterials}
-          totalCartUnits={totalCartUnits}
-          onClose={() => setCartOpen(false)}
-          onUpdateQty={handleUpdateCartQty}
-          onRemove={handleRemoveFromCart}
-          onConfirm={() => {
-            setCartOpen(false);
-            setShowConfirmModal(true);
+        <ProductTable
+          boms={pagedBoms}
+          produceQty={produceQty}
+          onQuantityChange={handleQuantityChange}
+          onAddToCart={handleAddToCart}
+          page={safePage}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          total={total}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s);
+            setPage(1);
           }}
-        />
-      )}
-
-      {/* Confirmation Modal (Double-Check Gate before irreversible stock deduction) */}
-      {showConfirmModal && (
-        <ConfirmProductionModal
-          cart={cart}
-          consumedMaterials={consumedMaterials}
-          totalCartUnits={totalCartUnits}
-          isSubmitting={isSubmitting}
-          onConfirm={handleConfirmProduction}
-          onCancel={() => {
-            setShowConfirmModal(false);
-            setCartOpen(true);
-          }}
-        />
-      )}
-
-      {/* Success Modal */}
-      {successOrderNo && (
-        <SuccessModal
-          orderNo={successOrderNo}
-          onClose={() => setSuccessOrderNo(null)}
         />
       )}
     </div>

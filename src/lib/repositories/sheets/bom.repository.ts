@@ -1,5 +1,26 @@
-import { readSheet, appendRows, updateRow, SHEETS, clearSheetCache } from "@/lib/google-sheets/client";
+import {
+  readSheet,
+  appendRows,
+  updateRow,
+  deleteRows,
+  SHEETS,
+  clearSheetCache,
+} from "@/lib/google-sheets/client";
 import type { BomItem, BomFormula } from "@/types/models";
+
+// วัตถุดิบหนึ่งรายการที่ส่งมาแก้ไขในสูตร
+export type BomItemInput = Pick<
+  BomItem,
+  | "rm_sku"
+  | "rm_barcode"
+  | "rm_name"
+  | "rm_wh"
+  | "is_primary"
+  | "rm_qty_required"
+  | "rm_unit"
+  | "waste_percentage"
+  | "note"
+>;
 
 // Columns in Sheet 'BOM':
 // [0] bom_id, [1] fg_sku, [2] fg_barcode, [3] fg_name, [4] fg_unit, [5] base_qty,
@@ -109,8 +130,9 @@ export class SheetsBomRepository {
     // 1. Try relational tabs: BOM_Headers + BOM_Items
     try {
       const [headerRows, itemRows] = await Promise.all([
-        readSheet(SHEETS.BOM_HEADERS, undefined, { forceFresh: true }).catch(() => []),
-        readSheet(SHEETS.BOM_ITEMS, undefined, { forceFresh: true }).catch(() => []),
+        // แคชสั้น 30 วิ — สูตรเปลี่ยนน้อย และทุก path เขียน (append/update/delete) เคลียร์แคชให้อยู่แล้ว
+        readSheet(SHEETS.BOM_HEADERS, undefined, { maxAgeMs: 30_000 }).catch(() => []),
+        readSheet(SHEETS.BOM_ITEMS, undefined, { maxAgeMs: 30_000 }).catch(() => []),
       ]);
 
       if (headerRows.length > 0 && itemRows.length > 0) {
@@ -213,6 +235,95 @@ export class SheetsBomRepository {
   async getFormulaBySku(fgSku: string): Promise<BomFormula | null> {
     const all = await this.getAllFormulas();
     return all.find((f) => f.fg_sku.toLowerCase() === fgSku.toLowerCase()) || null;
+  }
+
+  /**
+   * แทนที่วัตถุดิบทั้งหมดของสูตร (bomId) ในชีต BOM_Items
+   * กลยุทธ์: ลบแถวเดิมของสูตรแล้ว append แถวใหม่ที่ท้ายชีต —
+   * reader จับกลุ่มด้วย bom_id จึงไม่มีผลต่อการอ่านไม่ว่าแถวอยู่ตรงไหน
+   */
+  async updateFormulaItems(bomId: string, items: BomItemInput[]): Promise<void> {
+    // อ่านแบบ raw (คง header ไว้) เพื่อให้ index ของ array ตรงกับแถวจริงของชีต
+    const itemRows = await readSheet(SHEETS.BOM_ITEMS, undefined, {
+      forceFresh: true,
+      keepHeader: true,
+    });
+
+    const headerIdx = itemRows.findIndex((r) => r.some((c) => isBomHeaderRow(c)));
+    const headerRow = headerIdx >= 0 ? itemRows[headerIdx] : itemRows[0];
+    const colMap = parseItemColIndices(headerRow);
+
+    // หาแถวเดิมของสูตรนี้ทั้งหมด (ข้ามแถวหัวตาราง)
+    const existingRowIdx: number[] = [];
+    itemRows.forEach((row, idx) => {
+      if (idx === headerIdx) return;
+      const rowBomId = (row[colMap.bomId] ?? "").trim();
+      if (rowBomId === bomId && !isBomHeaderRow(rowBomId)) {
+        existingRowIdx.push(idx);
+      }
+    });
+
+    const colCount = Math.max(
+      headerRow?.length ?? 0,
+      colMap.bomId + 1,
+      colMap.rmSku + 1,
+      colMap.rmBarcode + 1,
+      colMap.rmName + 1,
+      colMap.qty + 1,
+      colMap.unit + 1,
+      colMap.isPrimary + 1,
+      colMap.rmWh + 1,
+      colMap.waste + 1,
+      colMap.note + 1
+    );
+
+    const buildRow = (item: BomItemInput): (string | number)[] => {
+      const row: (string | number)[] = new Array(colCount).fill("");
+      row[colMap.bomId] = bomId;
+      row[colMap.rmSku] = item.rm_sku;
+      row[colMap.rmBarcode] = item.rm_barcode || "";
+      row[colMap.rmName] = item.rm_name || item.rm_sku;
+      if (colMap.rmWh >= 0) row[colMap.rmWh] = item.rm_wh || "โกดัง2";
+      if (colMap.isPrimary >= 0) row[colMap.isPrimary] = item.is_primary === 1 ? "1" : "0";
+      row[colMap.qty] = item.rm_qty_required;
+      row[colMap.unit] = item.rm_unit || "ชิ้น";
+      if (colMap.waste >= 0) row[colMap.waste] = item.waste_percentage || 0;
+      if (colMap.note >= 0) row[colMap.note] = item.note || "";
+      return row;
+    };
+
+    // 1. เพิ่มวัตถุดิบชุดใหม่ต่อท้ายชีตก่อน — ถ้าขั้นถัดไปพลาด ข้อมูลเดิมยังอยู่ครบ
+    //    (failure mode เป็นแถวซ้ำที่กู้คืนได้ แทนที่จะเป็นสูตรหายถาวร)
+    if (items.length > 0) {
+      await appendRows(SHEETS.BOM_ITEMS, items.map(buildRow));
+    }
+
+    // 2. ลบแถวเดิมทั้งหมดของสูตร (deleteRows เรียง index มากไปน้อยให้เองภายใน call เดียว
+    //    และ append ไม่ขยับตำแหน่งแถวเดิม จึงใช้ index ที่คำนวณไว้ก่อนหน้าได้)
+    if (existingRowIdx.length > 0) {
+      await deleteRows(SHEETS.BOM_ITEMS, existingRowIdx);
+    }
+
+    // 3. อัปเดต updated_at ของสูตรใน BOM_Headers ([8] updated_at)
+    try {
+      const headerSheetRows = await readSheet(SHEETS.BOM_HEADERS, undefined, {
+        forceFresh: true,
+        keepHeader: true,
+      });
+      const hIdx = headerSheetRows.findIndex(
+        (r) => (r[0] ?? "").trim() === bomId && !isBomHeaderRow(r[0] ?? "")
+      );
+      if (hIdx >= 0) {
+        const row = [...(headerSheetRows[hIdx] ?? [])];
+        while (row.length < 9) row.push("");
+        row[8] = new Date().toISOString();
+        await updateRow(SHEETS.BOM_HEADERS, hIdx + 1, row);
+      }
+    } catch (e) {
+      // ไม่ถือว่าเป็นความล้มเหลวของการแก้ไข ถ้าอัปเดต timestamp ไม่ได้
+      console.warn("[SheetsBomRepository] Failed updating BOM_Headers.updated_at:", e);
+      clearSheetCache(SHEETS.BOM_HEADERS);
+    }
   }
 }
 

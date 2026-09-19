@@ -133,6 +133,56 @@ export async function POST(
         setDocumentStatus(doc.document_id, "POSTED");
         setDocumentStatus(doc.document_no, "POSTED");
 
+        // ครั้งก่อนค้างอยู่: ถ้ามีรายการที่เคยเขียนลงชีตโกดังไม่สำเร็จ (จดไว้ใน note)
+        // ให้ไล่เขียนให้ครบก่อนปิดเอกสาร — กันสต็อกในระบบกับชีตไม่ตรงกันถาวร
+        if (repo.warehouseSync) {
+          let staleMeta: Record<string, any> = {};
+          try {
+            if (doc.note && doc.note.startsWith("{")) staleMeta = JSON.parse(doc.note);
+          } catch {}
+          const failedLines: Array<Record<string, any>> = Array.isArray(staleMeta.warehouse_sync_failures)
+            ? staleMeta.warehouse_sync_failures
+            : [];
+          if (failedLines.length > 0) {
+            const stillFailed: Array<Record<string, any>> = [];
+            for (const line of failedLines) {
+              try {
+                const prod =
+                  (await repo.products.findById(String(line.product_id || "")).catch(() => null)) ||
+                  (await repo.products.findBySku(String(line.sku || "")).catch(() => null));
+                await repo.warehouseSync.syncAdd(
+                  String(line.target_sheet || staleMeta.target_sheet || warehouseId),
+                  {
+                    sku: line.sku || prod?.sku || line.product_id,
+                    barcode: prod?.barcode || line.sku || line.product_id,
+                    product_name: line.product_name || prod?.product_name || line.sku,
+                    category: prod?.category || "ทั่วไป",
+                    base_unit: prod?.base_unit || "ชิ้น",
+                    supplier: prod?.supplier || "รับสินค้าเข้าคลัง",
+                  },
+                  Number(line.qty) || 0,
+                  String(line.location_id || "")
+                );
+              } catch (retryErr) {
+                console.error("[Approve Route] retry warehouseSync.syncAdd error:", retryErr);
+                stillFailed.push(line);
+              }
+            }
+            try {
+              const meta = { ...staleMeta };
+              if (stillFailed.length > 0) {
+                meta.warehouse_sync_failures = stillFailed;
+              } else {
+                delete meta.warehouse_sync_failures;
+                delete meta.warehouse_sync_failed_at;
+              }
+              await repo.documents.updateNote(doc.document_id, JSON.stringify(meta));
+            } catch (noteErr) {
+              console.error("[Approve Route] clear warehouse_sync_failures note failed:", noteErr);
+            }
+          }
+        }
+
         await logAudit(repo.audit, {
           actorId: actor.id,
           actorRole: actor.role,
@@ -214,11 +264,27 @@ export async function POST(
       setDocumentStatus(doc.document_id, "POSTED");
       setDocumentStatus(doc.document_no, "POSTED");
 
-      // Synchronize via repository adapter
-      // Synchronize via repository adapter concurrently in parallel
+      // ซิงก์ลงแท็บโกดัง "ทีละรายการ" เท่านั้น — เขียนขนานพร้อมกันทีเดียวทั้งเอกสาร
+      // (แบบเดิม) ทำให้ Apps Script รับงานพร้อมกันหลายงานและมีรายการถูกทิ้ง
+      // โดยไม่มี error เกิดขึ้น (เกิดขึ้นจริงกับ RCV ที่มีหลายสิบรายการ: หาย 5 จาก 14)
+      // รายการที่ syncAdd retry ครบแล้วยังล้มจะถูกจดไว้ใน note ของเอกสารเพื่อไล่แก้ทีหลัง
+      const warehouseSyncFailures: Array<{
+        product_id: string;
+        sku: string;
+        product_name: string;
+        qty: number;
+        location_id: string;
+        target_sheet: string;
+        error: string;
+      }> = [];
+
       if (repo.warehouseSync) {
         const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
-        const syncTasks = createdMovements.map(async (mov, idx) => {
+
+        for (let idx = 0; idx < createdMovements.length; idx++) {
+          const mov = createdMovements[idx];
+          let skuVal = mov.product_id.replace(/^prod-/, "");
+          let nameVal = skuVal;
           try {
             const prod =
               (await repo.products.findById(mov.product_id)) ||
@@ -226,9 +292,9 @@ export async function POST(
 
             const rowData = parsedPayload.rows && parsedPayload.rows[idx] ? parsedPayload.rows[idx] : null;
 
-            const skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
+            skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
+            nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
             const barcodeVal = prod?.barcode || (rowData ? String(rowData[2] ?? "") : skuVal);
-            const nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
             const supplierVal = prod?.supplier || (rowData ? String(rowData[6] ?? "") : "รับสินค้าเข้าคลัง");
             const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "");
 
@@ -247,10 +313,17 @@ export async function POST(
             );
           } catch (syncErr) {
             console.error("[Approve Route] warehouseSync.syncAdd error:", syncErr);
+            warehouseSyncFailures.push({
+              product_id: mov.product_id,
+              sku: skuVal,
+              product_name: nameVal,
+              qty: Number(mov.qty_change) || 0,
+              location_id: mov.location_id || "",
+              target_sheet: targetWh,
+              error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+            });
           }
-        });
-
-        await Promise.all(syncTasks);
+        }
       }
 
       // Automatically record into Google Sheets Tab: "รับสินค้าเข้าExpress" / "นำเข้าสินค้าเข้าExpress"
@@ -324,6 +397,25 @@ export async function POST(
         console.warn("[approve] Auto-append to EXPRESS_RECEIVE sheet warning:", sheetErr);
       }
 
+      // จดรายการที่ซิงก์ลงแท็บโกดังไม่สำเร็จไว้ในเอกสาร — กันข้อมูลหายเงียบ ๆ
+      // (อ่าน note ล่าสุดจากชีตมา merge เพราะบล็อก Express เพิ่งเขียน note ไป)
+      if (warehouseSyncFailures.length > 0) {
+        try {
+          const freshDoc =
+            (await repo.documents.findById(doc.document_id)) ||
+            (await repo.documents.findByNo(doc.document_no || "").catch(() => null));
+          let meta: Record<string, any> = {};
+          try {
+            if (freshDoc?.note && freshDoc.note.startsWith("{")) meta = JSON.parse(freshDoc.note);
+          } catch {}
+          meta.warehouse_sync_failures = warehouseSyncFailures;
+          meta.warehouse_sync_failed_at = new Date().toISOString();
+          await repo.documents.updateNote(doc.document_id, JSON.stringify(meta));
+        } catch (noteErr) {
+          console.error("[Approve Route] record warehouse_sync_failures failed:", noteErr);
+        }
+      }
+
       await logAudit(repo.audit, {
         actorId: actor.id,
         actorRole: actor.role,
@@ -334,8 +426,22 @@ export async function POST(
         outcome: "SUCCESS",
         metadata: {
           approved_movements_count: createdMovements.length,
+          ...(warehouseSyncFailures.length > 0
+            ? { warehouse_sync_failed_count: warehouseSyncFailures.length }
+            : {}),
         },
       });
+
+      if (warehouseSyncFailures.length > 0) {
+        return successResponse(
+          {
+            id: doc.document_id,
+            status: "POSTED",
+            warehouse_sync_failed_count: warehouseSyncFailures.length,
+          },
+          `อนุมัติและบันทึกสต็อกระบบเรียบร้อย แต่มี ${warehouseSyncFailures.length} รายการที่ยังเขียนลงชีตโกดังไม่สำเร็จ (ระบบบันทึกรายการไว้ในเอกสารแล้ว — ต้องตรวจสอบชีตอีกครั้ง)`
+        );
+      }
 
       return successResponse({ id: doc.document_id, status: "POSTED" }, "อนุมัติรายการและบันทึกเข้าโกดังเรียบร้อยแล้ว");
     });

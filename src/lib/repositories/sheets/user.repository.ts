@@ -126,7 +126,9 @@ export class SheetsUserRepository implements IUserRepository {
           (clean === "tak@stockify.com" && (u.email.includes("tak") || u.full_name.includes("ตั๊ก"))) ||
           (clean === "ตั๊ก" && (u.email.includes("tak") || u.full_name.includes("ตั๊ก"))) ||
           (clean === "kaew" && (u.email.includes("kaew") || u.full_name.includes("แก้ว"))) ||
-          (clean === "แก้ว" && (u.email.includes("kaew") || u.full_name.includes("แก้ว")))
+          (clean === "แก้ว" && (u.email.includes("kaew") || u.full_name.includes("แก้ว"))) ||
+          (clean === "milk" && (u.email.includes("milk") || u.full_name.toLowerCase().includes("milk") || u.full_name.includes("มิลค์"))) ||
+          (clean === "milk@stockify.com" && (u.email.includes("milk") || u.full_name.toLowerCase().includes("milk") || u.full_name.includes("มิลค์")))
       ) || null
     );
   }

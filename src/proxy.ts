@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/dev-preview-transfer" || // TEMP: transfer UI preview
     pathname === "/dev-preview-receive" || // TEMP: receive UI preview
     pathname === "/dev-preview-express" || // TEMP: Express UI preview (ลบพร้อม /dev-preview-express page)
+    pathname === "/dev-preview-heroui" || // TEMP: HeroUI v3 preview (ลบพร้อม /dev-preview-heroui page)
     pathname === "/warehouses/qr" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/system") ||

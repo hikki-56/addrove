@@ -21,7 +21,8 @@ export default function ConfirmProductionModal({
   onCancel,
 }: ConfirmProductionModalProps) {
   // Escape = ยกเลิก ไม่ใช่ยืนยัน — หน้านี้หักวัตถุดิบถาวร
-  useEscapeKey(true, onCancel);
+  // ระหว่างส่งคำสั่งผลิต (isSubmitting) ปิด Escape ไว้ กันปิดหน้าต่างไปแต่ระบบยังตัดสต็อกต่อ
+  useEscapeKey(!isSubmitting, onCancel);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">

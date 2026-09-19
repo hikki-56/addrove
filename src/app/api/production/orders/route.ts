@@ -260,10 +260,10 @@ export async function POST(req: NextRequest) {
       const fgSku = (item.bom?.fg_sku || item.fg_sku || "").trim();
       const qty = Math.max(1, Number(item.quantity) || 1);
 
-      // Find official formula
-      const formula =
-        allFormulas.find((f) => f.fg_sku.toLowerCase() === fgSku.toLowerCase()) ||
-        item.bom;
+      // Find official formula — ใช้เฉพาะสูตรที่มีในระบบเท่านั้น ไม่รับ BOM ที่ client ส่งมาเอง
+      const formula = allFormulas.find(
+        (f) => f.fg_sku.toLowerCase() === fgSku.toLowerCase()
+      );
 
       if (!formula || !Array.isArray(formula.items) || formula.items.length === 0) {
         return NextResponse.json(
@@ -279,9 +279,11 @@ export async function POST(req: NextRequest) {
 
       for (const mat of formula.items) {
         const perUnit = Number(mat.rm_qty_required) || 1;
-        const totalRmQty = Number((perUnit * qty).toFixed(4));
+        // รวมเศษเสียตามสูตรและปัดขึ้น ให้ตรงกับยอดที่แสดงในหน้าตะกร้า
+        const wasteFactor = 1 + (Number(mat.waste_percentage) || 0) / 100;
+        const totalRmQty = Math.ceil(perUnit * wasteFactor * qty);
         const matKey = cleanCode(mat.rm_sku || mat.rm_barcode || mat.rm_name);
-        // If formula has designated primary items, strictly require only those. Otherwise, require all (fallback).
+        // ทำเครื่องหมายตัวหลักไว้ใช้แสดงผล (การตรวจสอบสต็อกครอบคลุมทุกวัตถุดิบแล้ว)
         const isPrimaryForThis = hasDesignatedPrimary ? Number(mat.is_primary) === 1 : true;
 
         const currentAgg = totalRequiredMaterialsMap.get(matKey) || {
@@ -318,20 +320,20 @@ export async function POST(req: NextRequest) {
         fg_name: formula.fg_name || item.fg_name || `สินค้า ${fgSku}`,
         fg_unit: formula.fg_unit || item.fg_unit || "ชิ้น",
         quantity: qty,
-        image: formula.image || item.image || `/products/${fgSku}.jpg`,
+        image: item.image || `/products/${fgSku}.jpg`,
         target_warehouse_id: "wh-02",
         target_warehouse_name: "โกดัง 2 (สินค้าสำเร็จรูป)",
         materials,
       });
     }
 
-    // Check if any PRIMARY material is insufficient in Warehouse 2
+    // ตรวจวัตถุดิบทุกรายการ (หลัก + รอง) ให้เพียงพอ — วัตถุดิบรองที่ไม่พอก็ผลิตได้จริงไม่ครบจำนวน
     for (const [, reqMat] of totalRequiredMaterialsMap.entries()) {
-      if (reqMat.isPrimary && reqMat.availableQty < reqMat.requiredQty) {
+      if (reqMat.availableQty < reqMat.requiredQty) {
         return NextResponse.json(
           {
             success: false,
-            message: `วัตถุดิบตัวหลัก "${reqMat.name}" (${reqMat.sku}) ในโกดัง 2 มีไม่เพียงพอ (ต้องการ ${reqMat.requiredQty} ${reqMat.unit} แต่มีในโกดัง 2 เพียง ${reqMat.availableQty.toLocaleString()} ${reqMat.unit})`,
+            message: `วัตถุดิบ "${reqMat.name}" (${reqMat.sku}) ในโกดัง 2 มีไม่เพียงพอ (ต้องการ ${reqMat.requiredQty} ${reqMat.unit} แต่มีในโกดัง 2 เพียง ${reqMat.availableQty.toLocaleString()} ${reqMat.unit})`,
           },
           { status: 400 }
         );

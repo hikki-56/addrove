@@ -25,7 +25,10 @@ export interface EnrichedBomFormula {
   has_primary_designated?: boolean;
   primary_items?: Array<{ rm_sku: string; rm_name: string }>;
   fg_wh2_stock?: number;
-  items: EnrichedBomItem[];
+  // หน้า list ได้แค่หัวสูตร + จำนวนสรุป — items จะดึงภายหลังผ่าน ?sku= (lazy)
+  items?: EnrichedBomItem[];
+  item_count?: number;
+  primary_count?: number;
 }
 
 export interface CartItem {

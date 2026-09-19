@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/lib/nav-items";
+import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
@@ -36,6 +36,8 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
   "/movements/receive/history": { parent: "การเคลื่อนไหว", title: "ประวัติรับสินค้าเข้าโกดัง" },
   "/production": { parent: "การเคลื่อนไหว", title: "ผลิตสินค้า" },
+  "/production/cart": { parent: "ผลิตสินค้า", title: "ตะกร้าสั่งผลิต" },
+  "/production/formula": { parent: "การเคลื่อนไหว", title: "แก้ไขสูตร BOM" },
   "/production/history": { parent: "การเคลื่อนไหว", title: "ประวัติการสั่งผลิต" },
   "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า (Admin)" },
   "/movements/transfer/history": { parent: "การเคลื่อนไหว", title: "ประวัติเบิกสินค้า" },
@@ -117,10 +119,13 @@ export default function DashboardHeader({
 
   const itemsForRole = getNavItems(user.role);
   const systemMenuVisible = isSystemMenuUser(user.email);
+  // บัญชีแอดมินที่ถูกจำกัดเมนู (เช่น milk) เห็นเฉพาะหน้าที่กำหนด
+  const allowedHrefs = getAllowedMenuHrefs(user);
   const visibleItems = itemsForRole.filter(
     (item) =>
       (!item.roles || item.roles.includes(user.role)) &&
-      (systemMenuVisible || !SYSTEM_MENU_HREFS.includes(item.href))
+      (systemMenuVisible || !SYSTEM_MENU_HREFS.includes(item.href)) &&
+      (!allowedHrefs || allowedHrefs.includes(item.href))
   );
 
   const headerNotificationCount = isAdmin ? pendingApprovalCount : pendingTransferCount;
@@ -402,10 +407,13 @@ export default function DashboardHeader({
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <p className="mb-2 px-3 text-(length:--nav-small) font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
-            {visibleItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            {/* สว่างเฉพาะเมนูที่ตรง path ยาวที่สุด กันหลายเมนู active พร้อมกัน (เช่น /production/formula) */}
+            {(() => {
+              const activeHref = visibleItems
+                .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+                .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+              return visibleItems.map((item) => {
+                const isActive = item.href === activeHref;
               return (
                 <Link
                   key={item.href}
@@ -421,7 +429,8 @@ export default function DashboardHeader({
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
-            })}
+              });
+            })()}
           </nav>
 
           <div className="border-t border-(--sidebar-divider) p-3">

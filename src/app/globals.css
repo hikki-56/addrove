@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* HeroUI v3 styles — entry นี้รวม @import "tailwindcss" + theme layers ของ HeroUI ไว้ในตัว
+   (ดู node_modules/@heroui/styles/dist/index.css) จึงแทนที่การ import tailwindcss ตรง ๆ */
+@import "@heroui/styles/css";
 
 /* Sarabun 400 thai */
 @font-face {
@@ -1255,4 +1257,12 @@ input[type="number"] {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* ── HeroUI theme overrides — จูนให้เข้าแบรนด์ Stockify (เขียวเข้ม #06402B) ──
+   ประกาศนอก @layer จึงชนะ default theme ของ HeroUI (ที่อยู่ใน layer theme) */
+:root {
+  --accent: oklch(0.33 0.055 163);          /* #06402B เขียวเข้มแบรนด์ */
+  --accent-foreground: oklch(100% 0 0);     /* ตัวอักษรบนปุ่ม primary = ขาว */
+  --radius: 0.75rem;                        /* มุมมนกลาง ๆ ใกล้ rounded-2xl ของการ์ดเดิม */
 }

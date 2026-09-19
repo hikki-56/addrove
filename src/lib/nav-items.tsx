@@ -12,6 +12,31 @@ export interface NavItem {
 export const SYSTEM_MENU_EMAILS = ["ty@stockify.com"];
 export const SYSTEM_MENU_HREFS = ["/users", "/login-logs", "/users/cards"];
 
+// บัญชีแอดมินที่จำกัดเมนู — เห็นเฉพาะหน้าที่กำหนดเท่านั้น (จับคู่ด้วยชื่อบัญชี/อีเมล/ชื่อ-นามสกุล)
+export const RESTRICTED_ADMIN_MENUS: { matchNames: string[]; hrefs: string[] }[] = [
+  {
+    // milk — ดูสินค้าทั้งหมด + ผลิตสินค้า + ประวัติการสั่งผลิต + แก้ไขสูตร BOM
+    matchNames: ["milk", "มิลค์"],
+    hrefs: ["/products", "/production", "/production/history", "/production/formula"],
+  },
+];
+
+/** คืนรายการเมนูที่บัญชีนี้เห็นได้ (null = ไม่ถูกจำกัด เห็นตาม role ปกติ) */
+export function getAllowedMenuHrefs(
+  user?: { email?: string | null; name?: string | null } | null
+): string[] | null {
+  if (!user) return null;
+  const email = (user.email || "").trim().toLowerCase();
+  if (!email) return null;
+  const localPart = email.split("@")[0];
+  const name = (user.name || "").trim().toLowerCase();
+  for (const rule of RESTRICTED_ADMIN_MENUS) {
+    const matched = rule.matchNames.some((n) => n === localPart || n === email || n === name);
+    if (matched) return rule.hrefs;
+  }
+  return null;
+}
+
 export function isSystemMenuUser(email?: string | null): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
@@ -110,6 +135,18 @@ export const navItems: NavItem[] = [
         <path d="M17 18h1" />
         <path d="M12 18h1" />
         <path d="M7 18h1" />
+      </Icon>
+    ),
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/production/formula",
+    label: "แก้ไขสูตร BOM",
+    icon: (
+      <Icon>
+        <path d="M10 2v7.5a2 2 0 0 1-.4 1.2L4.7 16.9A2 2 0 0 0 6.3 20h11.4a2 2 0 0 0 1.6-3.1l-4.9-6.2a2 2 0 0 1-.4-1.2V2" />
+        <path d="M8.5 2h7" />
+        <path d="M7 16h10" />
       </Icon>
     ),
     roles: ["ADMIN"],
