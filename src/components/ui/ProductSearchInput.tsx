@@ -160,6 +160,9 @@ export default function ProductSearchInput({
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              // ช่องว่าง = ยังไม่ได้พิมพ์คำค้น — ห้ามหยิบรายการแรกของทั้งแคตตาล็อกมาเลือกเงียบ ๆ
+              // (กัน Enter ซ้อนติดกันจากปืนสแกนที่เพิ่มรายการที่ไม่ได้ตั้งใจ)
+              if (!query.trim()) return;
               e.preventDefault();
               if (displayedProducts.length > 0) {
                 const p = displayedProducts[0];
