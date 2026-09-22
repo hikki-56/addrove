@@ -103,7 +103,7 @@ export default function LoginPage() {
         </div>
 
         {/* Desktop Brand Panel (จอ lg ขึ้นไป): split-screen แบบเดิม */}
-        <div className="hidden lg:flex lg:col-span-7 lg:p-14 flex-col justify-between relative overflow-hidden bg-slate-950">
+        <div className="hidden lg:flex lg:col-span-7 lg:p-8 xl:p-14 flex-col justify-between relative overflow-hidden bg-slate-950">
           
           {/* Warehouse Loading Background Overlay */}
           <div className="absolute inset-0 opacity-25 pointer-events-none overflow-hidden">
@@ -143,7 +143,7 @@ export default function LoginPage() {
               <img
                 src="/truck-unloading.jpg"
                 alt="การขนสินค้าจากรถเข้าหน้าโกดัง"
-                className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-80 lg:h-56 xl:h-80 object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4 text-white">
@@ -162,12 +162,12 @@ export default function LoginPage() {
         </div>
 
         {/* Form Section: การ์ดล็อกอินจัดกลางแนวตั้งเสมอ (มือถือ: พื้นดำไล่ลงเขียว, เดสก์ท็อป: คอลัมน์ขวา) */}
-        <div className="flex-1 lg:col-span-5 px-4 py-8 sm:p-8 lg:p-12 flex items-center justify-center bg-gradient-to-b lg:bg-gradient-to-r from-[#0a0a0c] via-[#052B1F] to-[#053425]">
-          <div className="bg-white rounded-3xl p-5 sm:p-8 lg:p-12 w-full max-w-lg shadow-2xl flex flex-col justify-center relative z-10">
+        <div className="flex-1 lg:col-span-5 px-4 py-8 sm:p-8 lg:p-6 xl:p-12 flex justify-center lg:overflow-y-auto bg-gradient-to-b lg:bg-gradient-to-r from-[#0a0a0c] via-[#052B1F] to-[#053425]">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 lg:p-8 xl:p-12 w-full max-w-lg shadow-2xl flex flex-col justify-center relative z-10 my-auto">
 
             {/* Top Brand Logo inside Circular Frame (แสดงเฉพาะแท็บเล็ตขึ้นไป — บนมือถือโลโก้อยู่ที่เฮดเดอร์แล้ว) */}
             <div className="hidden sm:flex justify-center mb-6">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-full bg-gradient-to-br from-[#EAF2EE] via-white to-[#EAF2EE] border-4 border-[#0F5C3F]/40 flex items-center justify-center p-3 sm:p-4 shadow-xl shadow-[#031B14]/15 transition-transform hover:scale-105">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-28 lg:h-28 xl:w-40 xl:h-40 rounded-full bg-gradient-to-br from-[#EAF2EE] via-white to-[#EAF2EE] border-4 border-[#0F5C3F]/40 flex items-center justify-center p-3 sm:p-4 shadow-xl shadow-[#031B14]/15 transition-transform hover:scale-105">
                 <img
                   src="/logo-vertical.png"
                   alt="A'AMAZON Logo"
