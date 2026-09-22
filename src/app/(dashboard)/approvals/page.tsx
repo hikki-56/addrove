@@ -2,12 +2,15 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
+import type { Product } from "@/types/models";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { batchTagExpressItems } from "@/lib/express-tag-utils";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { isSameJson } from "@/lib/json-equal";
 import CustomSelect from "@/components/ui/CustomSelect";
+import ProductSearchInput from "@/components/ui/ProductSearchInput";
+import { buildReceiveEditRow } from "./_lib/build-receive-edit-row";
 
 interface ApprovalDoc {
   document_id: string;
@@ -292,9 +295,56 @@ export default function ApprovalsPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  // แคตตาล็อกสินค้าสำหรับช่องค้นหาใน modal แก้ไข — โหลดสดทุกครั้งที่เปิดเอกสาร
+  const [productCatalog, setProductCatalog] = useState<Product[]>([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [catalogLoadError, setCatalogLoadError] = useState<string | null>(null);
+  // หลังเลือกสินค้าจากช่องค้นหา → โฟกัสช่องจำนวนของแถวใหม่ให้ทันที (เหลือกรอกแค่จำนวน)
+  const [focusQtyRowIndex, setFocusQtyRowIndex] = useState<number | null>(null);
+
   useEscapeKey(Boolean(editingDoc), () => {
     if (!isSavingEdit) setEditingDoc(null);
   });
+
+  // โหลดสินค้าสำหรับช่องค้นหา 2 แหล่งแล้วรวมกัน:
+  // 1) รายการที่มีสต็อกจริงจากทุกโกดัง (ได้ตำแหน่ง/ยอดคงเหลือจริง)
+  // 2) master catalog — ให้สินค้าที่สต็อก 0 ทุกโกดัง (ของหมด/เพิ่งลงทะเบียน) ค้นเจอด้วย
+  //    เพราะ /api/products แบบไม่มี param จะ skip แถวที่ qty=0 ในแท็บโกดัง
+  const loadProductCatalog = () => {
+    setIsLoadingCatalog(true);
+    setCatalogLoadError(null);
+    const fetchList = (url: string) =>
+      fetch(url, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+    Promise.all([fetchList(`/api/products`), fetchList(`/api/products?master_only=true`)]).then(
+      ([whJson, masterJson]) => {
+        const asList = (j: unknown): Product[] =>
+          Array.isArray((j as { data?: unknown })?.data)
+            ? ((j as { data: Product[] }).data as Product[])
+            : ((j as { data?: { items?: Product[] } })?.data?.items || []);
+        const warehouseList = asList(whJson);
+        const masterList = asList(masterJson);
+        // รายการที่มีสต็อกมาก่อน (ข้อมูลครบกว่า) แล้วเติมสินค้าจาก master ที่ยังไม่ปรากฏ โดย dedupe ด้วย SKU
+        const normKey = (v?: string) => (v || "").trim().toLowerCase().replace(/^prod-/, "");
+        const seen = new Set(
+          warehouseList.map((p) => normKey(p.sku || p.product_id)).filter(Boolean)
+        );
+        setProductCatalog([
+          ...warehouseList,
+          ...masterList.filter((p) => {
+            const key = normKey(p.sku || p.product_id);
+            return key && !seen.has(key);
+          }),
+        ]);
+        if (!whJson && !masterJson) {
+          setCatalogLoadError(
+            "โหลดรายการสินค้าไม่สำเร็จ — ลองปิดแล้วเปิดหน้าต่างแก้ไขอีกครั้ง หรือใช้ปุ่ม “เพิ่มรายการกรอกเอง”"
+          );
+        }
+      }
+    ).finally(() => setIsLoadingCatalog(false));
+  };
 
   const openEditModal = (doc: ApprovalDoc) => {
     setReviewDoc(null);
@@ -314,6 +364,7 @@ export default function ApprovalsPage() {
         String(r[7] ?? ""),
       ])
     );
+    loadProductCatalog();
   };
 
   const handleRowChange = (index: number, fieldIndex: number, val: any) => {
@@ -332,6 +383,27 @@ export default function ApprovalsPage() {
       ["", "-", "", "", 1, editWarehouse || "โกดัง1", "-", new Date().toISOString()],
     ]);
   };
+
+  // เลือกสินค้าจากช่องค้นหา (บาร์โค้ด/รหัส/ชื่อ) → กรอกทุกช่องให้อัตโนมัติ เหลือเฉพาะจำนวนให้ผู้ใช้ใส่เอง
+  const handleAddProductFromSearch = (product: Product) => {
+    setEditError(null);
+    setEditRows((prev) => [...prev, buildReceiveEditRow(product, editWarehouse)]);
+    setFocusQtyRowIndex(editRows.length);
+  };
+
+  // โฟกัส + เลือกข้อความในช่องจำนวนของแถวที่เพิ่มจากช่องค้นหา (เลือกช่องที่มองเห็นได้ ตาม desktop/mobile)
+  useEffect(() => {
+    if (focusQtyRowIndex === null) return;
+    const candidates = document.querySelectorAll<HTMLInputElement>(
+      `[data-qty-row="${focusQtyRowIndex}"]`
+    );
+    const visible = Array.from(candidates).find((el) => el.offsetParent !== null);
+    if (visible) {
+      visible.focus();
+      visible.select();
+    }
+    setFocusQtyRowIndex(null);
+  }, [focusQtyRowIndex, editRows]);
 
   const handleDeleteRow = (index: number) => {
     // ปุ่มลบแถวสุดท้ายถูก disabled ไว้ — เอกสารต้องมีสินค้าอย่างน้อย 1 รายการเสมอ
@@ -1013,13 +1085,32 @@ export default function ApprovalsPage() {
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" />
                   </svg>
-                  <span>เพิ่มรายการ</span>
+                  <span>เพิ่มรายการกรอกเอง</span>
                 </button>
+              </div>
+
+              {/* ค้นหาสินค้าเพื่อเพิ่มรายการ — เลือกแล้วระบบกรอกให้ทุกช่อง เหลือกรอกแค่จำนวน */}
+              <div id="edit-product-search" className="space-y-1.5">
+                <ProductSearchInput
+                  products={productCatalog}
+                  onSelectProduct={handleAddProductFromSearch}
+                  selectedProductIds={editRows.map((r) => String(r[0] || ""))}
+                  placeholder={
+                    isLoadingCatalog
+                      ? "กำลังโหลดรายการสินค้า…"
+                      : "พิมพ์หรือสแกนบาร์โค้ด / รหัสสินค้า / ชื่อสินค้า แล้วกด Enter…"
+                  }
+                />
+                {catalogLoadError && (
+                  <p role="alert" className="text-xs font-bold text-rose-700">
+                    {catalogLoadError}
+                  </p>
+                )}
               </div>
 
               {/* ข้อความผิดพลาดของฟอร์ม — บอกว่าแถวไหนผิดและแก้อย่างไร */}
@@ -1120,7 +1211,16 @@ export default function ApprovalsPage() {
                               type="number"
                               min="1"
                               value={row[4]}
+                              data-qty-row={rIdx}
                               onChange={(e) => handleRowChange(rIdx, 4, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  document
+                                    .querySelector<HTMLInputElement>("#edit-product-search input")
+                                    ?.focus();
+                                }
+                              }}
                               aria-label={`จำนวนสินค้า รายการที่ ${rIdx + 1}`}
                               aria-invalid={qtyBad || undefined}
                               className={`${editInputClass(qtyBad, true)} text-center`}
@@ -1237,7 +1337,16 @@ export default function ApprovalsPage() {
                           type="number"
                           min="1"
                           value={row[4]}
+                          data-qty-row={rIdx}
                           onChange={(e) => handleRowChange(rIdx, 4, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              document
+                                .querySelector<HTMLInputElement>("#edit-product-search input")
+                                ?.focus();
+                            }
+                          }}
                           aria-label={`จำนวนสินค้า รายการที่ ${rIdx + 1}`}
                           aria-invalid={qtyBad || undefined}
                           className={`${editInputClass(qtyBad, true)} text-center`}
