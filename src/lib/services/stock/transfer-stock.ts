@@ -32,6 +32,7 @@ import { hasWarehouseAccess } from "@/lib/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
 import { appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { normalizeWarehouseId, getWarehouseName } from "@/lib/warehouse-utils";
+import { cleanExpressCode, todayBangkokIsoDate } from "@/lib/express-status-utils";
 export {
   CreateTransferSchema,
   SubmitTransferSchema,
@@ -796,11 +797,17 @@ export async function completeTransfer(
       meta.to_warehouse_name = getWarehouseName(meta.to_warehouse_id);
       meta.express_tag = "ย้ายสินค้าเข้า Express";
       meta.express_status = "PENDING";
+      // สถานะ Express เก็บระดับรายรายการด้วย (เริ่มที่รอนำเข้า) —
+      // กดนำเข้าทีละรายการที่หน้า Express จะได้ไม่พากันทั้งเอกสาร
+      if (prodObj.sku) {
+        meta.express_items = { [cleanExpressCode(prodObj.sku)]: "PENDING" };
+      }
 
       // Automatically record into Google Sheets Tab: "ย้ายสินค้าเข้าExpress" & "เบิกสินค้าเข้าExpress"
       try {
         const routeName = `${meta.from_warehouse_name || "โกดัง 1"} -> ${meta.to_warehouse_name || "โกดัง 2"}`;
-        const transferDate = new Date().toISOString().slice(0, 10);
+        // วันที่ตามเวลาไทย — เดิมใช้ UTC ทำให้รายการก่อน 07:00 น. ตกเป็นวันก่อนหน้าแล้วหลุดกรอง "วันนี้"
+        const transferDate = todayBangkokIsoDate();
         const expressRow = [
           prodObj.sku || "",
           finalToLocId || finalFromLocId || "A1",
@@ -823,14 +830,28 @@ export async function completeTransfer(
           meta.qty,
           prodObj.barcode || prodObj.sku || "",
         ];
-        // Do NOT await — fire-and-forget so approval doesn't block waiting for Sheets API
-        appendRows(SHEETS.EXPRESS_TRANSFER, [expressRow]).catch((err) => {
-          console.warn("[completeTransfer] appendRows to EXPRESS_TRANSFER failed:", err);
-        });
-        appendRows(SHEETS.EXPRESS_ISSUE, [expressIssueRow]).catch((err) => {
-          console.warn("[completeTransfer] appendRows to EXPRESS_ISSUE failed:", err);
-        });
+        // await จริงและจดผลลง note — เดิม fire-and-forget ทำให้แถว Express หายเงียบ ๆ
+        // เมื่อ append ล้ม (quota/network) โดยเอกสารยังคิดว่าเขียนแล้ว
+        const appendWithResult = async (sheetName: string, rows: any[][]) => {
+          try {
+            await appendRows(sheetName, rows);
+            return null as string | null;
+          } catch (err) {
+            console.warn(`[completeTransfer] appendRows to ${sheetName} failed:`, err);
+            return err instanceof Error ? err.message : String(err);
+          }
+        };
+        const transferErr = await appendWithResult(SHEETS.EXPRESS_TRANSFER, [expressRow]);
+        const issueErr = await appendWithResult(SHEETS.EXPRESS_ISSUE, [expressIssueRow]);
+        meta.express_sheet_synced = !transferErr && !issueErr;
+        if (!meta.express_sheet_synced) {
+          meta.express_sheet_error = [transferErr, issueErr].filter(Boolean).join(" | ");
+          meta.express_sheet_failed_at = new Date().toISOString();
+        }
       } catch (sheetErr) {
+        meta.express_sheet_synced = false;
+        meta.express_sheet_error = sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
+        meta.express_sheet_failed_at = new Date().toISOString();
         console.warn("[completeTransfer] Auto-append to Express sheets warning:", sheetErr);
       }
 

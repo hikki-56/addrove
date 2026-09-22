@@ -13,6 +13,7 @@ import {
 } from "@/lib/api-response";
 import { appendRows, SHEETS } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
+import { todayBangkokIsoDate } from "@/lib/express-status-utils";
 import { getShipmentDetail } from "@/lib/services/outbound/shipment.service";
 import {
   mutateShipmentNote,
@@ -57,7 +58,8 @@ export async function POST(
     }
 
     const billDocs = await listBillDocuments(repo);
-    const today = new Date().toISOString().slice(0, 10);
+    // วันที่ตามเวลาไทย — เดิมใช้ UTC ทำให้บิลที่ส่งช่วงก่อน 07:00 น. ตกเป็นวันก่อนหน้าแล้วหลุดกรอง "วันนี้"
+    const today = todayBangkokIsoDate();
     const rows: string[][] = [];
     const exportedBillIds: string[] = [];
 

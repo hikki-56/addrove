@@ -18,9 +18,15 @@ import {
   tagExpressItem,
   batchTagExpressItems,
   updateExpressItemStatus,
+  queueExpressStatusRetry,
+  getDueExpressStatusRetries,
+  markExpressStatusRetryAttempt,
+  removeExpressStatusRetry,
   type TaggedExpressItem,
   type ExpressSyncStatus,
 } from "@/lib/express-tag-utils";
+import { expressItemKey } from "@/lib/express-status-utils";
+import { safeNavigate } from "@/lib/safe-navigate";
 import {
   useReactTable,
   getCoreRowModel,
@@ -135,7 +141,7 @@ export default function ExpressIssuePage() {
 
   useEffect(() => {
     if (status !== "loading" && user && user.role !== "ADMIN") {
-      router.replace("/dashboard");
+      safeNavigate(router, "/dashboard", "replace");
     }
   }, [status, user, router]);
 
@@ -167,10 +173,14 @@ export default function ExpressIssuePage() {
 
   // นับรอบของ fetch — response ของรอบเก่าต้องไม่ย่อยสถานะใหม่ (กัน race กับการกดระหว่าง poll)
   const fetchGenRef = useRef(0);
-  // เอกสารที่เพิ่งกดเปลี่ยนสถานะและ POST ยังไม่ตอบกลับ (docNo lowercase → timestamp)
+  // รายการที่เพิ่งกดเปลี่ยนสถานะและ POST ยังไม่ตอบกลับ (คีย์ "docno|sku" → timestamp)
   // รอบ sync ระหว่างนี้ห้ามเอาค่าจาก server (ซึ่งยังเป็นค่าเก่า) มาทับค่าที่ผู้ใช้เพิ่งกด
+  // — คีย์ระดับรายการ กด SKU หนึ่งต้องไม่ล็อกค่า server ของ SKU อื่นในเอกสารเดียวกัน
   const pendingSyncRef = useRef<Map<string, number>>(new Map());
   const PENDING_SYNC_TTL_MS = 30000;
+
+  // แถวที่กำลังส่งสถานะอยู่ — ล็อก select กันกดสลับถี่ ๆ ยิง POST ซ้อนกัน
+  const [syncingKeys, setSyncingKeys] = useState<Set<string>>(new Set());
 
   // Sync tagged items from localStorage
   const refreshTaggedMap = useCallback(() => {
@@ -203,10 +213,86 @@ export default function ExpressIssuePage() {
     };
   }, [refreshTaggedMap]);
 
-  const fetchMovements = useCallback(async (isSilent = false) => {
+  // Helper to sync status to Google Sheets and DB in background
+  // ตลอดช่วงที่ POST ยังไม่ตอบกลับ จะ mark รายการไว้ใน pendingSyncRef (คีย์ docno|sku) เพื่อกัน
+  // รอบ sync เอาค่า server ที่ยังเก่ามาทับ — และส่งสำเร็จจริงเท่านั้นที่แจ้งสำเร็จ
+  // เขียนชีตไม่ครบ/ส่งพลาด ต้องเข้าคิว retry จริง (เดิม toast สัญญา "ลองใหม่อัตโนมัติ" แต่ไม่มี retry ที่ไหนเลย)
+  const syncStatusToSheet = useCallback(
+    async (
+      items: Array<{
+        document_no: string;
+        raw_document_no?: string;
+        sku?: string;
+        status: ExpressSyncStatus;
+        type: "ISSUE";
+      }>
+    ) => {
+      const itemKeys = items.map((i) => expressItemKey(i.document_no, i.sku));
+      itemKeys.forEach((k) => pendingSyncRef.current.set(k, Date.now()));
+      const firstItem = items[0];
+      const statusLabel = firstItem?.status === "IMPORTED" ? "นำเข้าแล้ว" : "รอนำเข้า";
+      const docDesc =
+        items.length === 1 && firstItem?.document_no ? `เลขที่ ${firstItem.document_no}` : `${items.length} รายการ`;
+      try {
+        const res = await fetch("/api/express-import/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
+        if (!res.ok) throw new Error(`status sync HTTP ${res.status}`);
+        const json = await res.json().catch(() => null);
+        if (json && json.success === false) throw new Error(json.message || "sync failed");
+
+        // POST ตอบกลับแล้ว = server รับสถานะแล้ว (memory + doc note) — ปล่อยให้ polling sync ตามปกติ
+        itemKeys.forEach((k) => pendingSyncRef.current.delete(k));
+
+        if (json?.data?.all_sheet_synced === false) {
+          queueExpressStatusRetry(items);
+          setToast({
+            message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) บนระบบแล้ว แต่ยังเขียน Google Sheets ไม่สำเร็จ — ระบบจะลองใหม่อัตโนมัติ`,
+            tone: "error",
+          });
+          return;
+        }
+
+        removeExpressStatusRetry(items);
+        setToast({
+          message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) เข้า Google Sheets เรียบร้อย`,
+          tone: "success",
+        });
+      } catch (e) {
+        // คง pendingSync ไว้ช่วงสั้น ๆ — รอบหน้าจะไม่ทับค่าที่ผู้ใช้เพิ่งกด ส่วนการลองใหม่จริงอยู่ในคิว retry
+        console.warn("[ExpressIssuePage] Background status sync to sheet failed:", e);
+        queueExpressStatusRetry(items);
+        setToast({
+          message: "ไม่สามารถบันทึกสถานะเข้า Google Sheets ได้ — ระบบจะลองใหม่อัตโนมัติ",
+          tone: "error",
+        });
+      }
+    },
+    []
+  );
+
+  const fetchMovements = useCallback(
+    async (isSilent = false) => {
     const gen = ++fetchGenRef.current;
     if (!isSilent) setLoading(true);
     try {
+      // รายการที่เขียนชีตไม่สำเร็จจากรอบก่อน — ลองส่งซ้ำ (คิวมี backoff ของตัวเอง สูงสุด 6 ครั้ง)
+      const dueRetries = getDueExpressStatusRetries("ISSUE");
+      if (dueRetries.length > 0) {
+        dueRetries.forEach((r) => markExpressStatusRetryAttempt(r));
+        void syncStatusToSheet(
+          dueRetries.map((r) => ({
+            document_no: r.document_no,
+            raw_document_no: r.raw_document_no,
+            sku: r.sku,
+            status: r.status,
+            type: "ISSUE" as const,
+          }))
+        );
+      }
+
       const [issueRes, prodRes, statusRes] = await Promise.all([
         fetch(`/api/express-import/issue`, { cache: "no-store" }),
         fetch(`/api/products?limit=5000`, { cache: "no-store" }).catch(() => null),
@@ -256,14 +342,21 @@ export default function ExpressIssuePage() {
           const nowMs = Date.now();
 
           incomingMovements.forEach((item) => {
-            const docNoLower = (item.document_no || "").trim().toLowerCase();
-            // รายการที่เพิ่งกดและ POST ยังไม่ตอบกลับ — ค่า server ตอนนี้ยังเก่า ห้ามเอามาทับ
-            const pendingAt = pendingSyncRef.current.get(docNoLower);
+            // รายการที่เพิ่งกดและ POST ยังไม่ตอบกลับ — ค่า server ตอนนี้ยังเก่า ห้ามเอามาทับ (คีย์รายรายการ)
+            const pendingAt = pendingSyncRef.current.get(expressItemKey(item.document_no, item.sku));
             if (pendingAt !== undefined && nowMs - pendingAt < PENDING_SYNC_TTL_MS) return;
 
             const docKey = (item.document_no || "").trim().toLowerCase();
             const docIdKey = (item.document_id || "").trim().toLowerCase();
-            const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
+            // สถานะระดับ "รายการ" (คีย์ docno|sku) มาก่อนระดับเอกสารเสมอ —
+            // เดิมอ่านแต่ระดับเอกสาร ทำให้กด "นำเข้าแล้ว" 1 รายการแล้วรายการอื่นในเอกสารเดียวกันตามไปด้วย
+            const perItemKey = expressItemKey(item.document_no, item.sku);
+            const rawItemKey = expressItemKey(item.raw_document_no, item.sku);
+            const srv =
+              serverStatusMap[perItemKey] ||
+              serverStatusMap[rawItemKey] ||
+              (docKey ? serverStatusMap[docKey] : undefined) ||
+              (docIdKey ? serverStatusMap[docIdKey] : undefined);
             const docExpressStatus: ExpressSyncStatus = srv?.status || (item.status as ExpressSyncStatus) || "PENDING";
 
             const uniqueId = item.id || `iss_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;
@@ -298,7 +391,9 @@ export default function ExpressIssuePage() {
     } finally {
       if (!isSilent && gen === fetchGenRef.current) setLoading(false);
     }
-  }, []);
+    },
+    [syncStatusToSheet]
+  );
 
   // hook ส่ง initial=true เฉพาะครั้งแรก — ครั้งแรกโชว์ loading, รอบ polling ต้อง refresh เงียบ ๆ
   // wrapper ต้อง memoize เพราะ hook ใช้ callback เป็น dependency ของ effect
@@ -315,6 +410,7 @@ export default function ExpressIssuePage() {
       movement_id: string;
       document_id: string;
       document_no: string;
+      raw_document_no?: string;
       warehouse_name: string;
       warehouse_id: string;
       from_warehouse_name?: string;
@@ -527,6 +623,8 @@ export default function ExpressIssuePage() {
         movement_id: m.movement_id || uniqueId,
         document_id: m.document_id || m.document_no,
         document_no: m.document_no || "ISS",
+        // เลขเอกสารดิบจากชีต (อาจเป็นชุด "ISS-…, ISS-…") — ใช้ match แถวชีตตอนเปลี่ยนสถานะ
+        raw_document_no: m.raw_document_no,
         warehouse_name: m.from_warehouse_name || m.warehouse_name || m.warehouse_id || "คลังสินค้า",
         warehouse_id: m.warehouse_id || "",
         from_warehouse_name: m.from_warehouse_name || m.warehouse_name || "คลังสินค้า",
@@ -725,45 +823,6 @@ export default function ExpressIssuePage() {
     return { total: baseItems.length, taggedCount, pendingCount, importedCount };
   }, [allItems, taggedItemsMap, isInDateRange]);
 
-  // Helper to sync status to Google Sheets and DB in background
-  // ตลอดช่วงที่ POST ยังไม่ตอบกลับ จะ mark เอกสารไว้ใน pendingSyncRef เพื่อกัน
-  // รอบ polling เอาสถานะเก่าจาก server มาทับค่าที่ผู้ใช้เพิ่งกด (สาเหตุที่สถานะเด้งกลับเป็น "รอนำเข้า")
-  const syncStatusToSheet = useCallback(async (items: Array<{ document_no: string; sku?: string; status: ExpressSyncStatus; type: "ISSUE" }>) => {
-    const docKeys = items
-      .map((i) => (i.document_no || "").trim().toLowerCase())
-      .filter(Boolean);
-    docKeys.forEach((k) => pendingSyncRef.current.set(k, Date.now()));
-    try {
-      const res = await fetch("/api/express-import/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
-      });
-      if (!res.ok) {
-        throw new Error(`status sync HTTP ${res.status}`);
-      }
-      // POST ตอบกลับแล้ว = server รับสถานะแล้ว (memory + doc note) — ปล่อยให้ polling sync ตามปกติ
-      docKeys.forEach((k) => pendingSyncRef.current.delete(k));
-
-      const firstItem = items[0];
-      const statusLabel = firstItem?.status === "IMPORTED" ? "นำเข้าแล้ว" : "รอนำเข้า";
-      const docDesc = items.length === 1 && firstItem?.document_no
-        ? `เลขที่ ${firstItem.document_no}`
-        : `${items.length} รายการ`;
-      setToast({
-        message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) เข้า Google Sheets เรียบร้อย`,
-        tone: "success",
-      });
-    } catch (e) {
-      // คง pendingSync ไว้ — รอบหน้าจะไม่ทับค่าที่ผู้ใช้กด และรายการหมดอายุเองใน 30 วิ
-      console.warn("[ExpressIssuePage] Background status sync to sheet failed:", e);
-      setToast({
-        message: "ไม่สามารถบันทึกสถานะเข้า Google Sheets ได้ ระบบจะลองใหม่อัตโนมัติ",
-        tone: "error",
-      });
-    }
-  }, []);
-
   // Update Status
   const handleSetStatus = useCallback(
     (item: (typeof allItems)[0], newStatus: ExpressSyncStatus) => {
@@ -788,7 +847,23 @@ export default function ExpressIssuePage() {
         });
       }
       refreshTaggedMap();
-      syncStatusToSheet([{ document_no: item.document_no, sku: item.sku, status: newStatus, type: "ISSUE" }]);
+      // ล็อกแถวระหว่าง POST ค้าง กันกดสลับถี่ ๆ ยิงซ้อนกัน
+      setSyncingKeys((prev) => new Set(prev).add(item.id));
+      syncStatusToSheet([
+        {
+          document_no: item.document_no,
+          raw_document_no: item.raw_document_no,
+          sku: item.sku,
+          status: newStatus,
+          type: "ISSUE",
+        },
+      ]).finally(() => {
+        setSyncingKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+      });
     },
     [taggedItemsMap, refreshTaggedMap, syncStatusToSheet]
   );
@@ -949,12 +1024,15 @@ export default function ExpressIssuePage() {
           const tagged = taggedItemsMap.get(item.id);
           const effectiveStatus: ExpressSyncStatus = tagged?.status || item.express_status || (item.status as ExpressSyncStatus) || "PENDING";
           const isImported = effectiveStatus === "IMPORTED";
+          const isSyncing = syncingKeys.has(item.id);
           return (
             <select
               value={effectiveStatus}
               onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
+              disabled={isSyncing}
               aria-label={`สถานะ Express ของเอกสาร ${item.document_no} สินค้า ${item.product_name}`}
-              className={`px-4 min-h-[46px] rounded-full text-base sm:text-lg font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
+              title={isSyncing ? "กำลังบันทึกสถานะ…" : undefined}
+              className={`px-4 min-h-[46px] rounded-full text-base sm:text-lg font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-wait ${
                 isImported
                   ? "bg-[#DFEDE6] text-[#052B1F] border-[#8FB3A3] hover:bg-[#C9DFD4]/60"
                   : "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200/60"
@@ -967,7 +1045,7 @@ export default function ExpressIssuePage() {
         },
       },
     ],
-    [taggedItemsMap, copiedItemSku, handleSetStatus, handleCopySingleBarcode]
+    [taggedItemsMap, copiedItemSku, handleSetStatus, handleCopySingleBarcode, syncingKeys]
   );
 
   const table = useReactTable({

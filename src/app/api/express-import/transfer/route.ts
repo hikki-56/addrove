@@ -1,11 +1,30 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { parseTransferMetadata } from "@/lib/transfer-notification-utils";
 import { getWarehouseName, normalizeWarehouseId, detectWarehouseFromLocation } from "@/lib/warehouse-utils";
-import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
+import {
+  successResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
+  errorResponse,
+} from "@/lib/api-response";
+import { expressStatusMap } from "@/app/api/express-import/status/route";
+import {
+  cleanExpressCode,
+  expressItemKey,
+  looksLikeSheetDate,
+  todayBangkokIsoDate,
+  parseExpressStatusText,
+  sanitizeSheetValue,
+  EXPRESS_STATUS_TEXT,
+  type ExpressSyncStatusValue,
+} from "@/lib/express-status-utils";
+import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from "@/lib/idempotency";
 
 export const maxDuration = 60;
 
@@ -25,6 +44,13 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+    try {
+      authorize(actor, PERMISSIONS.EXPRESS_IMPORT_VIEW);
+    } catch {
+      return forbiddenResponse("เฉพาะแอดมิน/ผู้จัดการที่ดูรายการย้ายสินค้าเข้า Express ได้");
+    }
 
     const repo = getRepository();
     const items: Array<{
@@ -32,6 +58,8 @@ export async function GET(req: NextRequest) {
       movement_id: string;
       document_id: string;
       document_no: string;
+      // เลขเอกสารดิบจากชีต — display อาจถูก cleanDocNumber เปลี่ยน
+      raw_document_no?: string;
       warehouse_name: string;
       warehouse_id: string;
       from_warehouse_name: string;
@@ -192,14 +220,17 @@ export async function GET(req: NextRequest) {
       let docNo = String(rawDocNo || "").trim();
       const docId = String(rawDocId || "").trim();
 
+      // ยอมรับเลขยาวถึง 64 ตัวอักษร — เลขที่ต่อกันหลายตัว (เช่นหลายใบย้ายรวมกัน) ต้องผ่านตรง ๆ
+      // เดิมตัดที่ 25 แล้ว generate เลข TRF ใหม่ ทำให้ปุ่มสถานะหาแถวชีตไม่เจอ
+      const MAX_DOCNO_LEN = 64;
       const docRec = docId ? allDocsMap.get(docId.toLowerCase()) : (docNo ? allDocsMap.get(docNo.toLowerCase()) : undefined);
-      if (docRec?.reference_no && !docRec.reference_no.startsWith("doc-") && docRec.reference_no.length <= 25) {
+      if (docRec?.reference_no && !docRec.reference_no.startsWith("doc-") && docRec.reference_no.length <= MAX_DOCNO_LEN) {
         return docRec.reference_no;
       }
-      if (docRec?.document_no && !docRec.document_no.startsWith("doc-") && docRec.document_no.length <= 25) {
+      if (docRec?.document_no && !docRec.document_no.startsWith("doc-") && docRec.document_no.length <= MAX_DOCNO_LEN) {
         return docRec.document_no;
       }
-      if (docNo && !docNo.startsWith("doc-") && docNo.length <= 25) {
+      if (docNo && !docNo.startsWith("doc-") && docNo.length <= MAX_DOCNO_LEN) {
         return docNo;
       }
 
@@ -269,8 +300,9 @@ export async function GET(req: NextRequest) {
         let qty = 1;
         let barcode = "";
 
-        if (col0.includes("/") || (col0.includes("-") && col0.length === 10 && !isNaN(Date.parse(col0)))) {
+        if (looksLikeSheetDate(col0)) {
           // Layout: [Date, DocNo, Barcode, SKU, ProductName, Warehouse, Location, Qty, MovedBy, ApprovedBy, Status]
+          // ต้องเป็นวันที่จริงเท่านั้น — เดิมใช้ col0.includes("/") ทำให้ SKU ที่มี "/" ถูกอ่านเลื่อนทั้งแถว
           date = col0;
           docNo = String(row[1] ?? "").trim();
           barcode = String(row[2] ?? "").trim();
@@ -303,6 +335,11 @@ export async function GET(req: NextRequest) {
         const enriched = enrichProduct(sku, barcode, productName, location);
         const resolvedDocNo = cleanDocNumber(docNo, docNo, date);
         const uniqueKey = `sheet_trf_${resolvedDocNo}_${enriched.sku}_${idx}`;
+
+        // สถานะระดับ "รายการ": memory คีย์ docno|sku (เพิ่งกด) → ข้อความในเซลล์ (รอนำเข้าชนะก่อนแล้ว) → PENDING
+        const memItemStatus = expressStatusMap.get(expressItemKey(docNo, enriched.sku))?.status;
+        const cellStatus = parseExpressStatusText(status);
+        const rowStatus: ExpressSyncStatusValue = memItemStatus || cellStatus || "PENDING";
 
         // แถวจากชีตมาก่อน ถือเป็นตัวแทนของรายการนี้ — จด key ไว้เพื่อให้ลูปเอกสารข้ามของซ้ำ
         emittedSemanticKeys.add(semanticKey(resolvedDocNo, enriched.sku));
@@ -342,19 +379,13 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // --- Override: TRF-20260825-000067 ปลายทาง = สำนักงานใหญ่ ---
-        if (resolvedDocNo === "TRF-20260825-000067") {
-          fromWarehouseId = "wh-01";
-          fromWarehouseName = "โกดัง1";
-          toWarehouseId = "wh-06";
-          toWarehouseName = "สำนักงานใหญ่";
-        }
-
         items.push({
           id: uniqueKey,
           movement_id: `mov-${resolvedDocNo}-${idx}`,
           document_id: resolvedDocNo,
           document_no: resolvedDocNo,
+          // เลขดิบจากชีต — หน้าเว็บใช้ตอน POST สถานะเพื่อหาแถวชีตโดยตรง
+          raw_document_no: docNo,
           warehouse_name: fromWarehouseName,
           warehouse_id: fromWarehouseId,
           from_warehouse_name: fromWarehouseName,
@@ -370,7 +401,7 @@ export async function GET(req: NextRequest) {
           barcode: enriched.barcode,
           movement_type: "TRANSFER",
           tag: "ย้ายสินค้าเข้า Express",
-          status: status.includes("แล้ว") || status === "IMPORTED" ? "IMPORTED" : "PENDING",
+          status: rowStatus,
         });
       }
     } catch (e) {
@@ -430,28 +461,33 @@ export async function GET(req: NextRequest) {
         fromWarehouseId = normalizeWarehouseId(fromWarehouseId);
         toWarehouseId = normalizeWarehouseId(toWarehouseId);
 
-        // If from and to became identical by mistake, smartly separate
+        // ต้นทาง/ปลายทางตรงกัน: ใช้ตำแหน่งช่วยแยกได้ก็แยกตามหลักฐานจริง
+        // แต่ถ้ายังตรงกันอยู่ให้แสดงตามข้อมูลจริง — อาจเป็นการย้ายเปลี่ยนชั้นวางในโกดังเดียวกัน
+        // (เดิมสลับเป็น "โกดังคู่ 1↔2" เดา ๆ และมี override ฮาร์ดโค้ดเฉพาะเอกสาร TRF-20260825-000067
+        //  ซึ่งเป็นการแก้ข้อมูลเฉพาะกรณีที่ค้างอยู่ในโค้ด ไม่ใช่กติกาของระบบ)
         if (fromWarehouseId === toWarehouseId) {
-          if (toLoc && detectWarehouseFromLocation(toLoc)) {
+          if (toLoc && detectWarehouseFromLocation(toLoc) && detectWarehouseFromLocation(toLoc) !== fromWarehouseId) {
             toWarehouseId = detectWarehouseFromLocation(toLoc)!;
-          } else if (fromLoc && detectWarehouseFromLocation(fromLoc)) {
+          } else if (fromLoc && detectWarehouseFromLocation(fromLoc) && detectWarehouseFromLocation(fromLoc) !== toWarehouseId) {
             fromWarehouseId = detectWarehouseFromLocation(fromLoc)!;
           }
-          if (fromWarehouseId === toWarehouseId) {
-            toWarehouseId = fromWarehouseId === "wh-01" ? "wh-02" : "wh-01";
-          }
-        }
-
-        // --- Override: TRF-20260825-000067 ปลายทาง = สำนักงานใหญ่ ---
-        if (resolvedDocNo === "TRF-20260825-000067") {
-          fromWarehouseId = "wh-01";
-          toWarehouseId = "wh-06";
         }
 
         const fromWarehouseName = getWarehouseName(fromWarehouseId);
         const toWarehouseName = getWarehouseName(toWarehouseId);
 
-        const isCompleted = meta.express_status === "IMPORTED";
+        // สถานะระดับ "รายการ" — memory คีย์ docno|sku → meta.express_items[sku]
+        // ระดับเอกสาร (meta.express_status) ใช้ได้เฉพาะเอกสาร 1 รายการ มิฉะนั้นค่า IMPORTED เก่าจะรั่ยทุก SKU
+        const metaItems =
+          (meta as any).express_items && typeof (meta as any).express_items === "object" ? (meta as any).express_items : {};
+        const memItemStatus = expressStatusMap.get(expressItemKey(rawDocNo, enriched.sku))?.status;
+        const noteItemStatus = metaItems[cleanExpressCode(enriched.sku)];
+        const legacyDocStatus = itemsList.length === 1 ? meta.express_status : undefined;
+        const effectiveStatus: ExpressSyncStatusValue =
+          memItemStatus ||
+          (noteItemStatus === "IMPORTED" || noteItemStatus === "PENDING" ? noteItemStatus : undefined) ||
+          (legacyDocStatus === "IMPORTED" ? "IMPORTED" : undefined) ||
+          "PENDING";
 
         const qty = Math.abs(Number(subItem.qty || subItem.quantity || meta.qty) || 1);
 
@@ -460,6 +496,7 @@ export async function GET(req: NextRequest) {
           movement_id: `trf-mov-${doc.document_id}-${subIdx}`,
           document_id: doc.document_id,
           document_no: resolvedDocNo,
+          raw_document_no: rawDocNo,
           warehouse_name: fromWarehouseName,
           warehouse_id: fromWarehouseId,
           from_warehouse_name: fromWarehouseName,
@@ -477,7 +514,7 @@ export async function GET(req: NextRequest) {
           barcode: enriched.barcode,
           movement_type: "TRANSFER",
           tag: meta.express_tag || "ย้ายสินค้าเข้า Express",
-          status: isCompleted ? "IMPORTED" : "PENDING",
+          status: effectiveStatus,
         });
       });
     }
@@ -496,40 +533,82 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+    try {
+      authorize(actor, PERMISSIONS.EXPRESS_IMPORT_MANAGE);
+    } catch {
+      return forbiddenResponse("เฉพาะแอดมิน/ผู้จัดการที่บันทึกรายการย้ายสินค้าเข้า Express ได้");
+    }
 
     const body = await req.json().catch(() => ({}));
     const {
       sku = "",
       location = "-",
-      document_no = "TRF",
+      document_no = "",
       from_warehouse_name = "โกดัง1",
       to_warehouse_name = "โกดัง2",
       warehouse_name = "",
-      document_date = new Date().toISOString().slice(0, 10),
+      document_date = todayBangkokIsoDate(),
       product_name = "",
       status = "รอนำเข้า Express",
       quantity = 1,
       barcode = "",
     } = body;
 
+    // Validation — เดิมไม่ตรวจอะไรเลยและส่งค่าดิบจาก body ลงชีตตรง ๆ
+    const cleanSku = String(sku).trim();
+    if (!cleanSku) {
+      return errorResponse("กรุณาระบุรหัสสินค้า (SKU)", 400);
+    }
+    const qtyNum = Number(quantity);
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 1_000_000) {
+      return errorResponse("จำนวนต้องเป็นตัวเลขมากกว่า 0 และไม่เกิน 1,000,000", 400);
+    }
+    let docNo = String(document_no).trim();
+    if (!docNo) {
+      const rand = Math.floor(100000 + Math.random() * 900000);
+      docNo = `TRF-${todayBangkokIsoDate().replace(/-/g, "")}-${rand}`;
+    }
+    if (docNo.length > 64) {
+      return errorResponse("เลขที่เอกสารยาวเกินไป (สูงสุด 64 ตัวอักษร)", 400);
+    }
+    const statusValue = parseExpressStatusText(String(status)) || "PENDING";
+    const statusText = EXPRESS_STATUS_TEXT[statusValue];
+
+    const repo = getRepository();
+    const idemKey = req.headers.get("Idempotency-Key") || (typeof body.idempotency_key === "string" ? body.idempotency_key : undefined);
+    const claim = await claimIdempotencyKey(repo.idempotency, idemKey, "EXPRESS_TRANSFER_APPEND", actor.id, body);
+    if (claim.isReplay) {
+      return successResponse(claim.cachedResult ?? null, "บันทึกข้อมูลนี้ไปแล้ว (Idempotency-Key ซ้ำ)");
+    }
+
     const routeWh = warehouse_name || `${from_warehouse_name} -> ${to_warehouse_name}`;
 
     // Append to Google Sheets Tab: "ย้ายสินค้าเข้าExpress"
+    // sanitize ทุกช่อง — ชีตเขียนด้วย USER_ENTERED ค่าที่ขึ้นต้น "=" จะกลายเป็นสูตร
     const row = [
-      sku,
-      location,
-      document_no,
-      routeWh,
-      document_date,
-      product_name,
-      status,
-      quantity,
-      barcode || sku,
+      sanitizeSheetValue(cleanSku),
+      sanitizeSheetValue(String(location).trim() || "-"),
+      sanitizeSheetValue(docNo),
+      sanitizeSheetValue(String(routeWh).trim()),
+      sanitizeSheetValue(String(document_date).trim() || todayBangkokIsoDate()),
+      sanitizeSheetValue(String(product_name || cleanSku).trim()),
+      statusText,
+      qtyNum,
+      sanitizeSheetValue(String(barcode || cleanSku).trim()),
     ];
 
-    await appendRows(SHEETS.EXPRESS_TRANSFER, [row]);
+    try {
+      await appendRows(SHEETS.EXPRESS_TRANSFER, [row]);
+    } catch (sheetErr) {
+      console.error("[POST /api/express-import/transfer] appendRows error:", sheetErr);
+      await failIdempotencyKey(repo.idempotency, idemKey, String(sheetErr)).catch(() => {});
+      return serverErrorResponse(sheetErr);
+    }
 
-    return successResponse({ success: true }, "บันทึกรายการย้ายสินค้าเข้า Express เรียบร้อย", 201);
+    await completeIdempotencyKey(repo.idempotency, idemKey, row).catch(() => {});
+    return successResponse(row, "บันทึกรายการย้ายสินค้าเข้า Express เรียบร้อย", 201);
   } catch (error) {
     console.error("[POST /api/express-import/transfer] Error:", error);
     return serverErrorResponse(error);

@@ -17,6 +17,7 @@ import { setDocumentStatus } from "@/lib/document-status-store";
 import { appendRows, SHEETS } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
+import { cleanExpressCode, expressItemKey, todayBangkokIsoDate } from "@/lib/express-status-utils";
 
 export const maxDuration = 60;
 
@@ -330,8 +331,11 @@ export async function POST(
       try {
         const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
         const nowIso = new Date().toISOString();
-        const nowDate = doc.document_date || nowIso.slice(0, 10);
+        // วันที่เอกสารตามเวลาไทย — เดิมใช้ UTC ทำให้รายการก่อน 07:00 น. ตกเป็นวันก่อนหน้าแล้วหลุดกรอง "วันนี้"
+        const nowDate = doc.document_date || todayBangkokIsoDate();
         const expressReceiveRows: any[][] = [];
+        const expressSkus: string[] = [];
+        const docNoVal = doc.document_no || doc.document_id;
 
         for (let idx = 0; idx < createdMovements.length; idx++) {
           const mov = createdMovements[idx];
@@ -355,7 +359,7 @@ export async function POST(
           expressReceiveRows.push([
             skuVal,
             locVal || "-",
-            doc.document_no || doc.document_id,
+            docNoVal,
             targetWh || "โกดัง1",
             nowDate,
             nameVal,
@@ -363,12 +367,21 @@ export async function POST(
             qtyVal,
             barcodeVal,
           ]);
+          expressSkus.push(skuVal);
         }
 
+        // await จริง — เดิม fire-and-forget บน serverless อาจถูก freeze ก่อนเขียนชีตเสร็จ
+        // แถว Express หายเงียบ ๆ ทั้งที่เอกสารถือว่า sync แล้ว
+        let expressSheetSynced = true;
+        let expressSheetError = "";
         if (expressReceiveRows.length > 0) {
-          appendRows(SHEETS.EXPRESS_RECEIVE, expressReceiveRows).catch((err) => {
-            console.warn("[approve] appendRows to EXPRESS_RECEIVE failed:", err);
-          });
+          try {
+            await appendRows(SHEETS.EXPRESS_RECEIVE, expressReceiveRows);
+          } catch (appendErr) {
+            expressSheetSynced = false;
+            expressSheetError = appendErr instanceof Error ? appendErr.message : String(appendErr);
+            console.warn("[approve] appendRows to EXPRESS_RECEIVE failed:", appendErr);
+          }
         }
 
         // Update document note with express metadata
@@ -382,17 +395,32 @@ export async function POST(
         currentMeta.express_status = "PENDING";
         currentMeta.express_status_text = "รอนำเข้า Express";
         currentMeta.express_synced_at = nowIso;
+        // สถานะเก็บระดับรายรายการด้วย — ทุก SKU เริ่มที่ "รอนำเข้า" ตอนอนุมัติ
+        // (กดนำเข้าทีละรายการที่หน้า Express จะได้ไม่พากันทั้งเอกสาร)
+        const expressItemsMap: Record<string, string> = { ...(currentMeta.express_items || {}) };
+        expressSkus.forEach((s) => {
+          expressItemsMap[cleanExpressCode(s)] = "PENDING";
+        });
+        currentMeta.express_items = expressItemsMap;
+        currentMeta.express_sheet_synced = expressSheetSynced;
+        if (!expressSheetSynced) {
+          currentMeta.express_sheet_error = expressSheetError;
+          currentMeta.express_sheet_failed_at = nowIso;
+        }
         await repo.documents.updateNote(doc.document_id, JSON.stringify(currentMeta)).catch(() => {});
 
-        // Update in-memory expressStatusMap
+        // Update in-memory expressStatusMap — ระดับรายการ (docno|sku) คือตัวตัดสินแสดงผล
         const entry = {
           status: "PENDING" as const,
           type: "RECEIVE",
           updated_at: nowIso,
-          document_no: doc.document_no || doc.document_id,
+          document_no: docNoVal,
         };
-        if (doc.document_no) expressStatusMap.set(doc.document_no.trim().toLowerCase(), entry);
+        if (docNoVal) expressStatusMap.set(docNoVal.trim().toLowerCase(), entry);
         if (doc.document_id) expressStatusMap.set(doc.document_id.trim().toLowerCase(), entry);
+        expressSkus.forEach((s) => {
+          expressStatusMap.set(expressItemKey(docNoVal, s), { ...entry, sku: s });
+        });
       } catch (sheetErr) {
         console.warn("[approve] Auto-append to EXPRESS_RECEIVE sheet warning:", sheetErr);
       }

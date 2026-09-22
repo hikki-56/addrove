@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
+import { isProductionReviewer } from "@/lib/production-reviewers";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -13,28 +14,20 @@ import {
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 
-const roleLabel: Record<UserRole, string> = {
-  ADMIN: "ผู้ดูแลระบบ",
-  MANAGER: "ผู้จัดการคลัง",
-  APPROVER: "ผู้อนุมัติ",
-  WAREHOUSE_STAFF: "พนักงานคลัง",
-  PACKER: "พนักงานแพ็กของ",
-  STAFF: "เจ้าหน้าที่",
-  VIEWER: "ผู้ดูข้อมูล",
-};
-
 // ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
 const OPERATION_ORDER = [
   "/movements/receive",
   "/movements/transfer",
   "/movements/move",
   "/production",
+  "/production/review",
   "/production/formula",
   "/stock-counts",
   "/temporary-stock-cuts",
   "/movements/receive/history",
   "/movements/transfer/history",
   "/production/history",
+  "/production/waste",
   "/movements/history",
 ];
 const byOperationOrder = (a: NavItem, b: NavItem) => {
@@ -119,7 +112,7 @@ export default function Sidebar({
   userName?: string;
 }) {
   const pathname = usePathname();
-  const { user: tabUser, logout: tabLogout } = useTabAuth();
+  const { user: tabUser } = useTabAuth();
 
   // กลุ่มเมนูที่ถูกพับไว้ — จำสถานะใน localStorage ต่ออุปกรณ์
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -240,7 +233,11 @@ export default function Sidebar({
   const visibleItems = itemsForRole.filter(
     (item) =>
       (!item.roles || item.roles.includes(role)) &&
-      (!allowedHrefs || allowedHrefs.includes(item.href))
+      (!allowedHrefs || allowedHrefs.includes(item.href)) &&
+      // เมนู "ยืนยันผลผลิต" เห็นได้ทั้งแอดมินและคนตรวจ (ชื่อบัญชีที่กำหนดใน production-reviewers.ts)
+      (item.href !== "/production/review" ||
+        role === "ADMIN" ||
+        isProductionReviewer({ email: tabUser?.email, name: userName }))
   );
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
@@ -255,9 +252,11 @@ export default function Sidebar({
         "/movements/move",
         "/production",
         "/production/formula",
+        "/production/review",
+        "/production/history",
+        "/production/waste",
         "/movements/receive/history",
         "/movements/transfer/history",
-        "/production/history",
         "/movements/history",
         "/staff/receive",
         "/staff/transfer",
@@ -286,9 +285,6 @@ export default function Sidebar({
     if (href === "/express-import/issue" && expressTagCounts.issue > 0) return expressTagCounts.issue;
     return undefined;
   };
-
-  const userInitial = (userName || "ผู้ใช้").trim().charAt(0);
-  const userDisplayName = userName || "ผู้ใช้ระบบ";
 
   // เลือกเมนูที่ตรง path ยาวที่สุดตัวเดียว — กันหลายเมนูสว่างพร้อมกัน
   // (เช่น หน้า /production/formula ต้องสว่างเฉพาะ "แก้ไขสูตร BOM" ไม่ใช่ "ผลิตสินค้า" ด้วย)
@@ -352,35 +348,9 @@ export default function Sidebar({
         {role === "ADMIN" && renderGroup("express", "นำเข้า Express", expressNav)}
       </nav>
 
-      {/* Bottom: ระบบ + โปรไฟล์ */}
+      {/* Bottom: ระบบ */}
       <div className="border-t border-(--sidebar-divider) shrink-0 px-2.5 lg:px-3.5 py-3">
         {renderGroup("system", "ระบบ", systemNav)}
-        <div className={`mt-3 pt-3 ${systemNav.length > 0 ? "border-t border-(--sidebar-divider)" : ""}`}>
-          <div className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-(--sidebar-item-bg-hover) justify-center lg:justify-start">
-            <span className="size-9 2xl:size-10 rounded-full bg-(--sidebar-active-bg) grid place-items-center text-sm 2xl:text-base font-bold text-(--sidebar-active-text) shrink-0">
-              {userInitial}
-            </span>
-            <div className="hidden lg:flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm 2xl:text-base font-medium leading-tight text-(--sidebar-text-hover)">
-                {userDisplayName}
-              </span>
-              <span className="truncate text-xs 2xl:text-sm text-(--sidebar-text-muted)">{roleLabel[role]}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => tabLogout()}
-              title="ออกจากระบบ"
-              aria-label="ออกจากระบบ"
-              className="hidden lg:grid shrink-0 place-items-center size-8 rounded-lg text-(--sidebar-text-muted) hover:text-(--sidebar-text-hover) hover:bg-(--sidebar-item-bg-hover) transition-colors duration-150 cursor-pointer"
-            >
-              <svg style={{ width: 22, height: 22 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" x2="9" y1="12" y2="12" />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
     </aside>
   );

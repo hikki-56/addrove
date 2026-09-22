@@ -25,6 +25,7 @@ import {
   type TaggedExpressItem,
   type ExpressSyncStatus,
 } from "@/lib/express-tag-utils";
+import { expressItemKey } from "@/lib/express-status-utils";
 
 export interface DisplayFields {
   barcode: boolean;
@@ -169,7 +170,15 @@ export default function ExpressTransferPage() {
           incoming.forEach((item: any) => {
             const docKey = (item.document_no || "").trim().toLowerCase();
             const docIdKey = (item.document_id || "").trim().toLowerCase();
-            const srv = (docKey ? serverStatusMap[docKey] : undefined) || (docIdKey ? serverStatusMap[docIdKey] : undefined);
+            // สถานะระดับ "รายการ" (คีย์ docno|sku) มาก่อนระดับเอกสาร —
+            // กด "นำเข้าแล้ว" 1 รายการต้องไม่พารายการอื่นในเอกสารเดียวกัน
+            const perItemKey = expressItemKey(item.document_no, item.sku);
+            const rawItemKey = expressItemKey(item.raw_document_no, item.sku);
+            const srv =
+              serverStatusMap[perItemKey] ||
+              serverStatusMap[rawItemKey] ||
+              (docKey ? serverStatusMap[docKey] : undefined) ||
+              (docIdKey ? serverStatusMap[docIdKey] : undefined);
             const docExpressStatus: ExpressSyncStatus = srv?.status || (item.status as ExpressSyncStatus) || "PENDING";
 
             const uniqueId = item.id || `trf_${item.movement_id || item.document_id || item.document_no}_${item.sku}`;

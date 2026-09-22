@@ -29,6 +29,18 @@ export interface TaggedExpressItem {
 
 const STORAGE_KEY = "stockify_express_tagged_items_v1";
 
+// ทนได้ถึงเท่าไหร่ — polling ทุก 6-12 วิเคยยัด "ทุกรายการที่เคยแสดง" ลง storage จนเสี่ยง QuotaExceeded (5MB)
+const MAX_STORED_ITEMS = 800;
+const IMPORTED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+function pruneStoredItems(items: TaggedExpressItem[]): TaggedExpressItem[] {
+  if (items.length <= MAX_STORED_ITEMS) return items;
+  // ตัดรายการที่ "นำเข้าแล้ว" เก่ากว่า 7 วันออกก่อน (สถานะจริงอยู่บนชีตอยู่แล้ว) แล้วค่อย cap ที่ 800
+  const cutoff = Date.now() - IMPORTED_RETENTION_MS;
+  const kept = items.filter((i) => i.status !== "IMPORTED" || Date.parse(i.tagged_at || "") > cutoff);
+  return kept.length > MAX_STORED_ITEMS ? kept.slice(0, MAX_STORED_ITEMS) : kept;
+}
+
 function getStoredItems(): TaggedExpressItem[] {
   if (typeof window === "undefined") return [];
   try {
@@ -45,7 +57,7 @@ function getStoredItems(): TaggedExpressItem[] {
 function saveStoredItems(items: TaggedExpressItem[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneStoredItems(items)));
     window.dispatchEvent(new CustomEvent("stockify-express-tags-updated", { detail: items }));
     window.dispatchEvent(new Event("storage"));
   } catch (e) {
@@ -192,4 +204,102 @@ export function updateExpressItemWarehouse(id: string, fromWarehouse: string, to
   items[idx] = updated;
   saveStoredItems(items);
   return updated;
+}
+
+// ── คิว retry การเปลี่ยนสถานะ Express ──────────────────────────────────────
+// เดิม toast สัญญา "ระบบจะลองใหม่อัตโนมัติ" แต่ไม่มี retry จริง — สถานะที่ผู้ใช้กด
+// เด้งกลับเงียบ ๆ หลัง polling รอบถัดไป ทีม Express อาจจัดของซ้ำ/ไม่รู้สถานะจริง
+
+export interface ExpressStatusRetryItem {
+  type: ExpressItemType;
+  document_no: string;
+  raw_document_no?: string;
+  sku?: string;
+  status: ExpressSyncStatus;
+  attempts: number;
+  queued_at: string;
+}
+
+const RETRY_KEY = "stockify_express_status_retry_v1";
+const MAX_RETRY_ATTEMPTS = 6;
+const RETRY_BASE_DELAY_MS = 30_000;
+
+function getRetryQueue(): ExpressStatusRetryItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(RETRY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRetryQueue(items: ExpressStatusRetryItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(RETRY_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.error("Error saving express status retry queue:", e);
+  }
+}
+
+export function expressRetryItemKey(
+  item: Pick<ExpressStatusRetryItem, "type" | "document_no" | "sku">
+): string {
+  return `${item.type}|${item.document_no.trim().toLowerCase()}|${(item.sku || "").trim().toLowerCase()}`;
+}
+
+/** เก็บรายการที่ sync สถานะเข้าชีตไม่สำเร็จ ไว้ลองใหม่ในรอบ polling ถัด ๆ ไป */
+export function queueExpressStatusRetry(
+  items: Array<Pick<ExpressStatusRetryItem, "type" | "document_no" | "raw_document_no" | "sku" | "status">>
+) {
+  const queue = getRetryQueue();
+  const now = new Date().toISOString();
+  items.forEach((item) => {
+    const key = expressRetryItemKey(item);
+    const existing = queue.find((q) => expressRetryItemKey(q) === key);
+    if (existing) {
+      existing.status = item.status;
+      existing.raw_document_no = item.raw_document_no ?? existing.raw_document_no;
+    } else {
+      queue.push({ ...item, attempts: 0, queued_at: now });
+    }
+  });
+  saveRetryQueue(queue);
+}
+
+/** รายการที่ถึงเวลาลองใหม่แล้ว (backoff 30 วิ → 1 นาที → 2 นาที … สูงสุด 6 ครั้ง) */
+export function getDueExpressStatusRetries(
+  type?: ExpressItemType,
+  now: Date = new Date()
+): ExpressStatusRetryItem[] {
+  return getRetryQueue().filter((q) => {
+    if (type && q.type !== type) return false;
+    if (q.attempts >= MAX_RETRY_ATTEMPTS) return false;
+    const dueAt = Date.parse(q.queued_at) + RETRY_BASE_DELAY_MS * Math.pow(2, q.attempts);
+    return now.getTime() >= dueAt;
+  });
+}
+
+/** นับครั้งที่พยายาม + เลื่อนเวลาลองครั้งถัดไป (รายการที่เกินจำนวนครั้งตกออกจากคิวเอง) */
+export function markExpressStatusRetryAttempt(
+  item: Pick<ExpressStatusRetryItem, "type" | "document_no" | "sku">
+) {
+  const queue = getRetryQueue();
+  const key = expressRetryItemKey(item);
+  const existing = queue.find((q) => expressRetryItemKey(q) === key);
+  if (!existing) return;
+  existing.attempts += 1;
+  existing.queued_at = new Date().toISOString();
+  saveRetryQueue(queue.filter((q) => q.attempts < MAX_RETRY_ATTEMPTS));
+}
+
+/** นำออกจากคิวเมื่อ sync สำเร็จ */
+export function removeExpressStatusRetry(
+  items: Array<Pick<ExpressStatusRetryItem, "type" | "document_no" | "sku">>
+) {
+  const keys = new Set(items.map(expressRetryItemKey));
+  saveRetryQueue(getRetryQueue().filter((q) => !keys.has(expressRetryItemKey(q))));
 }

@@ -25,6 +25,10 @@ export const PERMISSIONS = {
   OUTBOUND_APPROVE: "outbound.approve",
   OUTBOUND_SHIP: "outbound.ship",
 
+  // Express Import (รับ/เบิก/ย้าย เข้า Express — ติดตามสถานะนำเข้าโปรแกรมบัญชี Express)
+  EXPRESS_IMPORT_VIEW: "express.import.view",
+  EXPRESS_IMPORT_MANAGE: "express.import.manage",
+
   // Master Data & Administration
   PRODUCT_MANAGE: "product.manage",
   LOCATION_MANAGE: "location.manage",
@@ -63,6 +67,8 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.OUTBOUND_IMPORT,
     PERMISSIONS.OUTBOUND_APPROVE,
     PERMISSIONS.OUTBOUND_SHIP,
+    PERMISSIONS.EXPRESS_IMPORT_VIEW,
+    PERMISSIONS.EXPRESS_IMPORT_MANAGE,
   ],
   MANAGER: [
     PERMISSIONS.STOCK_RECEIVE,
@@ -82,6 +88,8 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.OUTBOUND_IMPORT,
     PERMISSIONS.OUTBOUND_APPROVE,
     PERMISSIONS.OUTBOUND_SHIP,
+    PERMISSIONS.EXPRESS_IMPORT_VIEW,
+    PERMISSIONS.EXPRESS_IMPORT_MANAGE,
   ],
   APPROVER: [
     PERMISSIONS.STOCK_VIEW,

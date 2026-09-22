@@ -1,11 +1,29 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
-import { successResponse, unauthorizedResponse, serverErrorResponse } from "@/lib/api-response";
+import {
+  successResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
+import {
+  cleanExpressCode,
+  expressItemKey,
+  looksLikeSheetDate,
+  parseExpressStatusText,
+  sanitizeSheetValue,
+  todayBangkokIsoDate,
+  EXPRESS_STATUS_TEXT,
+  type ExpressSyncStatusValue,
+} from "@/lib/express-status-utils";
+import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from "@/lib/idempotency";
 
 export const maxDuration = 60;
 
@@ -25,6 +43,13 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+    try {
+      authorize(actor, PERMISSIONS.EXPRESS_IMPORT_VIEW);
+    } catch {
+      return forbiddenResponse("เฉพาะแอดมิน/ผู้จัดการที่ดูรายการรับสินค้าเข้า Express ได้");
+    }
 
     const repo = getRepository();
     const items: Array<{
@@ -207,7 +232,9 @@ export async function GET(req: NextRequest) {
         let rawBcode = String(row[8] ?? "").trim();
 
         // Fallback Layout B if Col 0 is Date: [Date, DocNo, Barcode, SKU, Name, Warehouse, Location, Qty, Status]
-        if (rawSku.includes("-") && (rawSku.length === 10 || rawSku.includes("T"))) {
+        // ต้องเป็นวันที่จริงเท่านั้น — เดิมใช้ heuristic "มี - และยาว 10 หรือมี T"
+        // ทำให้ SKU หน้าตาคล้ายวันที่/มี T ถูกอ่านเลื่อนทั้งแถว
+        if (looksLikeSheetDate(rawSku)) {
           docDate = rawSku;
           docNo = String(row[1] ?? "").trim();
           rawBcode = String(row[2] ?? "").trim();
@@ -236,14 +263,15 @@ export async function GET(req: NextRequest) {
         if (!docNo) docNo = `RCV-SH-${i + 1}`;
 
         const docNoKey = docNo.toLowerCase();
-        const memStatus = expressStatusMap.get(docNoKey)?.status;
-        const isImported =
-          memStatus === "IMPORTED" ||
-          rawStatus.includes("แล้ว") ||
-          rawStatus.toUpperCase() === "IMPORTED" ||
-          rawStatus.includes("สำเร็จ");
-
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
+
+        // สถานะตัดสินที่ระดับ "รายการ" — คิว: สถานะที่เพิ่งกด (memory, คีย์ docno|sku) → ข้อความในเซลล์ → PENDING
+        // เดิมอ่าน map ด้วยเลขเอกสารเฉย ๆ และตรวจ "มีคำว่า แล้ว" ก่อน "รอนำเข้า"
+        // ทำให้รายการที่เพิ่งอนุมัติขึ้น "นำเข้าแล้ว" ทันทีจากสถานะเก่าของเลขเอกสารเดียวกัน
+        // และกดนำเข้า 1 SKU แล้ว SKU อื่นในเอกสารเดียวกันโดนพาไปด้วย
+        const memItemStatus = expressStatusMap.get(expressItemKey(docNo, enriched.sku))?.status;
+        const cellStatus = parseExpressStatusText(rawStatus);
+        const rowStatus: ExpressSyncStatusValue = memItemStatus || cellStatus || "PENDING";
         const uniqueKey = `sheet_rec_${docNoKey}_${enriched.sku}_${i}`;
 
         // แถวจากชีตมาก่อน ถือเป็นตัวแทนของรายการนี้ — จด key ไว้เพื่อให้ลูปเอกสารข้ามของซ้ำ
@@ -265,7 +293,7 @@ export async function GET(req: NextRequest) {
           barcode: enriched.barcode,
           movement_type: "RECEIVE",
           tag: "นำเข้าสินค้าเข้าExpress",
-          status: isImported ? "IMPORTED" : "PENDING",
+          status: rowStatus,
         });
       }
     } catch (sheetErr) {
@@ -273,13 +301,16 @@ export async function GET(req: NextRequest) {
     }
 
     // 4. Ingest approved receive documents with express tag from repo.documents (if not already in sheet)
+    //    ต้องเป็นเอกสาร RECEIVE จริง และมี marker express แบบเจาะจง —
+    //    เดิมยอมให้ "note มี target_sheet" รวมทั้ง substring "express" กว้าง ๆ
+    //    ทำให้เอกสารประเภทอื่นที่ note มีคำเหล่านั้นหลุดมาแสดงในหน้ารับสินค้า
     const expressReceiveDocs = allDocsList.filter((d) => {
-      const isReceive = (d.document_type || "").toUpperCase().includes("RECEIVE") || (d.note && d.note.includes("target_sheet"));
+      const isReceive = (d.document_type || "").toUpperCase().includes("RECEIVE");
       if (!isReceive) return false;
       const isCompleted = d.status === "COMPLETED" || d.status === "POSTED" || d.status === "APPROVED";
       if (!isCompleted) return false;
       const note = d.note || "";
-      return note.includes("express_tag") || note.includes("express_status") || note.includes("Express") || note.includes("express");
+      return note.includes("express_tag") || note.includes("express_status") || note.includes("express_items");
     });
 
     for (const doc of expressReceiveDocs) {
@@ -293,9 +324,12 @@ export async function GET(req: NextRequest) {
       const docNo = doc.document_no || doc.document_id || "";
       const docNoKey = docNo.toLowerCase();
 
-      const memStatus = expressStatusMap.get(docNoKey)?.status;
-      const effectiveStatus: "PENDING" | "IMPORTED" = memStatus || parsedPayload.express_status || "PENDING";
+      // สถานะจาก note อ่านแบบรายรายการก่อน — ระดับเอกสาร (เดิม) ใช้ได้เฉพาะเอกสาร 1 รายการ
+      // มิฉะนั้นค่า IMPORTED ที่เขียนสมัยคุมระดับเอกสารจะรั่ยไปทุก SKU ของเอกสารนั้น
+      const expressItemsMeta =
+        parsedPayload.express_items && typeof parsedPayload.express_items === "object" ? parsedPayload.express_items : {};
       const rows: any[][] = Array.isArray(parsedPayload.rows) ? parsedPayload.rows : [];
+      const legacyDocStatus = rows.length === 1 ? parsedPayload.express_status : undefined;
       const targetWh = parsedPayload.target_sheet || doc.warehouse_id || "โกดัง 1";
       const docDate = doc.document_date || (doc.created_at || new Date().toISOString()).slice(0, 10);
 
@@ -310,6 +344,15 @@ export async function GET(req: NextRequest) {
 
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
         const uniqueKey = `doc_rec_${docNoKey}_${enriched.sku}_${rowIdx}`;
+
+        // คิวสถานะรายรายการ: memory (เพิ่งกด) → note.express_items[sku] → มรดกระดับเอกสาร (เฉพาะ 1 รายการ) → PENDING
+        const memItemStatus = expressStatusMap.get(expressItemKey(docNo, enriched.sku))?.status;
+        const noteItemStatus = expressItemsMeta[cleanExpressCode(enriched.sku)];
+        const effectiveStatus: ExpressSyncStatusValue =
+          memItemStatus ||
+          (noteItemStatus === "IMPORTED" || noteItemStatus === "PENDING" ? noteItemStatus : undefined) ||
+          (legacyDocStatus === "IMPORTED" ? "IMPORTED" : undefined) ||
+          "PENDING";
 
         // ข้ามถ้าชีตมีรายการ (เลขที่เอกสาร, SKU) นี้อยู่แล้ว หรือ record เอกสารซ้ำกันเอง
         // เดิมเทียบด้วย uniqueKey ที่ฝัง document_id/ลำดับแถว ทำให้ไม่มีวันตรงกัน
@@ -358,41 +401,81 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
+    const actor = await createActorFromSession(req, session);
+    if (!actor) return unauthorizedResponse();
+    try {
+      authorize(actor, PERMISSIONS.EXPRESS_IMPORT_MANAGE);
+    } catch {
+      return forbiddenResponse("เฉพาะแอดมิน/ผู้จัดการที่บันทึกรายการเข้า Express ได้");
+    }
 
     const body = await req.json().catch(() => ({}));
     const {
       sku = "",
       location = "-",
-      document_no = "RCV",
+      document_no = "",
       warehouse_name = "โกดัง 1",
-      document_date = new Date().toISOString().slice(0, 10),
+      document_date = todayBangkokIsoDate(),
       product_name = "",
       status = "รอนำเข้า Express",
       quantity = 1,
       barcode = "",
     } = body;
 
+    // Validation — endpoint นี้เขียนลงชีตกลางโดยตรง เดิมไม่ตรวจอะไรเลย
+    // (จำนวนติดลบ/0 ผ่าน, sku ว่างผ่าน, เลขเอกสาร default "RCV" ทำให้ทุกแถวใช้เลขเดียวกันจน dedupe ชนกันหมด)
+    const cleanSku = String(sku).trim();
+    if (!cleanSku) {
+      return errorResponse("กรุณาระบุรหัสสินค้า (SKU)", 400);
+    }
+    const qtyNum = Number(quantity);
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 1_000_000) {
+      return errorResponse("จำนวนต้องเป็นตัวเลขมากกว่า 0 และไม่เกิน 1,000,000", 400);
+    }
+    let docNo = String(document_no).trim();
+    if (!docNo) {
+      // สร้างเลขตาม spec {PREFIX}-YYYYMMDD-6หลัก แทน default "RCV" ที่ไม่ unique
+      const rand = Math.floor(100000 + Math.random() * 900000);
+      docNo = `RCV-${todayBangkokIsoDate().replace(/-/g, "")}-${rand}`;
+    }
+    if (docNo.length > 64) {
+      return errorResponse("เลขที่เอกสารยาวเกินไป (สูงสุด 64 ตัวอักษร)", 400);
+    }
+    const statusValue = parseExpressStatusText(String(status)) || "PENDING";
+    const statusText = EXPRESS_STATUS_TEXT[statusValue];
+
+    // Idempotency — ผู้เรียกส่ง header Idempotency-Key มาเพื่อกัน append ซ้ำ (เช่น retry หลัง timeout)
+    const repo = getRepository();
+    const idemKey = req.headers.get("Idempotency-Key") || (typeof body.idempotency_key === "string" ? body.idempotency_key : undefined);
+    const claim = await claimIdempotencyKey(repo.idempotency, idemKey, "EXPRESS_RECEIVE_APPEND", actor.id, body);
+    if (claim.isReplay) {
+      return successResponse(claim.cachedResult ?? null, "บันทึกข้อมูลนี้ไปแล้ว (Idempotency-Key ซ้ำ)");
+    }
+
     // Row format matching User's Express sheet columns:
     // [รหัสสินค้า, ตำแหน่ง, เลขที่เอกสาร, โกดัง, วันที่เอกสาร, ชื่อสินค้า, สถานะการนำเข้า, จำนวน, บาร์โค้ด]
+    // sanitize ทุกช่อง — ชีตเขียนด้วย USER_ENTERED ค่าที่ขึ้นต้น "=" จะกลายเป็นสูตร
     const row = [
-      String(sku).trim(),
-      String(location).trim(),
-      String(document_no).trim(),
-      String(warehouse_name).trim(),
-      String(document_date).trim(),
-      String(product_name || sku).trim(),
-      String(status).trim(),
-      Number(quantity) || 1,
-      String(barcode || sku).trim(),
+      sanitizeSheetValue(cleanSku),
+      sanitizeSheetValue(String(location).trim() || "-"),
+      sanitizeSheetValue(docNo),
+      sanitizeSheetValue(String(warehouse_name).trim() || "โกดัง 1"),
+      sanitizeSheetValue(String(document_date).trim() || todayBangkokIsoDate()),
+      sanitizeSheetValue(String(product_name || cleanSku).trim()),
+      statusText,
+      qtyNum,
+      sanitizeSheetValue(String(barcode || cleanSku).trim()),
     ];
 
     try {
       await appendRows(SHEETS.EXPRESS_RECEIVE, [row]);
     } catch (sheetErr) {
       console.error("[POST /api/express-import/receive] appendRows error:", sheetErr);
+      await failIdempotencyKey(repo.idempotency, idemKey, String(sheetErr)).catch(() => {});
       return serverErrorResponse(sheetErr);
     }
 
+    await completeIdempotencyKey(repo.idempotency, idemKey, row).catch(() => {});
     return successResponse(row, "บันทึกข้อมูลลงแท็บชีต นำเข้าสินค้าเข้าExpress เรียบร้อยแล้ว", 201);
   } catch (error) {
     return serverErrorResponse(error);

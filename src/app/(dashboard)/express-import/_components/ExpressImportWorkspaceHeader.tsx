@@ -40,12 +40,13 @@ const STATUS_OPTIONS: Array<{
 }> = [
   { key: "ALL", label: "รายการทั้งหมด", shortLabel: "ทั้งหมด" },
   { key: "PENDING", label: "รอนำเข้า Express", shortLabel: "รอนำเข้า" },
-  { key: "IMPORTED", label: "นำเข้าเรียบร้อย", shortLabel: "สำเร็จแล้ว" },
+  // ใช้คำเดียวกับในตาราง/toast ("นำเข้าแล้ว") — เดิมปุ่มเรียก "สำเร็จแล้ว" คนละคำกับตาราง ผู้ใช้ใหม่สับสน
+  { key: "IMPORTED", label: "นำเข้า Express แล้ว", shortLabel: "นำเข้าแล้ว" },
 ];
 
 function WorkspaceIcon({ mode }: { mode: "receive" | "issue" }) {
   return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 8.5 12 4l8 4.5v8L12 21l-8-4.5v-8Z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="m4 8.5 8 4.5 8-4.5M12 13v8" />
       {mode === "receive" ? (
@@ -88,7 +89,20 @@ export default function ExpressImportWorkspaceHeader({
     <header className="print:hidden">
       <div className="rounded-2xl border border-[#E0E6E3] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_1px_2px_rgba(16,24,40,0.03)] overflow-hidden transition-all">
         {/* Top Deck: Interactive KPI Filters */}
-        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-end">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Left: Menu title — เดิมหน้าไม่มีชื่อเมนู แยก receive/issue ไม่ได้จากตัวหน้าเอง */}
+          <div className="shrink-0 flex items-center gap-2.5 text-[#06402B]">
+            <WorkspaceIcon mode={mode} />
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
+                {isReceive ? "รับสินค้า เข้า Express" : "เบิกสินค้า เข้า Express"}
+              </h1>
+              <p className="text-sm text-slate-500 font-medium">
+                {isReceive ? "ติดตามรายการรับเข้าที่รอนำเข้าโปรแกรม Express" : "ติดตามรายการเบิกที่รอนำเข้าโปรแกรม Express"}
+              </p>
+            </div>
+          </div>
+
           {/* Right: Connected KPI Metric Strip */}
           <div className="shrink-0 w-full sm:w-auto">
             <div className="rounded-xl border border-[#E4EAE6] bg-[#F7F9F8] p-3 sm:p-3.5">
@@ -147,7 +161,7 @@ export default function ExpressImportWorkspaceHeader({
                   />
                 </div>
                 <span className="text-sm font-bold text-[#344054] font-mono whitespace-nowrap">
-                  {loading ? "…" : `สำเร็จ ${completionPercent}%`}
+                  {loading ? "…" : `นำเข้า ${completionPercent}%`}
                 </span>
               </div>
             </div>

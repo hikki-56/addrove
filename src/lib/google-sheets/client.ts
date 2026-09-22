@@ -56,6 +56,10 @@ export const SHEETS = {
   BOM_HEADERS: "BOM_Headers",
   BOM_ITEMS: "BOM_Items",
   OUTBOUND_Q_ITEMS: "รายการสินค้ากล่อง_Q",
+  PRODUCTION_ORDERS: "ใบผลิต",
+  PRODUCTION_MATERIALS: "ใบผลิต_วัตถุดิบ",
+  PRODUCTION_INSPECTIONS: "ตรวจการผลิต",
+  WASTE_ITEMS: "สินค้าเสีย",
 } as const;
 
 // Helper to map warehouse ID to Google Sheets tab name (e.g. wh-5 -> โกดัง5)

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/layout/Navbar";
+import { safeNavigate } from "@/lib/safe-navigate";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, status } = useTabAuth();
@@ -25,9 +26,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (wh) {
           loginUrl += `&warehouse_id=${encodeURIComponent(wh)}`;
         }
-        router.push(loginUrl);
+        // ใช้ safeNavigate — redirect อัตโนมัติต้องไม่พังกลางคันเมื่อ router ยัง
+        // initialize ไม่เสร็จ (คลิกเร็วก่อน hydration จบ / HMR ค้างใน dev)
+        safeNavigate(router, loginUrl);
       } else {
-        router.push("/employee-login");
+        safeNavigate(router, "/employee-login");
       }
     }
   }, [mounted, status, router]);

@@ -15,9 +15,16 @@ export const SYSTEM_MENU_HREFS = ["/users", "/login-logs", "/users/cards"];
 // บัญชีแอดมินที่จำกัดเมนู — เห็นเฉพาะหน้าที่กำหนดเท่านั้น (จับคู่ด้วยชื่อบัญชี/อีเมล/ชื่อ-นามสกุล)
 export const RESTRICTED_ADMIN_MENUS: { matchNames: string[]; hrefs: string[] }[] = [
   {
-    // milk — ดูสินค้าทั้งหมด + ผลิตสินค้า + ประวัติการสั่งผลิต + แก้ไขสูตร BOM
+    // milk — ดูสินค้าทั้งหมด + ผลิตสินค้า + ใบผลิต/ยืนยันผลผลิต + ของเสีย + แก้ไขสูตร BOM
     matchNames: ["milk", "มิลค์"],
-    hrefs: ["/products", "/production", "/production/history", "/production/formula"],
+    hrefs: [
+      "/products",
+      "/production",
+      "/production/history",
+      "/production/review",
+      "/production/waste",
+      "/production/formula",
+    ],
   },
 ];
 
@@ -54,8 +61,9 @@ function Icon({ children, className = "w-[18px] h-[18px]" }: { children: React.R
 
 export function getNavItems(role?: UserRole): NavItem[] {
   if (role === "APPROVER") {
-    const transferItem = navItems.find((i) => i.href === "/movements/transfer");
-    return transferItem ? [transferItem] : [];
+    // APPROVER (บัญชีแก้ว) — เบิกสินค้า + ใบผลิต
+    const hrefs = ["/movements/transfer", "/production/history"];
+    return navItems.filter((i) => hrefs.includes(i.href));
   }
   const isAdmin = role === "ADMIN";
   return navItems.map((item) => {
@@ -140,6 +148,18 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    href: "/production/review",
+    label: "ยืนยันผลผลิต",
+    icon: (
+      <Icon>
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+        <path d="m9 12 2 2 4-4" />
+      </Icon>
+    ),
+    // หน้ากรอกผลผลิตจริงและยืนยันตัดสต็อก — เห็นเฉพาะ "คนตรวจ" (ดูเพิ่มที่ production-reviewers.ts) คุมด้วยชื่อบัญชี ไม่ใช่ role
+    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF", "STAFF"],
+  },
+  {
     href: "/production/formula",
     label: "แก้ไขสูตร BOM",
     icon: (
@@ -153,7 +173,7 @@ export const navItems: NavItem[] = [
   },
   {
     href: "/production/history",
-    label: "ประวัติการสั่งผลิต",
+    label: "ใบผลิต",
     icon: (
       <Icon>
         <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
@@ -162,6 +182,20 @@ export const navItems: NavItem[] = [
         <path d="M12 16h4" />
         <path d="M8 11h.01" />
         <path d="M8 16h.01" />
+      </Icon>
+    ),
+    roles: ["ADMIN", "APPROVER"],
+  },
+  {
+    href: "/production/waste",
+    label: "ของเสีย",
+    icon: (
+      <Icon>
+        <path d="M3 6h18" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        <line x1="10" x2="10" y1="11" y2="17" />
+        <line x1="14" x2="14" y1="11" y2="17" />
       </Icon>
     ),
     roles: ["ADMIN"],
