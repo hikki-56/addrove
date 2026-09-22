@@ -18,16 +18,17 @@ export default function SuccessModal({ orderNo, onClose }: SuccessModalProps) {
           🎉
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-bold text-slate-900">บันทึกคำสั่งผลิตสำเร็จ!</h3>
+          <h3 className="text-xl font-bold text-slate-900">สร้างใบผลิตสำเร็จ!</h3>
           <p className="text-sm text-slate-600">
             เลขที่เอกสาร: <strong className="font-mono text-[#052B1F] font-bold">{orderNo}</strong>
           </p>
           <div className="bg-[#EAF2EE] rounded-xl p-4 border border-[#C9DFD4] text-sm text-[#031B14] font-semibold text-left space-y-1.5 mt-2">
             <div className="font-bold text-[#031B14] flex items-center gap-1">
-              <span>✓ การดำเนินการในโกดัง 2:</span>
+              <span>📋 ขั้นตอนถัดไป:</span>
             </div>
-            <div>• เพิ่มสินค้าสำเร็จรูปเข้า <strong className="font-bold">โกดัง 2</strong> เรียบร้อยแล้ว</div>
-            <div>• ตัดสต็อกวัตถุดิบออกจาก <strong className="font-bold">โกดัง 2</strong> เรียบร้อยแล้ว</div>
+            <div>• ใบผลิตรอพนักงานตรวจที่เมนู <strong className="font-bold">ตรวจการผลิต</strong></div>
+            <div>• พนักงานรายงาน <strong className="font-bold">ผลิตได้จริง / ของเสีย</strong> และตำแหน่งจัดเก็บ</div>
+            <div>• <strong className="font-bold">คนตรวจยืนยัน</strong>แล้วระบบจึงตัดสต็อก<strong className="font-bold">ตามจำนวนที่ผลิตได้จริง</strong></div>
           </div>
         </div>
         <div className="flex flex-col gap-2 pt-2">
@@ -38,7 +39,7 @@ export default function SuccessModal({ orderNo, onClose }: SuccessModalProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            <span>ดูประวัติการสั่งผลิต</span>
+            <span>ดูรายการใบผลิต</span>
           </Link>
           <button
             type="button"

@@ -7,7 +7,7 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import ConfirmProductionModal from "../_components/ConfirmProductionModal";
 import SuccessModal from "../_components/SuccessModal";
 import type { CartItem, ConsumedMaterial, EnrichedBomItem } from "../_components/types";
-import { useProductionCart, updateCartQty, removeFromCart, clearCart } from "../_lib/cart-store";
+import { useProductionCart, updateCartQty, removeFromCart, clearCart, moveCartItem, PRODUCTION_TABLES } from "../_lib/cart-store";
 
 function QuantityIcon({ type }: { type: "minus" | "plus" }) {
   return (
@@ -82,9 +82,53 @@ function TrashIcon() {
   );
 }
 
+/** ตัวเลือกย้ายโต๊ะผลิตของรายการ (แสดงเฉพาะตะกร้าที่มีหลายโต๊ะเท่านั้น) */
+function TableSelect({ item, multiTable }: { item: CartItem; multiTable: boolean }) {
+  const [error, setError] = useState<string | null>(null);
+  if (!multiTable) {
+    // มีรายการโต๊ะเดียว — แสดงเป็นป้ายอย่างเดียว ไม่ต้องให้เลือก
+    return (
+      <span className="inline-flex items-center gap-1 rounded-lg bg-[#EAF2EE] border border-[#8FB3A3] px-2 py-1 text-xs font-bold text-[#052B1F] whitespace-nowrap">
+        🪑 โต๊ะ {item.table_no}
+      </span>
+    );
+  }
+  return (
+    <span className="relative inline-flex flex-col">
+      <select
+        value={item.table_no}
+        onChange={(e) => {
+          const ok = moveCartItem(item.table_no, item.bom.fg_sku, Number(e.target.value));
+          setError(ok ? null : "โต๊ะปลายทางมีสินค้านี้และรวมยอดแล้วเกินที่ผลิตได้ — ย้ายไม่ได้");
+        }}
+        onClick={(e) => e.stopPropagation()}
+        title="ย้ายรายการนี้ไปโต๊ะผลิตอื่น"
+        className="appearance-none cursor-pointer rounded-lg bg-[#EAF2EE] border border-[#8FB3A3] pl-2 pr-6 py-1 text-xs font-bold text-[#052B1F] focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F]"
+        aria-label="โต๊ะผลิตของรายการนี้"
+      >
+        {PRODUCTION_TABLES.map((t) => (
+          <option key={t} value={t}>
+            🪑 โต๊ะ {t}
+          </option>
+        ))}
+      </select>
+      <svg
+        className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#052B1F]"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+      </svg>
+      {error && <span className="mt-0.5 text-[10px] font-bold text-rose-600 max-w-[180px]">{error}</span>}
+    </span>
+  );
+}
+
 /** ตัวเลขจำนวน − ช่องพิมพ์์ + MAX (ใช้ร่วมทั้ง layout ตารางและการ์ดมือถือ) */
 function QtyStepper({ item }: { item: CartItem }) {
   const sku = item.bom.fg_sku;
+  const tableNo = item.table_no;
   const maxProducible = item.bom.maxProducible || 1;
   // ช่องที่ผู้ใช้กำลังพิมพ์ (อาจว่างชั่วคราว) — กันการลบรายการเพียงเพราะล้างช่อง input
   const [editingValue, setEditingValue] = useState<string | null>(null);
@@ -94,7 +138,7 @@ function QtyStepper({ item }: { item: CartItem }) {
       <div className="inline-flex h-9 items-stretch overflow-hidden rounded-xl border border-[#E1E8EE] bg-white shadow-[0_1px_2px_rgba(228,233,240,0.6)]">
         <button
           type="button"
-          onClick={() => updateCartQty(sku, item.quantity - 1)}
+          onClick={() => updateCartQty(tableNo, sku, item.quantity - 1)}
           className="flex w-9 items-center justify-center border-r border-[#E1E8EE] text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
           aria-label="ลดจำนวน"
           title={item.quantity <= 1 ? "ลบรายการนี้" : "ลดจำนวน"}
@@ -116,13 +160,13 @@ function QtyStepper({ item }: { item: CartItem }) {
             }
             setEditingValue(null);
             const val = parseInt(raw);
-            if (!isNaN(val)) updateCartQty(sku, val);
+            if (!isNaN(val)) updateCartQty(tableNo, sku, val);
           }}
           onBlur={() => {
             if (editingValue === null) return;
             const parsed = parseInt(editingValue);
             if (editingValue === "" || isNaN(parsed) || parsed < 1) {
-              updateCartQty(sku, 1);
+              updateCartQty(tableNo, sku, 1);
             }
             setEditingValue(null);
           }}
@@ -131,7 +175,7 @@ function QtyStepper({ item }: { item: CartItem }) {
         />
         <button
           type="button"
-          onClick={() => updateCartQty(sku, item.quantity + 1)}
+          onClick={() => updateCartQty(tableNo, sku, item.quantity + 1)}
           className="flex w-9 items-center justify-center border-l border-[#E1E8EE] text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
           aria-label="เพิ่มจำนวน"
         >
@@ -140,7 +184,7 @@ function QtyStepper({ item }: { item: CartItem }) {
       </div>
       <button
         type="button"
-        onClick={() => updateCartQty(sku, maxProducible)}
+        onClick={() => updateCartQty(tableNo, sku, maxProducible)}
         disabled={item.quantity >= maxProducible}
         className="flex h-9 items-center justify-center rounded-lg border border-[#8FB3A3] bg-[#EAF2EE] px-2 text-[11px] font-bold text-[#052B1F] transition-all hover:bg-[#DFEDE6] active:scale-95 disabled:pointer-events-none disabled:opacity-40"
         aria-label="ใส่จำนวนสูงสุด"
@@ -288,6 +332,17 @@ export default function ProductionCartPage() {
 
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // จัดกลุ่มรายการตามโต๊ะผลิต (เรียงโต๊ะ 1 → 5) — แสดงเป็น section "โต๊ะนี้ผลิตอะไร"
+  const tableGroups = useMemo(
+    () =>
+      PRODUCTION_TABLES.map((tableNo) => ({
+        tableNo,
+        items: cart.filter((i) => i.table_no === tableNo),
+      })).filter((g) => g.items.length > 0),
+    [cart]
+  );
+  const multiTable = tableGroups.length > 1;
+
   // สรุปวัตถุดิบที่จะถูกตัด (รวม % เศษเสียเหมือนตอนสั่งผลิตจริง) — ใช้ใน modal ยืนยันและแถบล่าง
   const consumedMaterials: ConsumedMaterial[] = useMemo(() => {
     const map = new Map<string, ConsumedMaterial>();
@@ -321,11 +376,12 @@ export default function ProductionCartPage() {
 
   const toggleExpand = async (item: CartItem) => {
     const sku = item.bom.fg_sku;
-    const willOpen = !expandedSkus.has(sku);
+    const rowKey = `${item.table_no}-${sku}`;
+    const willOpen = !expandedSkus.has(rowKey);
     setExpandedSkus((prev) => {
       const next = new Set(prev);
-      if (willOpen) next.add(sku);
-      else next.delete(sku);
+      if (willOpen) next.add(rowKey);
+      else next.delete(rowKey);
       return next;
     });
 
@@ -475,7 +531,6 @@ export default function ProductionCartPage() {
                   {cart.length.toLocaleString()} รายการ
                 </span>
               </div>
-              <p className="text-xs font-semibold text-slate-400">กดที่รายการเพื่อดูวัตถุดิบที่ใช้ผลิต</p>
             </div>
 
             {/* จอใหญ่: ตารางตามรูปอ้างอิง */}
@@ -492,12 +547,31 @@ export default function ProductionCartPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EEF1EF]">
-                  {cart.map((item) => {
-                    const sku = item.bom.fg_sku;
-                    const isExpanded = expandedSkus.has(sku);
+                  {tableGroups.map((group) => (
+                    <Fragment key={`t-${group.tableNo}`}>
+                      {/* หัว section ต่อโต๊ะ — สรุปว่าโต๊ะนี้ผลิตอะไรบ้าง */}
+                      <tr className="bg-[#F0F6F3]">
+                        <td colSpan={6} className="px-4 py-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="w-6 h-6 rounded-md bg-[#06402B] text-white font-mono text-xs font-black flex items-center justify-center">
+                              {group.tableNo}
+                            </span>
+                            <span className="text-sm font-extrabold text-[#052B1F]">โต๊ะผลิต {group.tableNo}</span>
+                            <span className="rounded-full bg-[#DFEDE6] border border-[#8FB3A3] px-2 py-0.5 text-xs font-bold text-[#052B1F]">
+                              {group.items.length.toLocaleString()} รายการ ·{" "}
+                              {group.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} หน่วย
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
 
-                    return (
-                      <Fragment key={sku}>
+                      {group.items.map((item) => {
+                        const sku = item.bom.fg_sku;
+                        const rowKey = `${item.table_no}-${sku}`;
+                        const isExpanded = expandedSkus.has(rowKey);
+
+                        return (
+                          <Fragment key={rowKey}>
                         <tr
                           onClick={() => toggleExpand(item)}
                           title={isExpanded ? "ซ่อนวัตถุดิบ" : "ดูวัตถุดิบที่ใช้ผลิต"}
@@ -515,7 +589,10 @@ export default function ProductionCartPage() {
                           {/* รหัส */}
                           <td className="whitespace-nowrap px-4 py-3.5">
                             <span className="font-mono font-bold text-slate-900">{sku}</span>
-                            <div className="mt-1 text-xs font-semibold text-slate-400">ปลายทาง: โกดัง 2</div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <TableSelect item={item} multiTable={multiTable} />
+                              <span className="text-xs font-semibold text-slate-400">ปลายทาง: โกดัง 2</span>
+                            </div>
                           </td>
 
                           {/* รูป */}
@@ -557,7 +634,7 @@ export default function ProductionCartPage() {
                           <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              onClick={() => removeFromCart(sku)}
+                              onClick={() => removeFromCart(item.table_no, sku)}
                               className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                               title="ลบรายการนี้"
                             >
@@ -576,20 +653,37 @@ export default function ProductionCartPage() {
                           </tr>
                         )}
                       </Fragment>
-                    );
-                  })}
+                        );
+                      })}
+                    </Fragment>
+                  ))}
                 </tbody>
               </table>
             </div>
 
             {/* มือถือ: การ์ดรายการซ้อนกัน (ตารางแคบเกินไปสำหรับจอเล็ก) */}
             <div className="divide-y divide-[#EEF1EF] md:hidden">
-              {cart.map((item) => {
-                const sku = item.bom.fg_sku;
-                const isExpanded = expandedSkus.has(sku);
+              {tableGroups.map((group) => (
+                <div key={`m-t-${group.tableNo}`}>
+                  {/* หัว section ต่อโต๊ะ */}
+                  <div className="flex flex-wrap items-center gap-2 bg-[#F0F6F3] px-4 py-2.5">
+                    <span className="w-6 h-6 rounded-md bg-[#06402B] text-white font-mono text-xs font-black flex items-center justify-center">
+                      {group.tableNo}
+                    </span>
+                    <span className="text-sm font-extrabold text-[#052B1F]">โต๊ะผลิต {group.tableNo}</span>
+                    <span className="rounded-full bg-[#DFEDE6] border border-[#8FB3A3] px-2 py-0.5 text-xs font-bold text-[#052B1F]">
+                      {group.items.length.toLocaleString()} รายการ ·{" "}
+                      {group.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} หน่วย
+                    </span>
+                  </div>
 
-                return (
-                  <div key={sku} className={isExpanded ? "bg-[#EAF2EE]/50" : ""}>
+                  {group.items.map((item) => {
+                    const sku = item.bom.fg_sku;
+                    const rowKey = `${item.table_no}-${sku}`;
+                    const isExpanded = expandedSkus.has(rowKey);
+
+                    return (
+                      <div key={rowKey} className={isExpanded ? "bg-[#EAF2EE]/50" : ""}>
                     {/* ส่วนหัวการ์ด — กดเพื่อกาง/พับวัตถุดิบ */}
                     <button
                       type="button"
@@ -612,6 +706,9 @@ export default function ProductionCartPage() {
                         <span className="rounded bg-[#DFEDE6] px-2 py-0.5 font-mono text-xs font-bold text-[#04231A]">
                           {sku}
                         </span>
+                        <div className="mt-1.5">
+                          <TableSelect item={item} multiTable={multiTable} />
+                        </div>
                         <div className="mt-1.5 text-sm font-extrabold leading-5 text-slate-900">{item.bom.fg_name}</div>
                         <div className="mt-1 text-xs font-bold text-[#06402B]">
                           ผลิตได้สูงสุด{" "}
@@ -632,7 +729,7 @@ export default function ProductionCartPage() {
                       <QtyStepper item={item} />
                       <button
                         type="button"
-                        onClick={() => removeFromCart(sku)}
+                        onClick={() => removeFromCart(item.table_no, sku)}
                         className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                         title="ลบรายการนี้"
                       >
@@ -650,6 +747,8 @@ export default function ProductionCartPage() {
                   </div>
                 );
               })}
+                </div>
+              ))}
             </div>
           </section>
 
@@ -662,7 +761,7 @@ export default function ProductionCartPage() {
                     <div className="mt-1 font-mono text-2xl font-black leading-none text-[#052B1F]">+{totalCartUnits.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wide text-slate-400">วัตถุดิบตัดออก</div>
+                    <div className="text-xs font-bold uppercase tracking-wide text-slate-400">วัตถุดิบตามแผน</div>
                     <div className="mt-1 font-mono text-2xl font-black leading-none text-amber-800">{consumedMaterials.length.toLocaleString()}</div>
                   </div>
                   {shortageCount > 0 && (

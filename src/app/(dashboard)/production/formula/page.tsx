@@ -262,16 +262,16 @@ export default function FormulaManagementPage() {
 
   return (
     <div className="w-full max-w-full space-y-5 pb-16">
-      {/* Toast */}
+      {/* แบนเนอร์แจ้งเตือน — อยู่ใน flow ของหน้า (ดันเนื้อหา ไม่ลอยทับตัวหนังสืออื่น) */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-[60] max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200">
-          <div className="w-6 h-6 rounded-full bg-[#0F5C3F] text-white flex items-center justify-center text-xs font-bold shrink-0">
+        <div className="bg-[#06402B] text-white px-4 py-3 rounded-xl shadow-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="w-6 h-6 rounded-full bg-[#0F5C3F] border border-white/30 text-white flex items-center justify-center text-xs font-bold shrink-0">
             ✓
           </div>
           <span className="text-sm font-semibold flex-1">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="text-slate-400 hover:text-white text-xs cursor-pointer font-bold p-1"
+            className="text-slate-300 hover:text-white text-xs cursor-pointer font-bold p-1"
           >
             ✕
           </button>

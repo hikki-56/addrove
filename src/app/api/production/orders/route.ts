@@ -2,58 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { readSheet, appendRows, updateRow, batchUpdateRows, SHEETS, getWarehouseSheetName, clearSheetCache } from "@/lib/google-sheets/client";
+import {
+  readSheet,
+  appendRows,
+  updateRow,
+  batchUpdateRows,
+  SHEETS,
+  getWarehouseSheetName,
+  clearSheetCache,
+  ensureSheetTabExists,
+} from "@/lib/google-sheets/client";
 import { bomRepository } from "@/lib/repositories/sheets/bom.repository";
 import { logAudit } from "@/lib/audit";
-import type { StockMovement } from "@/types/models";
-
-function cleanCode(str?: string): string {
-  if (!str) return "";
-  return String(str)
-    .trim()
-    .toLowerCase()
-    .replace(/^prod-/, "")
-    .replace(/[\s\-_]/g, "");
-}
-
-export interface ProductionMaterialItem {
-  rm_sku: string;
-  rm_barcode?: string;
-  rm_name: string;
-  rm_wh: string;
-  rm_qty_required: number;
-  rm_unit: string;
-  waste_percentage?: number;
-  note?: string;
-}
-
-export interface ProductionOrderItem {
-  fg_sku: string;
-  fg_barcode: string;
-  fg_name: string;
-  fg_unit: string;
-  quantity: number;
-  image?: string;
-  target_warehouse_id: string;
-  target_warehouse_name: string;
-  materials: ProductionMaterialItem[];
-}
-
-export interface ProductionOrderRecord {
-  id: string;
-  order_no: string;
-  document_id: string;
-  reference_no?: string;
-  status: "COMPLETED" | "IN_PROGRESS" | "PENDING" | "CANCELLED";
-  items: ProductionOrderItem[];
-  total_fg_qty: number;
-  total_materials_count: number;
-  created_by: string;
-  created_by_name: string;
-  created_at: string;
-  document_date: string;
-  note?: string;
-}
+import { cleanCode, loadProductionOrdersFromSheets } from "@/lib/production-sheets";
+import type { ProductionOrderRecord, ProductionOrderItem } from "@/types/production";
+import {
+  PRODUCTION_ORDER_SHEET_HEADERS,
+  PRODUCTION_MATERIAL_SHEET_HEADERS,
+} from "@/types/production";
 
 // Global In-Memory Store for quick access & caching
 const globalForProduction = globalThis as unknown as {
@@ -75,17 +41,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get("status");
 
-    // Fetch documents with reference starting with PRD or note containing PRODUCTION_ORDER
+    // 1. ใบผลิตจากระบบใหม่ (แท็บเฉพาะ) — แหล่งข้อมูลหลัก
+    const orderMap = await loadProductionOrdersFromSheets();
+
+    // 2. Fallback: เอกสารเก่าที่เก็บ JSON ในแท็บ Documents (สร้างสมัยตัดสต็อกทันที)
     const repo = getRepository();
     const docsResult = await repo.documents.findAll({ page: 1, limit: 1000 }).catch(() => ({ data: [] }));
     const allDocs = docsResult.data || [];
 
-    const orderMap = new Map<string, ProductionOrderRecord>();
-
-    // 1. Process documents from sheet/repo
     for (const doc of allDocs) {
       if (!doc || !doc.note) continue;
-      
+
       const isPrdDoc =
         doc.reference_no?.startsWith("PRD-") ||
         doc.document_no?.startsWith("PRD-") ||
@@ -101,6 +67,23 @@ export async function GET(req: NextRequest) {
         }
 
         const orderNo = meta.order_no || doc.reference_no || doc.document_no || doc.document_id;
+        const key = String(orderNo).toLowerCase();
+
+        // ใบที่มีในแท็บ "ใบผลิต" แล้ว — ใช้ข้อมูลแท็บเป็นหลัก แต่เติมรายละเอียด BOM ต่อรายการจาก meta
+        const existing = orderMap.get(key);
+        if (existing) {
+          const metaItems: ProductionOrderItem[] = Array.isArray(meta.items) ? meta.items : [];
+          for (const mi of metaItems) {
+            if (!mi?.fg_sku) continue;
+            const target = existing.items.find((i) => cleanCode(i.fg_sku) === cleanCode(mi.fg_sku));
+            if (target) {
+              if (!target.materials?.length && Array.isArray(mi.materials)) target.materials = mi.materials;
+              if (!target.fg_barcode && mi.fg_barcode) target.fg_barcode = mi.fg_barcode;
+            }
+          }
+          continue;
+        }
+
         const items: ProductionOrderItem[] = Array.isArray(meta.items) ? meta.items : [];
         const totalFgQty = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
         const totalMaterialsCount = items.reduce((sum, item) => sum + (item.materials?.length || 0), 0);
@@ -121,13 +104,13 @@ export async function GET(req: NextRequest) {
           note: meta.user_note || meta.note || undefined,
         };
 
-        orderMap.set(orderNo.toLowerCase(), order);
+        orderMap.set(key, order);
       } catch (err) {
         console.warn("[ProductionOrders GET] Parse error for doc:", doc.document_id, err);
       }
     }
 
-    // 2. Merge in-memory orders (for newly created or optimistic records)
+    // 3. Merge in-memory orders (for newly created or optimistic records)
     for (const memOrder of inMemoryProductionOrders) {
       if (!memOrder || !memOrder.order_no) continue;
       const key = memOrder.order_no.toLowerCase();
@@ -160,7 +143,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[GET /api/production/orders] Error:", error);
     return NextResponse.json(
-      { success: false, message: "เกิดข้อผิดพลาดในการดึงข้อมูลประวัติการสั่งผลิต" },
+      { success: false, message: "เกิดข้อผิดพลาดในการดึงข้อมูลใบผลิต" },
       { status: 500 }
     );
   }
@@ -196,7 +179,6 @@ export async function POST(req: NextRequest) {
     const wh2StockByCleanSku = new Map<string, number>();
     const wh2StockByBarcode = new Map<string, number>();
     const wh2StockByName = new Map<string, number>();
-    const wh2ItemDetails = new Map<string, { sku: string; barcode: string; name: string; category: string; unit: string; location: string; supplier: string }>();
 
     for (const r of wh2Rows) {
       if (!r || !r[0]) continue;
@@ -206,29 +188,16 @@ export async function POST(req: NextRequest) {
       const rawQty = parseFloat(String(r[5] || r[4] || "0").replace(/,/g, "").trim());
       const qty = isNaN(rawQty) ? 0 : Math.max(0, rawQty);
 
-      const info = {
-        sku: rowSku,
-        barcode: rowBarcode,
-        name: rowName,
-        category: (r[3] || "ทั่วไป").trim(),
-        unit: (r[4] || "ชิ้น").trim(),
-        location: (r[6] || "").trim(),
-        supplier: (r[7] || "คลังสินค้า").trim(),
-      };
-
       if (rowSku) {
         wh2StockBySku.set(rowSku, (wh2StockBySku.get(rowSku) || 0) + qty);
         wh2StockByCleanSku.set(cleanCode(rowSku), (wh2StockByCleanSku.get(cleanCode(rowSku)) || 0) + qty);
-        if (!wh2ItemDetails.has(cleanCode(rowSku))) wh2ItemDetails.set(cleanCode(rowSku), info);
       }
       if (rowBarcode && rowBarcode !== "-") {
         wh2StockByBarcode.set(rowBarcode, (wh2StockByBarcode.get(rowBarcode) || 0) + qty);
         wh2StockByCleanSku.set(cleanCode(rowBarcode), (wh2StockByCleanSku.get(cleanCode(rowBarcode)) || 0) + qty);
-        if (!wh2ItemDetails.has(cleanCode(rowBarcode))) wh2ItemDetails.set(cleanCode(rowBarcode), info);
       }
       if (rowName) {
         wh2StockByName.set(cleanCode(rowName), (wh2StockByName.get(cleanCode(rowName)) || 0) + qty);
-        if (!wh2ItemDetails.has(cleanCode(rowName))) wh2ItemDetails.set(cleanCode(rowName), info);
       }
     }
 
@@ -259,11 +228,12 @@ export async function POST(req: NextRequest) {
     for (const item of items) {
       const fgSku = (item.bom?.fg_sku || item.fg_sku || "").trim();
       const qty = Math.max(1, Number(item.quantity) || 1);
+      // โต๊ะผลิตที่รับผิดชอบรายการนี้ (1–5) — ค่านอกช่วงถือว่าไม่ระบุ
+      const rawTableNo = Math.floor(Number(item.table_no ?? item.bom?.table_no) || 0);
+      const tableNo = rawTableNo >= 1 && rawTableNo <= 5 ? rawTableNo : undefined;
 
       // Find official formula — ใช้เฉพาะสูตรที่มีในระบบเท่านั้น ไม่รับ BOM ที่ client ส่งมาเอง
-      const formula = allFormulas.find(
-        (f) => f.fg_sku.toLowerCase() === fgSku.toLowerCase()
-      );
+      const formula = allFormulas.find((f) => f.fg_sku.toLowerCase() === fgSku.toLowerCase());
 
       if (!formula || !Array.isArray(formula.items) || formula.items.length === 0) {
         return NextResponse.json(
@@ -275,7 +245,7 @@ export async function POST(req: NextRequest) {
       // Check if formula has designated primary items
       const hasDesignatedPrimary = formula.items.some((m: any) => Number(m.is_primary) === 1);
 
-      const materials: ProductionMaterialItem[] = [];
+      const materials: ProductionOrderItem["materials"] = [];
 
       for (const mat of formula.items) {
         const perUnit = Number(mat.rm_qty_required) || 1;
@@ -319,7 +289,10 @@ export async function POST(req: NextRequest) {
         fg_barcode: formula.fg_barcode || item.fg_barcode || "",
         fg_name: formula.fg_name || item.fg_name || `สินค้า ${fgSku}`,
         fg_unit: formula.fg_unit || item.fg_unit || "ชิ้น",
+        table_no: tableNo,
         quantity: qty,
+        produced_qty: 0,
+        defect_qty: 0,
         image: item.image || `/products/${fgSku}.jpg`,
         target_warehouse_id: "wh-02",
         target_warehouse_name: "โกดัง 2 (สินค้าสำเร็จรูป)",
@@ -362,7 +335,7 @@ export async function POST(req: NextRequest) {
       order_no: orderNo,
       document_id: docId,
       reference_no: orderNo,
-      status: "COMPLETED",
+      status: "PENDING",
       items: formattedItems,
       total_fg_qty: totalFgQty,
       total_materials_count: totalMaterialsCount,
@@ -371,6 +344,16 @@ export async function POST(req: NextRequest) {
       created_at: nowIso,
       document_date: todayDate,
       note: note || "",
+      inspections: [],
+      materials_summary: Array.from(totalRequiredMaterialsMap.entries()).map(([, m]) => ({
+        rm_sku: m.sku,
+        rm_name: m.name,
+        rm_unit: m.unit,
+        planned_qty: m.requiredQty,
+        used_qty: 0,
+        leftover_qty: m.requiredQty,
+      })),
+      leftover_destination: null,
     };
 
     // Save in in-memory cache
@@ -378,169 +361,48 @@ export async function POST(req: NextRequest) {
 
     const repo = getRepository();
 
-    // 4. Create Stock Movements:
-    // Finished Goods (+qty into wh-02)
-    // Raw Materials (-required_qty from wh-02)
-    const movementsToCreate: Omit<StockMovement, "movement_id" | "created_at">[] = [];
-
-    // FG Movements (+qty)
-    formattedItems.forEach((fgItem, fgIdx) => {
-      movementsToCreate.push({
-        document_id: docId,
-        product_id: fgItem.fg_sku,
-        warehouse_id: "wh-02",
-        location_id: "",
-        qty_change: fgItem.quantity,
-        movement_type: "RECEIVE",
-        idempotency_key: `prd-${docId}-fg-${fgIdx}`,
-        created_by: actor.id || "admin",
-      });
-
-      // RM Movements (-qty)
-      fgItem.materials.forEach((mat, matIdx) => {
-        movementsToCreate.push({
-          document_id: docId,
-          product_id: mat.rm_sku,
-          warehouse_id: "wh-02",
-          location_id: "",
-          qty_change: -mat.rm_qty_required,
-          movement_type: "ISSUE_OUT",
-          idempotency_key: `prd-${docId}-rm-${fgIdx}-${matIdx}`,
-          created_by: actor.id || "admin",
-        });
-      });
-    });
-
-    // Save Movements in Batch
-    const createdMovements = await repo.movements.batchCreate(movementsToCreate).catch((err) => {
-      console.warn("[POST /api/production/orders] batchCreate movements warning:", err);
-      return [];
-    });
-
-    // 5. Update Inventory in Google Sheets (Tab: โกดัง2) directly in-place
-    // IMPORTANT: Use "A2:Z" to skip header row. readSheet() may also auto-strip
-    // headers, so using A2 guarantees: array index 0 = sheet row 2.
-    // Therefore sheetRowNum = arrayIndex + 2.
+    // 4. บันทึกใบผลิตลงแท็บเฉพาะ — "ใบผลิต" (ต่อรายการสินค้า) และ "ใบผลิต_วัตถุดิบ" (ต่อวัตถุดิบ)
+    //    ยังไม่ตัดสต็อกใด ๆ — รอรอบตรวจการผลิตเป็นผู้ตัดตามจำนวนที่ผลิตได้จริง
     try {
-      const freshWh2Rows: string[][] = await readSheet(wh2SheetName, "A2:Z", { forceFresh: true }).catch(() => []);
-      
-      if (freshWh2Rows.length > 0) {
-        const batchUpdates: { rowNumber: number; values: (string | number | boolean)[] }[] = [];
+      await ensureSheetTabExists(SHEETS.PRODUCTION_ORDERS, [...PRODUCTION_ORDER_SHEET_HEADERS]);
+      await ensureSheetTabExists(SHEETS.PRODUCTION_MATERIALS, [...PRODUCTION_MATERIAL_SHEET_HEADERS]);
 
-        // 5.1 Update Finished Goods in โกดัง 2 (In-place update)
-        for (const fgItem of formattedItems) {
-          const normFgSku = cleanCode(fgItem.fg_sku);
-          let fgRowIndex = -1;
-          for (let i = 0; i < freshWh2Rows.length; i++) {
-            const r = freshWh2Rows[i];
-            if (!r || !r[0]) continue;
-            if (cleanCode(r[0]) === normFgSku || (r[1] && cleanCode(r[1]) === normFgSku)) {
-              fgRowIndex = i;
-              break;
-            }
-          }
+      const orderSheetRows = formattedItems.map(
+        (item) =>
+          [
+            orderNo,
+            docId,
+            todayDate,
+            "PENDING",
+            item.fg_sku,
+            item.fg_name,
+            item.fg_unit,
+            item.quantity,
+            0,
+            0,
+            createdByName,
+            nowIso,
+            note || "",
+            "",
+            "",
+            item.table_no || "",
+          ] as (string | number)[]
+      );
 
-          if (fgRowIndex !== -1) {
-            const existingRow = [...freshWh2Rows[fgRowIndex]];
-            while (existingRow.length < 9) existingRow.push("");
-            const curQty = parseFloat(String(existingRow[5] || existingRow[4] || "0").replace(/,/g, "")) || 0;
-            const newQty = curQty + fgItem.quantity;
-            existingRow[5] = String(newQty);
-            existingRow[8] = nowIso;
-            // A2:Z means index 0 = sheet row 2
-            const sheetRowNum = fgRowIndex + 2;
-            batchUpdates.push({ rowNumber: sheetRowNum, values: existingRow });
-            freshWh2Rows[fgRowIndex] = existingRow;
-          } else {
-            // Append new FG row to โกดัง 2 only if truly not existing
-            const newFgRow = [
-              fgItem.fg_sku,
-              fgItem.fg_barcode || "",
-              fgItem.fg_name,
-              "สินค้าสำเร็จรูป",
-              fgItem.fg_unit || "ชิ้น",
-              String(fgItem.quantity),
-              "",
-              "ฝ่ายผลิต (BOM)",
-              nowIso,
-            ];
-            await appendRows(wh2SheetName, [newFgRow]);
-            freshWh2Rows.push(newFgRow);
-          }
-        }
+      const materialSheetRows = Array.from(totalRequiredMaterialsMap.entries()).map(
+        ([, m]) =>
+          [orderNo, m.sku, m.name, m.unit, m.requiredQty, 0, m.requiredQty, nowIso] as (string | number)[]
+      );
 
-        // 5.2 Deduct Raw Materials from โกดัง 2 (Strict exact SKU matching)
-        for (const [, reqMat] of totalRequiredMaterialsMap.entries()) {
-          const normMatSku = cleanCode(reqMat.sku);
-          const normMatName = cleanCode(reqMat.name);
-          let rmRowIndex = -1;
-
-          // Pass 1: Exact SKU match
-          for (let i = 0; i < freshWh2Rows.length; i++) {
-            const r = freshWh2Rows[i];
-            if (!r || !r[0]) continue;
-            if (cleanCode(r[0]) === normMatSku) {
-              rmRowIndex = i;
-              break;
-            }
-          }
-
-          // Pass 2: Barcode match
-          if (rmRowIndex === -1 && reqMat.barcode) {
-            const normBarcode = cleanCode(reqMat.barcode);
-            for (let i = 0; i < freshWh2Rows.length; i++) {
-              const r = freshWh2Rows[i];
-              if (!r || !r[1]) continue;
-              if (cleanCode(r[1]) === normBarcode) {
-                rmRowIndex = i;
-                break;
-              }
-            }
-          }
-
-          // Pass 3: Exact Name match
-          if (rmRowIndex === -1 && normMatName) {
-            for (let i = 0; i < freshWh2Rows.length; i++) {
-              const r = freshWh2Rows[i];
-              if (!r || !r[2]) continue;
-              if (cleanCode(r[2]) === normMatName) {
-                rmRowIndex = i;
-                break;
-              }
-            }
-          }
-
-          if (rmRowIndex !== -1) {
-            const existingRow = [...freshWh2Rows[rmRowIndex]];
-            while (existingRow.length < 9) existingRow.push("");
-            const curQty = parseFloat(String(existingRow[5] || existingRow[4] || "0").replace(/,/g, "")) || 0;
-            const newQty = Math.max(0, curQty - reqMat.requiredQty);
-            existingRow[5] = String(newQty);
-            existingRow[8] = nowIso;
-            // A2:Z means index 0 = sheet row 2
-            const sheetRowNum = rmRowIndex + 2;
-            batchUpdates.push({ rowNumber: sheetRowNum, values: existingRow });
-            freshWh2Rows[rmRowIndex] = existingRow;
-          }
-        }
-
-        // Execute all updates in one batch
-        if (batchUpdates.length > 0) {
-          await batchUpdateRows(wh2SheetName, batchUpdates);
-        }
+      await appendRows(SHEETS.PRODUCTION_ORDERS, orderSheetRows);
+      if (materialSheetRows.length > 0) {
+        await appendRows(SHEETS.PRODUCTION_MATERIALS, materialSheetRows);
       }
-    } catch (syncErr) {
-      console.error("[POST /api/production/orders] Sheet inventory update error:", syncErr);
+    } catch (sheetErr) {
+      console.warn("[POST /api/production/orders] Production sheets save non-fatal error:", sheetErr);
     }
 
-    // Clear caches for updated sheets
-    clearSheetCache(wh2SheetName);
-    clearSheetCache("wh-02");
-    clearSheetCache(SHEETS.STOCK_MOVEMENTS);
-    clearSheetCache(SHEETS.STOCK_SUMMARY);
-    clearSheetCache(SHEETS.DOCUMENTS);
-
-    // 6. Save into Documents Google Sheets / Repository
+    // 5. Save into Documents Google Sheets / Repository (สถานะ PENDING — ยังไม่มี movement)
     try {
       const metaPayload = JSON.stringify({
         type: "PRODUCTION_ORDER",
@@ -549,7 +411,7 @@ export async function POST(req: NextRequest) {
         total_qty: totalFgQty,
         created_by_name: createdByName,
         user_note: note || "",
-        status: "COMPLETED",
+        status: "PENDING",
         created_at: nowIso,
         document_date: todayDate,
       });
@@ -560,7 +422,7 @@ export async function POST(req: NextRequest) {
         "RECEIVE",
         orderNo,
         todayDate,
-        "COMPLETED",
+        "PENDING",
         metaPayload,
         actor.id || "admin",
         nowIso,
@@ -573,12 +435,18 @@ export async function POST(req: NextRequest) {
       console.warn("[POST /api/production/orders] Sheet save non-fatal error:", sheetErr);
     }
 
-    // 7. Audit Log
+    // Clear caches for updated sheets
+    clearSheetCache(SHEETS.PRODUCTION_ORDERS as string);
+    clearSheetCache(SHEETS.PRODUCTION_MATERIALS as string);
+    clearSheetCache(SHEETS.PRODUCTION_INSPECTIONS as string);
+    clearSheetCache(SHEETS.DOCUMENTS);
+
+    // 6. Audit Log
     try {
       await logAudit(repo.audit, {
         actorId: actor.id || "admin",
         actorRole: (actor as any).role || "ADMIN",
-        action: "STOCK_RECEIVE",
+        action: "PRODUCTION_ORDER_CREATE",
         resourceType: "Document",
         resourceId: docId,
         warehouseId: "wh-02",
@@ -586,7 +454,6 @@ export async function POST(req: NextRequest) {
         metadata: {
           order_no: orderNo,
           total_fg_qty: totalFgQty,
-          movements_count: createdMovements.length,
           items: formattedItems.map((i) => ({ fg_sku: i.fg_sku, qty: i.quantity })),
         },
       });
@@ -598,14 +465,14 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         data: productionOrderRecord,
-        message: `สั่งผลิตสำเร็จ! เพิ่มสินค้า ${totalFgQty} ชิ้นเข้าโกดัง 2 และตัดสต็อกวัตถุดิบเรียบร้อยแล้ว`,
+        message: `สร้างใบผลิต ${orderNo} สำเร็จ! รอพนักงานตรวจการผลิต — ระบบจะตัดวัตถุดิบและเพิ่มสต็อกตามจำนวนที่ผลิตได้จริง`,
       },
       { status: 201 }
     );
   } catch (error: any) {
     console.error("[POST /api/production/orders] Error:", error);
     return NextResponse.json(
-      { success: false, message: error?.message || "เกิดข้อผิดพลาดในการสร้างคำสั่งผลิต" },
+      { success: false, message: error?.message || "เกิดข้อผิดพลาดในการสร้างใบผลิต" },
       { status: 500 }
     );
   }
@@ -624,21 +491,76 @@ export async function PATCH(req: NextRequest) {
 
     if (!order_no || !status) {
       return NextResponse.json(
-        { success: false, message: "กรุณาระบุเลขที่คำสั่งผลิตและสถานะที่ต้องการเปลี่ยน" },
+        { success: false, message: "กรุณาระบุเลขที่ใบผลิตและสถานะที่ต้องการเปลี่ยน" },
         { status: 400 }
       );
     }
 
+    const validStatuses = ["COMPLETED", "IN_PROGRESS", "PENDING", "CANCELLED"];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json(
+        { success: false, message: `สถานะไม่ถูกต้อง (ต้องเป็น ${validStatuses.join(" / ")})` },
+        { status: 400 }
+      );
+    }
+
+    const key = String(order_no).toLowerCase();
+
+    // ห้ามยกเลิกใบผลิตที่มีรอบตรวจผ่านการอนุมัติแล้ว — สต็อกถูกตัดไปแล้วบางส่วน
+    if (status === "CANCELLED") {
+      const inspectionRows = await readSheet(SHEETS.PRODUCTION_INSPECTIONS, "A2:K").catch(
+        () => [] as string[][]
+      );
+      const hasApprovedRound = inspectionRows.some(
+        (r) =>
+          r &&
+          String(r[0] || "").trim().toLowerCase() === key &&
+          String(r[10] || "").trim().toUpperCase() === "APPROVED"
+      );
+      const orderRows = await readSheet(SHEETS.PRODUCTION_ORDERS, "A2:J").catch(() => [] as string[][]);
+      const hasProduced = orderRows.some(
+        (r) =>
+          r &&
+          String(r[0] || "").trim().toLowerCase() === key &&
+          ((Number(r[8]) || 0) > 0 || (Number(r[9]) || 0) > 0)
+      );
+      if (hasApprovedRound || hasProduced) {
+        return NextResponse.json(
+          { success: false, message: "ใบผลิตนี้มีรอบตรวจที่อนุมัติแล้ว ตัดสต็อกไปบางส่วน — ยกเลิกไม่ได้" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update in-memory
-    const match = inMemoryProductionOrders.find(
-      (o) => o.order_no.toLowerCase() === order_no.toLowerCase() || o.id === order_no
-    );
+    const match = inMemoryProductionOrders.find((o) => o.order_no.toLowerCase() === key || o.id === order_no);
     if (match) {
       match.status = status;
       if (note !== undefined) match.note = note;
     }
 
-    // Attempt updating in sheet if possible
+    // Update แท็บ "ใบผลิต" — เขียนสถานะให้ทุกแถวของใบนี้
+    try {
+      const rows = await readSheet(SHEETS.PRODUCTION_ORDERS, "A2:O").catch(() => [] as string[][]);
+      const batchUpdates: { rowNumber: number; values: (string | number | boolean)[] }[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0] || String(r[0]).trim().toLowerCase() !== key) continue;
+        const rowValues = [...r];
+        while (rowValues.length < 15) rowValues.push("");
+        rowValues[3] = status;
+        if (note !== undefined && String(rowValues[12] || "") === "") rowValues[12] = note;
+        batchUpdates.push({ rowNumber: i + 2, values: rowValues });
+      }
+      if (batchUpdates.length > 0) {
+        await batchUpdateRows(SHEETS.PRODUCTION_ORDERS, batchUpdates);
+        clearSheetCache(SHEETS.PRODUCTION_ORDERS as string);
+      }
+    } catch (e) {
+      console.warn("[PATCH /api/production/orders] Production sheet update non-fatal error:", e);
+    }
+
+    // Update แถว Documents (สำหรับใบเก่าและ KPI หน้าแดชบอร์ด)
     try {
       const rows = await readSheet(SHEETS.DOCUMENTS, "A2:I").catch(() => []);
       for (let i = 0; i < rows.length; i++) {
@@ -671,7 +593,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `อัปเดตสถานะคำสั่งผลิต ${orderNoOrPlaceholder(order_no)} เป็น ${status} สำเร็จ`,
+      message: `อัปเดตสถานะใบผลิต ${orderNoOrPlaceholder(order_no)} เป็น ${status} สำเร็จ`,
     });
   } catch (error) {
     console.error("[PATCH /api/production/orders] Error:", error);

@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ProductTable from "./_components/ProductTable";
+import TableBoard from "./_components/TableBoard";
+import ProductPickerModal from "./_components/ProductPickerModal";
 import type { EnrichedBomFormula } from "./_components/types";
 import { useProductionCart, getCart, setCart } from "./_lib/cart-store";
 
@@ -11,19 +12,13 @@ export default function ProductionPage() {
   const router = useRouter();
   const [boms, setBoms] = useState<EnrichedBomFormula[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
-  // Quantity inputs per product card (keyed by fg_sku)
-  const [produceQty, setProduceQty] = useState<Record<string, number>>({});
-
-  // Pagination — pageSize = 0 คือแสดงทั้งหมด (ALL)
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [page, setPage] = useState<number>(1);
+  // หน้าต่างเลือกสินค้า — เปิดให้โต๊ะที่กด "เพิ่มสินค้าผลิต" (null = ปิดอยู่)
+  const [pickerTableNo, setPickerTableNo] = useState<number | null>(null);
 
   // ตะกร้าสั่งผลิต — เก็บใน cart store (แชร์กับหน้า /production/cart)
   const cart = useProductionCart();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   const fetchBoms = useCallback(async () => {
     setLoading(true);
@@ -32,26 +27,17 @@ export default function ProductionPage() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setBoms(json.data);
-        const initialQty: Record<string, number> = {};
-        json.data.forEach((b: EnrichedBomFormula) => {
-          initialQty[b.fg_sku] = Math.max(1, Math.min(b.maxProducible || 1, produceQty[b.fg_sku] || 1));
-        });
-        setProduceQty(initialQty);
-      } else {
-        setErrorBanner(json.message || "ดึงข้อมูลสินค้าสำหรับผลิตไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง");
       }
     } catch (e) {
       console.error("Failed to fetch BOM:", e);
-      setErrorBanner("ดึงข้อมูลสินค้าสำหรับผลิตไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง");
     } finally {
       setLoading(false);
     }
-  }, [produceQty]);
+  }, []);
 
   useEffect(() => {
     fetchBoms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchBoms]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -60,18 +46,15 @@ export default function ProductionPage() {
     }, 3000);
   };
 
-  const handleQuantityChange = (sku: string, val: number, max: number) => {
-    const clamped = Math.max(1, Math.min(max > 0 ? max : 1, val));
-    setProduceQty((prev) => ({ ...prev, [sku]: clamped }));
-  };
-
-  const handleAddToCart = async (bom: EnrichedBomFormula) => {
-    setErrorBanner(null);
+  /** เพิ่มสินค้าลงตะกร้าของโต๊ะ — คืนข้อความ error ถ้าเพิ่มไม่สำเร็จ (null = สำเร็จ) */
+  const handleAddToCart = async (
+    bom: EnrichedBomFormula,
+    tableNo: number,
+    qty: number
+  ): Promise<string | null> => {
     if (bom.maxProducible <= 0) {
-      setErrorBanner(`วัตถุดิบในโกดัง 2 สำหรับผลิต ${bom.fg_sku} ไม่เพียงพอ — ไม่สามารถผลิตได้`);
-      return;
+      return `วัตถุดิบในโกดัง 2 สำหรับผลิต ${bom.fg_sku} ไม่เพียงพอ — ไม่สามารถผลิตได้`;
     }
-    const qty = produceQty[bom.fg_sku] || 1;
 
     // หน้า list ได้แค่หัวสูตร — ดึงสูตรเต็ม (พร้อมวัตถุดิบ) ก่อนเก็บลงตะกร้า
     // เพื่อให้หน้าตะกร้าคำนวณวัตถุดิบที่จะถูกตัดได้
@@ -85,82 +68,47 @@ export default function ProductionPage() {
     }
 
     const current = getCart();
-    const existing = current.find((item) => item.bom.fg_sku === bom.fg_sku);
+    const existing = current.find((item) => item.table_no === tableNo && item.bom.fg_sku === bom.fg_sku);
+
+    // ใบผลิตหนึ่งใบระบุสินค้าเดียวกันได้เพียงหนึ่งโต๊ะ (ระบบตรวจการผลิตจับคู่รายการด้วยรหัสสินค้า)
+    // ถ้าอยู่โต๊ะอื่นแล้ว ให้ไปปรับจำนวนที่โต๊ะนั้น หรือยืนยันใบผลิตแยกครั้ง
+    const existingOtherTable = current.find(
+      (item) => item.table_no !== tableNo && item.bom.fg_sku === bom.fg_sku
+    );
+    if (existingOtherTable) {
+      return `${bom.fg_name} ถูกจัดให้โต๊ะผลิต ${existingOtherTable.table_no} แล้ว — ใบผลิตหนึ่งใบระบุสินค้าเดียวกันได้เพียงหนึ่งโต๊ะ กรุณาปรับจำนวนที่โต๊ะ ${existingOtherTable.table_no} หรือยืนยันใบผลิตแยกอีกครั้ง`;
+    }
 
     if (existing) {
       const newTotal = existing.quantity + qty;
       if (newTotal > fullBom.maxProducible) {
-        setErrorBanner(`ไม่สามารถเพิ่มเกินจำนวนที่ผลิตได้ (ผลิตได้สูงสุด ${fullBom.maxProducible.toLocaleString()} ${fullBom.fg_unit})`);
-        return;
+        return `ไม่สามารถเพิ่มเกินจำนวนที่ผลิตได้ (ผลิตได้สูงสุด ${fullBom.maxProducible.toLocaleString()} ${fullBom.fg_unit})`;
       }
-      setCart(current.map((item) => (item.bom.fg_sku === bom.fg_sku ? { bom: fullBom, quantity: newTotal } : item)));
+      setCart(
+        current.map((item) =>
+          item.table_no === tableNo && item.bom.fg_sku === bom.fg_sku
+            ? { ...item, bom: fullBom, quantity: newTotal }
+            : item
+        )
+      );
     } else {
-      setCart([...current, { bom: fullBom, quantity: qty }]);
+      setCart([...current, { bom: fullBom, quantity: qty, table_no: tableNo }]);
     }
-    showToast(`เพิ่ม ${bom.fg_name} (+${qty.toLocaleString()} ${bom.fg_unit}) ลงในตะกร้าแล้ว`);
+    showToast(`เพิ่ม ${bom.fg_name} (+${qty.toLocaleString()} ${bom.fg_unit}) ให้โต๊ะผลิต ${tableNo} แล้ว`);
+    return null;
   };
 
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const filteredBoms = boms.filter(
-    (b) =>
-      b.fg_sku.toLowerCase().includes(search.toLowerCase()) ||
-      b.fg_name.toLowerCase().includes(search.toLowerCase()) ||
-      b.fg_barcode.includes(search)
-  );
-
-  // คำนวณการแบ่งหน้า (pageSize = 0 → แสดงทั้งหมด)
-  const total = filteredBoms.length;
-  const pageCount = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, pageCount);
-  const pagedBoms = pageSize === 0 ? filteredBoms : filteredBoms.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const rangeStart = total === 0 ? 0 : (safePage - 1) * (pageSize || total) + 1;
-  const rangeEnd = pageSize === 0 ? total : Math.min(safePage * pageSize, total);
-
   return (
     <div className="w-full max-w-full space-y-5 pb-16">
-      {/* Toast Notification — Top right so it never overlaps mobile bottom navigation */}
-      {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200">
-          <div className="w-6 h-6 rounded-full bg-[#0F5C3F] text-white flex items-center justify-center text-xs font-bold shrink-0">
-            ✓
-          </div>
-          <span className="text-sm font-semibold text-white flex-1">{toastMessage}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-slate-400 hover:text-white text-xs cursor-pointer font-bold p-1"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Top Toolbar */}
       <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="text-xl">🏭</span>
-            <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4] whitespace-nowrap">
-              โกดัง 2 (สินค้าสำเร็จรูป)
-            </span>
-          </div>
-
-          {/* ช่องค้นหา — อยู่ในแถบเครื่องมือบนสุด */}
-          <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
-            <input
-              type="text"
-              placeholder="ค้นหารหัสสินค้า, ชื่อสินค้า หรือบาร์โค้ด..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-[#E8ECEA] rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-[#0F5C3F] focus:bg-white transition-colors"
-            />
-            <svg className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="text-xl">🏭</span>
+          <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4] whitespace-nowrap">
+            โกดัง 2 (สินค้าสำเร็จรูป)
+          </span>
         </div>
 
         {/* Right side controls: History Link, Cart Button & Refresh */}
@@ -168,12 +116,12 @@ export default function ProductionPage() {
           <Link
             href="/production/history"
             className="px-4 py-2.5 sm:py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center gap-2 cursor-pointer border border-[#E8ECEA]/80 shadow-2xs active:scale-95"
-            title="ดูประวัติการสั่งผลิตทั้งหมด"
+            title="ดูรายการใบผลิตทั้งหมด"
           >
             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            <span>ประวัติการสั่งผลิต</span>
+            <span>ใบผลิต</span>
           </Link>
 
           <button
@@ -214,52 +162,38 @@ export default function ProductionPage() {
         </div>
       </div>
 
-      {/* Error Banner */}
-      {errorBanner && (
-        <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 flex items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2.5 text-rose-800">
-            <span className="text-lg">⚠️</span>
-            <p className="text-sm font-bold">{errorBanner}</p>
-          </div>
-          <button
-            onClick={() => setErrorBanner(null)}
-            className="text-rose-700 hover:text-rose-900 text-xs font-bold px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer transition-colors"
-          >
-            ปิด
-          </button>
-        </div>
+      {/* บอร์ดโต๊ะผลิต 1–5 — แต่ละโต๊ะแสดงสินค้าที่จัดให้ และปุ่มเพิ่มสินค้าผลิต */}
+      <TableBoard cart={cart} onOpenPicker={setPickerTableNo} />
+
+      {/* หน้าต่างเลือกสินค้าให้โต๊ะ (แทนตารางรายการสินค้าเดิมที่เคยแสดงรวมทั้งหน้า) */}
+      {pickerTableNo !== null && (
+        <ProductPickerModal
+          tableNo={pickerTableNo}
+          boms={boms}
+          loading={loading}
+          existingSkus={
+            new Set(cart.filter((i) => i.table_no === pickerTableNo).map((i) => i.bom.fg_sku))
+          }
+          onAddToCart={handleAddToCart}
+          onRefresh={fetchBoms}
+          onClose={() => setPickerTableNo(null)}
+        />
       )}
 
-      {/* Product Table — แสดงรูป/รหัส/บาร์โค้ด/ชื่อ/จำนวนที่ผลิตได้/เพิ่มตะกร้า
-          กดที่แถวเพื่อขยายดูวัตถุดิบที่ใช้ผลิต (สไตล์เดียวกับตารางประวัติ) */}
-      {loading ? (
-        <div className="py-20 text-center bg-white rounded-2xl border border-[#E8ECEA] shadow-xs">
-          <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-600 mt-3 font-semibold">กำลังโหลดข้อมูลสินค้าสำหรับผลิต...</p>
+      {/* แบนเนอร์แจ้งเตือน — อยู่ใน flow ของหน้า (ดันเนื้อหา ไม่ลอยทับตัวหนังสืออื่น) */}
+      {toastMessage && (
+        <div className="bg-[#06402B] text-white px-4 py-3 rounded-xl shadow-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="w-6 h-6 rounded-full bg-[#0F5C3F] border border-white/30 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            ✓
+          </div>
+          <span className="text-sm font-semibold text-white flex-1">{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-slate-300 hover:text-white text-xs cursor-pointer font-bold p-1"
+          >
+            ✕
+          </button>
         </div>
-      ) : filteredBoms.length === 0 ? (
-        <div className="rounded-2xl p-16 text-center border border-[#E8ECEA] bg-white shadow-xs">
-          <p className="text-slate-700 text-base font-bold">ไม่พบรายการสินค้าที่ตรงกับคำค้นหา</p>
-          <p className="text-slate-500 text-sm mt-1">ลองเปลี่ยนคำค้นหา หรือกดรีเฟรชข้อมูลใหม่อีกครั้ง</p>
-        </div>
-      ) : (
-        <ProductTable
-          boms={pagedBoms}
-          produceQty={produceQty}
-          onQuantityChange={handleQuantityChange}
-          onAddToCart={handleAddToCart}
-          page={safePage}
-          pageCount={pageCount}
-          pageSize={pageSize}
-          total={total}
-          rangeStart={rangeStart}
-          rangeEnd={rangeEnd}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => {
-            setPageSize(s);
-            setPage(1);
-          }}
-        />
       )}
     </div>
   );

@@ -34,6 +34,8 @@ export interface EnrichedBomFormula {
 export interface CartItem {
   bom: EnrichedBomFormula;
   quantity: number;
+  /** โต๊ะผลิตที่รายการนี้ถูกจัดให้ (1–5) */
+  table_no: number;
 }
 
 export interface ConsumedMaterial {

@@ -20,8 +20,8 @@ export default function ConfirmProductionModal({
   onConfirm,
   onCancel,
 }: ConfirmProductionModalProps) {
-  // Escape = ยกเลิก ไม่ใช่ยืนยัน — หน้านี้หักวัตถุดิบถาวร
-  // ระหว่างส่งคำสั่งผลิต (isSubmitting) ปิด Escape ไว้ กันปิดหน้าต่างไปแต่ระบบยังตัดสต็อกต่อ
+  // Escape = ยกเลิก ไม่ใช่ยืนยัน — หน้านี้สร้างใบผลิตที่พนักงานจะใช้ตรวจรับต่อ
+  // ระหว่างส่งคำสั่งผลิต (isSubmitting) ปิด Escape ไว้ กันปิดหน้าต่างไปแต่ระบบยังสร้างใบผลิตต่อ
   useEscapeKey(!isSubmitting, onCancel);
 
   return (
@@ -36,15 +36,20 @@ export default function ConfirmProductionModal({
           </p>
         </div>
 
-        {/* What will be added (+) */}
+        {/* What will be produced (+) */}
         <div className="rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] p-4 space-y-2">
           <p className="text-sm font-bold text-[#052B1F] uppercase tracking-wider">
-            + สินค้าสำเร็จรูปที่จะเพิ่มเข้าโกดัง 2
+            + สินค้าสำเร็จรูปตามใบผลิต (ตามผลตรวจจริง)
           </p>
           <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
             {cart.map((item) => (
-              <div key={item.bom.fg_sku} className="flex items-baseline justify-between text-sm">
-                <span className="font-semibold text-[#031B14] truncate">{item.bom.fg_name}</span>
+              <div key={`${item.table_no}-${item.bom.fg_sku}`} className="flex items-baseline justify-between text-sm gap-2">
+                <span className="flex items-baseline gap-1.5 min-w-0">
+                  <span className="shrink-0 rounded bg-[#06402B] px-1.5 py-0.5 text-[10px] font-black text-white font-mono">
+                    โต๊ะ {item.table_no}
+                  </span>
+                  <span className="font-semibold text-[#031B14] truncate">{item.bom.fg_name}</span>
+                </span>
                 <span className="font-mono font-bold text-[#04231A] shrink-0">
                   +{item.quantity.toLocaleString()} {item.bom.fg_unit}
                 </span>
@@ -59,10 +64,10 @@ export default function ConfirmProductionModal({
           </div>
         </div>
 
-        {/* What will be deducted (-) */}
+        {/* Materials planned (-) */}
         <div className="rounded-2xl bg-amber-50 border border-amber-300 p-4 space-y-2">
           <p className="text-sm font-bold text-amber-800 uppercase tracking-wider">
-            − วัตถุดิบที่จะถูกตัดออกจากโกดัง 2 ทันที
+            − วัตถุดิบตามแผน (จะถูกตัดเมื่อตรวจผลผลิตจริง)
           </p>
           <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
             {consumedMaterials.map((c) => (
@@ -76,10 +81,10 @@ export default function ConfirmProductionModal({
           </div>
         </div>
 
-        {/* Critical Warning */}
-        <div className="rounded-xl bg-rose-50 border border-rose-200 p-3.5 flex items-center gap-2.5 text-sm text-rose-800 font-bold">
-          <span className="text-base shrink-0">⚠️</span>
-          <span>กดยืนยันแล้วระบบจะตัดสต็อกวัตถุดิบทันทีและไม่สามารถเรียกคืนได้</span>
+        {/* Info */}
+        <div className="rounded-xl bg-sky-50 border border-sky-200 p-3.5 flex items-center gap-2.5 text-sm text-sky-800 font-bold">
+          <span className="text-base shrink-0">📋</span>
+          <span>กดยืนยันแล้วจะสร้าง &quot;ใบผลิต&quot; — ยังไม่ตัดสต็อก รอพนักงานตรวจการผลิตและระบุผลิตได้จริงก่อน</span>
         </div>
 
         {/* Action buttons */}
@@ -93,7 +98,7 @@ export default function ConfirmProductionModal({
             {isSubmitting ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <span>ยืนยัน ผลิต {totalCartUnits.toLocaleString()} ชิ้น</span>
+              <span>สร้างใบผลิต {totalCartUnits.toLocaleString()} ชิ้น</span>
             )}
           </button>
           <button
