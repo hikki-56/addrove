@@ -19,6 +19,25 @@ export function cleanCode(str?: string): string {
     .replace(/[\s\-_]/g, "");
 }
 
+/**
+ * ตรวจว่าเอกสารในแท็บ Documents เป็นใบผลิตหรือไม่
+ * ใบผลิตรุ่นเก่าถูกบันทึก document_type เป็น "RECEIVE" ตอนสร้าง — ต้องอาศัยสัญญาณอื่น
+ * (เลขเอกสาร PRD- / id ของเอกสาร / type ใน note) เพื่อกันไม่ให้หลุดเข้าคิวอนุมัติและประวัติการรับเข้า
+ */
+export function isProductionOrderDocument(doc: {
+  document_id?: string | null;
+  document_no?: string | null;
+  reference_no?: string | null;
+  note?: string | null;
+}): boolean {
+  const identifiers = [doc.document_no, doc.reference_no]
+    .filter(Boolean)
+    .map((v) => String(v).trim().toUpperCase());
+  if (identifiers.some((v) => v.startsWith("PRD-"))) return true;
+  if (String(doc.document_id || "").toLowerCase().includes("doc-prd-")) return true;
+  return String(doc.note || "").includes('"type":"PRODUCTION_ORDER"');
+}
+
 /** แปลงคอลัมน์ "วัตถุดิบใช้จริง/เสียจริง (JSON)" ของแถวแรกในรอบ → รายการวัตถุดิบที่รายงาน */
 export function parseReportedMaterials(raw: string | undefined): InspectionMaterialResult[] | undefined {
   const text = String(raw || "").trim();

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/lib/repositories";
 import { getDocumentStatus } from "@/lib/document-status-store";
+import { isProductionOrderDocument } from "@/lib/production-sheets";
 import { getLoginLogs } from "@/lib/services/login-log.service";
 import {
   successResponse,
@@ -118,6 +119,9 @@ export async function GET(req: NextRequest) {
       const rawDocStatus = (doc.status || "").trim().toUpperCase();
       const overrideStatus = getDocumentStatus(doc.document_id) || getDocumentStatus(doc.document_no);
       const docStatus = (overrideStatus || rawDocStatus || "PENDING").toUpperCase();
+
+      // ใบผลิต (PRD) ไม่ใช่การรับเข้า — ใบรุ่นเก่าถูกพิมพ์ type เป็น RECEIVE ตอนสร้าง ต้องกันออกจากประวัติ
+      if (isProductionOrderDocument(doc)) continue;
 
       // Check if it is a RECEIVE document
       const isReceive =

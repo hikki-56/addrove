@@ -416,10 +416,11 @@ export async function POST(req: NextRequest) {
         document_date: todayDate,
       });
 
+      // type เป็น PRODUCTION (ไม่ใช่ RECEIVE) — กันไม่ให้ใบผลิตหลุดเข้าคิวอนุมัติ/ประวัติการรับเข้า
       const docRow = [
         docId,
         orderNo,
-        "RECEIVE",
+        "PRODUCTION",
         orderNo,
         todayDate,
         "PENDING",

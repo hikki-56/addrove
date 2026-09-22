@@ -13,6 +13,7 @@ export const revalidate = 0;
 
 import { getAuthSession } from "@/lib/auth-session";
 import { getDocumentStatus } from "@/lib/document-status-store";
+import { isProductionOrderDocument } from "@/lib/production-sheets";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
 
 export async function GET(req: NextRequest) {
@@ -81,6 +82,9 @@ export async function GET(req: NextRequest) {
       // แผนรับสินค้า (RECEIVE_PLAN) เป็นเอกสารตั้งต้น ไม่ใช่การรับเข้าที่ต้องอนุมัติ
       // ต้องกันก่อนเช็ค isReceive เพราะ "RECEIVE_PLAN".includes("RECEIVE") เป็น true
       if (docType === "RECEIVE_PLAN") continue;
+
+      // ใบผลิต (PRD) ไม่ใช่การรับเข้า — ใบรุ่นเก่าถูกพิมพ์ type เป็น RECEIVE ตอนสร้าง ต้องกันออกจากคิวนี้
+      if (isProductionOrderDocument(doc)) continue;
 
       // Approvals page is for RECEIVE documents
       const isReceive = docType.includes("RECEIVE") || docType.includes("RCV") || (doc.note && doc.note.includes("target_sheet"));
