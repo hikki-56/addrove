@@ -12,7 +12,68 @@ import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
 import { useTabAuth } from "@/context/TabAuthContext";
 import type { ReceivingPlanView } from "./use-receiving-plans";
 
-export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v1";
+export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v2";
+// draft รุ่นก่อนหน้า — อ่านยกมาเป็น v2 แล้วลบทิ้ง จะได้ไม่เสียรายการค้างอยู่ตอนอัปเดตระบบ
+const LEGACY_RECEIVE_DRAFT_KEY = "stockify_receive_draft_v1";
+
+export interface ReceiveDraftData {
+  warehouse_id: string;
+  document_date: string;
+  lines: ReceiveDocumentInput["lines"];
+  step: 1 | 2;
+  // เซสชัน "รับตามแผน" — เก็บ snapshot ไว้กู้คืนโหมดแผนได้แม้ออฟไลน์
+  plan?: { document_id: string; snapshot: ReceivingPlanView } | null;
+  confirmed_lines?: Record<number, boolean>;
+  location_inputs?: Record<number, string>;
+}
+
+export interface RestoredDraftInfo {
+  lineCount: number;
+  planNo?: string;
+}
+
+// อ่าน draft จาก localStorage — v2 ก่อน ถ้าไม่มีให้ยก v1 ขึ้นมา (เฉพาะ lines/step/date)
+function readReceiveDraft(): ReceiveDraftData | null {
+  try {
+    const saved = localStorage.getItem(RECEIVE_DRAFT_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && Array.isArray(parsed.lines)) return parsed as ReceiveDraftData;
+      return null;
+    }
+    const legacy = localStorage.getItem(LEGACY_RECEIVE_DRAFT_KEY);
+    if (legacy) {
+      localStorage.removeItem(LEGACY_RECEIVE_DRAFT_KEY);
+      const parsed = JSON.parse(legacy);
+      if (parsed && Array.isArray(parsed.lines) && parsed.lines.length > 0) {
+        return {
+          warehouse_id: parsed.warehouse_id,
+          document_date: parsed.document_date,
+          lines: parsed.lines,
+          step: parsed.step === 2 ? 2 : 1,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("[Receive Page] Failed to read draft:", e);
+  }
+  return null;
+}
+
+// กรองค่า index-keyed state ที่เก็บใน draft ให้เหลือเฉพาะชนิดข้อมูลที่ถูกต้อง
+function sanitizeIndexRecord<T>(raw: unknown, check: (v: unknown) => v is T): Record<number, T> {
+  const out: Record<number, T> = {};
+  if (raw && typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const idx = Number(k);
+      if (Number.isInteger(idx) && idx >= 0 && check(v)) out[idx] = v;
+    }
+  }
+  return out;
+}
+
+const isString = (v: unknown): v is string => typeof v === "string";
+const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
 
 // Re-key index-based state (locationInputs/confirmedLines) after line order changes.
 // map() returns the new index for an old index, or null when the entry is dropped.
@@ -96,6 +157,8 @@ export function useReceiveMovement({
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   // โหมดรับตามแผน: ไม่ null = กำลังรับสินค้า "ตามแผนรับสินค้า" นี้อยู่
   const [activePlan, setActivePlan] = useState<ReceivingPlanView | null>(null);
+  // ตั้งค่าครั้งเดียวหลังกู้คืน draft จาก session ก่อน — ใช้แสดงแบนเนอร์ "กู้คืนรายการค้างไว้"
+  const [restoredInfo, setRestoredInfo] = useState<RestoredDraftInfo | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
@@ -143,52 +206,57 @@ export function useReceiveMovement({
   // Restore draft from localStorage on mount — only if the draft belongs to the same warehouse
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const saved = localStorage.getItem(RECEIVE_DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.warehouse_id && activeWhId && normalizeWhId(parsed.warehouse_id) !== normalizeWhId(activeWhId)) {
-          // Draft was made for another warehouse — discard it instead of mixing lines across warehouses
-          localStorage.removeItem(RECEIVE_DRAFT_KEY);
-          return;
-        }
-        if (parsed.lines && Array.isArray(parsed.lines) && parsed.lines.length > 0) {
-          setValue("lines", parsed.lines, { shouldValidate: true });
-          if (parsed.step) setStep(parsed.step);
-          if (parsed.document_date) setValue("document_date", parsed.document_date);
-        }
+    const parsed = readReceiveDraft();
+    if (!parsed) return;
+    if (parsed.warehouse_id && activeWhId && normalizeWhId(parsed.warehouse_id) !== normalizeWhId(activeWhId)) {
+      // Draft was made for another warehouse — discard it instead of mixing lines across warehouses
+      localStorage.removeItem(RECEIVE_DRAFT_KEY);
+      return;
+    }
+    if (parsed.lines && Array.isArray(parsed.lines) && parsed.lines.length > 0) {
+      setValue("lines", parsed.lines, { shouldValidate: true });
+      if (parsed.step) setStep(parsed.step);
+      if (parsed.document_date) setValue("document_date", parsed.document_date);
+      if (parsed.confirmed_lines) setConfirmedLines(sanitizeIndexRecord(parsed.confirmed_lines, isBoolean));
+      if (parsed.location_inputs) setLocationInputs(sanitizeIndexRecord(parsed.location_inputs, isString));
+      // เซสชันรับตามแผน — กลับเข้าโหมดแผนเดิมพร้อมรายการที่สแกนค้างไว้
+      if (parsed.plan?.snapshot) {
+        setActivePlan(parsed.plan.snapshot);
+        setRestoredInfo({ lineCount: parsed.lines.length, planNo: parsed.plan.snapshot.document_no });
+      } else {
+        setRestoredInfo({ lineCount: parsed.lines.length });
       }
-    } catch (e) {
-      console.warn("[Receive Page] Failed to restore draft:", e);
     }
   }, [setValue, activeWhId]);
 
-  // Save draft to localStorage
+  // Save draft to localStorage — ทั้งโหมดรับทั่วไปและรับตามแผน
+  // (ออกจากหน้า/รีเฟรช/ปิดแอปแล้วกลับมา รายการที่สแกนไว้ยังอยู่ครบ)
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (submitted) {
       localStorage.removeItem(RECEIVE_DRAFT_KEY);
       return;
     }
-    // เซสชันรับตามแผนเป็นงานสั้นที่ส่งทีเดียวจบ — ไม่ผสมกับ draft ของโหมดรับทั่วไป
-    // (startPlanReceive ล้าง draft เดิมตอนเริ่มแผนอยู่แล้ว)
-    if (activePlan) return;
     if (!watchLines || watchLines.length === 0) {
+      // เซสชันว่าง (แม้เข้าโหมดแผนแล้วยังไม่สแกน) ไม่มีอะไรต้องกู้คืน — ลบ draft เก่าทิ้ง
       localStorage.removeItem(RECEIVE_DRAFT_KEY);
       return;
     }
     try {
-      const draft = {
+      const draft: ReceiveDraftData = {
         warehouse_id: activeWhId,
         document_date: watch("document_date"),
         lines: watchLines,
         step,
+        plan: activePlan ? { document_id: activePlan.document_id, snapshot: activePlan } : null,
+        confirmed_lines: confirmedLines,
+        location_inputs: locationInputs,
       };
       localStorage.setItem(RECEIVE_DRAFT_KEY, JSON.stringify(draft));
     } catch (e) {
       console.warn("[Receive Page] Failed to save draft:", e);
     }
-  }, [watchLines, activeWhId, step, watch, submitted, activePlan]);
+  }, [watchLines, activeWhId, step, watch, submitted, activePlan, confirmedLines, locationInputs]);
 
   // Restoring a draft only brings back the line rows. Products scanned in the previous
   // session may not be in the warehouse product list after a refresh (refreshData
@@ -744,6 +812,7 @@ export function useReceiveMovement({
     setStep(1);
     setSuccessMessage("");
     setActivePlan(null);
+    setRestoredInfo(null);
     reset({
       warehouse_id: activeWhId,
       document_date: new Date().toISOString().slice(0, 10),
@@ -764,6 +833,7 @@ export function useReceiveMovement({
     setSuccessMessage("");
     setError("");
     setStep(1);
+    setRestoredInfo(null);
     setValue("lines", [] as unknown as ReceiveDocumentInput["lines"]);
     setValue("reference_no", "");
     setValue("idempotency_key", uuidv4());
@@ -773,6 +843,7 @@ export function useReceiveMovement({
 
   const exitPlanMode = () => {
     setActivePlan(null);
+    setRestoredInfo(null);
     setValue("lines", [] as unknown as ReceiveDocumentInput["lines"]);
     setValue("reference_no", "");
     setValue("idempotency_key", uuidv4());
@@ -882,5 +953,6 @@ export function useReceiveMovement({
     setActivePlan,
     startPlanReceive,
     exitPlanMode,
+    restoredInfo,
   };
 }

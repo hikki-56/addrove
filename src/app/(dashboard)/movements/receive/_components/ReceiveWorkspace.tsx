@@ -17,6 +17,8 @@ import ReceivingPlanInbox from "./ReceivingPlanInbox";
 import ReceivingPlanCreateForm from "./ReceivingPlanCreateForm";
 import ReceivingPlanAllList from "./ReceivingPlanAllList";
 import PlanProgressPanel from "./PlanProgressPanel";
+import ReceiveRestoreBanner from "./ReceiveRestoreBanner";
+import PlanExitConfirmModal from "./PlanExitConfirmModal";
 
 const cardClass =
   "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
@@ -25,6 +27,7 @@ type ReceiveMode = "INBOX" | "SCAN" | "PLAN_CREATE" | "PLAN_ALL";
 
 export default function ReceiveWorkspace() {
   const [mode, setMode] = useState<ReceiveMode>("SCAN");
+  const [planExitOpen, setPlanExitOpen] = useState(false);
   const { user: tabUser } = useTabAuth();
   const isAdmin = tabUser?.role === "ADMIN";
 
@@ -83,8 +86,10 @@ export default function ReceiveWorkspace() {
     resetForm,
     watchLines,
     activePlan,
+    setActivePlan,
     startPlanReceive,
     exitPlanMode,
+    restoredInfo,
   } = receiveHook;
 
   const openPlans = plansHook.plans.filter(isPlanOpen);
@@ -96,6 +101,25 @@ export default function ReceiveWorkspace() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted]);
+
+  // ซิงก์ snapshot ของแผนที่กำลังรับกับข้อมูลสดจาก polling — สำคัญหลังกู้คืน draft
+  // เพราะ snapshot ใน draft อาจตกรุ่น (received_qty/สถานะแผนเปลี่ยนไปขณะออกจากหน้า)
+  useEffect(() => {
+    if (!activePlan) return;
+    const fresh = plansHook.plans.find((p) => p.document_id === activePlan.document_id);
+    if (!fresh || JSON.stringify(fresh) === JSON.stringify(activePlan)) return;
+    setActivePlan(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plansHook.plans]);
+
+  // ออกจากโหมดแผน = ล้างรายการที่สแกนไว้ — ต้องยืนยันก่อนถ้ายังมีรายการค้างอยู่
+  const handleExitPlan = () => {
+    if ((watchLines?.length || 0) > 0) {
+      setPlanExitOpen(true);
+      return;
+    }
+    exitPlanMode();
+  };
 
   const handleSelectPlan = (plan: (typeof plansHook.plans)[number]) => {
     startPlanReceive(plan);
@@ -256,11 +280,19 @@ export default function ReceiveWorkspace() {
             </button>
           </section>
 
+          {restoredInfo && (watchLines?.length || 0) > 0 && (
+            <ReceiveRestoreBanner
+              lineCount={restoredInfo.lineCount}
+              planNo={restoredInfo.planNo}
+              onDiscard={resetForm}
+            />
+          )}
+
           {activePlan && (
             <PlanProgressPanel
               plan={activePlan}
               formLines={watchLines}
-              onExitPlan={exitPlanMode}
+              onExitPlan={handleExitPlan}
             />
           )}
 
@@ -324,6 +356,14 @@ export default function ReceiveWorkspace() {
             onScan={(scannedText) => {
               handleScanBarcode(scannedText);
             }}
+          />
+
+          <PlanExitConfirmModal
+            isOpen={planExitOpen}
+            onClose={() => setPlanExitOpen(false)}
+            onConfirm={exitPlanMode}
+            lineCount={watchLines?.length || 0}
+            planNo={activePlan?.document_no || ""}
           />
         </>
       )}
