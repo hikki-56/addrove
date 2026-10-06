@@ -179,8 +179,8 @@ export function TabAuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback((newUser: TabUser, newToken: string, expires_at?: number) => {
     try {
-      // Default expiration: 24 Hours for ADMIN, 2 Hours for employee QR
-      const defaultTtl = newUser.role === "ADMIN" ? 24 * 3600 * 1000 : 2 * 3600 * 1000;
+      // Default expiration: 24 Hours for ADMIN, 5 Hours for employee QR
+      const defaultTtl = newUser.role === "ADMIN" ? 24 * 3600 * 1000 : 5 * 3600 * 1000;
       let sessionExpiry = expires_at || (Date.now() + defaultTtl);
       if (sessionExpiry < 10000000000) {
         sessionExpiry = sessionExpiry * 1000;

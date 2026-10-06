@@ -149,7 +149,7 @@ export async function POST(req: Request) {
     const accessibleWarehouseIds = getAccessibleWarehouseIds(targetUser.warehouse_access);
     const warehouseAccess = accessibleWarehouseIds === null ? ["*"] : accessibleWarehouseIds;
 
-    const expiresInSeconds = 2 * 3600; // 2 Hours session timeout
+    const expiresInSeconds = 5 * 3600; // 5 Hours session timeout
     const expiresAtMs = Date.now() + expiresInSeconds * 1000;
 
     const tokenPayload = {
