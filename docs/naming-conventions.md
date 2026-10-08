@@ -39,3 +39,21 @@
 หากมีการเปลี่ยนชื่อ Route ที่กระทบผู้ใช้งานหรือระบบภายนอก ให้ดำเนินการดังนี้:
 1. **หน้าเว็บ (Web Page)**: สร้าง Route Handler Redirect (308 Permanent Redirect) จากเส้นทางเดิมไปยังเส้นทางใหม่
 2. **API Endpoint**: คง API Handler หรือสร้าง Legacy Forwarder เพื่อส่งต่อคำขอไปยัง Handler ใหม่โดยไม่เปลี่ยนพฤติกรรมของ API
+
+---
+
+## 4. โครงสร้างโฟลเดอร์ใน `src/` (Source Layout)
+
+| โฟลเดอร์ | ใช้สำหรับ |
+| :--- | :--- |
+| `src/app/` | Route ของ Next.js เท่านั้น (`page.tsx`, `layout.tsx`, `route.ts`) + `_components`/`_lib` ที่ใช้เฉพาะ Route นั้น |
+| `src/features/<feature>/` | โค้ด UI ของฟีเจอร์ที่ใช้ร่วมกันหลายหน้า แบ่งเป็น `components/`, `hooks/`, `utils.ts` (เช่น `features/receive`, `features/transfer`, `features/move`) |
+| `src/components/` | React component ที่ใช้ร่วมกันทั้งแอป (`ui/`, `layout/` รวมถึง `layout/nav-items.tsx`) |
+| `src/hooks/`, `src/context/` | React hook / Context ที่ใช้ร่วมกันทั้งแอป |
+| `src/client/` | โมดูลที่รันบน Browser เท่านั้น (fetch client, offline queue, feedback, navigation) — ห้าม import จากฝั่ง server |
+| `src/server/` | โค้ดฝั่ง server เท่านั้น (auth, Google Sheets, repositories, services, security, production ฯลฯ) — **ห้าม** import จาก Client Component (`"use client"`) หรือไฟล์ที่ Client Component import |
+| `src/lib/` | Utility แบบ pure ที่ใช้ได้ทั้งสองฝั่ง (ไม่มี I/O ไม่มี secret) เช่น `sku.ts`, `id.ts`, `warehouse-utils.ts` |
+| `src/types/` | Type/Interface ที่ใช้ร่วมกัน |
+
+- Import ข้ามโฟลเดอร์ใช้ alias `@/` เสมอ (เช่น `@/server/services/...`, `@/features/receive/hooks/...`) ใช้ `./` เฉพาะไฟล์ในโฟลเดอร์เดียวกัน
+- Type ฝั่ง client ที่ต้องตรงกับ type ฝั่ง server ให้ประกาศ mirror ไว้ฝั่ง client แทนการ import จาก `src/server`
