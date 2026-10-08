@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
+import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/components/layout/nav-items";
 import { getExpressTagCounts } from "@/client/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
