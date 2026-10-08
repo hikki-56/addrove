@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { outboundApi, type BillDetailData } from "@/lib/outbound-client";
+import { outboundApi, type BillDetailData } from "@/client/outbound-client";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/lib/feedback";
+import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/client/feedback";
 import { generateBoxStickerDataUrl } from "@/lib/barcode-utils";
-import { queuedScan } from "@/lib/offline-scan-queue";
+import { queuedScan } from "@/client/offline-scan-queue";
 import { useOfflineScanQueue, OfflineQueueBadge } from "@/hooks/use-offline-scan-queue";
 
 /**

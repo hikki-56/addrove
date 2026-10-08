@@ -6,7 +6,7 @@ import {
   getPendingScans,
   getFailedScans,
   clearFailedScans,
-} from "@/lib/offline-scan-queue";
+} from "@/client/offline-scan-queue";
 
 /**
  * Hook คิวสแกนออฟไลน์ — ผูกกับหน้างานสแกน (หยิบ/แพ็ก/ขึ้นรถ)

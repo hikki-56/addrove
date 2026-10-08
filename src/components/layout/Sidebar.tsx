@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
-import { getExpressTagCounts } from "@/lib/express-tag-utils";
+import { getExpressTagCounts } from "@/client/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
   getPendingTransferNotifications,
   purgeInvalidNotifications,
 } from "@/lib/transfer-notification-utils";
-import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
+import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 
 // ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
 const OPERATION_ORDER = [

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/layout/Navbar";
-import { safeNavigate } from "@/lib/safe-navigate";
+import { safeNavigate } from "@/client/safe-navigate";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, status } = useTabAuth();

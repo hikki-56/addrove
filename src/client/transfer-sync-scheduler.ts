@@ -1,4 +1,4 @@
-import { fetchAndSyncTransferNotifications } from "./transfer-notification-utils";
+import { fetchAndSyncTransferNotifications } from "@/lib/transfer-notification-utils";
 
 // Navbar, Sidebar, StaffDashboard และ hooks อื่น ๆ เคยตั้ง setInterval
 // เรียก fetchAndSyncTransferNotifications ของตัวเอง (3-5 วินาทีต่อ component)

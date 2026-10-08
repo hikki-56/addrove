@@ -7,7 +7,7 @@ import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/lib/nav-items";
 import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
-import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
+import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import ProductionBell from "@/components/layout/ProductionBell";

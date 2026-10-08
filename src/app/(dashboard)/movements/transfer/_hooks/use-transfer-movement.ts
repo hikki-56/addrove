@@ -20,10 +20,10 @@ import {
   whenTransferProgressSettled,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
-import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
+import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
-import { tagExpressItem } from "@/lib/express-tag-utils";
+import { tagExpressItem } from "@/client/express-tag-utils";
 import { useTransferConfirm } from "../_components/TransferConfirmDialog";
 
 export const TransferFormSchema = z.object({

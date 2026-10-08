@@ -2,14 +2,14 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { outboundApi, type QPickViewData } from "@/lib/outbound-client";
+import { outboundApi, type QPickViewData } from "@/client/outbound-client";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/lib/feedback";
+import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/client/feedback";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { getWarehouseDisplayName } from "@/lib/warehouse-utils";
-import { queuedScan } from "@/lib/offline-scan-queue";
+import { queuedScan } from "@/client/offline-scan-queue";
 
 /**
  * งานกล่อง Q — พนักงานแพ็กของ

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
-import { outboundApi, type BillDetailData } from "@/lib/outbound-client";
+import { outboundApi, type BillDetailData } from "@/client/outbound-client";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 
 const EXCEPTION_LABELS: Record<string, string> = {

@@ -4,7 +4,7 @@
  *
  * ทดสอบใน node environment โดย stub global window เอง — ไม่ต้องพึ่ง jest-environment-jsdom
  */
-import { safeNavigate } from "@/lib/safe-navigate";
+import { safeNavigate } from "@/client/safe-navigate";
 
 describe("safeNavigate", () => {
   const originalWindow = (globalThis as { window?: unknown }).window;

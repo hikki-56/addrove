@@ -24,7 +24,7 @@ import {
   clearImportedExpressItems,
   type TaggedExpressItem,
   type ExpressSyncStatus,
-} from "@/lib/express-tag-utils";
+} from "@/client/express-tag-utils";
 import { expressItemKey } from "@/lib/express-status-utils";
 
 export interface DisplayFields {

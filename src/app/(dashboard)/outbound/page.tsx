@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { outboundApi, type BillListItem } from "@/lib/outbound-client";
+import { outboundApi, type BillListItem } from "@/client/outbound-client";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 
 const STATUS_ORDER = [
