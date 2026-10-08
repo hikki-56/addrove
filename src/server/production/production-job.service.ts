@@ -100,7 +100,10 @@ export async function ensureProductionSheets(): Promise<void> {
 
 // ---- row mapping (index = ตำแหน่งคอลัมน์ตาม header ห้ามสลับ) ----
 
-function jobRowToPartial(row: string[]): Omit<ProductionJob, "produced_good" | "defect_total" | "remaining_qty" | "over_qty" | "report_count"> {
+/** ฟิลด์ที่เก็บจริงในแถว ProductionJobs — ไม่รวมยอดคำนวณจากรายงาน และ barcode (join จากทะเบียนสินค้าตอนอ่าน) */
+type ProductionJobRow = Omit<ProductionJob, "barcode" | "produced_good" | "defect_total" | "remaining_qty" | "over_qty" | "report_count">;
+
+function jobRowToPartial(row: string[]): ProductionJobRow {
   return {
     job_id: str(row[0]),
     job_no: str(row[1]),
@@ -132,7 +135,7 @@ function jobRowToPartial(row: string[]): Omit<ProductionJob, "produced_good" | "
   };
 }
 
-function jobToRow(job: ProductionJob | (Omit<ProductionJob, "produced_good" | "defect_total" | "remaining_qty" | "over_qty" | "report_count"> & Partial<ProductionJob>)): (string | number)[] {
+function jobToRow(job: ProductionJob | (ProductionJobRow & Partial<ProductionJob>)): (string | number)[] {
   return [
     job.job_id,
     job.job_no,
