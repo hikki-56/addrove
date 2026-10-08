@@ -31,3 +31,9 @@ export function cleanSkuCode(sku?: string): string {
     .replace(/^prod-/, "")
     .replace(/[\s\-_]/g, "");
 }
+
+// Outbound SKU normalizer (deduped verbatim from services/outbound/{bill-import,work-order,packing,picking}.service.ts).
+// NOT the same as cleanSkuCode: this one also strips "#" and does not accept undefined.
+export function cleanSkuStripHash(v: string): string {
+  return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
+}

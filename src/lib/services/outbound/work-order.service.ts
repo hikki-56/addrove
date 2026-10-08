@@ -33,6 +33,7 @@ import {
   updateQItemScanInSheet,
   markQBoxStatusInSheet,
 } from "./q-sheets-sync.service";
+import { cleanSkuStripHash } from "@/lib/sku";
 
 // ============================================================
 // ใบงานกล่อง Q (WORK_ORDER / เลขที่ TV-...)
@@ -54,10 +55,6 @@ const Q_CODE_PATTERN = /^Q\d{1,3}$/;
 
 function normalizeQCode(raw: string): string {
   return String(raw ?? "").trim().toUpperCase();
-}
-
-function cleanSku(v: string): string {
-  return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
 }
 
 export type WorkOrderNote = OutboundBillNote & {
@@ -93,7 +90,7 @@ function aggregateItems(qBoxes: WorkOrderQBoxInput[]): WorkOrderQItem[] {
   const map = new Map<string, WorkOrderQItem>();
   for (const box of qBoxes) {
     for (const it of box.items) {
-      const key = cleanSku(it.sku);
+      const key = cleanSkuStripHash(it.sku);
       const existing = map.get(key);
       if (existing) {
         existing.qty_required += it.qty;
@@ -444,11 +441,11 @@ async function findActiveQ(repo: IStockRepository, rawQCode: string): Promise<Ac
 
       const itemsMap = new Map<string, typeof note.items[0]>();
       for (const it of note.items || []) {
-        itemsMap.set(cleanSku(it.sku), it);
+        itemsMap.set(cleanSkuStripHash(it.sku), it);
       }
 
       const qBoxItems: WorkOrderQItem[] = assignment.items.map((qItem) => {
-        const detail = itemsMap.get(cleanSku(qItem.sku));
+        const detail = itemsMap.get(cleanSkuStripHash(qItem.sku));
         return {
           sku: qItem.sku,
           product_id: detail?.product_id,
@@ -592,11 +589,11 @@ export async function startQBox(
 
     const itemsMap = new Map<string, typeof result.note.items[0]>();
     for (const it of result.note.items || []) {
-      itemsMap.set(cleanSku(it.sku), it);
+      itemsMap.set(cleanSkuStripHash(it.sku), it);
     }
     const updatedAssignment = result.note.q_assignments?.find((a) => a.q_code === q.q_code);
     const updatedItems: WorkOrderQItem[] = (updatedAssignment?.items || []).map((qItem) => {
-      const detail = itemsMap.get(cleanSku(qItem.sku));
+      const detail = itemsMap.get(cleanSkuStripHash(qItem.sku));
       return {
         sku: qItem.sku,
         product_id: detail?.product_id,
@@ -712,7 +709,7 @@ export async function confirmQItemScan(
       repo,
       doc.document_id,
       (n) => {
-        const target = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+        const target = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
         if (!target) throw new WorkOrderError("ไม่พบรายการ");
         if (target.qty_picked >= target.qty_required) {
           throw new WorkOrderError(`รายการ ${target.product_name || target.sku} หยิบครบแล้ว`);
@@ -723,7 +720,7 @@ export async function confirmQItemScan(
         const targetAssignment = n.q_assignments?.find((a) => a.q_code === q.q_code);
         const assignmentComplete =
           targetAssignment?.items.every((it) => {
-            const detail = n.items.find((x) => cleanSku(x.sku) === cleanSku(it.sku));
+            const detail = n.items.find((x) => cleanSkuStripHash(x.sku) === cleanSkuStripHash(it.sku));
             return (detail?.qty_picked ?? 0) >= it.qty;
           }) ?? false;
 
@@ -761,12 +758,12 @@ export async function confirmQItemScan(
     );
     if (!result) throw new WorkOrderError("บันทึกไม่สำเร็จ");
 
-    const itemAfter = result.note.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku))!;
+    const itemAfter = result.note.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku))!;
     const targetAssignment = result.note.q_assignments?.find((a) => a.q_code === q.q_code);
     const qStatusAfter =
       targetAssignment?.status ||
       (targetAssignment?.items.every((it) => {
-        const detail = result.note.items.find((x) => cleanSku(x.sku) === cleanSku(it.sku));
+        const detail = result.note.items.find((x) => cleanSkuStripHash(x.sku) === cleanSkuStripHash(it.sku));
         return (detail?.qty_picked ?? 0) >= it.qty;
       })
         ? "DONE"
@@ -799,7 +796,7 @@ export async function confirmQItemScan(
     (n) => {
       const targetQ = n.q_boxes!.find((b) => b.q_code === q.q_code);
       if (!targetQ) throw new WorkOrderError("ไม่พบกล่องในใบงาน");
-      const target = targetQ.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+      const target = targetQ.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
       if (!target) throw new WorkOrderError("ไม่พบรายการ");
       if (target.qty_picked >= target.qty_required) {
         throw new WorkOrderError(`รายการ ${target.product_name || target.sku} หยิบครบแล้ว`);
@@ -808,7 +805,7 @@ export async function confirmQItemScan(
       target.status = target.qty_picked >= target.qty_required ? "PICKED" : "PENDING";
 
       // sync ยอดรวม (items) ให้ขั้นแพ็กเห็นตรงกันเสมอ
-      const agg = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+      const agg = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
       if (agg && agg.qty_picked < agg.qty_required) {
         agg.qty_picked += 1;
         if (agg.qty_picked >= agg.qty_required) agg.status = "PICKED";
@@ -851,7 +848,7 @@ export async function confirmQItemScan(
   if (!result) throw new WorkOrderError("บันทึกไม่สำเร็จ");
 
   const qAfter = result.note.q_boxes!.find((b) => b.q_code === q.q_code)!;
-  const itemAfter = qAfter.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku))!;
+  const itemAfter = qAfter.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku))!;
 
   void updateQItemScanInSheet({
     q_code: qAfter.q_code,
@@ -901,7 +898,7 @@ export async function reportQProblem(
 
   if (isBill) {
     const result = await mutateBillNote(repo, doc.document_id, (n) => {
-      const target = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+      const target = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
       if (!target) throw new WorkOrderError("ไม่พบรายการ");
       if (typeof input.picked_qty === "number" && input.picked_qty > target.qty_picked) {
         target.qty_picked = input.picked_qty;
@@ -946,12 +943,12 @@ export async function reportQProblem(
   const result = await mutateBillNote(repo, doc.document_id, (n) => {
     const targetQ = n.q_boxes!.find((b) => b.q_code === q.q_code);
     if (!targetQ) throw new WorkOrderError("ไม่พบกล่องในใบงาน");
-    const target = targetQ.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+    const target = targetQ.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
     if (!target) throw new WorkOrderError("ไม่พบรายการ");
     if (typeof input.picked_qty === "number" && input.picked_qty > target.qty_picked) {
       const diff = input.picked_qty - target.qty_picked;
       target.qty_picked = input.picked_qty;
-      const agg = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+      const agg = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
       if (agg) agg.qty_picked = Math.min(agg.qty_required, agg.qty_picked + diff);
     }
     target.status = "PROBLEM";
@@ -1104,7 +1101,7 @@ export async function resolveWorkOrderShortage(
     for (const agg of n.items) {
       const totalRequired = (n.q_boxes ?? [])
         .flatMap((b) => b.items)
-        .filter((it) => cleanSku(it.sku) === cleanSku(agg.sku))
+        .filter((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(agg.sku))
         .reduce((s, it) => s + it.qty_required, 0);
       agg.qty_required = totalRequired;
       agg.status = agg.qty_picked >= agg.qty_required ? "PICKED" : agg.status;

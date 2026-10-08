@@ -19,25 +19,22 @@ import {
   assertAvailableForPick,
   suggestPickLocationAll,
 } from "./stock-reservation.service";
-
-function cleanSku(v: string): string {
-  return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
-}
+import { cleanSkuStripHash } from "@/lib/sku";
 
 /** หารายการในบิลจากสิ่งที่สแกนหรือระบุ (ชื่อสินค้า, sku, หรือ barcode) */
 export function findBillItemByScan(
   items: OutboundBillItem[],
   scanned: string
 ): OutboundBillItem | null {
-  const key = cleanSku(scanned);
+  const key = cleanSkuStripHash(scanned);
   if (!key) return null;
 
   // 1) ชื่อสินค้าตรงเป๊ะ
-  const byName = items.find((it) => it.product_name && cleanSku(it.product_name) === key);
+  const byName = items.find((it) => it.product_name && cleanSkuStripHash(it.product_name) === key);
   if (byName) return byName;
 
   // 2) SKU ตรง
-  const bySku = items.find((it) => cleanSku(it.sku) === key);
+  const bySku = items.find((it) => cleanSkuStripHash(it.sku) === key);
   if (bySku) return bySku;
 
   // 3) barcode / product_id / sku ตรง
@@ -52,7 +49,7 @@ export function findBillItemByScan(
   // 4) ค้นหาจากส่วนหนึ่งของชื่อสินค้า (ถ้ายาว >= 3 ตัวอักษร)
   if (key.length >= 3) {
     const bySub = items.find((it) => {
-      const pn = it.product_name ? cleanSku(it.product_name) : "";
+      const pn = it.product_name ? cleanSkuStripHash(it.product_name) : "";
       return pn && (pn.includes(key) || key.includes(pn));
     });
     if (bySub) return bySub;
@@ -168,7 +165,7 @@ export async function confirmPickItem(
   }
 
   const result = await mutateBillNote(repo, doc.document_id, (n) => {
-    const target = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+    const target = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
     if (!target) throw new Error("ไม่พบรายการ");
     target.qty_picked += input.qty;
     target.status = "PICKED";
@@ -176,7 +173,7 @@ export async function confirmPickItem(
   });
   if (!result) throw new Error("บันทึกไม่สำเร็จ");
 
-  const updated = result.note.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku))!;
+  const updated = result.note.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku))!;
   return {
     sku: updated.sku,
     qty_picked: updated.qty_picked,
@@ -218,7 +215,7 @@ export async function reportProblem(
   }
 
   const result = await mutateBillNote(repo, doc.document_id, (n) => {
-    const target = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+    const target = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
     if (!target) throw new Error("ไม่พบรายการ");
     if (typeof input.picked_qty === "number") {
       target.qty_picked = Math.max(target.qty_picked, input.picked_qty);

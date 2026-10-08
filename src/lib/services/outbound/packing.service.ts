@@ -16,6 +16,7 @@ import {
   billStatusToDocumentStatus,
 } from "./outbound-state-machine";
 import { markQBoxStatusInSheet } from "./q-sheets-sync.service";
+import { cleanSkuStripHash } from "@/lib/sku";
 
 /**
  * Packing — แพ็กของที่หยิบแล้วลงกล่อง (1 บิล = หลายกล่องได้)
@@ -23,10 +24,6 @@ import { markQBoxStatusInSheet } from "./q-sheets-sync.service";
  * การสแกนของแต่ละครั้งแก้เฉพาะ record กล่องปัจจุบัน ไม่แตะ note ของบิล
  * จนกว่าจะแพ็กครบ → บิล PACKED
  */
-
-function cleanSku(v: string): string {
-  return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
-}
 
 export interface BoxInfo {
   document_id: string;
@@ -84,7 +81,7 @@ async function getPackedQtyBySku(
   for (const { note } of boxes) {
     if (note.box_status === "CANCELLED") continue;
     for (const it of note.items) {
-      map.set(cleanSku(it.sku), (map.get(cleanSku(it.sku)) || 0) + it.qty);
+      map.set(cleanSkuStripHash(it.sku), (map.get(cleanSkuStripHash(it.sku)) || 0) + it.qty);
     }
   }
   return map;
@@ -181,9 +178,9 @@ export async function scanItemIntoBox(
   }
 
   // หารายการบิลจากสิ่งที่สแกน (sku หรือ barcode)
-  const key = cleanSku(input.sku);
+  const key = cleanSkuStripHash(input.sku);
   const scannedNorm = normalizeBarcode(input.sku);
-  const item = billNote.items.find((it) => cleanSku(it.sku) === key) ??
+  const item = billNote.items.find((it) => cleanSkuStripHash(it.sku) === key) ??
     billNote.items.find((it) =>
       areBarcodesMatching(input.sku, [it.barcode, it.sku, it.product_id].filter(Boolean) as string[])
     );
@@ -200,7 +197,7 @@ export async function scanItemIntoBox(
   }
 
   const packed = await getPackedQtyBySku(repo, billDoc.document_id);
-  const alreadyPacked = packed.get(cleanSku(item.sku)) || 0;
+  const alreadyPacked = packed.get(cleanSkuStripHash(item.sku)) || 0;
   if (alreadyPacked + input.qty > item.qty_picked) {
     throw new Error(
       `เกินจำนวนที่หยิบมา — ${item.sku} หยิบได้ ${item.qty_picked} ลงกล่องไปแล้ว ${alreadyPacked} (สแกนเพิ่มอีก ${input.qty})`
@@ -209,7 +206,7 @@ export async function scanItemIntoBox(
 
   // แก้เฉพาะ record กล่องปัจจุบัน
   await mutateBoxNote(repo, openBox.doc.document_id, (n) => {
-    const existing = n.items.find((it) => cleanSku(it.sku) === cleanSku(item.sku));
+    const existing = n.items.find((it) => cleanSkuStripHash(it.sku) === cleanSkuStripHash(item.sku));
     if (existing) existing.qty += input.qty;
     else n.items.push({ sku: item.sku, product_id: item.product_id, qty: input.qty });
   });
@@ -217,7 +214,7 @@ export async function scanItemIntoBox(
   // เช็คครบทุกรายการ → PACKED
   const packedNow = await getPackedQtyBySku(repo, billDoc.document_id);
   const allBoxed = billNote.items.every(
-    (it) => it.qty_picked === 0 || (packedNow.get(cleanSku(it.sku)) || 0) >= it.qty_picked
+    (it) => it.qty_picked === 0 || (packedNow.get(cleanSkuStripHash(it.sku)) || 0) >= it.qty_picked
   );
   let billStatus: string = billNote.outbound_status;
   if (allBoxed) {

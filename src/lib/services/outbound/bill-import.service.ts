@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type { Product } from "@/types/models";
 import type { OutboundColumnMapping } from "./outbound-schemas";
+import { cleanSkuStripHash } from "@/lib/sku";
 
 /**
  * นำเข้าบิลจากไฟล์ที่ export จากโปรแกรม Express (.xlsx / .csv)
@@ -257,16 +258,12 @@ export function parseBills(
 
 // ---------- product matching ----------
 
-function cleanSku(v: string): string {
-  return v.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_#]/g, "");
-}
-
 export function matchProducts(bills: ParsedBill[], products: Product[]): PreviewBill[] {
   const bySku = new Map<string, Product>();
   const byBarcode = new Map<string, Product>();
   for (const p of products) {
-    if (p.sku) bySku.set(cleanSku(p.sku), p);
-    if (p.barcode) byBarcode.set(cleanSku(p.barcode), p);
+    if (p.sku) bySku.set(cleanSkuStripHash(p.sku), p);
+    if (p.barcode) byBarcode.set(cleanSkuStripHash(p.barcode), p);
   }
 
   // จับคู่แบบ "ต้นรายละเอียดตรงกัน" — สำหรับ PDF ของ Express ที่รหัสบรรทัด
@@ -283,11 +280,11 @@ export function matchProducts(bills: ParsedBill[], products: Product[]): Preview
   };
 
   const findProduct = (rawSku: string, rawName?: string): Product | undefined => {
-    const key = cleanSku(rawSku);
+    const key = cleanSkuStripHash(rawSku);
     const byExact = bySku.get(key) ?? byBarcode.get(key);
     if (byExact) return byExact;
     if (rawName) {
-      const nameKey = cleanSku(rawName);
+      const nameKey = cleanSkuStripHash(rawName);
       const byNameExact = bySku.get(nameKey) ?? byBarcode.get(nameKey);
       if (byNameExact) return byNameExact;
     }
@@ -305,7 +302,7 @@ export function matchProducts(bills: ParsedBill[], products: Product[]): Preview
     // รวมรายการ SKU ซ้ำในบิลเดียวกัน (บางไฟล์แยกบรรทัดต่อโปรโมชั่น)
     const merged = new Map<string, MatchedBillItem>();
     for (const it of items) {
-      const key = cleanSku(it.sku);
+      const key = cleanSkuStripHash(it.sku);
       const existing = merged.get(key);
       if (existing) {
         existing.qty += it.qty;
