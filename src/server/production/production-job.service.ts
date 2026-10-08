@@ -45,12 +45,12 @@ import type {
   UpdateProductionJobInput,
   ReportProductionInput,
   AdjustProductionInput,
-} from "@/lib/production/production-schemas";
+} from "@/server/production/production-schemas";
 import {
   postReportStockToWh2,
   postAdjustStockToWh2,
   PRODUCTION_RECEIVE_WAREHOUSE,
-} from "@/lib/production/production-stock.service";
+} from "@/server/production/production-stock.service";
 
 // ---- Error ประจำโมดูล ----
 

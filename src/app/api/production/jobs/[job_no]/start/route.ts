@@ -3,8 +3,8 @@ import { PERMISSIONS } from "@/server/security";
 import {
   guardProductionRoute,
   productionErrorResponse,
-} from "@/lib/production/production-route-helpers";
-import { startJob } from "@/lib/production/production-job.service";
+} from "@/server/production/production-route-helpers";
+import { startJob } from "@/server/production/production-job.service";
 import { successResponse } from "@/lib/api-response";
 
 export const maxDuration = 60;

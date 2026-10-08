@@ -4,13 +4,13 @@ import {
   guardProductionRoute,
   parseBody,
   productionErrorResponse,
-} from "@/lib/production/production-route-helpers";
+} from "@/server/production/production-route-helpers";
 import {
   getJobDetail,
   updateJob,
   deleteDraft,
-} from "@/lib/production/production-job.service";
-import { updateProductionJobSchema } from "@/lib/production/production-schemas";
+} from "@/server/production/production-job.service";
+import { updateProductionJobSchema } from "@/server/production/production-schemas";
 import { successResponse } from "@/lib/api-response";
 
 export const maxDuration = 60;

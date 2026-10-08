@@ -10,7 +10,7 @@ jest.mock("@/lib/auth-session", () => ({
   getAuthSession: jest.fn(async () => mockSession),
 }));
 
-jest.mock("@/lib/production/production-job.service", () => ({
+jest.mock("@/server/production/production-job.service", () => ({
   listJobs: jest.fn(async () => []),
   createJobs: jest.fn(async () => []),
   submitJobs: jest.fn(async () => ({ submitted: [], skipped: [] })),

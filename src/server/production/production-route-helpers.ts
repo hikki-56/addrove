@@ -9,8 +9,8 @@ import {
   forbiddenResponse,
   zodErrorResponse,
 } from "@/lib/api-response";
-import { ProductionError } from "@/lib/production/production-job.service";
-import type { ProductionActor } from "@/lib/production/production-job.service";
+import { ProductionError } from "@/server/production/production-job.service";
+import type { ProductionActor } from "@/server/production/production-job.service";
 import type { ZodSchema } from "zod";
 
 export interface GuardedRoute {

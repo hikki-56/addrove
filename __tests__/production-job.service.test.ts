@@ -154,8 +154,8 @@ import {
   listNotifications,
   markNotificationsRead,
   ProductionError,
-} from "@/lib/production/production-job.service";
-import type { CreateProductionJobInput } from "@/lib/production/production-schemas";
+} from "@/server/production/production-job.service";
+import type { CreateProductionJobInput } from "@/server/production/production-schemas";
 
 const clientMock = require("@/server/google-sheets/client") as {
   __resetSheets: () => void;

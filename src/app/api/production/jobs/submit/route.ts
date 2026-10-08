@@ -4,9 +4,9 @@ import {
   guardProductionRoute,
   parseBody,
   productionErrorResponse,
-} from "@/lib/production/production-route-helpers";
-import { submitJobs } from "@/lib/production/production-job.service";
-import { submitProductionJobsSchema } from "@/lib/production/production-schemas";
+} from "@/server/production/production-route-helpers";
+import { submitJobs } from "@/server/production/production-job.service";
+import { submitProductionJobsSchema } from "@/server/production/production-schemas";
 import { successResponse } from "@/lib/api-response";
 
 export const maxDuration = 60;
