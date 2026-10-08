@@ -513,8 +513,6 @@ export class InMemoryDashboardRepository implements IDashboardRepository {
       received_document_count_today: 0,
       issued_today: 0,
       issued_document_count_today: 0,
-      produced_today: 0,
-      production_order_count_today: 0,
       warehouse_distribution: [
         { warehouse_id: "wh-6", warehouse_name: "สำนักงานใหญ่", quantity: 100 },
         { warehouse_id: "wh-1", warehouse_name: "โกดัง1", quantity: 0 },

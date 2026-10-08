@@ -29,6 +29,11 @@ export const PERMISSIONS = {
   EXPRESS_IMPORT_VIEW: "express.import.view",
   EXPRESS_IMPORT_MANAGE: "express.import.manage",
 
+  // Production (ระบบสั่งผลิตและรายงานผลผลิต — ADMIN วางแผน/ปรับปรุง, APPROVER เริ่มงาน/รายงานผล)
+  PRODUCTION_VIEW: "production.view",
+  PRODUCTION_MANAGE: "production.manage",
+  PRODUCTION_REPORT: "production.report",
+
   // Master Data & Administration
   PRODUCT_MANAGE: "product.manage",
   LOCATION_MANAGE: "location.manage",
@@ -69,6 +74,9 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.OUTBOUND_SHIP,
     PERMISSIONS.EXPRESS_IMPORT_VIEW,
     PERMISSIONS.EXPRESS_IMPORT_MANAGE,
+    PERMISSIONS.PRODUCTION_VIEW,
+    PERMISSIONS.PRODUCTION_MANAGE,
+    PERMISSIONS.PRODUCTION_REPORT,
   ],
   MANAGER: [
     PERMISSIONS.STOCK_RECEIVE,
@@ -99,6 +107,8 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.STOCK_TRANSFER_COMPLETE,
     PERMISSIONS.STOCK_TRANSFER_CANCEL,
     PERMISSIONS.OUTBOUND_APPROVE,
+    PERMISSIONS.PRODUCTION_VIEW,
+    PERMISSIONS.PRODUCTION_REPORT,
   ],
   WAREHOUSE_STAFF: [
     PERMISSIONS.STOCK_RECEIVE,

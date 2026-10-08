@@ -10,6 +10,7 @@ import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/tr
 import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import ProductionBell from "@/components/layout/ProductionBell";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
@@ -35,10 +36,9 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/locations": { parent: "คลังสินค้า", title: "ตำแหน่งสินค้าในโกดัง" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },
   "/movements/receive/history": { parent: "การเคลื่อนไหว", title: "ประวัติรับสินค้าเข้าโกดัง" },
-  "/production": { parent: "การเคลื่อนไหว", title: "ผลิตสินค้า" },
-  "/production/cart": { parent: "ผลิตสินค้า", title: "ตะกร้าสั่งผลิต" },
-  "/production/formula": { parent: "การเคลื่อนไหว", title: "แก้ไขสูตร BOM" },
-  "/production/history": { parent: "การเคลื่อนไหว", title: "ประวัติการสั่งผลิต" },
+  "/production": { parent: "การผลิต", title: "วางแผนผลิต" },
+  "/production/jobs": { parent: "การผลิต", title: "งานผลิต" },
+  "/production/summary": { parent: "การผลิต", title: "สรุปผลผลิต" },
   "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า (Admin)" },
   "/movements/transfer/history": { parent: "การเคลื่อนไหว", title: "ประวัติเบิกสินค้า" },
   "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า (Admin)" },
@@ -115,7 +115,9 @@ export default function DashboardHeader({
   const breadcrumb = pathTitles[pathname] ||
     (pathname.startsWith("/products/") && pathname !== "/products/new"
       ? { parent: "สินค้าทั้งหมด", title: "รายละเอียดสินค้า" }
-      : { parent: "Stockify", title: "ภาพรวม" });
+      : pathname.startsWith("/production/jobs/")
+        ? { parent: "งานผลิต", title: "รายละเอียดงานผลิต" }
+        : { parent: "Stockify", title: "ภาพรวม" });
 
   const itemsForRole = getNavItems(user.role);
   const systemMenuVisible = isSystemMenuUser(user.email);
@@ -152,6 +154,8 @@ export default function DashboardHeader({
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) */}
+            <ProductionBell />
             {/* Notification */}
             <div className="relative">
               {isAdmin ? (
@@ -240,6 +244,8 @@ export default function DashboardHeader({
             <p className="truncate text-xs 2xl:text-sm text-[#667085]">{breadcrumb.parent}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
+            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) */}
+            <ProductionBell />
             {/* Notification */}
             <div className="relative">
               {isAdmin ? (

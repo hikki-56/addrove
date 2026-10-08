@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/lib/nav-items";
-import { isProductionReviewer } from "@/lib/production-reviewers";
 import { getExpressTagCounts } from "@/lib/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -19,15 +18,10 @@ const OPERATION_ORDER = [
   "/movements/receive",
   "/movements/transfer",
   "/movements/move",
-  "/production",
-  "/production/review",
-  "/production/formula",
   "/stock-counts",
   "/temporary-stock-cuts",
   "/movements/receive/history",
   "/movements/transfer/history",
-  "/production/history",
-  "/production/waste",
   "/movements/history",
 ];
 const byOperationOrder = (a: NavItem, b: NavItem) => {
@@ -233,11 +227,7 @@ export default function Sidebar({
   const visibleItems = itemsForRole.filter(
     (item) =>
       (!item.roles || item.roles.includes(role)) &&
-      (!allowedHrefs || allowedHrefs.includes(item.href)) &&
-      // เมนู "ยืนยันผลผลิต" เห็นได้ทั้งแอดมินและคนตรวจ (ชื่อบัญชีที่กำหนดใน production-reviewers.ts)
-      (item.href !== "/production/review" ||
-        role === "ADMIN" ||
-        isProductionReviewer({ email: tabUser?.email, name: userName }))
+      (!allowedHrefs || allowedHrefs.includes(item.href))
   );
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
@@ -251,10 +241,8 @@ export default function Sidebar({
         "/movements/transfer",
         "/movements/move",
         "/production",
-        "/production/formula",
-        "/production/review",
-        "/production/history",
-        "/production/waste",
+        "/production/jobs",
+        "/production/summary",
         "/movements/receive/history",
         "/movements/transfer/history",
         "/movements/history",

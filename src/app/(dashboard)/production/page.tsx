@@ -1,200 +1,527 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import TableBoard from "./_components/TableBoard";
-import ProductPickerModal from "./_components/ProductPickerModal";
-import type { EnrichedBomFormula } from "./_components/types";
-import { useProductionCart, getCart, setCart } from "./_lib/cart-store";
+import { useTabAuth } from "@/context/TabAuthContext";
+import {
+  useProductionJobs,
+  productionFetch,
+  emitProductionUpdated,
+} from "./_lib/use-production-data";
+import AddJobModal, { type AddJobFormValue } from "./_components/AddJobModal";
+import { ReasonModal } from "./_components/ActionModals";
+import { StatusBadge, PriorityBadge, JobNumbers, formatQty, todayYMD } from "./_components/ui";
+import type { ProductionJob } from "@/types/production";
+import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
-export default function ProductionPage() {
-  const router = useRouter();
-  const [boms, setBoms] = useState<EnrichedBomFormula[]>([]);
-  const [loading, setLoading] = useState(true);
+// หน้าวางแผนผลิตของ ADMIN (§1–2) — การ์ดโต๊ะ 1–5 + ฉบับร่างแก้/ลบ/ย้ายโต๊ะได้ทันที
+// เลือกหลายงานแล้ว "ยืนยันส่งงานผลิต" (DRAFT → WAITING + แจ้ง APPROVER)
 
-  // หน้าต่างเลือกสินค้า — เปิดให้โต๊ะที่กด "เพิ่มสินค้าผลิต" (null = ปิดอยู่)
-  const [pickerTableNo, setPickerTableNo] = useState<number | null>(null);
+const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
-  // ตะกร้าสั่งผลิต — เก็บใน cart store (แชร์กับหน้า /production/cart)
-  const cart = useProductionCart();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+const filterInputClass =
+  "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
 
-  const fetchBoms = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/production/bom");
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setBoms(json.data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch BOM:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export default function ProductionPlanningPage() {
+  const { user } = useTabAuth();
+  const isAdmin = user?.role === "ADMIN";
+  const { jobs, loading, error, reload } = useProductionJobs();
+
+  const [dateFilter, setDateFilter] = useState("");
+  const [today, setToday] = useState("");
+  const [tableFilter, setTableFilter] = useState<number | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchBoms();
-  }, [fetchBoms]);
+    const t = todayYMD();
+    setToday(t);
+    setDateFilter(t);
+  }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3000);
+  // modals
+  const [addOpen, setAddOpen] = useState(false);
+  const [addTable, setAddTable] = useState(1);
+  const [editJob, setEditJob] = useState<ProductionJob | null>(null);
+  const [cancelJob, setCancelJob] = useState<ProductionJob | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [submittingJobs, setSubmittingJobs] = useState(false);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return jobs.filter((j) => {
+      if (dateFilter && j.production_date !== dateFilter) return false;
+      if (tableFilter !== "ALL" && j.table_no !== tableFilter) return false;
+      if (statusFilter !== "ALL" && j.status !== statusFilter) return false;
+      if (query && !`${j.job_no} ${j.sku} ${j.product_name}`.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [jobs, dateFilter, tableFilter, statusFilter, q]);
+
+  const drafts = useMemo(() => jobs.filter((j) => j.status === "DRAFT"), [jobs]);
+  const selectedJobs = useMemo(() => drafts.filter((j) => selected.has(j.job_no)), [drafts, selected]);
+
+  const toggleSelect = (jobNo: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobNo)) next.delete(jobNo);
+      else next.add(jobNo);
+      return next;
+    });
   };
 
-  /** เพิ่มสินค้าลงตะกร้าของโต๊ะ — คืนข้อความ error ถ้าเพิ่มไม่สำเร็จ (null = สำเร็จ) */
-  const handleAddToCart = async (
-    bom: EnrichedBomFormula,
-    tableNo: number,
-    qty: number
-  ): Promise<string | null> => {
-    if (bom.maxProducible <= 0) {
-      return `วัตถุดิบในโกดัง 2 สำหรับผลิต ${bom.fg_sku} ไม่เพียงพอ — ไม่สามารถผลิตได้`;
-    }
-
-    // หน้า list ได้แค่หัวสูตร — ดึงสูตรเต็ม (พร้อมวัตถุดิบ) ก่อนเก็บลงตะกร้า
-    // เพื่อให้หน้าตะกร้าคำนวณวัตถุดิบที่จะถูกตัดได้
-    let fullBom = bom;
-    try {
-      const res = await fetch(`/api/production/bom?sku=${encodeURIComponent(bom.fg_sku)}`);
-      const json = await res.json();
-      if (json.success && json.data) fullBom = json.data;
-    } catch {
-      // ใช้หัวสูตรต่อได้ — แค่หน้าตะกร้าจะไม่แสดงสรุปวัตถุดิบชั่วคราว (server ยังตรวจสอบให้อยู่)
-    }
-
-    const current = getCart();
-    const existing = current.find((item) => item.table_no === tableNo && item.bom.fg_sku === bom.fg_sku);
-
-    // ใบผลิตหนึ่งใบระบุสินค้าเดียวกันได้เพียงหนึ่งโต๊ะ (ระบบตรวจการผลิตจับคู่รายการด้วยรหัสสินค้า)
-    // ถ้าอยู่โต๊ะอื่นแล้ว ให้ไปปรับจำนวนที่โต๊ะนั้น หรือยืนยันใบผลิตแยกครั้ง
-    const existingOtherTable = current.find(
-      (item) => item.table_no !== tableNo && item.bom.fg_sku === bom.fg_sku
-    );
-    if (existingOtherTable) {
-      return `${bom.fg_name} ถูกจัดให้โต๊ะผลิต ${existingOtherTable.table_no} แล้ว — ใบผลิตหนึ่งใบระบุสินค้าเดียวกันได้เพียงหนึ่งโต๊ะ กรุณาปรับจำนวนที่โต๊ะ ${existingOtherTable.table_no} หรือยืนยันใบผลิตแยกอีกครั้ง`;
-    }
-
-    if (existing) {
-      const newTotal = existing.quantity + qty;
-      if (newTotal > fullBom.maxProducible) {
-        return `ไม่สามารถเพิ่มเกินจำนวนที่ผลิตได้ (ผลิตได้สูงสุด ${fullBom.maxProducible.toLocaleString()} ${fullBom.fg_unit})`;
-      }
-      setCart(
-        current.map((item) =>
-          item.table_no === tableNo && item.bom.fg_sku === bom.fg_sku
-            ? { ...item, bom: fullBom, quantity: newTotal }
-            : item
-        )
-      );
+  const handleAdd = async (value: AddJobFormValue) => {
+    setSubmitting(true);
+    setModalError(null);
+    const res = await productionFetch("/api/production/jobs", "POST", {
+      jobs: [
+        {
+          production_date: value.production_date,
+          table_no: value.table_no,
+          product_id: value.product_id,
+          target_qty: parseFloat(value.target_qty),
+          priority: value.priority,
+          note: value.note,
+          location: value.location,
+        },
+      ],
+    });
+    setSubmitting(false);
+    if (res.success) {
+      setAddOpen(false);
+      setDateFilter(value.production_date);
+      setTableFilter(value.table_no);
+      setToast(`เพิ่มงานฉบับร่างเรียบร้อย — แก้ไข/ย้ายโต๊ะได้ทันทีก่อนส่งงาน`);
+      emitProductionUpdated();
     } else {
-      setCart([...current, { bom: fullBom, quantity: qty, table_no: tableNo }]);
+      setModalError(res.message);
     }
-    showToast(`เพิ่ม ${bom.fg_name} (+${qty.toLocaleString()} ${bom.fg_unit}) ให้โต๊ะผลิต ${tableNo} แล้ว`);
-    return null;
   };
 
-  const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const handleEdit = async (value: AddJobFormValue) => {
+    if (!editJob) return;
+    setSubmitting(true);
+    setModalError(null);
+    const res = await productionFetch(`/api/production/jobs/${encodeURIComponent(editJob.job_no)}`, "PATCH", {
+      updated_at: editJob.updated_at,
+      production_date: value.production_date,
+      table_no: value.table_no,
+      product_id: value.product_id,
+      target_qty: parseFloat(value.target_qty),
+      priority: value.priority,
+      note: value.note,
+      location: value.location,
+      reason: value.reason,
+    });
+    setSubmitting(false);
+    if (res.success) {
+      setEditJob(null);
+      setToast("แก้ไขงานเรียบร้อย" + (editJob.status !== "DRAFT" ? " — แจ้งผู้ผลิตแล้ว" : ""));
+      emitProductionUpdated();
+    } else {
+      setModalError(res.message);
+    }
+  };
+
+  const handleDeleteDraft = async (job: ProductionJob) => {
+    if (!window.confirm(`ลบงานฉบับร่าง ${job.job_no} (${job.product_name}) ?`)) return;
+    const res = await productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}`, "DELETE");
+    if (res.success) {
+      setToast("ลบฉบับร่างเรียบร้อย");
+      emitProductionUpdated();
+    } else {
+      setToast(res.message);
+    }
+  };
+
+  const handleCancelJob = async (reason: string) => {
+    if (!cancelJob) return;
+    setSubmitting(true);
+    setModalError(null);
+    const res = await productionFetch(
+      `/api/production/jobs/${encodeURIComponent(cancelJob.job_no)}/cancel`,
+      "POST",
+      { reason }
+    );
+    setSubmitting(false);
+    if (res.success) {
+      setCancelJob(null);
+      setToast("ยกเลิกงานเรียบร้อย — ผลผลิตที่ยืนยันแล้วยังเก็บไว้ครบ");
+      emitProductionUpdated();
+    } else {
+      setModalError(res.message);
+    }
+  };
+
+  const handleSubmitJobs = async () => {
+    if (selectedJobs.length === 0) return;
+    const names = selectedJobs.map((j) => j.job_no).join(", ");
+    if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}\n\nเมื่อส่งแล้วระบบจะแจ้งเตือนไปยังผู้ผลิต (APPROVER) ทันที`)) return;
+    setSubmittingJobs(true);
+    const res = await productionFetch("/api/production/jobs/submit", "POST", {
+      job_nos: selectedJobs.map((j) => j.job_no),
+    });
+    setSubmittingJobs(false);
+    if (res.success) {
+      setSelected(new Set());
+      setToast(res.message);
+      emitProductionUpdated();
+    } else {
+      setToast(res.message);
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="w-full max-w-full pb-8">
+        <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
+        <div className="mt-6 rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-xl">🔒</div>
+          <h2 className="mt-3.5 text-base font-extrabold text-slate-900">เฉพาะผู้ดูแลระบบ (Admin)</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            หน้านี้สำหรับวางแผนการผลิต — ผู้ผลิตใช้งานที่เมนู “งานผลิต” แทน
+          </p>
+          <Link
+            href="/production/jobs"
+            className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]"
+          >
+            ไปหน้างานผลิต
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-full space-y-5 pb-16">
-      {/* Top Toolbar */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E8ECEA] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-        <div className="flex items-center gap-2.5 shrink-0">
-          <span className="text-xl">🏭</span>
-          <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-[#EAF2EE] text-[#052B1F] border border-[#C9DFD4] whitespace-nowrap">
-            โกดัง 2 (สินค้าสำเร็จรูป)
-          </span>
+    <div className="w-full max-w-full pb-28">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            สร้างงานเป็นฉบับร่างก่อน — แก้ไข ลบ ย้ายโต๊ะได้ทันที แล้วเลือกส่งหลายงานพร้อมกันในคลิกเดียว
+          </p>
         </div>
-
-        {/* Right side controls: History Link, Cart Button & Refresh */}
-        <div className="flex items-center flex-wrap gap-2.5">
+        <div className="flex items-center gap-2">
           <Link
-            href="/production/history"
-            className="px-4 py-2.5 sm:py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center gap-2 cursor-pointer border border-[#E8ECEA]/80 shadow-2xs active:scale-95"
-            title="ดูรายการใบผลิตทั้งหมด"
+            href="/production/summary"
+            className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
           >
-            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            <span>ใบผลิต</span>
+            สรุปผลผลิต
           </Link>
-
-          <button
-            onClick={() => router.push("/production/cart")}
-            className={`relative px-4 py-2.5 sm:py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
-              cart.length > 0
-                ? "bg-[#06402B] text-white hover:bg-[#053425] shadow-md shadow-[#06402B]/20"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-[#E8ECEA]"
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span>ตะกร้าผลิต</span>
-            {cart.length > 0 && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-white text-[#031B14] font-mono font-black text-xs shadow-xs">
-                {totalCartUnits.toLocaleString()}
-              </span>
-            )}
-          </button>
-
           <button
             type="button"
-            onClick={fetchBoms}
-            aria-label="รีเฟรชข้อมูล"
-            title="รีเฟรชข้อมูล"
-            className="p-2.5 sm:p-3 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer border border-[#E8ECEA] active:scale-95"
+            onClick={() => {
+              setAddTable(typeof tableFilter === "number" ? tableFilter : 1);
+              setAddOpen(true);
+            }}
+            className="rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-95"
           >
-            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            + เพิ่มงานผลิต
           </button>
         </div>
       </div>
 
-      {/* บอร์ดโต๊ะผลิต 1–5 — แต่ละโต๊ะแสดงสินค้าที่จัดให้ และปุ่มเพิ่มสินค้าผลิต */}
-      <TableBoard cart={cart} onOpenPicker={setPickerTableNo} />
-
-      {/* หน้าต่างเลือกสินค้าให้โต๊ะ (แทนตารางรายการสินค้าเดิมที่เคยแสดงรวมทั้งหน้า) */}
-      {pickerTableNo !== null && (
-        <ProductPickerModal
-          tableNo={pickerTableNo}
-          boms={boms}
-          loading={loading}
-          existingSkus={
-            new Set(cart.filter((i) => i.table_no === pickerTableNo).map((i) => i.bom.fg_sku))
-          }
-          onAddToCart={handleAddToCart}
-          onRefresh={fetchBoms}
-          onClose={() => setPickerTableNo(null)}
-        />
+      {toast && (
+        <div className="mb-4 rounded-lg border border-[#C9DFD4] bg-[#EAF2EE] px-4 py-3">
+          <p className="text-sm font-bold text-[#053425]">{toast}</p>
+        </div>
       )}
-
-      {/* แบนเนอร์แจ้งเตือน — อยู่ใน flow ของหน้า (ดันเนื้อหา ไม่ลอยทับตัวหนังสืออื่น) */}
-      {toastMessage && (
-        <div className="bg-[#06402B] text-white px-4 py-3 rounded-xl shadow-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="w-6 h-6 rounded-full bg-[#0F5C3F] border border-white/30 text-white flex items-center justify-center text-xs font-bold shrink-0">
-            ✓
-          </div>
-          <span className="text-sm font-semibold text-white flex-1">{toastMessage}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-slate-300 hover:text-white text-xs cursor-pointer font-bold p-1"
-          >
-            ✕
+      {error && !loading && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+          <p className="text-sm font-bold text-rose-800">{error}</p>
+          <button onClick={() => reload()} className="rounded-lg px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100">
+            ลองใหม่
           </button>
         </div>
       )}
+
+      {/* ตัวกรอง */}
+      <div className="mb-5 rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block">
+            <span className="text-xs font-bold text-slate-400">วันที่ผลิต</span>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className={`mt-1 ${filterInputClass}`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-400">โต๊ะผลิต</span>
+            <select
+              value={String(tableFilter)}
+              onChange={(e) => setTableFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
+              className={`mt-1 ${filterInputClass}`}
+            >
+              <option value="ALL">ทุกโต๊ะ</option>
+              {PRODUCTION_TABLES.map((t) => (
+                <option key={t} value={t}>โต๊ะ {t}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-400">สถานะ</span>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`mt-1 ${filterInputClass}`}>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s === "ALL" ? "ทุกสถานะ" : PRODUCTION_JOB_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-400">ค้นหาสินค้า / เลขใบ</span>
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="SKU, ชื่อสินค้า, PRD-..."
+              className={`mt-1 ${filterInputClass}`}
+            />
+          </label>
+        </div>
+        <div className="mt-2.5 flex items-center justify-between">
+          <p className="text-xs font-semibold text-slate-400">
+            พบ {filtered.length} งาน · ฉบับร่าง {drafts.length} งาน (ส่งได้ทีละหลายงาน)
+          </p>
+          {(dateFilter !== today || tableFilter !== "ALL" || statusFilter !== "ALL" || q) && (
+            <button
+              onClick={() => {
+                setDateFilter(today);
+                setTableFilter("ALL");
+                setStatusFilter("ALL");
+                setQ("");
+              }}
+              className="text-xs font-bold text-[#0F5C3F] hover:underline"
+            >
+              ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="rounded-xl border border-[#E8ECEA] bg-white p-16 text-center shadow-xs">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#0F5C3F] border-t-transparent" />
+          <p className="mt-3 text-sm font-semibold text-slate-500">กำลังดึงข้อมูลงานผลิต...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {PRODUCTION_TABLES.map((tableNo) => {
+            const tableJobs = filtered.filter((j) => j.table_no === tableNo);
+            const tableDrafts = tableJobs.filter((j) => j.status === "DRAFT").length;
+            const allSelected = tableDrafts > 0 && tableJobs.every((j) => j.status !== "DRAFT" || selected.has(j.job_no));
+            return (
+              <div key={tableNo} className="rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
+                <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#EEF1EF] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#06402B] font-mono text-base font-black text-white">
+                      {tableNo}
+                    </span>
+                    <div>
+                      <div className="text-sm font-extrabold text-slate-900">โต๊ะผลิต {tableNo}</div>
+                      <div className="text-[11px] font-semibold text-slate-400">
+                        {tableJobs.length} งาน{tableDrafts > 0 ? ` · ฉบับร่าง ${tableDrafts}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {tableDrafts > 0 && (
+                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() =>
+                            setSelected((prev) => {
+                              const next = new Set(prev);
+                              const tJobs = tableJobs.filter((j) => j.status === "DRAFT");
+                              if (allSelected) tJobs.forEach((j) => next.delete(j.job_no));
+                              else tJobs.forEach((j) => next.add(j.job_no));
+                              return next;
+                            })
+                          }
+                          className="h-4 w-4 accent-[#06402B]"
+                        />
+                        เลือกทั้งโต๊ะ
+                      </label>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddTable(tableNo);
+                        setAddOpen(true);
+                      }}
+                      className="rounded-lg border border-[#C9DFD4] bg-[#EAF2EE] px-2.5 py-1.5 text-xs font-bold text-[#053425] transition-all hover:bg-[#D9EAE1] active:scale-95"
+                    >
+                      + งาน
+                    </button>
+                  </div>
+                </div>
+
+                {tableJobs.length === 0 ? (
+                  <p className="py-8 text-center text-sm font-semibold text-slate-300">ยังไม่มีงานในโต๊ะนี้</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {tableJobs.map((job) => (
+                      <div key={job.job_no} className="rounded-lg border border-[#EEF1EF] bg-[#F7FAF8] p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 items-start gap-2.5">
+                            {job.status === "DRAFT" && (
+                              <input
+                                type="checkbox"
+                                checked={selected.has(job.job_no)}
+                                onChange={() => toggleSelect(job.job_no)}
+                                className="mt-1 h-4.5 w-4.5 shrink-0 accent-[#06402B]"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <StatusBadge status={job.status} />
+                                <PriorityBadge priority={job.priority} />
+                              </div>
+                              <div className="mt-1 truncate text-sm font-bold text-slate-900">{job.product_name}</div>
+                              <div className="font-mono text-[11px] font-semibold text-slate-400">
+                                {job.job_no} · {job.sku}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <Link
+                              href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
+                              className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#0F5C3F] hover:bg-[#EAF2EE]"
+                            >
+                              รายละเอียด →
+                            </Link>
+                            {job.status === "DRAFT" || job.status === "WAITING" || job.status === "IN_PROGRESS" ? (
+                              <button
+                                onClick={() => setEditJob(job)}
+                                className="rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                              >
+                                แก้ไข
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5">
+                          <JobNumbers job={job} compact />
+                        </div>
+
+                        {job.status === "DRAFT" && (
+                          <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
+                            <button
+                              onClick={() => handleDeleteDraft(job)}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
+                            >
+                              ลบฉบับร่าง
+                            </button>
+                          </div>
+                        )}
+                        {job.status !== "DRAFT" && job.status !== "CANCELLED" && (
+                          <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
+                            <button
+                              onClick={() => setCancelJob(job)}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
+                            >
+                              ยกเลิกงาน
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* แถบล่าง: ยืนยันส่งงานผลิตหลายงานพร้อมกัน */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-xl bg-[#06402B] px-5 py-3.5 shadow-2xl">
+            <div className="text-sm font-bold text-white">
+              เลือก {selected.size} งานฉบับร่าง
+              <span className="ml-2 font-mono text-xs font-semibold text-[#9CC7B4]">
+                เป้ารวม {formatQty(selectedJobs.reduce((s, j) => s + j.target_qty, 0))} ชิ้น
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelected(new Set())}
+                className="rounded-lg px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
+              >
+                ล้าง
+              </button>
+              <button
+                onClick={handleSubmitJobs}
+                disabled={submittingJobs}
+                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
+              >
+                {submittingJobs ? (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#06402B] border-t-transparent" />
+                ) : (
+                  "ยืนยันส่งงานผลิต"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AddJobModal
+        open={addOpen}
+        mode="create"
+        defaultTable={addTable}
+        defaultDate={dateFilter || undefined}
+        submitting={submitting}
+        error={modalError}
+        onClose={() => {
+          setAddOpen(false);
+          setModalError(null);
+        }}
+        onSubmit={handleAdd}
+      />
+
+      <AddJobModal
+        open={!!editJob}
+        mode="edit"
+        job={editJob || undefined}
+        submitting={submitting}
+        error={modalError}
+        onClose={() => {
+          setEditJob(null);
+          setModalError(null);
+        }}
+        onSubmit={handleEdit}
+      />
+
+      <ReasonModal
+        open={!!cancelJob}
+        title={`ยกเลิกงาน ${cancelJob?.job_no || ""}`}
+        hint="งานที่ยกเลิกจะไม่ถูกลบ — ผลผลิตที่ยืนยันแล้วทั้งหมดยังเก็บไว้ และระบบจะแจ้งผู้ผลิต"
+        reasonLabel="เหตุผลการยกเลิก"
+        confirmLabel="ยืนยันยกเลิก"
+        tone="danger"
+        submitting={submitting}
+        error={modalError}
+        onClose={() => {
+          setCancelJob(null);
+          setModalError(null);
+        }}
+        onSubmit={handleCancelJob}
+      />
     </div>
   );
 }

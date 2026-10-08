@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { outboundApi, type QPickViewData } from "@/lib/outbound-client";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
@@ -74,7 +74,9 @@ export default function QPickingPanel() {
   }, []);
 
   const qDataRef = useRef<QPickViewData | null>(null);
-  qDataRef.current = qData;
+  useEffect(() => {
+    qDataRef.current = qData;
+  }, [qData]);
   const scanQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // ---------- สแกนสินค้ายืนยัน 1 ชิ้น (Optimistic Instant Update — 0ms ทันที) ----------

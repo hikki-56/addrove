@@ -1,8 +1,7 @@
 // ============================================================
 // Unit Tests — Dashboard aggregation (src/lib/dashboard/dashboard-aggregation.ts)
-// สูตร KPI: รับเข้าวันนี้ / เบิกวันนี้ / ผลิตวันนี้
-// - แยก production RECEIVE ออกจากการรับเข้าปกติ
-// - แยก production ISSUE_OUT (วัตถุดิบ) ออกจากการเบิกปกติ
+// สูตร KPI: รับเข้าวันนี้ / เบิกวันนี้
+// - แยกเอกสารใบผลิตเก่า (PRD-) ออกจากการรับเข้า/เบิกปกติ
 // - ป้องกันการนับเอกสารและ movement ซ้ำ
 // - คำนวณ "วันนี้" ตามเขตเวลา Asia/Bangkok (รอบเที่ยงคืน)
 // ============================================================
@@ -178,7 +177,7 @@ describe("aggregateDashboardOperations — รับเข้าวันนี�
       [
         // RECEIVE ปกติ
         makeMovement({ movement_id: "m1", document_id: "rcv-1", qty_change: 30 }),
-        // RECEIVE ของคำสั่งผลิต (FG เข้าคลัง) — ห้ามนับในรับเข้าวันนี้
+        // RECEIVE ของใบผลิตเก่า (FG เข้าคลัง) — ห้ามนับในรับเข้าวันนี้
         makeMovement({
           movement_id: "m2",
           document_id: "prd-doc-1",
@@ -258,7 +257,7 @@ describe("aggregateDashboardOperations — เบิกวันนี้", () =
     expect(result.issued_document_count_today).toBe(1);
   });
 
-  it("คำสั่งผลิตที่ยังไม่สำเร็จ — movement ของมันก็ไม่ปนไปเป็นรับเข้า/เบิกปกติ", () => {
+  it("ใบผลิตเก่าที่ยังไม่สำเร็จ — movement ของมันก็ไม่ปนไปเป็นรับเข้า/เบิกปกติ", () => {
     const result = aggregate(
       [
         makeMovement({ movement_id: "m1", document_id: "prd-doc-1", qty_change: 50, product_id: "FG-1", warehouse_id: "wh-02" }),
@@ -275,104 +274,6 @@ describe("aggregateDashboardOperations — เบิกวันนี้", () =
 
     expect(result.received_today).toBe(0);
     expect(result.issued_today).toBe(0);
-    expect(result.produced_today).toBe(0);
-  });
-});
-
-// ── ผลิตวันนี้ ───────────────────────────────────────────────────
-
-describe("aggregateDashboardOperations — ผลิตวันนี้", () => {
-  it("นับเฉพาะคำสั่งผลิตที่ COMPLETED โดยใช้ total_fg_qty (หน่วยชิ้น)", () => {
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2026-001",
-          note: productionNote({ total_fg_qty: 50 }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(50);
-    expect(result.production_order_count_today).toBe(1);
-  });
-
-  it("ไม่มี total_fg_qty → ใช้ผลรวม items[].quantity แทน", () => {
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2026-001",
-          note: productionNote({
-            items: [
-              { fg_name: "กล่อง A", quantity: 30 },
-              { fg_name: "กล่อง B", quantity: 12 },
-            ],
-          }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(42);
-  });
-
-  it("คำสั่งผลิตไม่สำเร็จ (PENDING/CANCELLED) ไม่นับเป็นผลผลิตวันนี้", () => {
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2026-001",
-          note: productionNote({ status: "PENDING", total_fg_qty: 50 }),
-        }),
-        makeDocument({
-          document_id: "prd-doc-2",
-          document_no: "PRD-2026-002",
-          note: productionNote({ order_no: "PRD-2026-002", status: "CANCELLED", total_fg_qty: 10 }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(0);
-    expect(result.production_order_count_today).toBe(0);
-  });
-
-  it("ตรวจจับเอกสารผลิตได้จากเลขเอกสาร PRD- แม้ note ไม่มี type", () => {
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2099-777",
-          document_type: "RECEIVE",
-          status: "COMPLETED",
-          note: JSON.stringify({ order_no: "PRD-2099-777", total_fg_qty: 9, status: "COMPLETED", created_at: TODAY_ISO }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(9);
-  });
-
-  it("คำสั่งผลิตของเมื่อวานไม่นับเป็นวันนี้ แต่ลงกราฟของวันนั้น", () => {
-    const yesterday = "2026-09-07T05:00:00.000Z"; // 12:00 เมื่อวานตามเวลาไทย
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2026-001",
-          note: productionNote({ created_at: yesterday, total_fg_qty: 21 }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(0);
-    expect(result.production_order_count_today).toBe(0);
-    const chartYesterday = result.chart_data.find((p) => p.date === "2026-09-07");
-    expect(chartYesterday?.produced).toBe(21);
   });
 });
 
@@ -398,27 +299,6 @@ describe("aggregateDashboardOperations — ป้องกันการนั�
     );
 
     expect(result.pending_approval_count).toBe(2);
-  });
-
-  it("คำสั่งผลิตเดียวกัน (order_no เดียวกัน คนละ document_id) นับผลผลิตครั้งเดียว", () => {
-    const result = aggregate(
-      [],
-      [
-        makeDocument({
-          document_id: "prd-doc-1",
-          document_no: "PRD-2026-001",
-          note: productionNote({ total_fg_qty: 50 }),
-        }),
-        makeDocument({
-          document_id: "prd-doc-1b",
-          document_no: "DOC-PRD-DUPLICATE",
-          note: productionNote({ total_fg_qty: 50 }),
-        }),
-      ]
-    );
-
-    expect(result.produced_today).toBe(50);
-    expect(result.production_order_count_today).toBe(1);
   });
 });
 
@@ -470,7 +350,6 @@ describe("aggregateDashboardOperations — เขตเวลา Asia/Bangkok", 
     for (const point of result.chart_data) {
       expect(Number.isFinite(point.received)).toBe(true);
       expect(Number.isFinite(point.issued)).toBe(true);
-      expect(Number.isFinite(point.produced)).toBe(true);
     }
     expect(result.chart_data[DASHBOARD_CHART_DAYS - 1].received).toBe(10);
   });
@@ -502,7 +381,7 @@ describe("aggregateDashboardOperations — กิจกรรมวันนี�
     expect(issue?.quantity).toBe(7);
   });
 
-  it("กิจกรรมผลิตแสดงหนึ่งกิจกรรมต่อคำสั่งผลิต — ไม่แตกเป็น RECEIVE/ISSUE_OUT หลายบรรทัด", () => {
+  it("movement ของใบผลิตเก่าไม่กลายเป็นกิจกรรมวันนี้ (ระบบผลิตถูกลบแล้ว)", () => {
     const result = aggregate(
       [
         makeMovement({ movement_id: "m1", document_id: "prd-doc-1", qty_change: 50, product_id: "FG-1", warehouse_id: "wh-02" }),
@@ -518,12 +397,7 @@ describe("aggregateDashboardOperations — กิจกรรมวันนี�
       ]
     );
 
-    expect(result.today_activities).toHaveLength(1);
-    const production = result.today_activities[0];
-    expect(production.action_type).toBe("PRODUCTION");
-    expect(production.action_label).toBe("ผลิตสินค้า");
-    expect(production.quantity).toBe(50);
-    expect(production.document_no).toBe("PRD-2026-001");
+    expect(result.today_activities).toHaveLength(0);
   });
 
   it("ผู้ทำรายการเป็น UUID ที่หาชื่อไม่ได้ → ใช้ชื่อสำรอง ไม่แสดง UUID", () => {

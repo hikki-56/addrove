@@ -54,9 +54,6 @@ const ArrowDownIcon = ({ className }: { className?: string }) => (
 const ArrowUpIcon = ({ className }: { className?: string }) => (
   <Icon className={className}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Icon>
 );
-const FactoryIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /><path d="M17 18h1" /><path d="M12 18h1" /><path d="M7 18h1" /></Icon>
-);
 const TriangleAlertIcon = ({ className }: { className?: string }) => (
   <Icon className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></Icon>
 );
@@ -84,11 +81,10 @@ const TIMEFRAME_DAYS: Record<Timeframe, number> = { "7d": 7, "30d": 30, "90d": 9
 // อ้างอิง array ว่างคงที่ — กัน dependency ของ useMemo เปลี่ยนทุก render ตอนยังไม่มีข้อมูล
 const EMPTY_ACTIVITIES: TodayActivity[] = [];
 
-/* ── กราฟเคลื่อนไหว 3 ชุด: รับเข้า (เขียว) / เบิกสินค้า (แดง) / ผลิต (ม่วง) ── */
+/* ── กราฟเคลื่อนไหว 2 ชุด: รับเข้า (เขียว) / เบิกสินค้า (แดง) ── */
 const CHART_SERIES_META = [
   { key: "received", label: "รับเข้า", color: "#06402B" },
   { key: "issued", label: "เบิกสินค้า", color: "#B42318" },
-  { key: "produced", label: "ผลิต", color: "#7A5AF8" },
 ] as const;
 
 function badgeForActivity(actionType: TodayActivity["action_type"]): string {
@@ -99,8 +95,6 @@ function badgeForActivity(actionType: TodayActivity["action_type"]): string {
       return "bg-[#FCEFED] text-[#B42318]";
     case "TRANSFER":
       return "bg-[#EFF8FF] text-[#175CD3]";
-    case "PRODUCTION":
-      return "bg-[#F4F3FF] text-[#5925DC]";
     default:
       return "bg-[#F3F6F4] text-[#475467]";
   }
@@ -153,7 +147,6 @@ export default function AdminDashboard() {
   const kpiRemainingRef = useCountUpText(stats?.total_remaining_quantity ?? 0, kpiActive, 900);
   const kpiReceivedRef = useCountUpText(stats?.received_today ?? 0, kpiActive);
   const kpiIssuedRef = useCountUpText(stats?.issued_today ?? 0, kpiActive);
-  const kpiProducedRef = useCountUpText(stats?.produced_today ?? 0, kpiActive);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -234,15 +227,12 @@ export default function AdminDashboard() {
     receivedDocumentCountToday: stats?.received_document_count_today ?? 0,
     issuedToday: stats?.issued_today ?? 0,
     issuedDocumentCountToday: stats?.issued_document_count_today ?? 0,
-    producedToday: stats?.produced_today ?? 0,
-    productionOrderCountToday: stats?.production_order_count_today ?? 0,
   };
   const kpiCards = buildKpiCards(kpiNumbers);
   const kpiCardMeta = [
     { icon: PackageIcon, hero: true, valueRef: kpiRemainingRef },
     { icon: ArrowDownIcon, hero: false, valueRef: kpiReceivedRef },
     { icon: ArrowUpIcon, hero: false, valueRef: kpiIssuedRef },
-    { icon: FactoryIcon, hero: false, valueRef: kpiProducedRef },
   ];
   const kpis = kpiCards.map((card, i) => ({
     ...card,
@@ -257,14 +247,13 @@ export default function AdminDashboard() {
     [stats?.warehouse_distribution]
   );
 
-  // กราฟรายวัน (รับเข้า/เบิก/ผลิต) — server เติมวันที่ 90 วันให้ครบ สลับช่วงเวลาฝั่ง client
+  // กราฟรายวัน (รับเข้า/เบิก) — server เติมวันที่ 90 วันให้ครบ สลับช่วงเวลาฝั่ง client
   const chartData = useMemo(() => {
     const rows = stats?.chart_data ?? [];
     return rows.map((c) => ({
       label: `${Number(c.date.slice(8, 10))}/${Number(c.date.slice(5, 7))}`,
       received: c.received,
       issued: c.issued,
-      produced: c.produced,
     }));
   }, [stats?.chart_data]);
   const visibleChart = chartData.slice(-TIMEFRAME_DAYS[timeframe]);
@@ -410,7 +399,7 @@ export default function AdminDashboard() {
               ) : dashError ? (
                 <SectionStateBox tone="error" title="โหลดข้อมูลกราฟไม่สำเร็จ" hint="กด “ลองโหลดอีกครั้ง” ด้านบนเพื่อลองใหม่" />
               ) : visibleChart.length === 0 ? (
-                <SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" hint="รายการรับ–เบิก–ผลิตจะแสดงที่นี่" />
+                <SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" hint="รายการรับ–เบิกจะแสดงที่นี่" />
               ) : (
                 <div className="h-[280px] w-full pr-4 sm:h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -638,7 +627,7 @@ const ACTIVITY_TD_CLASS: Record<string, string> = {
 const ACTIVITY_RIGHT_COLUMNS = new Set(["quantity", "created_at"]);
 
 function qtyColorClass(actionType: TodayActivity["action_type"]): string {
-  if (actionType === "RECEIVE" || actionType === "PRODUCTION") return "text-[#06402B]";
+  if (actionType === "RECEIVE") return "text-[#06402B]";
   if (actionType === "ISSUE") return "text-[#B42318]";
   return "text-[#111827]";
 }
@@ -764,7 +753,7 @@ function ActivityCard({
       <div className="flex flex-col gap-3 px-6 pb-2 pt-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
           <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">กิจกรรมวันนี้</h2>
-          <p className="text-sm 2xl:text-base text-[#667085]">รายการรับ–เบิก–โอน–ผลิต–ปรับยอด ของวันนี้ (ตามเวลาประเทศไทย)</p>
+          <p className="text-sm 2xl:text-base text-[#667085]">รายการรับ–เบิก–โอน–ปรับยอด ของวันนี้ (ตามเวลาประเทศไทย)</p>
         </div>
         <div className="flex flex-col gap-1">
           <label
@@ -802,7 +791,7 @@ function ActivityCard({
         </div>
       ) : todayActivities.length === 0 ? (
         <div className="px-6 pb-6 pt-2">
-          <SectionStateBox title="ยังไม่มีกิจกรรมวันนี้" hint="กิจกรรมการรับ–เบิก–โอนย้าย–ผลิตของวันนี้จะแสดงที่นี่" />
+          <SectionStateBox title="ยังไม่มีกิจกรรมวันนี้" hint="กิจกรรมการรับ–เบิก–โอนย้ายของวันนี้จะแสดงที่นี่" />
         </div>
       ) : visibleActivities.length === 0 ? (
         <div className="px-6 pb-6 pt-2">
@@ -887,7 +876,7 @@ function ActivityCard({
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-[#667085]">จำนวน</span>
                       <span className={`text-sm font-medium tabular-nums ${
-                        item.action_type === "RECEIVE" || item.action_type === "PRODUCTION"
+                        item.action_type === "RECEIVE"
                           ? "text-[#06402B]"
                           : item.action_type === "ISSUE"
                             ? "text-[#B42318]"

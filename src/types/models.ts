@@ -230,14 +230,12 @@ export interface DashboardChartPoint {
   date: string;
   received: number;
   issued: number;
-  produced: number;
 }
 
 export type TodayActivityType =
   | "RECEIVE"
   | "ISSUE"
   | "TRANSFER"
-  | "PRODUCTION"
   | "ADJUST";
 
 export interface TodayActivity {
@@ -267,8 +265,6 @@ export interface DashboardStats {
   received_document_count_today: number;
   issued_today: number;
   issued_document_count_today: number;
-  produced_today: number;
-  production_order_count_today: number;
   warehouse_distribution: WarehouseDistribution[];
   today_activities: TodayActivity[];
   pending_approval_count: number;

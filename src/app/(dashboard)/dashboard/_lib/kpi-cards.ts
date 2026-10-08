@@ -7,8 +7,6 @@ export interface KpiNumbers {
   receivedDocumentCountToday: number;
   issuedToday: number;
   issuedDocumentCountToday: number;
-  producedToday: number;
-  productionOrderCountToday: number;
 }
 
 export interface KpiCard {
@@ -38,12 +36,6 @@ export function buildKpiCards(kpi: KpiNumbers): KpiCard[] {
       value: kpi.issuedToday,
       unit: "ชิ้น",
       caption: `จาก ${kpi.issuedDocumentCountToday.toLocaleString()} รายการเบิก`,
-    },
-    {
-      title: "ผลิตวันนี้",
-      value: kpi.producedToday,
-      unit: "ชิ้น",
-      caption: `จาก ${kpi.productionOrderCountToday.toLocaleString()} คำสั่งผลิต`,
     },
   ];
 }

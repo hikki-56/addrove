@@ -14,27 +14,9 @@ import { cleanSkuCode } from "@/lib/services/stock/shared";
 export const DASHBOARD_TIME_ZONE = "Asia/Bangkok";
 export const DASHBOARD_CHART_DAYS = 90;
 
-interface ProductionItemMetadata {
-  fg_name?: string;
-  product_name?: string;
-  fg_unit?: string;
-  unit?: string;
-  quantity?: number | string;
-  target_warehouse_id?: string;
-  target_warehouse_name?: string;
-}
-
-interface ProductionMetadata {
+interface DocumentNoteMetadata {
   type?: string;
   order_no?: string;
-  status?: string;
-  total_fg_qty?: number | string;
-  total_qty?: number | string;
-  created_at?: string;
-  created_by_name?: string;
-  target_warehouse_id?: string;
-  target_warehouse_name?: string;
-  items?: ProductionItemMetadata[];
   rows?: unknown[];
 }
 
@@ -66,27 +48,16 @@ export type OperationalDashboardStats = Pick<
   | "received_document_count_today"
   | "issued_today"
   | "issued_document_count_today"
-  | "produced_today"
-  | "production_order_count_today"
   | "chart_data"
   | "today_activities"
   | "pending_approval_count"
 >;
 
-function finiteNumber(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value !== "string") return null;
-  const normalized = value.replace(/[\s,]/g, "");
-  if (!normalized) return null;
-  const result = Number(normalized);
-  return Number.isFinite(result) ? result : null;
-}
-
-function parseMetadata(note: string): ProductionMetadata {
+function parseMetadata(note: string): DocumentNoteMetadata {
   if (!note.trim().startsWith("{")) return {};
   try {
     const parsed: unknown = JSON.parse(note);
-    return parsed && typeof parsed === "object" ? (parsed as ProductionMetadata) : {};
+    return parsed && typeof parsed === "object" ? (parsed as DocumentNoteMetadata) : {};
   } catch {
     return {};
   }
@@ -95,11 +66,6 @@ function parseMetadata(note: string): ProductionMetadata {
 function canonicalWarehouseId(value: string): string {
   const match = value.trim().toLowerCase().match(/^wh-?0*(\d+)$/);
   return match ? `wh-${Number(match[1])}` : value.trim().toLowerCase();
-}
-
-function canonicalProductionKey(document: Document, metadata: ProductionMetadata): string {
-  const orderNo = metadata.order_no || document.reference_no || document.document_no;
-  return (orderNo || document.document_id).trim().toLowerCase();
 }
 
 function isProductionDocument(document: Document, metadata = parseMetadata(document.note)): boolean {
@@ -116,23 +82,6 @@ function isProductionDocument(document: Document, metadata = parseMetadata(docum
     metadata.type?.toUpperCase() === "PRODUCTION_ORDER" ||
     identifiers.some((value) => value.startsWith("PRD-") || value.includes("DOC-PRD-"))
   );
-}
-
-function isCompletedProduction(document: Document, metadata: ProductionMetadata): boolean {
-  const status = String(metadata.status || document.status || "").toUpperCase();
-  return ["COMPLETED", "POSTED", "APPROVED"].includes(status);
-}
-
-function productionQuantity(metadata: ProductionMetadata): number {
-  const explicit = finiteNumber(metadata.total_fg_qty);
-  if (explicit !== null) return explicit;
-
-  const itemsTotal = Array.isArray(metadata.items)
-    ? metadata.items.reduce((sum, item) => sum + (finiteNumber(item.quantity) ?? 0), 0)
-    : 0;
-  if (itemsTotal !== 0) return itemsTotal;
-
-  return finiteNumber(metadata.total_qty) ?? 0;
 }
 
 export function getBangkokDateKey(value: string | Date): string {
@@ -191,7 +140,7 @@ function deduplicateDocuments(documents: Document[]): Document[] {
   return [...unique.values()];
 }
 
-function isPendingApproval(document: Document, metadata: ProductionMetadata): boolean {
+function isPendingApproval(document: Document, metadata: DocumentNoteMetadata): boolean {
   if (isProductionDocument(document, metadata)) return false;
   const status = String(document.status || "").trim().toUpperCase();
   const isReceive =
@@ -223,7 +172,6 @@ function actionLabel(actionType: TodayActivityType): string {
     RECEIVE: "รับสินค้า",
     ISSUE: "เบิกสินค้า",
     TRANSFER: "โอนสินค้า",
-    PRODUCTION: "ผลิตสินค้า",
     ADJUST: "ปรับยอด",
   }[actionType];
 }
@@ -258,7 +206,7 @@ export function aggregateDashboardOperations({
   const today = getBangkokDateKey(now);
   const dateKeys = dateKeysEndingAt(today, DASHBOARD_CHART_DAYS);
   const chartMap = new Map<string, DashboardChartPoint>(
-    dateKeys.map((date) => [date, { date, received: 0, issued: 0, produced: 0 }])
+    dateKeys.map((date) => [date, { date, received: 0, issued: 0 }])
   );
   const uniqueDocuments = deduplicateDocuments(documents);
   const documentMap = new Map(uniqueDocuments.map((document) => [document.document_id, document]));
@@ -274,8 +222,8 @@ export function aggregateDashboardOperations({
     warehouseMap.set(canonicalWarehouseId(warehouse.warehouse_id), warehouse.warehouse_name);
   }
 
-  // เอกสารผลิตทุกสถานะต้องถูกแยกออกจากรับเข้า/เบิกปกติเสมอ
-  // (แม้คำสั่งผลิตยังไม่ COMPLETED — RECEIVE/ISSUE_OUT ของมันก็ไม่ใช่รายการรับ-เบิกธรรมดา)
+  // เอกสารใบผลิตเก่า (PRD-) ที่ยังหลงเหลือในชีตต้องถูกแยกออกจากรับเข้า/เบิกปกติเสมอ
+  // (RECEIVE/ISSUE_OUT ของใบผลิตไม่ใช่รายการรับ-เบิกธรรมดา)
   const productionDocumentIds = new Set<string>();
   for (const document of uniqueDocuments) {
     if (isProductionDocument(document)) {
@@ -283,64 +231,7 @@ export function aggregateDashboardOperations({
     }
   }
 
-  // ส่วน "ผลิตวันนี้" นับเฉพาะคำสั่งผลิตที่สำเร็จจริง (COMPLETED/POSTED/APPROVED)
-  const productionOrders = new Map<
-    string,
-    { document: Document; metadata: ProductionMetadata; quantity: number; date: string }
-  >();
-  for (const document of uniqueDocuments) {
-    const metadata = parseMetadata(document.note);
-    if (!isProductionDocument(document, metadata) || !isCompletedProduction(document, metadata)) continue;
-    const key = canonicalProductionKey(document, metadata);
-    const date = getBangkokDateKey(metadata.created_at || document.created_at || document.document_date);
-    const candidate = { document, metadata, quantity: productionQuantity(metadata), date };
-    const existing = productionOrders.get(key);
-    if (!existing || candidate.document.created_at > existing.document.created_at) {
-      productionOrders.set(key, candidate);
-    }
-  }
-
-  let producedToday = 0;
-  let productionOrderCountToday = 0;
   const activities: TodayActivity[] = [];
-  for (const [key, order] of productionOrders) {
-    const chartPoint = chartMap.get(order.date);
-    if (chartPoint) chartPoint.produced += order.quantity;
-    if (order.date !== today) continue;
-
-    producedToday += order.quantity;
-    productionOrderCountToday += 1;
-    const items = Array.isArray(order.metadata.items) ? order.metadata.items : [];
-    const productNames = items
-      .map((item) => item.fg_name || item.product_name || "")
-      .filter(Boolean);
-    const warehouseNames = [
-      order.metadata.target_warehouse_name,
-      ...items.map((item) => item.target_warehouse_name),
-    ].filter((name): name is string => Boolean(name));
-    const unit = items.length === 1 ? items[0].fg_unit || items[0].unit || "ชิ้น" : "ชิ้น";
-    const actorId = order.document.created_by;
-    activities.push({
-      id: `production:${key}`,
-      actor_id: actorId,
-      actor_name: displayActorName(actorId, userMap, order.metadata.created_by_name),
-      action_type: "PRODUCTION",
-      action_label: actionLabel("PRODUCTION"),
-      document_id: order.document.document_id,
-      document_no: order.metadata.order_no || order.document.reference_no || order.document.document_no,
-      product_name:
-        productNames.length === 1
-          ? productNames[0]
-          : productNames.length > 1
-            ? `${productNames.length} รายการสินค้า`
-            : undefined,
-      quantity: order.quantity,
-      unit,
-      warehouse_name: warehouseNames[0] || "โกดัง2",
-      created_at: order.metadata.created_at || order.document.created_at,
-    });
-  }
-
   let receivedToday = 0;
   let issuedToday = 0;
   const receivedDocumentIds = new Set<string>();
@@ -439,8 +330,6 @@ export function aggregateDashboardOperations({
     received_document_count_today: receivedDocumentIds.size,
     issued_today: issuedToday,
     issued_document_count_today: issuedDocumentIds.size,
-    produced_today: producedToday,
-    production_order_count_today: productionOrderCountToday,
     chart_data: dateKeys.map((date) => chartMap.get(date)!),
     today_activities: activities,
     pending_approval_count: uniqueDocuments.filter((document) =>

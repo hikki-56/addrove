@@ -208,7 +208,7 @@ export default function HeroUiPreviewPage() {
   const [pending, setPending] = useState<PendingDoc[]>(PENDING);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const chartData = useMemo(buildChartData, []);
+  const chartData = useMemo(() => buildChartData(), []);
   const visibleChart = chartData.slice(-TIMEFRAME_DAYS[timeframe]);
 
   const visibleActivities = useMemo(

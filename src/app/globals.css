@@ -334,22 +334,22 @@
   --border-strong:  rgba(15,23,42,0.20);
 
   /* Primary — Pine (Stockify premium rebrand · #06402B) */
-  --color-primary-400: #8fb3a3;
-  --color-primary-500: #0f5c3f;
-  --color-primary-600: #06402b;
+  --color-primary-400: #8FB3A3;
+  --color-primary-500: #0F5C3F;
+  --color-primary-600: #06402B;
 
   /* ── Design System v0.3 — pine palette ──
      ปุ่มหลัก = เขียน pine เข้ม #06402B · ไอคอน/สถานะ active ใช้ชุดเดียวกัน */
-  --color-action:       #06402b;  /* pine-900 — ปุ่มหลัก / แอ็กชันยืนยัน */
-  --color-action-hover: #0a5236;  /* pine hover */
-  --color-accent:       #06402b;
+  --color-action:       #06402B;  /* pine-900 — ปุ่มหลัก / แอ็กชันยืนยัน */
+  --color-action-hover: #0A5236;  /* pine hover */
+  --color-accent:       #06402B;
 
   /* Emerald — success / stock */
   --color-brand-50:  #ecfdf5;
   --color-brand-100: #d1fae5;
   --color-brand-400: #34d399;
   --color-brand-500: #10b981;
-  --color-brand-600: #059669;
+  --color-brand-600: #06402B;
   --color-brand-700: #047857;
   --color-brand-900: #064e3b;
 
@@ -578,23 +578,23 @@ table tbody td {
 .gradient-text {
   background: none;
   -webkit-background-clip: initial;
-  -webkit-text-fill-color: #06402b;
+  -webkit-text-fill-color: #06402B;
   background-clip: initial;
-  color: #06402b;
+  color: #06402B;
 }
 
 .gradient-text-emerald {
   background: none;
   -webkit-background-clip: initial;
-  -webkit-text-fill-color: #06402b;
+  -webkit-text-fill-color: #06402B;
   background-clip: initial;
-  color: #06402b;
+  color: #06402B;
 }
 
 /* ============================================================
    Status Badges
    ============================================================ */
-.badge-normal   { background-color: #EAF2EE; color: #06402b; border: 1px solid #DFEDE6; font-weight: 500; }
+.badge-normal   { background-color: #EAF2EE; color: #06402B; border: 1px solid #DFEDE6; font-weight: 500; }
 .badge-low      { background-color: #FDF4EC; color: #b54708; border: 1px solid #F5E2CE; font-weight: 500; }
 .badge-out      { background-color: #FCEFED; color: #b42318; border: 1px solid #F5D6D2; font-weight: 500; }
 .badge-negative { background-color: #F3F6F4; color: #475467; border: 1px solid #E8ECEA; font-weight: 500; }
@@ -745,7 +745,7 @@ input:focus, select:focus, textarea:focus {
    :focus-visible only fires for keyboard navigation, not mouse clicks.
    WCAG 2.4.7 (AA) — Focus Visible                                    */
 :where(button, a, input, select, textarea, [role="button"]):focus-visible {
-  outline: 2px solid #06402b;      /* pine-900 */
+  outline: 2px solid #06402B;      /* pine-900 */
   outline-offset: 2px;
 }
 
@@ -765,7 +765,7 @@ input:focus, select:focus, textarea:focus {
    ============================================================ */
 .nav-active {
   background: #EAF2EE;
-  color: #06402b;
+  color: #06402B;
   border: 1px solid transparent;
   position: relative;
 }
@@ -778,7 +778,7 @@ input:focus, select:focus, textarea:focus {
   transform: translateY(-50%);
   height: 60%;
   width: 3px;
-  background: #06402b;
+  background: #06402B;
   border-radius: 0 3px 3px 0;
 }
 
@@ -955,7 +955,7 @@ html.light .bg-\[\#06402B\] .bg-white,
 html.light .bg-\[\#06402B\] .bg-white *,
 html.light button.text-white .bg-white,
 html.light button.text-white .bg-white * {
-  color: #06402b !important;
+  color: #06402B !important;
 }
 
 /* Chip โทนสว่าง (#EAF2EE) ที่วางบนพื้นเข้ม pine — เช่นเมนู active / badge ใน Sidebar
@@ -966,7 +966,7 @@ html.light .bg-\[\#0F5C3F\] .bg-\[\#EAF2EE\],
 html.light .bg-\[\#0F5C3F\] .bg-\[\#EAF2EE\] *,
 html.light .bg-\[\#053425\] .bg-\[\#EAF2EE\],
 html.light .bg-\[\#053425\] .bg-\[\#EAF2EE\] * {
-  color: #06402b !important;
+  color: #06402B !important;
 }
 
 html.light main .text-slate-200,
@@ -1220,7 +1220,7 @@ html.light button.bg-red-600 * {
 .admin-button-primary {
   min-height: 2.5rem;
   border-radius: 0.625rem;
-  background: #059669;
+  background: #06402B;
   color: #ffffff;
   padding: 0.5rem 0.9rem;
   box-shadow: 0 4px 10px rgba(5, 150, 105, 0.16);
@@ -1246,8 +1246,8 @@ html.light button.bg-red-600 * {
 .admin-text-link:hover, .admin-row-action:hover { color: #065f46; }
 .admin-row-action { color: #047857; font-size: var(--text-sm); white-space: nowrap; }
 .admin-tab { position: relative; padding: .25rem 0 .9rem; color: #64748b; font-size: var(--text-sm); font-weight: 600; }
-.admin-tab-active { color: #059669; }
-.admin-tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 999px 999px 0 0; background: #059669; }
+.admin-tab-active { color: #06402B; }
+.admin-tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 999px 999px 0 0; background: #06402B; }
 @media (min-width: 640px) {
   .admin-panel { padding: 2rem; }
 }

@@ -32,9 +32,9 @@ describe("safeNavigate", () => {
     const win = stubWindow();
     const push = jest.fn();
 
-    safeNavigate({ push }, "/production/history/PRD-1");
+    safeNavigate({ push }, "/movements/history/DOC-1");
 
-    expect(push).toHaveBeenCalledWith("/production/history/PRD-1");
+    expect(push).toHaveBeenCalledWith("/movements/history/DOC-1");
     expect(win.location.assign).not.toHaveBeenCalled();
   });
 
@@ -48,10 +48,10 @@ describe("safeNavigate", () => {
           throw new Error("Internal Next.js error: Router action dispatched before initialization.");
         },
       },
-      "/production/history"
+      "/movements/history"
     );
 
-    expect(win.location.assign).toHaveBeenCalledWith("/production/history");
+    expect(win.location.assign).toHaveBeenCalledWith("/movements/history");
     consoleWarn.mockRestore();
   });
 

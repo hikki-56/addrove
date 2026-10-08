@@ -254,7 +254,7 @@ export class SheetsDashboardRepository implements IDashboardRepository {
         "A2:J",
         "getStats:readStockMovements"
       ),
-      // Documents เป็นข้อมูลหลักของการแยกรับเข้า/ผลิตและจำนวนรออนุมัติ
+      // Documents เป็นข้อมูลหลักของการแยกเอกสารใบผลิตเก่า (PRD-) ออกจากรับเข้า และจำนวนรออนุมัติ
       // อ่านไม่ได้ต้องยกเลิกทั้ง Dashboard เพื่อไม่แสดงยอดที่นับปนหรือไม่ครบ
       this.readCriticalSheet(
         SHEETS.DOCUMENTS,
@@ -394,8 +394,8 @@ export class SheetsDashboardRepository implements IDashboardRepository {
       }
     }
 
-    // สูตรรับเข้า/เบิก/ผลิต, กราฟ 90 วัน, กิจกรรมวันนี้ และ pending count
-    // อยู่ใน pure server-side aggregation เดียวกันเพื่อแยก production และ de-duplicate ก่อนรวมยอด
+    // สูตรรับเข้า/เบิก, กราฟ 90 วัน, กิจกรรมวันนี้ และ pending count
+    // อยู่ใน pure server-side aggregation เดียวกันเพื่อแยกเอกสารใบผลิตเก่าและ de-duplicate ก่อนรวมยอด
     const operationalStats = aggregateDashboardOperations({
       movements,
       documents,

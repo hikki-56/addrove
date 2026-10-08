@@ -192,6 +192,11 @@ export const ALLOWED_SHEETS = [
   "BOM_ก๊อกน้ำ",
   "BOM_โกดัง1",
   "BOM_โกดัง2",
+  // ระบบสั่งผลิต v2 — ต้องเพิ่มชื่อแท็บใหม่ใน scripts/google-apps-script.gs ด้วยทุกครั้ง
+  "ProductionJobs",
+  "ProductionReports",
+  "ProductionHistory",
+  "ProductionNotifications",
 ] as const;
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];

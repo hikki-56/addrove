@@ -1,7 +1,7 @@
 // ============================================================
 // Unit Tests — การ์ด KPI หน้า Admin Dashboard (_lib/kpi-cards.ts)
-// 4 การ์ด: สินค้าทั้งหมด / รับเข้าวันนี้ / เบิกวันนี้ / ผลิตวันนี้
-// เลขหลักเป็น "จำนวนชิ้น" ส่วนจำนวนเอกสาร/คำสั่งผลิตอยู่ใน caption
+// 3 การ์ด: สินค้าทั้งหมด / รับเข้าวันนี้ / เบิกวันนี้
+// เลขหลักเป็น "จำนวนชิ้น" ส่วนจำนวนเอกสารอยู่ใน caption
 // ============================================================
 import { buildKpiCards, type KpiNumbers } from "@/app/(dashboard)/dashboard/_lib/kpi-cards";
 
@@ -11,8 +11,6 @@ const zeroKpi: KpiNumbers = {
   receivedDocumentCountToday: 0,
   issuedToday: 0,
   issuedDocumentCountToday: 0,
-  producedToday: 0,
-  productionOrderCountToday: 0,
 };
 
 describe("buildKpiCards — การ์ด KPI หน้า Admin Dashboard", () => {
@@ -49,19 +47,6 @@ describe("buildKpiCards — การ์ด KPI หน้า Admin Dashboard", (
     expect(cards[2].value).toBe(80);
     expect(cards[2].unit).toBe("ชิ้น");
     expect(cards[2].caption).toBe("จาก 8 รายการเบิก");
-  });
-
-  it('การ์ดที่ 4 "ผลิตวันนี้" — เลขหลักเป็นชิ้น, caption แสดงจำนวนคำสั่งผลิต', () => {
-    const cards = buildKpiCards({
-      ...zeroKpi,
-      producedToday: 300,
-      productionOrderCountToday: 3,
-    });
-
-    expect(cards[3].title).toBe("ผลิตวันนี้");
-    expect(cards[3].value).toBe(300);
-    expect(cards[3].unit).toBe("ชิ้น");
-    expect(cards[3].caption).toBe("จาก 3 คำสั่งผลิต");
   });
 
   it("ค่าติดลบของ total_remaining_quantity ส่งต่อตามจริง (ไม่ clamp เป็น 0)", () => {

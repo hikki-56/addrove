@@ -13,7 +13,7 @@ export const revalidate = 0;
 
 import { getAuthSession } from "@/lib/auth-session";
 import { getDocumentStatus } from "@/lib/document-status-store";
-import { isProductionOrderDocument } from "@/lib/production-sheets";
+import { isProductionOrderDocument } from "@/lib/legacy-prd-filter";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
 
 export async function GET(req: NextRequest) {

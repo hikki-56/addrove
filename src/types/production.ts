@@ -1,212 +1,199 @@
-// ประเภทข้อมูลระบบการผลิต — ใช้ร่วมกันระหว่าง API และหน้า UI
-// (เดิมถูกประกาศซ้ำใน orders/route.ts และ history/page.tsx)
+// ประเภทข้อมูลระบบสั่งผลิตและรายงานผลผลิต (v2) — ใช้ร่วมกันระหว่าง API และหน้า UI
+// หนึ่งงาน = หนึ่งใบสั่งผลิต = สินค้า 1 ชนิด × โต๊ะผลิต 1 โต๊ะ (ติดตามผลได้ชัดเจน)
 
-export type ProductionOrderStatus = "COMPLETED" | "IN_PROGRESS" | "PENDING" | "CANCELLED";
+export type ProductionJobStatus = "DRAFT" | "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
-export interface ProductionMaterialItem {
-  rm_sku: string;
-  rm_barcode?: string;
-  rm_name: string;
-  rm_wh: string;
-  rm_qty_required: number;
-  rm_unit: string;
-  waste_percentage?: number;
-  note?: string;
-}
+export type ProductionPriority = "NORMAL" | "URGENT" | "CRITICAL";
 
-export interface ProductionOrderItem {
-  fg_sku: string;
-  fg_barcode: string;
-  fg_name: string;
-  fg_unit: string;
-  /** โต๊ะผลิตที่รับผิดชอบรายการนี้ (1–5) */
-  table_no?: number;
-  /** จำนวนที่สั่งผลิตตามใบผลิต */
-  quantity: number;
-  /** สะสมของดีที่ตรวจรับแล้ว (จากทุกรอบการตรวจ) */
-  produced_qty?: number;
-  /** สะสมของเสีย (จากทุกรอบการตรวจ) */
-  defect_qty?: number;
-  image?: string;
-  target_warehouse_id: string;
-  target_warehouse_name: string;
-  materials: ProductionMaterialItem[];
-}
+/** รายงานผล: บางส่วน (คงสถานะกำลังผลิต) หรือจบงาน */
+export type ProductionReportKind = "PARTIAL" | "FINAL";
 
-/** ผลตรวจของสินค้าหนึ่งรายการในรอบการตรวจ */
-export interface InspectionItemResult {
-  fg_sku: string;
-  fg_name: string;
-  good_qty: number;
-  defect_qty: number;
-  warehouse_id: string;
-  warehouse_name: string;
+/** ชนิดแถวในแท็บรายงาน: รายงานผลจริง หรือ รายการปรับปรุงยอดโดย ADMIN */
+export type ProductionRowKind = "REPORT" | "ADJUSTMENT";
+
+export interface ProductionJob {
+  job_id: string;
+  job_no: string;
+  /** วันที่ผลิต (YYYY-MM-DD) */
+  production_date: string;
+  status: ProductionJobStatus;
+  /** โต๊ะผลิต 1–5 */
+  table_no: number;
+  priority: ProductionPriority;
+  product_id: string;
+  sku: string;
+  product_name: string;
+  unit: string;
+  /** จำนวนสินค้าดีที่ต้องการ — ไม่รวมของเสีย */
+  target_qty: number;
+  note: string;
+  /** ตำแหน่งจัดเก็บตอนรับเข้าโกดัง 2 (ไม่บังคับ) */
   location: string;
-}
-
-/** วัตถุดิบที่รายงานว่าใช้จริง/เสียจริงในรอบการตรวจหนึ่งรอบ */
-export interface InspectionMaterialResult {
-  rm_sku: string;
-  rm_name: string;
-  used_qty: number;
-  wasted_qty: number;
-}
-
-/** สถานะรอบการตรวจ: ส่งแล้วรอคนตรวจ → อนุมัติ (ตัดสต็อกแล้ว) หรือ ถูกตีกลับให้แก้ไข */
-export type InspectionRoundStatus = "SUBMITTED" | "APPROVED" | "RETURNED";
-
-/** รอบการตรวจการผลิตหนึ่งรอบของใบผลิต */
-export interface InspectionRound {
-  round_no: number;
-  inspected_at: string;
-  inspected_by: string;
-  inspected_by_name: string;
-  note?: string;
-  items: InspectionItemResult[];
-  status?: InspectionRoundStatus;
-  reviewed_by_name?: string;
-  reviewed_at?: string;
-  review_note?: string;
-  /** ผู้รายงานขอปิดใบผลิตหลังรอบนี้ */
-  close_order?: boolean;
-  /** วัตถุดิบที่ผู้รายงานระบุว่าใช้จริง/เสียจริงในรอบนี้ (ไม่ส่งมา = ให้ระบบคำนวณจาก BOM ตอนยืนยัน) */
-  materials?: InspectionMaterialResult[];
-  /** ปลายทางเศษวัตถุดิบที่ผู้รายงานเสนอ (ใช้เมื่อปิดใบ) */
-  leftover_destination?: { warehouse_id: string; warehouse_name?: string; location: string } | null;
-}
-
-/** สรุปวัตถุดิบรวมต่อใบผลิต (แผน vs ใช้จริง) */
-export interface OrderMaterialSummary {
-  rm_sku: string;
-  rm_name: string;
-  rm_unit: string;
-  planned_qty: number;
-  used_qty: number;
-  /** วัตถุดิบที่เสียจริง (แยกจากใช้จริง) */
-  wasted_qty?: number;
-  leftover_qty: number;
-}
-
-export interface ProductionOrderRecord {
-  id: string;
-  order_no: string;
-  document_id: string;
-  reference_no?: string;
-  status: ProductionOrderStatus;
-  items: ProductionOrderItem[];
-  total_fg_qty: number;
-  total_materials_count: number;
   created_by: string;
   created_by_name: string;
   created_at: string;
-  document_date: string;
-  note?: string;
-  /** ประวัติรอบการตรวจ (ระบบใบผลิตใหม่เท่านั้น) */
-  inspections?: InspectionRound[];
-  /** สรุปวัตถุดิบแบบรวมต่อใบ (ระบบใบผลิตใหม่เท่านั้น) */
-  materials_summary?: OrderMaterialSummary[];
-  /** ปลายทางเศษวัตถุดิบคงเหลือ กรอกตอนปิดใบผลิต */
-  leftover_destination?: { warehouse_id: string; warehouse_name?: string; location: string } | null;
+  submitted_at: string;
+  started_by_name: string;
+  started_at: string;
+  completed_at: string;
+  cancelled_at: string;
+  cancelled_by_name: string;
+  cancel_reason: string;
+  /** เหตุผลตอนจบงาน (บังคับเมื่อจบไม่ครบเป้า/ผลิตเกินเป้า) */
+  close_reason: string;
+  reopen_reason: string;
+  reopen_count: number;
+  updated_at: string;
+
+  // ---- ยอดคำนวณจากรายงาน (ไม่ได้เก็บในชีต) ----
+  /** บาร์โค้ดสินค้า — join จากทะเบียนสินค้าหลักตอนอ่าน (ไม่เก็บในแท็บงานผลิต) */
+  barcode: string;
+  /** ผลิตดีสะสม = ผลรวม good_qty จากรายงาน+ปรับปรุงทั้งหมด */
+  produced_good: number;
+  /** ของเสียสะสม */
+  defect_total: number;
+  /** จำนวนที่ยังขาด = max(0, เป้าหมาย − ผลิตดีสะสม) */
+  remaining_qty: number;
+  /** จำนวนผลิตเกิน = max(0, ผลิตดีสะสม − เป้าหมาย) */
+  over_qty: number;
+  report_count: number;
 }
 
-/** รายการของเสียจากแท็บ "สินค้าเสีย" */
-export interface WasteRecord {
-  waste_id: string;
-  order_no: string;
-  round_no: number;
-  document_date: string;
-  fg_sku: string;
-  fg_name: string;
-  qty: number;
-  note: string;
-  recorded_by_name: string;
-  created_at: string;
-}
-
-/** Payload ต่อรายการที่ส่งมากับการยืนยันผลผลิตหนึ่งรอบ */
-export interface InspectItemPayload {
-  fg_sku: string;
+export interface ProductionReport {
+  report_id: string;
+  job_no: string;
+  /** ลำดับรายงานต่องานเดียวกัน */
+  report_no: number;
+  kind: ProductionRowKind;
+  report_kind: ProductionReportKind | "";
+  /** ยอดรอบนี้ (REPORT) หรือยอดปรับ เป็น +/- (ADJUSTMENT) */
   good_qty: number;
   defect_qty: number;
-  warehouse_id?: string;
-  location?: string;
+  defect_cause: string;
+  reason: string;
+  note: string;
+  photo_url: string;
+  reported_by: string;
+  reported_by_name: string;
+  reported_at: string;
+  cumulative_good: number;
+  cumulative_defect: number;
+  idempotency_key: string;
 }
 
-/** Payload วัตถุดิบที่ใช้จริง/เสียจริงต่อรอบ (ไม่ส่ง = ระบบคำนวณจาก BOM) */
-export interface InspectMaterialPayload {
-  rm_sku: string;
-  used_qty: number;
-  wasted_qty?: number;
+export interface ProductionHistoryEntry {
+  history_id: string;
+  job_no: string;
+  action: string;
+  actor_id: string;
+  actor_name: string;
+  at: string;
+  reason: string;
+  /** JSON รายละเอียดการเปลี่ยนแปลง (ก่อน–หลัง) */
+  detail: string;
 }
 
-// ---- โครงสร้างคอลัมน์ของแท็บชีตใหม่ (index = ตำแหน่งคอลัมน์) ----
-// ใช้เป็นสัญญาเดียวกันทั้งฝั่งเขียน (API) และฝั่งอ่าน เพื่อกัน index ไม่ตรงกัน
+export interface ProductionNotification {
+  notif_id: string;
+  target_role: "ADMIN" | "APPROVER";
+  job_no: string;
+  message: string;
+  created_at: string;
+  created_by_name: string;
+  /** user_id ของผู้ที่อ่านแล้ว */
+  read_by: string[];
+}
 
-/** แท็บ "ใบผลิต" — หนึ่งแถวต่อใบ × รายการสินค้า */
-export const PRODUCTION_ORDER_SHEET_HEADERS = [
-  "เลขที่ใบผลิต",
-  "document_id",
-  "วันที่สั่งผลิต",
+export const PRODUCTION_JOB_STATUS_LABELS: Record<ProductionJobStatus, string> = {
+  DRAFT: "ฉบับร่าง",
+  WAITING: "รอผลิต",
+  IN_PROGRESS: "กำลังผลิต",
+  COMPLETED: "จบงาน",
+  CANCELLED: "ยกเลิก",
+};
+
+export const PRODUCTION_PRIORITY_LABELS: Record<ProductionPriority, string> = {
+  NORMAL: "ปกติ",
+  URGENT: "ด่วน",
+  CRITICAL: "ด่วนมาก",
+};
+
+export const PRODUCTION_TABLE_COUNT = 5;
+export const PRODUCTION_TABLES = Array.from({ length: PRODUCTION_TABLE_COUNT }, (_, i) => i + 1);
+
+// ---- โครงสร้างคอลัมน์แท็บชีต (index = ตำแหน่งคอลัมน์ ห้ามแทรก/ลบ/สลับ) ----
+
+/** ProductionJobs — หนึ่งแถวต่อหนึ่งงาน */
+export const PRODUCTION_JOBS_SHEET_HEADERS = [
+  "job_id",
+  "เลขใบสั่งผลิต",
+  "วันที่ผลิต",
   "สถานะ",
+  "โต๊ะ",
+  "ความสำคัญ",
+  "product_id",
   "รหัสสินค้า",
   "ชื่อสินค้า",
   "หน่วย",
-  "ที่สั่งผลิต",
-  "ผลิตได้จริง",
-  "ของเสีย",
-  "ผู้สั่งผลิต",
+  "เป้าหมาย",
+  "หมายเหตุ",
+  "ตำแหน่งเก็บ",
+  "ผู้สร้าง",
+  "ชื่อผู้สร้าง",
   "สร้างเมื่อ",
-  "หมายเหตุ",
-  "เศษวัตถุดิบไปโกดัง",
-  "เศษวัตถุดิบตำแหน่ง",
-  "โต๊ะผลิต",
-] as const;
-
-/** แท็บ "ใบผลิต_วัตถุดิบ" — หนึ่งแถวต่อใบ × วัตถุดิบ (รวมยอดทั้งใบ) */
-export const PRODUCTION_MATERIAL_SHEET_HEADERS = [
-  "เลขที่ใบผลิต",
-  "รหัสวัตถุดิบ",
-  "ชื่อวัตถุดิบ",
-  "หน่วย",
-  "ตามแผน",
-  "ใช้จริง",
-  "คงเหลือตามแผน",
+  "ส่งงานเมื่อ",
+  "ผู้เริ่มผลิต",
+  "เริ่มเมื่อ",
+  "จบเมื่อ",
+  "ยกเลิกเมื่อ",
+  "ชื่อผู้ยกเลิก",
+  "เหตุผลยกเลิก",
+  "เหตุผลจบงาน",
+  "เหตุผลเปิดใหม่",
+  "จำนวนครั้งเปิดใหม่",
   "อัปเดตเมื่อ",
-  "เสียจริง",
 ] as const;
 
-/** แท็บ "ตรวจการผลิต" — บันทึกต่อรอบ × รายการสินค้า (append-only) */
-export const PRODUCTION_INSPECTION_SHEET_HEADERS = [
-  "เลขที่ใบผลิต",
+/** ProductionReports — append-only */
+export const PRODUCTION_REPORTS_SHEET_HEADERS = [
+  "report_id",
+  "เลขใบสั่งผลิต",
   "รอบที่",
-  "วันที่ส่งผลตรวจ",
-  "รหัสสินค้า",
-  "ของดี",
+  "ชนิด",
+  "ประเภทรายงาน",
+  "ผลิตดี",
   "ของเสีย",
-  "ปลายทางโกดัง",
-  "ตำแหน่ง",
+  "สาเหตุของเสีย",
+  "เหตุผล",
+  "หมายเหตุ",
+  "ลิงก์รูปภาพ",
   "ผู้รายงาน",
-  "หมายเหตุผู้รายงาน",
-  "สถานะรอบ",
-  "ผู้ยืนยัน",
-  "ยืนยันเมื่อ",
-  "หมายเหตุผู้ตรวจ",
-  "ขอปิดใบผลิต",
-  "เศษวัตถุดิบไปโกดัง",
-  "เศษวัตถุดิบตำแหน่ง",
-  "วัตถุดิบใช้จริง/เสียจริง (JSON)",
+  "ชื่อผู้รายงาน",
+  "รายงานเมื่อ",
+  "ดีสะสม",
+  "เสียสะสม",
+  "idempotency_key",
 ] as const;
 
-/** แท็บ "สินค้าเสีย" — append-only */
-export const WASTE_SHEET_HEADERS = [
-  "waste_id",
-  "เลขที่ใบผลิต",
-  "รอบที่",
-  "วันที่",
-  "รหัสสินค้า",
-  "ชื่อสินค้า",
-  "จำนวน",
-  "หมายเหตุ",
-  "ผู้บันทึก",
-  "บันทึกเมื่อ",
+/** ProductionHistory — append-only ทุกการเปลี่ยนแปลง */
+export const PRODUCTION_HISTORY_SHEET_HEADERS = [
+  "history_id",
+  "เลขใบสั่งผลิต",
+  "การกระทำ",
+  "ผู้ดำเนินการ",
+  "ชื่อผู้ดำเนินการ",
+  "เมื่อ",
+  "เหตุผล",
+  "รายละเอียด (JSON)",
+] as const;
+
+/** ProductionNotifications — แจ้งเตือนในระบบ + สถานะอ่าน */
+export const PRODUCTION_NOTIFS_SHEET_HEADERS = [
+  "notif_id",
+  "ถึงบทบาท",
+  "เลขใบสั่งผลิต",
+  "ข้อความ",
+  "สร้างเมื่อ",
+  "ผู้แจ้ง",
+  "อ่านแล้วโดย (JSON)",
 ] as const;

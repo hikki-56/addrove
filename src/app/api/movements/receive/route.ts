@@ -2,13 +2,12 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { receiveStock, ReceiveStockSchema } from "@/lib/services/stock";
+import { receiveStock, ReceiveStockSchema, mapStockErrorToResponse } from "@/lib/services/stock";
 import {
   successResponse,
   unauthorizedResponse,
   forbiddenResponse,
   errorResponse,
-  serverErrorResponse,
 } from "@/lib/api-response";
 
 export const maxDuration = 60;
@@ -62,6 +61,6 @@ export async function POST(req: NextRequest) {
     return successResponse(doc, "ส่งรายการรับสินค้าไปรออนุมัติสำเร็จ (สถานะ: รอดำเนินการ)", 201);
   } catch (e) {
     console.error("[POST /api/movements/receive] Error:", e);
-    return serverErrorResponse(e);
+    return mapStockErrorToResponse(e);
   }
 }

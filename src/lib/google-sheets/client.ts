@@ -52,14 +52,12 @@ export const SHEETS = {
   EXPRESS_ISSUE: "เบิกสินค้าเข้าExpress",
   EXPRESS_RECEIVE: "นำเข้าสินค้าเข้าExpress",
   EXPRESS_TRANSFER: "ย้ายสินค้าเข้าExpress",
-  BOM: "BOM",
-  BOM_HEADERS: "BOM_Headers",
-  BOM_ITEMS: "BOM_Items",
   OUTBOUND_Q_ITEMS: "รายการสินค้ากล่อง_Q",
-  PRODUCTION_ORDERS: "ใบผลิต",
-  PRODUCTION_MATERIALS: "ใบผลิต_วัตถุดิบ",
-  PRODUCTION_INSPECTIONS: "ตรวจการผลิต",
-  WASTE_ITEMS: "สินค้าเสีย",
+  // ระบบสั่งผลิต v2 — ชื่ออังกฤษ กันสับสนกับแท็บเดิม "ใบผลิต/ตรวจการผลิต/สินค้าเสีย" ที่เก็บข้อมูลระบบเก่า
+  PRODUCTION_JOBS: "ProductionJobs",
+  PRODUCTION_REPORTS: "ProductionReports",
+  PRODUCTION_HISTORY: "ProductionHistory",
+  PRODUCTION_NOTIFS: "ProductionNotifications",
 } as const;
 
 // Helper to map warehouse ID to Google Sheets tab name (e.g. wh-5 -> โกดัง5)
