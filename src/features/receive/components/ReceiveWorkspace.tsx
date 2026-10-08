@@ -8,8 +8,8 @@ import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 
-import { useReceiveMovement } from "../_hooks/use-receive-movement";
-import { useReceivingPlans, isPlanOpen } from "../_hooks/use-receiving-plans";
+import { useReceiveMovement } from "@/features/receive/hooks/use-receive-movement";
+import { useReceivingPlans, isPlanOpen } from "@/features/receive/hooks/use-receiving-plans";
 import ReceiveLinesTable from "./ReceiveLinesTable";
 import ReceiveConfirmModal from "./ReceiveConfirmModal";
 import ReceiveSuccessCard from "./ReceiveSuccessCard";

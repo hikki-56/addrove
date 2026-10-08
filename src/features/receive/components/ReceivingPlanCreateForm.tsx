@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Product, Warehouse } from "@/types/models";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
-import type { ReceivingPlanCreatePayload } from "../_hooks/use-receiving-plans";
+import type { ReceivingPlanCreatePayload } from "@/features/receive/hooks/use-receiving-plans";
 
 const cardClass =
   "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
