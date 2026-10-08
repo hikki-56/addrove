@@ -1,3 +1,3 @@
 export * from "./idempotency.types";
-export * from "./idempotency.repository";
+export * from "@/lib/repositories/interfaces/idempotency.repository.interface";
 export * from "./idempotency.service";

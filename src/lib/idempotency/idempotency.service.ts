@@ -1,4 +1,4 @@
-import { IIdempotencyRepository, IdempotencyRecord } from "./idempotency.repository";
+import { IIdempotencyRepository, IdempotencyRecord } from "@/lib/repositories/interfaces/idempotency.repository.interface";
 import {
   IdempotencyConflictError,
   IdempotencyInProgressError,

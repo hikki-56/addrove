@@ -1,4 +1,4 @@
-import { IAuditRepository, AuditLogEntry, AuditOutcome } from "./audit.repository";
+import { IAuditRepository, AuditLogEntry, AuditOutcome } from "@/lib/repositories/interfaces/audit.repository.interface";
 import { AuditAction } from "./audit.types";
 
 const SENSITIVE_KEYS = new Set([

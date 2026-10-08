@@ -1,3 +1,3 @@
 export * from "./audit.types";
-export * from "./audit.repository";
+export * from "@/lib/repositories/interfaces/audit.repository.interface";
 export * from "./audit.service";
