@@ -18,9 +18,9 @@ import {
   cancelOpenBox,
   markStickerPrinted,
   getBoxesOfBillInfo,
-} from "@/lib/services/outbound/packing.service";
-import { BoxActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/packing.service";
+import { BoxActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

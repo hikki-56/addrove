@@ -9,7 +9,7 @@ import type {
   User,
   Warehouse,
 } from "@/types/models";
-import { cleanSkuCode } from "@/lib/services/stock/shared";
+import { cleanSkuCode } from "@/server/services/stock/shared";
 
 export const DASHBOARD_TIME_ZONE = "Asia/Bangkok";
 export const DASHBOARD_CHART_DAYS = 90;

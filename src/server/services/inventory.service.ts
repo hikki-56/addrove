@@ -5,7 +5,7 @@ import type {
   MoveInput,
   TransferInput,
   ReversalInput,
-} from "@/lib/services/stock/types";
+} from "@/server/services/stock/types";
 import type { Document } from "@/types/models";
 
 import {

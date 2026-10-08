@@ -7,7 +7,7 @@ import {
   createReceivingPlan,
   mapStockErrorToResponse,
   ReceivingPlanCreateSchema,
-} from "@/lib/services/stock";
+} from "@/server/services/stock";
 import {
   successResponse,
   unauthorizedResponse,

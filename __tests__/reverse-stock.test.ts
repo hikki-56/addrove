@@ -33,12 +33,12 @@ jest.mock("@/server/google-sheets/client", () => {
   };
 });
 
-import { reverseStock, ReverseStockSchema } from "@/lib/services/stock/reverse-stock";
+import { reverseStock, ReverseStockSchema } from "@/server/services/stock/reverse-stock";
 import {
   StockAlreadyReversedError,
   StockNotFoundError,
   InsufficientStockError,
-} from "@/lib/services/stock/stock-errors";
+} from "@/server/services/stock/stock-errors";
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,

@@ -1,6 +1,6 @@
 import * as fs from "fs";
-import { parseExpressPdfText, fixThaiPua, parseThaiDate } from "@/lib/services/outbound/express-pdf-parser";
-import { matchProducts } from "@/lib/services/outbound/bill-import.service";
+import { parseExpressPdfText, fixThaiPua, parseThaiDate } from "@/server/services/outbound/express-pdf-parser";
+import { matchProducts } from "@/server/services/outbound/bill-import.service";
 import type { Product } from "@/types/models";
 
 /**
@@ -138,7 +138,7 @@ describe("matchProducts — จับคู้ด้วยต้นรายล�
 const REAL_PDF = process.env.REAL_PDF_FIXTURE || "";
 (fs.existsSync(REAL_PDF) ? describe : describe.skip)("parseExpressPdf — ไฟล์จริง", () => {
   it("สกัดข้อความด้วย pdf-parse แล้ว parse ผ่านทุกข้อ", async () => {
-    const { parseExpressPdf } = await import("@/lib/services/outbound/express-pdf-parser");
+    const { parseExpressPdf } = await import("@/server/services/outbound/express-pdf-parser");
     const buf = fs.readFileSync(REAL_PDF);
     const bill = await parseExpressPdf(buf);
     expect(bill.express_bill_no).toBe("IV9090957");

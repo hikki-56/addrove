@@ -20,7 +20,7 @@ import {
 } from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/lib/keyed-lock";
 import { withStockLocks, formatStockLockKey } from "@/server/locking";
-import { executeAtomicOperation } from "@/lib/services/stock/atomic-stock-executor";
+import { executeAtomicOperation } from "@/server/services/stock/atomic-stock-executor";
 import { getRepository } from "@/server/repositories";
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document } from "@/types/models";

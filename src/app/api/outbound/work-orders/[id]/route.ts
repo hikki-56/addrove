@@ -15,9 +15,9 @@ import {
   getWorkOrderDetail,
   resolveWorkOrderShortage,
   sendWorkOrder,
-} from "@/lib/services/outbound/work-order.service";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
-import { OutboundReservationError } from "@/lib/services/outbound/stock-reservation.service";
+} from "@/server/services/outbound/work-order.service";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
+import { OutboundReservationError } from "@/server/services/outbound/stock-reservation.service";
 
 export const maxDuration = 60;
 

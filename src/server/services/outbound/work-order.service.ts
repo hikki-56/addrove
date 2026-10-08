@@ -10,8 +10,8 @@ import type {
   WorkOrderQItem,
   StockSummary,
 } from "@/types/models";
-import { issueStock } from "@/lib/services/stock";
-import { receiveStock } from "@/lib/services/stock";
+import { issueStock } from "@/server/services/stock";
+import { receiveStock } from "@/server/services/stock";
 import {
   findDocumentByIdOrNo,
   listBillDocuments,

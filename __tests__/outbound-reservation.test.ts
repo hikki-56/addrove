@@ -7,7 +7,7 @@ import {
   OutboundReservationError,
   suggestPickLocation,
   suggestPickLocationAll,
-} from "@/lib/services/outbound/stock-reservation.service";
+} from "@/server/services/outbound/stock-reservation.service";
 
 function billDoc(
   docNo: string,

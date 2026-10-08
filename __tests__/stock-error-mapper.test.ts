@@ -1,4 +1,4 @@
-import { mapStockErrorToResponse } from "@/lib/services/stock/stock-error-mapper";
+import { mapStockErrorToResponse } from "@/server/services/stock/stock-error-mapper";
 import {
   IdempotencyConflictError,
   IdempotencyInProgressError,

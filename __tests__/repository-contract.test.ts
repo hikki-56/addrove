@@ -4,7 +4,7 @@ import {
   SheetsWarehouseRepository,
   SheetsLocationRepository,
 } from "@/server/repositories";
-import { getStockBalances } from "@/lib/services/stock/shared";
+import { getStockBalances } from "@/server/services/stock/shared";
 
 describe("Repository Contract Parity Tests", () => {
   test("In-Memory Repository satisfies IStockRepository interface completely", () => {

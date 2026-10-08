@@ -33,8 +33,8 @@ jest.mock("@/server/google-sheets/client", () => {
   };
 });
 
-import { issueStock, IssueStockSchema } from "@/lib/services/stock/issue-stock";
-import { InsufficientStockError, StockConflictError, StockNotFoundError } from "@/lib/services/stock/stock-errors";
+import { issueStock, IssueStockSchema } from "@/server/services/stock/issue-stock";
+import { InsufficientStockError, StockConflictError, StockNotFoundError } from "@/server/services/stock/stock-errors";
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,

@@ -17,9 +17,9 @@ import {
   resumeBill,
   cancelBill,
   resolveShortage,
-} from "@/lib/services/outbound/outbound-bill.service";
-import { BillPatchActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/outbound-bill.service";
+import { BillPatchActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

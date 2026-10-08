@@ -5,7 +5,7 @@ import {
   getSheetReadError,
 } from "@/server/google-sheets/client";
 import { SheetsProductRepository } from "./product.repository";
-import { cleanSkuCode } from "@/lib/services/stock/shared";
+import { cleanSkuCode } from "@/server/services/stock/shared";
 import { aggregateDashboardOperations } from "@/server/dashboard/dashboard-aggregation";
 import type { IDashboardRepository } from "../interfaces";
 import type {

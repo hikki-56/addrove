@@ -3,7 +3,7 @@ import {
   parseLogisticUnitId,
   generateLogisticUnitId,
   logisticUnitBarcodeValue,
-} from "@/lib/services/outbound/logistic-unit-id";
+} from "@/server/services/outbound/logistic-unit-id";
 import type { IDocumentRepository } from "@/server/repositories/interfaces";
 
 describe("logistic-unit-id — รหัสกล่อง (abstraction รองรับ SSCC วันหน้า)", () => {

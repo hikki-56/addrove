@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
-import { completeTransfer, mapStockErrorToResponse, CompleteTransferSchema, StockNotFoundError } from "@/lib/services/stock";
+import { completeTransfer, mapStockErrorToResponse, CompleteTransferSchema, StockNotFoundError } from "@/server/services/stock";
 import {
   successResponse,
   unauthorizedResponse,

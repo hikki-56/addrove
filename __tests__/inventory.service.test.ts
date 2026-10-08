@@ -37,7 +37,7 @@ jest.mock("@/server/google-sheets/client", () => {
   };
 });
 
-import { InventoryService } from "@/lib/services/inventory.service";
+import { InventoryService } from "@/server/services/inventory.service";
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,

@@ -14,13 +14,13 @@ import {
 import { appendRows, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { todayBangkokIsoDate } from "@/lib/express-status-utils";
-import { getShipmentDetail } from "@/lib/services/outbound/shipment.service";
+import { getShipmentDetail } from "@/server/services/outbound/shipment.service";
 import {
   mutateShipmentNote,
   mutateBillNote,
   listBillDocuments,
   parseBillNote,
-} from "@/lib/services/outbound/outbound-documents";
+} from "@/server/services/outbound/outbound-documents";
 
 export const maxDuration = 60;
 

@@ -9,8 +9,8 @@ import {
   forbiddenResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
-import { listShipments, createShipment } from "@/lib/services/outbound/shipment.service";
-import { ShipmentCreateSchema } from "@/lib/services/outbound/outbound-schemas";
+import { listShipments, createShipment } from "@/server/services/outbound/shipment.service";
+import { ShipmentCreateSchema } from "@/server/services/outbound/outbound-schemas";
 
 export const maxDuration = 60;
 

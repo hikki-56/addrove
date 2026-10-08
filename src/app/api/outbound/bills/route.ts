@@ -8,7 +8,7 @@ import {
   forbiddenResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
-import { listBills } from "@/lib/services/outbound/outbound-bill.service";
+import { listBills } from "@/server/services/outbound/outbound-bill.service";
 
 export const maxDuration = 60;
 

@@ -38,7 +38,7 @@ import {
   completeTransfer,
   cancelTransfer,
   CreateTransferSchema,
-} from "@/lib/services/stock/transfer-stock";
+} from "@/server/services/stock/transfer-stock";
 import {
   syncServerTransferNotifications,
   getPendingTransferNotifications,
@@ -48,7 +48,7 @@ import {
   InvalidTransferStateError,
   StockNotFoundError,
   UnauthorizedStockOperationError,
-} from "@/lib/services/stock/stock-errors";
+} from "@/server/services/stock/stock-errors";
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,

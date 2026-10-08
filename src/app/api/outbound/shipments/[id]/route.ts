@@ -17,9 +17,9 @@ import {
   unloadBox,
   closeShipment,
   cancelShipment,
-} from "@/lib/services/outbound/shipment.service";
-import { ShipmentActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/shipment.service";
+import { ShipmentActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

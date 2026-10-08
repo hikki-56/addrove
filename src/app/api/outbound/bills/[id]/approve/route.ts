@@ -15,8 +15,8 @@ import {
   approveOutboundPick,
   rejectOutboundPick,
   OutboundApproveError,
-} from "@/lib/services/outbound/outbound-approve.service";
-import { ApprovePickSchema } from "@/lib/services/outbound/outbound-schemas";
+} from "@/server/services/outbound/outbound-approve.service";
+import { ApprovePickSchema } from "@/server/services/outbound/outbound-schemas";
 
 export const maxDuration = 60;
 

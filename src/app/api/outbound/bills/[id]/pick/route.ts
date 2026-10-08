@@ -16,13 +16,13 @@ import {
   confirmPickItem,
   reportProblem,
   completePick,
-} from "@/lib/services/outbound/picking.service";
-import { PickActionSchema } from "@/lib/services/outbound/outbound-schemas";
+} from "@/server/services/outbound/picking.service";
+import { PickActionSchema } from "@/server/services/outbound/outbound-schemas";
 import {
   OutboundStateError,
   BILL_STATUS_LABELS_TH,
-} from "@/lib/services/outbound/outbound-state-machine";
-import { OutboundReservationError } from "@/lib/services/outbound/stock-reservation.service";
+} from "@/server/services/outbound/outbound-state-machine";
+import { OutboundReservationError } from "@/server/services/outbound/stock-reservation.service";
 
 export const maxDuration = 60;
 

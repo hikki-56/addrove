@@ -6,7 +6,7 @@ import {
   parseMaxItemsPerQ,
   planBillQAssignments,
   DEFAULT_MAX_ITEMS_PER_Q,
-} from "@/lib/services/outbound/q-assignment.service";
+} from "@/server/services/outbound/q-assignment.service";
 
 function billDoc(
   docNo: string,

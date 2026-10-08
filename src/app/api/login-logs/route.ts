@@ -4,7 +4,7 @@ import {
   getLoginLogs,
   getProductsAddedByEmployee,
   EmployeeProductAddition,
-} from "@/lib/services/login-log.service";
+} from "@/server/services/login-log.service";
 import { getRepository } from "@/server/repositories";
 import { getWarehouseName } from "@/lib/warehouse-utils";
 import {

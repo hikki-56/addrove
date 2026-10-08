@@ -3,7 +3,7 @@ import { getAuthSession } from "@/lib/auth-session";
 import { getRepository } from "@/server/repositories";
 import { getDocumentStatus } from "@/lib/document-status-store";
 import { isProductionOrderDocument } from "@/lib/legacy-prd-filter";
-import { getLoginLogs } from "@/lib/services/login-log.service";
+import { getLoginLogs } from "@/server/services/login-log.service";
 import {
   successResponse,
   unauthorizedResponse,
