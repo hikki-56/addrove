@@ -426,8 +426,11 @@ describe("updateJob / deleteDraft — กติกาตามสถานะ", 
   });
 
   it("WAITING แก้สินค้า/จำนวน/โต๊ะได้แต่ต้องมีเหตุผล + แจ้ง APPROVER · เปลี่ยนวันที่ไม่ได้", async () => {
-    const [job] = await createJobs(ADMIN, [jobInput()]);
-    await submitJobs(ADMIN, [job.job_no]);
+    const [created] = await createJobs(ADMIN, [jobInput()]);
+    // ใช้ updated_at หลังส่งงาน (submit เปลี่ยน updated_at) — เดิมใช้ค่าตอนสร้าง ผ่านเฉพาะเมื่อ create/submit อยู่ในมิลลิวินาทีเดียวกัน
+    const {
+      submitted: [job],
+    } = await submitJobs(ADMIN, [created.job_no]);
 
     await expect(
       updateJob(ADMIN, job.job_no, { updated_at: job.updated_at, target_qty: 1500 })
