@@ -64,5 +64,11 @@ scratch/
 Thumbs.db
 Desktop.ini
 
-.vercel
-.env*
+# local captures that may contain credentials/session data — never commit
+*cookies*.txt
+*.har
+*session-token*
+
+# local archives / exports
+*.bundle
+
