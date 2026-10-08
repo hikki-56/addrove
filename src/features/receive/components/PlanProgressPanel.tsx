@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReceiveDocumentInput } from "@/types/api";
-import type { ReceivingPlanView } from "../_hooks/use-receiving-plans";
-import { PLAN_STATUS_LABEL } from "../_hooks/use-receiving-plans";
+import type { ReceivingPlanView } from "@/features/receive/hooks/use-receiving-plans";
+import { PLAN_STATUS_LABEL } from "@/features/receive/hooks/use-receiving-plans";
 
 const cardClass =
   "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";

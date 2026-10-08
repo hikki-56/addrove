@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import ReceiveWorkspace from "../../movements/receive/_components/ReceiveWorkspace";
+import ReceiveWorkspace from "@/features/receive/components/ReceiveWorkspace";
 
 export default function StaffReceivePage() {
   return (

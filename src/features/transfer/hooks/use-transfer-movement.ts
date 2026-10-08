@@ -24,7 +24,7 @@ import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
 import { tagExpressItem } from "@/client/express-tag-utils";
-import { useTransferConfirm } from "../_components/TransferConfirmDialog";
+import { useTransferConfirm } from "@/features/transfer/components/TransferConfirmDialog";
 
 export const TransferFormSchema = z.object({
   product_id: z.string(),

@@ -5,10 +5,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useTabAuth } from "@/context/TabAuthContext";
 
-import { useTransferMovement } from "./_hooks/use-transfer-movement";
-import TransferNotificationList from "./_components/TransferNotificationList";
-import TransferForm from "./_components/TransferForm";
-import TransferStaffWorkflowModal from "./_components/TransferStaffWorkflowModal";
+import { useTransferMovement } from "@/features/transfer/hooks/use-transfer-movement";
+import TransferNotificationList from "@/features/transfer/components/TransferNotificationList";
+import TransferForm from "@/features/transfer/components/TransferForm";
+import TransferStaffWorkflowModal from "@/features/transfer/components/TransferStaffWorkflowModal";
 
 export default function TransferPage() {
   const searchParams = useSearchParams();

@@ -8,6 +8,7 @@ import ScanFeedbackBanner from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/client/feedback";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
+import type { Feedback } from "@/app/(dashboard)/outbound/_lib/types";
 import { getWarehouseDisplayName } from "@/lib/warehouse-utils";
 import { queuedScan } from "@/client/offline-scan-queue";
 
@@ -16,8 +17,6 @@ import { queuedScan } from "@/client/offline-scan-queue";
  * ขั้นตอนสั้นที่สุด: สแกนกล่อง Q → ดูรายการที่ Admin กำหนด → หยิบ → สแกนสินค้ายืนยันทีละชิ้น → ครบ → ยืนยันไปแพ็ก
  * (พนักงานไม่เลือกสินค้าเอง — Admin กำหนดทุกอย่างล่วงหน้าแล้ว)
  */
-
-type Feedback = { tone: "success" | "error" | "info"; message: string } | null;
 
 const PROBLEM_OPTIONS = [
   { value: "NOT_FOUND", icon: "📭", label: "หาไม่เจอ" },

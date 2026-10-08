@@ -6,9 +6,9 @@ import { useSession } from "next-auth/react";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import { useMoveMovement } from "./_hooks/use-move-movement";
-import MoveForm from "./_components/MoveForm";
-import MoveSuccessModal from "./_components/MoveSuccessModal";
+import { useMoveMovement } from "@/features/move/hooks/use-move-movement";
+import MoveForm from "@/features/move/components/MoveForm";
+import MoveSuccessModal from "@/features/move/components/MoveSuccessModal";
 
 export default function MovePage() {
   const { data: session } = useSession();

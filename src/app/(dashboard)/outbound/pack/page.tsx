@@ -10,13 +10,12 @@ import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/cl
 import { generateBoxStickerDataUrl } from "@/lib/barcode-utils";
 import { queuedScan } from "@/client/offline-scan-queue";
 import { useOfflineScanQueue, OfflineQueueBadge } from "@/hooks/use-offline-scan-queue";
+import type { Feedback } from "@/app/(dashboard)/outbound/_lib/types";
 
 /**
  * สถานีแพ็ก — สแกนของใส่กล่องปัจจุบัน · ปิดกล่อง = พิมพ์สติกเกอร์ (ไม่มี m
  * เพราะยังไม่รู้ว่าจบกี่กล่อง) · แพ็กครบ = ปุ่มพิมพ์สติกเกอร์ชุดเต็ม n/m
  */
-
-type Feedback = { tone: "success" | "error" | "info"; message: string } | null;
 
 interface BoxInfo {
   document_id: string;

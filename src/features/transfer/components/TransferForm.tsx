@@ -1,6 +1,6 @@
 import { useTabAuth } from "@/context/TabAuthContext";
 import type { UseFormReturn } from "react-hook-form";
-import type { TransferFormInput, SelectedTransferItem } from "../_hooks/use-transfer-movement";
+import type { TransferFormInput, SelectedTransferItem } from "@/features/transfer/hooks/use-transfer-movement";
 import type { Warehouse, Product } from "@/types/models";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
 

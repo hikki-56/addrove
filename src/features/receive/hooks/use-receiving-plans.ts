@@ -77,10 +77,6 @@ export const PLAN_STATUS_LABEL: Record<string, string> = {
   CANCELLED: "ยกเลิก",
 };
 
-function normalizeWhId(v: string): string {
-  return (v || "").trim().toLowerCase().replace(/^wh-0*(\d+)$/, "wh-$1");
-}
-
 export interface UseReceivingPlansOptions {
   activeWhId: string;
   /** โหลดทุกสถานะ (หน้าแอดมิน "แผนทั้งหมด") — ค่าเริ่มต้นโหลดเฉพาะที่ยังเปิดอยู่ */

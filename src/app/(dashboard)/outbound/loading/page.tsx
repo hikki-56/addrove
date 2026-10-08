@@ -9,14 +9,13 @@ import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal
 import { feedbackSuccess, feedbackError, feedbackDone, feedbackWarn } from "@/client/feedback";
 import { queuedScan } from "@/client/offline-scan-queue";
 import { useOfflineScanQueue, OfflineQueueBadge } from "@/hooks/use-offline-scan-queue";
+import type { Feedback } from "@/app/(dashboard)/outbound/_lib/types";
 
 /**
  * ขึ้นรถ — "เลือกบิลก่อน แล้วค่อยสแกนกล่อง"
  * สร้างรอบ (ทะเบียนรถ + ☑ บิล) → Expected = จำนวนกล่องรวม → สแกน BX ทีละใบ
  * ปิดรอบได้เมื่อครบ หรือ Manager ยืนยันกล่องที่ขาดทุกใบ (ไปรอบถัดไป/ยกเลิก + เหตุผล)
  */
-
-type Feedback = { tone: "success" | "error" | "info"; message: string } | null;
 
 export default function OutboundLoadingPage() {
   const [shipments, setShipments] = useState<ShipmentListItem[]>([]);
