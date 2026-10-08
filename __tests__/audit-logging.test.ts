@@ -1,7 +1,7 @@
 import {
   logAudit,
   sanitizeMetadata,
-} from "@/lib/audit";
+} from "@/server/audit";
 import { InMemoryAuditRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
 
 describe("Append-Only Audit Logging Tests", () => {

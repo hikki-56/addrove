@@ -65,7 +65,7 @@ jest.mock("@/lib/idempotency", () => {
   };
 });
 
-jest.mock("@/lib/audit", () => ({
+jest.mock("@/server/audit", () => ({
   logAudit: jest.fn(async () => null),
 }));
 

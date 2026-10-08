@@ -1,7 +1,7 @@
 import { withStockLocks, formatStockLockKey } from '@/lib/locking';
 import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/lib/idempotency';
 import { executeWithJournal } from '@/lib/recovery';
-import { logAudit } from '@/lib/audit';
+import { logAudit } from '@/server/audit';
 import type { IStockRepository } from '@/lib/repositories/interfaces';
 import type { Document } from '@/types/models';
 

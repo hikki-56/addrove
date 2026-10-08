@@ -10,7 +10,7 @@ import {
   getWarehouseSheetName,
   clearSheetCache,
 } from "@/lib/google-sheets/client";
-import { logAudit } from "@/lib/audit";
+import { logAudit } from "@/server/audit";
 import type { StockMovement } from "@/types/models";
 
 export const maxDuration = 60;

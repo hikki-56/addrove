@@ -17,7 +17,7 @@ import {
   InvalidStockLocationError,
 } from "./stock-errors";
 import { executeAtomicOperation } from "./atomic-stock-executor";
-import { logAudit } from "@/lib/audit";
+import { logAudit } from "@/server/audit";
 
 export { MoveStockSchema, type MoveStockInput };
 
