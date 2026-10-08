@@ -1,5 +1,5 @@
 import type { Document, DocumentStatus } from "@/types/models";
-import { withStockLocks } from "@/lib/locking";
+import { withStockLocks } from "@/server/locking";
 import {
   ReceivingPlanCreateSchema,
   CancelReceivingPlanSchema,

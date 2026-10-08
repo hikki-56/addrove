@@ -1,5 +1,5 @@
 import type { Document, StockMovement } from "@/types/models";
-import { formatStockLockKey } from "@/lib/locking";
+import { formatStockLockKey } from "@/server/locking";
 import {
   ReverseStockSchema,
   type ReverseStockInput,

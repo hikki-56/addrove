@@ -1,5 +1,5 @@
 import type { Document, StockMovement, Product } from "@/types/models";
-import { withStockLocks, formatStockLockKey } from "@/lib/locking";
+import { withStockLocks, formatStockLockKey } from "@/server/locking";
 import {
   claimIdempotencyKey,
   completeIdempotencyKey,

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { withStockLocks, formatStockLockKey } from "@/lib/locking";
+import { withStockLocks, formatStockLockKey } from "@/server/locking";
 import { logAudit } from "@/server/audit";
 import type { StockMovement } from "@/types/models";
 import {

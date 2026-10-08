@@ -1,4 +1,4 @@
-import { withStockLocks, formatStockLockKey } from '@/lib/locking';
+import { withStockLocks, formatStockLockKey } from '@/server/locking';
 import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/server/idempotency';
 import { executeWithJournal } from '@/lib/recovery';
 import { logAudit } from '@/server/audit';
@@ -44,7 +44,7 @@ export interface AtomicOperationConfig {
  * (b) push the whole critical section into a single `atomicStockOperation`
  *     request so Apps Script's LockService covers it end-to-end; or
  * (c) use a dedicated lock store (Redis/Redlock, or a DB advisory lock) via
- *     the `ILockProvider` interface in @/lib/locking/lock-provider.
+ *     the `ILockProvider` interface in @/server/locking/lock-provider.
  */
 export async function executeAtomicOperation(config: AtomicOperationConfig): Promise<Document> {
   return withStockLocks(config.lockKeys, async () => {
