@@ -5,7 +5,7 @@ import {
   failIdempotencyKey,
   IdempotencyConflictError,
   IdempotencyInProgressError,
-} from "@/lib/idempotency";
+} from "@/server/idempotency";
 import { InMemoryIdempotencyRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
 
 describe("Idempotency Service Integration Tests", () => {

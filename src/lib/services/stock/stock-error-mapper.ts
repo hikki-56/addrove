@@ -4,7 +4,7 @@ import { StockError } from "./stock-errors";
 import {
   IdempotencyConflictError,
   IdempotencyInProgressError,
-} from "@/lib/idempotency/idempotency.types";
+} from "@/server/idempotency/idempotency.types";
 
 export interface StockErrorResponseBody {
   success: false;

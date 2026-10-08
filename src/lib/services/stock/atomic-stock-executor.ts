@@ -1,5 +1,5 @@
 import { withStockLocks, formatStockLockKey } from '@/lib/locking';
-import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/lib/idempotency';
+import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/server/idempotency';
 import { executeWithJournal } from '@/lib/recovery';
 import { logAudit } from '@/server/audit';
 import type { IStockRepository } from '@/lib/repositories/interfaces';

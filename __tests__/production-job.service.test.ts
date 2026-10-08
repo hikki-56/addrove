@@ -49,7 +49,7 @@ jest.mock("@/server/google-sheets/client", () => {
 });
 
 // ---- Mock idempotency เป็น in-memory (replay คืน cached result) ----
-jest.mock("@/lib/idempotency", () => {
+jest.mock("@/server/idempotency", () => {
   const completed = new Map<string, unknown>();
   return {
     claimIdempotencyKey: jest.fn(async (_repo: unknown, key: string) =>
@@ -161,7 +161,7 @@ const clientMock = require("@/server/google-sheets/client") as {
   __resetSheets: () => void;
   __getSheets: () => Record<string, string[][]>;
 };
-const idemMock = require("@/lib/idempotency") as { __resetIdempotency: () => void };
+const idemMock = require("@/server/idempotency") as { __resetIdempotency: () => void };
 
 const ADMIN = { id: "usr-admin", name: "Admin ทดสอบ", role: "ADMIN" };
 const APPROVER = { id: "usr-approver", name: "ผู้ผลิต ทดสอบ", role: "APPROVER" };

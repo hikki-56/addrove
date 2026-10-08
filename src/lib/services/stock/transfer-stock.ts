@@ -5,7 +5,7 @@ import {
   completeIdempotencyKey,
   failIdempotencyKey,
   computePayloadHash,
-} from "@/lib/idempotency";
+} from "@/server/idempotency";
 import {
   CreateTransferSchema,
   SubmitTransferSchema,

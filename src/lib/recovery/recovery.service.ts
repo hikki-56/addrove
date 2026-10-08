@@ -5,7 +5,7 @@ import {
   ManualReviewRequiredError,
 } from "./operation-journal";
 import { getCompensator } from "./compensation";
-import { computePayloadHash } from "@/lib/idempotency/idempotency.service";
+import { computePayloadHash } from "@/server/idempotency/idempotency.service";
 
 export interface JournalExecutableStep<T = unknown> {
   name: string;

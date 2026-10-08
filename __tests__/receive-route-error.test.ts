@@ -30,7 +30,7 @@ jest.mock("@/lib/services/stock", () => {
 
 import { POST } from "@/app/api/movements/receive/route";
 import { StockValidationError } from "@/lib/services/stock/stock-errors";
-import { IdempotencyInProgressError } from "@/lib/idempotency";
+import { IdempotencyInProgressError } from "@/server/idempotency";
 
 function receiveRequest(body: Record<string, unknown>) {
   return new Request("http://localhost/api/movements/receive", {

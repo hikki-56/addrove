@@ -23,7 +23,7 @@ import {
   EXPRESS_STATUS_TEXT,
   type ExpressSyncStatusValue,
 } from "@/lib/express-status-utils";
-import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from "@/lib/idempotency";
+import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from "@/server/idempotency";
 
 export const maxDuration = 60;
 
