@@ -1,5 +1,5 @@
 // ============================================================
-// Unit Tests — Dashboard aggregation (src/lib/dashboard/dashboard-aggregation.ts)
+// Unit Tests — Dashboard aggregation (src/server/dashboard/dashboard-aggregation.ts)
 // สูตร KPI: รับเข้าวันนี้ / เบิกวันนี้
 // - แยกเอกสารใบผลิตเก่า (PRD-) ออกจากการรับเข้า/เบิกปกติ
 // - ป้องกันการนับเอกสารและ movement ซ้ำ
