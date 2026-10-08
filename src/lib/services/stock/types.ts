@@ -1,5 +1,5 @@
-export * from "./interfaces/index";
-
+// Business operation input types used by the Service Layer (inventory.service.ts).
+// Moved verbatim from src/lib/repositories/interfaces.ts.
 import type {
   ReceiveDocumentInput,
   IssueDocumentInput,
