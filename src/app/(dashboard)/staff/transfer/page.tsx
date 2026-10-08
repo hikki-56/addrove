@@ -2,9 +2,9 @@
 
 import { useSearchParams } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
-import { useTransferMovement } from "../../movements/transfer/_hooks/use-transfer-movement";
-import TransferNotificationList from "../../movements/transfer/_components/TransferNotificationList";
-import TransferStaffWorkflowModal from "../../movements/transfer/_components/TransferStaffWorkflowModal";
+import { useTransferMovement } from "@/features/transfer/hooks/use-transfer-movement";
+import TransferNotificationList from "@/features/transfer/components/TransferNotificationList";
+import TransferStaffWorkflowModal from "@/features/transfer/components/TransferStaffWorkflowModal";
 
 export default function StaffTransferPage() {
   const searchParams = useSearchParams();
