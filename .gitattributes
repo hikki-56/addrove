@@ -1,0 +1,31 @@
+# Normalize line endings: text files are stored with LF in the repo and
+# checked out with LF on every OS (the index is already 100% LF, so adding
+# this file does not require a renormalize commit).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF in the working tree
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# SVG is text (diffable)
+*.svg text
+
+# Binary assets — never touch line endings, no textual diff
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.avif  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.pdf   binary
+*.xlsx  binary
+*.xls   binary
+*.docx  binary
+*.zip   binary
