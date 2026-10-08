@@ -11,6 +11,7 @@ import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
 import { useTabAuth } from "@/context/TabAuthContext";
 import type { ReceivingPlanView } from "./use-receiving-plans";
+import { normalizeWhId } from "@/features/receive/utils";
 
 export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v2";
 // draft รุ่นก่อนหน้า — อ่านยกมาเป็น v2 แล้วลบทิ้ง จะได้ไม่เสียรายการค้างอยู่ตอนอัปเดตระบบ
@@ -89,10 +90,6 @@ function remapIndexState<T>(prev: Record<number, T>, map: (i: number) => number 
 
 function shortName(name: string, max = 32): string {
   return name.length > max ? `${name.slice(0, max).trimEnd()}…` : name;
-}
-
-function normalizeWhId(v: string): string {
-  return (v || "").trim().toLowerCase().replace(/^wh-0*(\d+)$/, "wh-$1");
 }
 
 // รับสินค้า: ต้องตรงกันทุกหลัก (บาร์โค้ด/SKU/product id) — ห้ามจับคู่บางส่วน
