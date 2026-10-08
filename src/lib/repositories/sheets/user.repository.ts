@@ -8,13 +8,7 @@ import {
 } from "@/lib/google-sheets/client";
 import type { IUserRepository } from "../interfaces";
 import type { User, UserRole } from "@/types/models";
-
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+import { generateUuid } from "@/lib/id";
 
 // Matches exact columns in Google Sheets (UsersTable / USERS):
 // A (0): user_id

@@ -10,13 +10,7 @@ import type { ILocationRepository } from "../interfaces";
 import type { Location } from "@/types/models";
 import type { CreateLocationInput, UpdateLocationInput } from "@/types/api";
 import { normalizeWarehouseId } from "@/lib/warehouse-utils";
-
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+import { generateUuid } from "@/lib/id";
 
 // Columns: location_id (รหัสอ้างอิงตำแหน่ง), warehouse_id (รหัสอ้างอิงโกดัง), location_code (รหัสตำแหน่ง), location_name (ชื่อตำแหน่ง), description (รายละเอียด), active (สถานะ), created_at (วันที่สร้าง), updated_at (วันที่แก้ไข)
 function rowToLocation(row: string[]): Location {

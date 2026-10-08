@@ -9,13 +9,7 @@ import {
 import type { IWarehouseRepository } from "../interfaces";
 import type { Warehouse } from "@/types/models";
 import type { CreateWarehouseInput } from "@/types/api";
-
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+import { generateUuid } from "@/lib/id";
 
 // Columns: warehouse_id, warehouse_code, warehouse_name, address, active, created_at, updated_at
 function rowToWarehouse(row: string[]): Warehouse {

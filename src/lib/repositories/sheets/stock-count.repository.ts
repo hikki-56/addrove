@@ -7,13 +7,7 @@ import {
 import type { IStockCountRepository } from "../interfaces";
 import type { StockCount, StockCountStatus } from "@/types/models";
 import type { CreateStockCountInput } from "@/types/api";
-
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+import { generateUuid } from "@/lib/id";
 
 // Columns: count_id, count_no, product_id, warehouse_id, location_id, system_qty, counted_qty, difference, status, counted_by, counted_at, approved_by, approved_at
 function rowToCount(row: string[]): StockCount {

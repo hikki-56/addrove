@@ -7,6 +7,7 @@ import {
 import type { IStockMovementRepository } from "../interfaces";
 import type { StockMovement, MovementWithDetails, MovementType } from "@/types/models";
 import type { MovementFilterInput } from "@/types/api";
+import { generateUuid } from "@/lib/id";
 
 function matchSku(sku1?: string, sku2?: string): boolean {
   if (!sku1 || !sku2) return false;
@@ -39,13 +40,6 @@ function cleanSkuCode(sku?: string): string {
     .toLowerCase()
     .replace(/^prod-/, "")
     .replace(/[\s\-_]/g, "");
-}
-
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 // Columns: movement_id, document_id, product_id, warehouse_id, location_id, qty_change, movement_type, idempotency_key, created_by, created_at
