@@ -5,7 +5,7 @@ import {
   SHEETS,
   parseBoolean,
   formatBoolean,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IUserRepository } from "../interfaces";
 import type { User, UserRole } from "@/types/models";
 import { generateUuid } from "@/lib/id";

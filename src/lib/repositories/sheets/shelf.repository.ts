@@ -5,7 +5,7 @@ import {
   SHEETS,
   parseBoolean,
   formatBoolean,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IShelfRepository } from "../interfaces";
 import type { Shelf } from "@/types/models";
 import type { CreateShelfInput, UpdateShelfInput } from "@/types/api";

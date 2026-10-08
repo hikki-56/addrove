@@ -9,7 +9,7 @@ import {
   deleteRows,
   readSheet,
   clearSheetCache,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import { matchSku, cleanLocCode, cleanSkuCode } from "@/lib/sku";
 
 // syncAdd: จำนวนครั้งที่พยายามเขียน+ตรวจยืนยัน, ระยะรอก่อนอ่านกลับตรวจ, และ backoff ต่อรอบ

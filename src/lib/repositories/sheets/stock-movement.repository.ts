@@ -3,7 +3,7 @@ import {
   batchAppendRows,
   SHEETS,
   getWarehouseSheetName,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IStockMovementRepository } from "../interfaces";
 import type { StockMovement, MovementWithDetails, MovementType } from "@/types/models";
 import type { MovementFilterInput } from "@/types/api";

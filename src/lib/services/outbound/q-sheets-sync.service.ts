@@ -5,7 +5,7 @@ import {
   updateRow,
   batchUpdateRows,
   ensureSheetTabExists,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { OutboundBillItem, BillQAssignment } from "@/types/models";
 
 export const Q_ITEMS_SHEET_HEADERS = [

@@ -3,7 +3,7 @@ import {
   SHEETS,
   getWarehouseSheetName,
   getSheetReadError,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import { SheetsProductRepository } from "./product.repository";
 import { cleanSkuCode } from "@/lib/services/stock/shared";
 import { aggregateDashboardOperations } from "@/server/dashboard/dashboard-aggregation";

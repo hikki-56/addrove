@@ -5,7 +5,7 @@ import {
   SHEETS,
   parseBoolean,
   formatBoolean,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { ILocationRepository } from "../interfaces";
 import type { Location } from "@/types/models";
 import type { CreateLocationInput, UpdateLocationInput } from "@/types/api";

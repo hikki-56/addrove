@@ -5,7 +5,7 @@ import {
   SHEETS,
   parseBoolean,
   formatBoolean,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IWarehouseRepository } from "../interfaces";
 import type { Warehouse } from "@/types/models";
 import type { CreateWarehouseInput } from "@/types/api";

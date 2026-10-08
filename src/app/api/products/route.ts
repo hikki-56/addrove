@@ -12,7 +12,7 @@ import {
   zodErrorResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
-import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { ZodError } from "zod";
 
 export async function GET(req: NextRequest) {

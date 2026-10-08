@@ -1,4 +1,4 @@
-import { readSheet, SHEETS } from "../src/lib/google-sheets/client";
+import { readSheet, SHEETS } from "../src/server/google-sheets/client";
 import { parseBillNote } from "../src/lib/services/outbound/outbound-documents";
 import { isBillReserving } from "../src/lib/services/outbound/outbound-state-machine";
 

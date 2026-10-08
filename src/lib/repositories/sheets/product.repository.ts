@@ -3,7 +3,7 @@ import {
   appendRows,
   updateRow,
   SHEETS,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IProductRepository } from "../interfaces";
 import type { Product } from "@/types/models";
 import type { CreateProductInput, UpdateProductInput } from "@/types/api";

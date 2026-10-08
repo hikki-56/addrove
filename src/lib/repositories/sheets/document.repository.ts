@@ -4,7 +4,7 @@ import {
   updateRow,
   SHEETS,
   clearSheetCache,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/lib/keyed-lock";
 import type { IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";

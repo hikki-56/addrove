@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { parseTransferMetadata, isUsableLocationCode } from "@/lib/transfer-notification-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";

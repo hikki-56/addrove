@@ -2,7 +2,7 @@ import {
   IAuditRepository,
   AuditLogEntry,
 } from "../interfaces/audit.repository.interface";
-import { readSheet, appendRows } from "@/lib/google-sheets/client";
+import { readSheet, appendRows } from "@/server/google-sheets/client";
 
 const SHEET_NAME = "AuditLogs";
 

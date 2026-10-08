@@ -3,7 +3,7 @@
 // จากชีตรายโกดัง 6 แท็บ (สำนักงานใหญ่ + โกดัง1-5)
 // ใช้ mock ของ Google Sheets client (ไม่เรียกชีตจริง)
 // ============================================================
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   type Rows = string[][];
   const state: { tabs: Record<string, Rows>; errors: Record<string, string> } = {
     tabs: {},
@@ -69,7 +69,7 @@ import {
   DashboardDataError,
 } from "@/lib/repositories/sheets/dashboard.repository";
 
-const sheetMock = jest.requireMock("@/lib/google-sheets/client") as {
+const sheetMock = jest.requireMock("@/server/google-sheets/client") as {
   __setTab: (name: string, rows: string[][]) => void;
   __setReadError: (name: string, message: string) => void;
   __reset: () => void;

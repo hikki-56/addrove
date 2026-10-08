@@ -14,7 +14,7 @@ import {
   serverErrorResponse,
 } from "@/lib/api-response";
 import { setDocumentStatus } from "@/lib/document-status-store";
-import { appendRows, SHEETS } from "@/lib/google-sheets/client";
+import { appendRows, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { expressStatusMap } from "@/app/api/express-import/status/route";
 import { cleanExpressCode, expressItemKey, todayBangkokIsoDate } from "@/lib/express-status-utils";

@@ -8,7 +8,7 @@
 import type { Product } from "@/types/models";
 
 // ---- Mock Google Sheets client เป็น store ในหน่วยความจำ ----
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   let sheets: Record<string, string[][]> = {};
   const clone = (rows: string[][]) => rows.map((r) => [...r]);
   return {
@@ -157,7 +157,7 @@ import {
 } from "@/lib/production/production-job.service";
 import type { CreateProductionJobInput } from "@/lib/production/production-schemas";
 
-const clientMock = require("@/lib/google-sheets/client") as {
+const clientMock = require("@/server/google-sheets/client") as {
   __resetSheets: () => void;
   __getSheets: () => Record<string, string[][]>;
 };

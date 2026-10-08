@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateEnvironment } from "@/lib/server-secrets";
-import { readSheet, SHEETS } from "@/lib/google-sheets/client";
+import { readSheet, SHEETS } from "@/server/google-sheets/client";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -27,7 +27,7 @@ export async function GET() {
     try {
       // Dynamic import to avoid bundling crypto in client code
       const { isLegacyAppsScriptMode, sendSignedAppsScriptRequest } = await import(
-        "@/lib/google-sheets/script-signer"
+        "@/server/google-sheets/script-signer"
       );
       legacyAppsScriptMode = isLegacyAppsScriptMode();
       const response = await sendSignedAppsScriptRequest(

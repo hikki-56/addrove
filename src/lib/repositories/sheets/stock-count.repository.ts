@@ -3,7 +3,7 @@ import {
   appendRows,
   updateRow,
   SHEETS,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IStockCountRepository } from "../interfaces";
 import type { StockCount, StockCountStatus } from "@/types/models";
 import type { CreateStockCountInput } from "@/types/api";

@@ -11,7 +11,7 @@ import {
   conflictResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
-import { appendRows, SHEETS } from "@/lib/google-sheets/client";
+import { appendRows, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { todayBangkokIsoDate } from "@/lib/express-status-utils";
 import { getShipmentDetail } from "@/lib/services/outbound/shipment.service";

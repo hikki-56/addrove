@@ -9,7 +9,7 @@ import {
   SHEETS,
   getWarehouseSheetName,
   clearSheetCache,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import { logAudit } from "@/server/audit";
 import type { StockMovement } from "@/types/models";
 

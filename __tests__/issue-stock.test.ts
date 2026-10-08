@@ -1,4 +1,4 @@
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   let sheets: Record<string, string[][]> = {};
   const clone = (rows: string[][]) => rows.map((r) => [...r]);
 

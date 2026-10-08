@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
 import { getRepository } from "@/lib/repositories";
-import { readSheet, updateRow, SHEETS } from "@/lib/google-sheets/client";
+import { readSheet, updateRow, SHEETS } from "@/server/google-sheets/client";
 import {
   successResponse,
   unauthorizedResponse,

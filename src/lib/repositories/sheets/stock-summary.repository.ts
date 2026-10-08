@@ -4,7 +4,7 @@ import {
   batchUpdateRows,
   deleteRows,
   SHEETS,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import type { IStockSummaryRepository } from "../interfaces";
 import type { StockSummary } from "@/types/models";
 import { withKeyedLock } from "@/lib/keyed-lock";

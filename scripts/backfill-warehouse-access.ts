@@ -1,4 +1,4 @@
-import { readSheet, updateRow, SHEETS } from "../src/lib/google-sheets/client";
+import { readSheet, updateRow, SHEETS } from "../src/server/google-sheets/client";
 
 /**
  * Backfill the warehouse_access column (M) in the USERS sheet so every active user

@@ -31,7 +31,7 @@ export interface AtomicOperationConfig {
  * process / serverless instance. Two serverless instances operating on the
  * same stock location concurrently (with different idempotency keys) can
  * still race. The unused import of `executeAtomicStockOperation`
- * (formerly @/lib/google-sheets/atomic-operations, now deleted) was removed because the Apps
+ * (formerly @/server/google-sheets/atomic-operations, now deleted) was removed because the Apps
  * Script side currently exposes no standalone acquire/release lock API —
  * its LockService lock lives only inside a single `atomicStockOperation`
  * request and cannot wrap this local critical section.

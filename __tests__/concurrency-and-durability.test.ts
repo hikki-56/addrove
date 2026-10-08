@@ -1,4 +1,4 @@
-jest.mock("@/lib/google-sheets/client", () => ({
+jest.mock("@/server/google-sheets/client", () => ({
   SHEETS: {
     DOCUMENTS: "DOCUMENTS",
     STOCK_MOVEMENTS: "STOCK_MOVEMENTS",

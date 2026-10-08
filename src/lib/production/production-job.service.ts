@@ -17,7 +17,7 @@ import {
   clearSheetCache,
   ensureSheetTabExists,
   SHEETS,
-} from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/lib/keyed-lock";
 import { withStockLocks, formatStockLockKey } from "@/lib/locking";
 import { executeAtomicOperation } from "@/lib/services/stock/atomic-stock-executor";

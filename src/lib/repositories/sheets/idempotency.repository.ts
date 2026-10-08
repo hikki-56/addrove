@@ -2,7 +2,7 @@ import {
   IIdempotencyRepository,
   IdempotencyRecord,
 } from "../interfaces/idempotency.repository.interface";
-import { readSheet, appendRows, updateRow } from "@/lib/google-sheets/client";
+import { readSheet, appendRows, updateRow } from "@/server/google-sheets/client";
 
 const SHEET_NAME = "Idempotency";
 
