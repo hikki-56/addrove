@@ -5,34 +5,7 @@ export interface StockUseCaseDeps {
   repo: IStockRepository;
 }
 
-// Helper: Normalize and compare SKUs (exact SKU match, e.g. AD01 !== AD-01)
-export function matchSku(sku1?: string, sku2?: string): boolean {
-  if (!sku1 || !sku2) return false;
-  const s1 = sku1.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  const s2 = sku2.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  return s1 === s2;
-}
-
-export function cleanLocCode(loc?: string): string {
-  if (!loc) return "";
-  return loc
-    .trim()
-    .toLowerCase()
-    .replace(/^loc-/, "")
-    .replace(/^wh-0?[0-9]-?/, "")
-    .replace(/^sh-/, "")
-    .replace(/^slf-/, "")
-    .replace(/[\s\-_]/g, "");
-}
-
-export function cleanSkuCode(sku?: string): string {
-  if (!sku) return "";
-  return sku
-    .trim()
-    .toLowerCase()
-    .replace(/^prod-/, "")
-    .replace(/[\s\-_]/g, "");
-}
+export { matchSku, cleanLocCode, cleanSkuCode } from "@/lib/sku";
 
 export async function findWarehouse(repo: IStockRepository, warehouseId: string) {
   let warehouse = await repo.warehouses.findById(warehouseId);

@@ -10,34 +10,7 @@ import {
   readSheet,
   clearSheetCache,
 } from "@/lib/google-sheets/client";
-
-function matchSku(sku1?: string, sku2?: string): boolean {
-  if (!sku1 || !sku2) return false;
-  const s1 = sku1.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  const s2 = sku2.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  return s1 === s2;
-}
-
-function cleanLocCode(loc?: string): string {
-  if (!loc) return "";
-  return loc
-    .trim()
-    .toLowerCase()
-    .replace(/^loc-/, "")
-    .replace(/^wh-0?[0-9]-?/, "")
-    .replace(/^sh-/, "")
-    .replace(/^slf-/, "")
-    .replace(/[\s\-_]/g, "");
-}
-
-function cleanSkuCode(sku?: string): string {
-  if (!sku) return "";
-  return sku
-    .trim()
-    .toLowerCase()
-    .replace(/^prod-/, "")
-    .replace(/[\s\-_]/g, "");
-}
+import { matchSku, cleanLocCode, cleanSkuCode } from "@/lib/sku";
 
 // syncAdd: จำนวนครั้งที่พยายามเขียน+ตรวจยืนยัน, ระยะรอก่อนอ่านกลับตรวจ, และ backoff ต่อรอบ
 const SYNC_ADD_MAX_ATTEMPTS = 3;

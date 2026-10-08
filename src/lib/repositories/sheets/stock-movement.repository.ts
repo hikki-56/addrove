@@ -8,38 +8,11 @@ import type { IStockMovementRepository } from "../interfaces";
 import type { StockMovement, MovementWithDetails, MovementType } from "@/types/models";
 import type { MovementFilterInput } from "@/types/api";
 import { generateUuid } from "@/lib/id";
-
-function matchSku(sku1?: string, sku2?: string): boolean {
-  if (!sku1 || !sku2) return false;
-  const s1 = sku1.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  const s2 = sku2.trim().toLowerCase().replace(/^prod-/, "").replace(/[\s\-_]/g, "");
-  return s1 === s2;
-}
+import { matchSku, cleanLocCode, cleanSkuCode } from "@/lib/sku";
 
 /** Normalize warehouse ids so "wh-01" and "wh-1" compare equal without fuzzy endsWith */
 function normalizeWhKey(whId?: string): string {
   return (whId || "").trim().toLowerCase().replace(/^wh-0*(\d+)$/, "wh-$1");
-}
-
-function cleanLocCode(loc?: string): string {
-  if (!loc) return "";
-  return loc
-    .trim()
-    .toLowerCase()
-    .replace(/^loc-/, "")
-    .replace(/^wh-0?[0-9]-?/, "")
-    .replace(/^sh-/, "")
-    .replace(/^slf-/, "")
-    .replace(/[\s\-_]/g, "");
-}
-
-function cleanSkuCode(sku?: string): string {
-  if (!sku) return "";
-  return sku
-    .trim()
-    .toLowerCase()
-    .replace(/^prod-/, "")
-    .replace(/[\s\-_]/g, "");
 }
 
 // Columns: movement_id, document_id, product_id, warehouse_id, location_id, qty_change, movement_type, idempotency_key, created_by, created_at
