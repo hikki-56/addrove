@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
@@ -10,16 +10,16 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   getShipmentDetail,
   scanBoxIntoShipment,
   unloadBox,
   closeShipment,
   cancelShipment,
-} from "@/lib/services/outbound/shipment.service";
-import { ShipmentActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/shipment.service";
+import { ShipmentActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { readSheet, updateRow, SHEETS } from "../src/lib/google-sheets/client";
+import { readSheet, updateRow, SHEETS } from "../src/server/google-sheets/client";
 
 /**
  * Script to detect and migrate plaintext PINs in Google Sheets (USERS tab)

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
@@ -10,19 +10,19 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   startPick,
   confirmPickItem,
   reportProblem,
   completePick,
-} from "@/lib/services/outbound/picking.service";
-import { PickActionSchema } from "@/lib/services/outbound/outbound-schemas";
+} from "@/server/services/outbound/picking.service";
+import { PickActionSchema } from "@/server/services/outbound/outbound-schemas";
 import {
   OutboundStateError,
   BILL_STATUS_LABELS_TH,
-} from "@/lib/services/outbound/outbound-state-machine";
-import { OutboundReservationError } from "@/lib/services/outbound/stock-reservation.service";
+} from "@/server/services/outbound/outbound-state-machine";
+import { OutboundReservationError } from "@/server/services/outbound/stock-reservation.service";
 
 export const maxDuration = 60;
 

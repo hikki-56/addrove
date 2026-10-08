@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { getRepository } from "@/server/repositories";
 import { CreateLocationSchema } from "@/types/api";
 import {
   successResponse,
@@ -10,7 +10,7 @@ import {
   zodErrorResponse,
   serverErrorResponse,
   hasWarehouseAccess,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ZodError } from "zod";
 
 export async function GET(req: NextRequest) {

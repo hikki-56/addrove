@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
-import { outboundApi, type BusyQItem } from "@/lib/outbound-client";
+import { outboundApi, type BusyQItem } from "@/client/outbound-client";
 
 const Q_BOXES = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"];
 

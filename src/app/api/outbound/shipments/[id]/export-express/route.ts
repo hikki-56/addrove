@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
@@ -10,17 +10,17 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
-import { appendRows, SHEETS } from "@/lib/google-sheets/client";
+} from "@/server/api-response";
+import { appendRows, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { todayBangkokIsoDate } from "@/lib/express-status-utils";
-import { getShipmentDetail } from "@/lib/services/outbound/shipment.service";
+import { getShipmentDetail } from "@/server/services/outbound/shipment.service";
 import {
   mutateShipmentNote,
   mutateBillNote,
   listBillDocuments,
   parseBillNote,
-} from "@/lib/services/outbound/outbound-documents";
+} from "@/server/services/outbound/outbound-documents";
 
 export const maxDuration = 60;
 

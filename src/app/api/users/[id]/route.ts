@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { UpdateUserSchema } from "@/types/api";
 import bcrypt from "bcryptjs";
 import {
@@ -10,9 +10,9 @@ import {
   conflictResponse,
   zodErrorResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ZodError } from "zod";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 
 export async function GET(
   req: NextRequest,

@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
-import { completeTransfer, mapStockErrorToResponse, StockNotFoundError } from "@/lib/services/stock";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
+import { completeTransfer, mapStockErrorToResponse, StockNotFoundError } from "@/server/services/stock";
 import {
   successResponse,
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export const maxDuration = 60;
 

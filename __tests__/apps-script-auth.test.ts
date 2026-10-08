@@ -14,8 +14,8 @@ import {
   sendSignedAppsScriptRequest,
   isLegacyAppsScriptMode,
   type SignedEnvelope,
-} from "@/lib/google-sheets/script-signer";
-import { appendRows } from "@/lib/google-sheets/client";
+} from "@/server/google-sheets/script-signer";
+import { appendRows } from "@/server/google-sheets/client";
 import { createHmac, randomUUID } from "crypto";
 
 describe("Apps Script Authentication", () => {

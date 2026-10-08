@@ -9,7 +9,7 @@ import {
   billStatusToDocumentStatus,
   isBillReserving,
   OutboundStateError,
-} from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/outbound-state-machine";
 
 describe("outbound state machine — บิล", () => {
   it("เดินตามลำดับปกติได้ทุกขั้น IMPORTED → SHIPPED", () => {

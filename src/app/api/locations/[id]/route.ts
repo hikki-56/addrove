@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { getRepository } from "@/server/repositories";
 import { UpdateLocationSchema } from "@/types/api";
 import {
   successResponse,
@@ -9,7 +9,7 @@ import {
   forbiddenResponse,
   zodErrorResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ZodError } from "zod";
 
 export async function PATCH(

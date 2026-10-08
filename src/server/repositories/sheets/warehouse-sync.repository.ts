@@ -1,0 +1,450 @@
+import {
+  IWarehouseSyncRepository,
+  ProductSyncInfo,
+} from "../interfaces/warehouse-sync.repository.interface";
+import {
+  getWarehouseSheetName,
+  appendRows,
+  updateRow,
+  deleteRows,
+  readSheet,
+  clearSheetCache,
+} from "@/server/google-sheets/client";
+import { matchSku, cleanLocCode, cleanSkuCode } from "@/lib/sku";
+
+// syncAdd: จำนวนครั้งที่พยายามเขียน+ตรวจยืนยัน, ระยะรอก่อนอ่านกลับตรวจ, และ backoff ต่อรอบ
+const SYNC_ADD_MAX_ATTEMPTS = 3;
+const SYNC_ADD_VERIFY_DELAY_MS = 400;
+const SYNC_ADD_RETRY_DELAY_MS = 600;
+
+export class SheetsWarehouseSyncRepository implements IWarehouseSyncRepository {
+  async syncDeduct(
+    warehouseId: string,
+    productId: string,
+    qty: number,
+    locationId?: string
+  ): Promise<ProductSyncInfo | null> {
+    try {
+      const sheetName = getWarehouseSheetName(warehouseId);
+      clearSheetCache(sheetName);
+      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+      if (!rows || rows.length === 0) {
+        console.warn(`[SheetsWarehouseSync] Sheet ${sheetName} returned empty rows for ${productId}`);
+        return null;
+      }
+
+      const normTargetLoc = cleanLocCode(locationId);
+      const normTargetSku = cleanSkuCode(productId);
+
+      const matchingRowIndices: number[] = [];
+      let primaryRow: string[] = [];
+      let primaryRowIndex = -1;
+      let totalQty = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0] || !r[0].trim()) continue;
+
+        const rSku = cleanSkuCode(r[0]);
+        const rBarcode = cleanSkuCode(r[1]);
+
+        const isSkuMatch =
+          rSku === normTargetSku ||
+          rBarcode === normTargetSku ||
+          matchSku(r[0], productId) ||
+          matchSku(r[1], productId);
+
+        if (isSkuMatch) {
+          const rowLoc = cleanLocCode(r[6] || "");
+          const isLocMatch =
+            !normTargetLoc ||
+            !rowLoc ||
+            rowLoc === normTargetLoc ||
+            rowLoc.includes(normTargetLoc) ||
+            normTargetLoc.includes(rowLoc);
+
+          if (isLocMatch) {
+            const rawQty = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
+            const parsedQty = isNaN(rawQty) ? 0 : rawQty;
+
+            matchingRowIndices.push(i);
+            totalQty += parsedQty;
+
+            if (primaryRowIndex === -1 && parsedQty > 0) {
+              primaryRowIndex = i;
+              primaryRow = [...r];
+            }
+          }
+        }
+      }
+
+      // Fallback: If specific location didn't match, search by SKU regardless of location
+      if (matchingRowIndices.length === 0 && normTargetLoc) {
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[0] || !r[0].trim()) continue;
+
+          const rSku = cleanSkuCode(r[0]);
+          const rBarcode = cleanSkuCode(r[1]);
+
+          const isSkuMatch =
+            rSku === normTargetSku ||
+            rBarcode === normTargetSku ||
+            matchSku(r[0], productId) ||
+            matchSku(r[1], productId);
+
+          if (isSkuMatch) {
+            const rawQty = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
+            const parsedQty = isNaN(rawQty) ? 0 : rawQty;
+
+            matchingRowIndices.push(i);
+            totalQty += parsedQty;
+
+            if (primaryRowIndex === -1 && parsedQty > 0) {
+              primaryRowIndex = i;
+              primaryRow = [...r];
+            }
+          }
+        }
+      }
+
+      if (matchingRowIndices.length === 0) {
+        return null;
+      }
+
+      if (primaryRowIndex === -1) {
+        primaryRowIndex = matchingRowIndices[0];
+        primaryRow = [...rows[primaryRowIndex]];
+      }
+
+      const productInfo: ProductSyncInfo = {
+        sku: primaryRow[0]?.trim() || productId,
+        barcode: primaryRow[1]?.trim() || primaryRow[0]?.trim() || productId,
+        product_name: primaryRow[2]?.trim() || `สินค้า ${productId}`,
+        category: primaryRow[3]?.trim() || "ทั่วไป",
+        base_unit: primaryRow[4]?.trim() || "ชิ้น",
+        supplier: primaryRow[7]?.trim() || primaryRow[6]?.trim() || "ตัดสต็อก",
+      };
+
+      const remainingQty = totalQty - qty;
+
+      if (remainingQty <= 0) {
+        // Zero-out or blank the primary row first so client immediately sees 0
+        const rowNumber = primaryRowIndex + 2;
+        while (primaryRow.length < 9) primaryRow.push("");
+        primaryRow[5] = "0";
+        primaryRow[8] = new Date().toISOString();
+        await updateRow(sheetName, rowNumber, primaryRow).catch(() => {});
+
+        try {
+          await deleteRows(
+            sheetName,
+            matchingRowIndices.map((index) => index + 1)
+          );
+        } catch (delErr) {
+          console.warn(`[SheetsWarehouseSync] deleteRows in ${sheetName} fallback to zero qty:`, delErr);
+        }
+      } else {
+        const rowNumber = primaryRowIndex + 2;
+        while (primaryRow.length < 9) primaryRow.push("");
+        primaryRow[5] = String(remainingQty);
+        primaryRow[8] = new Date().toISOString();
+
+        await updateRow(sheetName, rowNumber, primaryRow).catch(() => {});
+
+        const secondaryIndices = matchingRowIndices.filter((idx) => idx !== primaryRowIndex);
+        if (secondaryIndices.length > 0) {
+          for (const sIdx of secondaryIndices) {
+            const sRow = rows[sIdx] ? [...rows[sIdx]] : [];
+            while (sRow.length < 9) sRow.push("");
+            sRow[5] = "0";
+            await updateRow(sheetName, sIdx + 2, sRow).catch(() => {});
+          }
+          try {
+            await deleteRows(
+              sheetName,
+              secondaryIndices.map((index) => index + 1)
+            );
+          } catch {}
+        }
+      }
+
+      return productInfo;
+    } catch (e) {
+      console.error("[SheetsWarehouseSync] syncDeduct error:", e);
+      return null;
+    }
+  }
+
+  /**
+   * เพิ่มสต็อกลงแท็บโกดังแบบ "เขียนแล้วต้องตรวจยืนยัน" — ทุกรอบหลังเขียนจะอ่านชีต
+   * กลับมาเทียบยอด ถ้าไม่ตรงจะ retry สูงสุด SYNC_ADD_MAX_ATTEMPTS ครั้ง
+   * กลไกกันบวกยอดซ้ำตอน retry: จำยอดเป้าหมายของรอบก่อน (lastTargetQty) ไว้
+   * ถ้าอ่านกลับมาเจอยอดตรงเป้าหมายเดิม = รอบก่อนเขียนสำเร็จแล้ว (แค้ response หาย)
+   * ถือว่าจบ ห้ามบวกซ้ำ และเมื่อหมดทุกรอบยังไม่สำเร็จจะ throw เพื่อให้ caller
+   * เห็นว่าข้อมูลไม่ได้เข้าจริง (เดิม catch กลืน error เงียบ ๆ ทำให้แถวหายโดยไม่มีใครรู้)
+   */
+  async syncAdd(
+    warehouseId: string,
+    product: ProductSyncInfo,
+    qty: number,
+    locationId?: string
+  ): Promise<void> {
+    const sheetName = getWarehouseSheetName(warehouseId);
+    const targetSku = cleanSkuCode(product.sku);
+    const targetBarcode = cleanSkuCode(product.barcode);
+    const targetLoc = cleanLocCode(locationId);
+    const qtyOf = (r: string[]): number =>
+      parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim()) || 0;
+
+    const locate = (
+      rows: string[][] | null | undefined
+    ): { foundIndex: number; firstEmptyIndex: number; existingRow: string[] } => {
+      let foundIndex = -1;
+      let firstEmptyIndex = -1;
+      let existingRow: string[] = [];
+      if (!rows || rows.length === 0) return { foundIndex, firstEmptyIndex, existingRow };
+
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0] || !r[0].trim()) {
+          if (firstEmptyIndex === -1) firstEmptyIndex = i;
+          continue;
+        }
+
+        const rSku = cleanSkuCode(r[0]);
+        const rBarcode = cleanSkuCode(r[1]);
+
+        const isSkuMatch =
+          (targetSku && rSku === targetSku) ||
+          (targetBarcode && rBarcode === targetBarcode) ||
+          matchSku(r[0], product.sku) ||
+          matchSku(r[1], product.barcode);
+
+        if (isSkuMatch) {
+          const rLoc = cleanLocCode(r[6] || "");
+          if (!targetLoc || !rLoc || rLoc === targetLoc) {
+            foundIndex = i;
+            existingRow = [...r];
+            break;
+          }
+        }
+      }
+      return { foundIndex, firstEmptyIndex, existingRow };
+    };
+
+    let lastTargetQty: number | null = null;
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= SYNC_ADD_MAX_ATTEMPTS; attempt++) {
+      try {
+        clearSheetCache(sheetName);
+        const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+        const { foundIndex, firstEmptyIndex, existingRow } = locate(rows);
+
+        if (foundIndex !== -1 && existingRow.length > 0) {
+          const currentQty = qtyOf(existingRow);
+          if (lastTargetQty !== null && Math.abs(currentQty - lastTargetQty) < 0.001) {
+            return; // รอบก่อนเขียนสำเร็จแล้ว แค้อ่านกลับไม่ทัน/คำตอบหาย — ห้ามบวกซ้ำ
+          }
+
+          const newQty = currentQty + qty;
+          lastTargetQty = newQty;
+
+          const rowNumber = foundIndex + 2;
+          while (existingRow.length < 9) existingRow.push("");
+          existingRow[5] = String(newQty);
+          if (locationId && locationId.trim()) {
+            existingRow[6] = locationId.replace(/^loc-/, "").trim();
+          }
+          existingRow[8] = new Date().toISOString();
+
+          await updateRow(sheetName, rowNumber, existingRow);
+        } else {
+          lastTargetQty = qty;
+          const newRow = [
+            product.sku,
+            product.barcode && product.barcode !== product.sku ? product.barcode : (product.barcode || ""),
+            product.product_name,
+            product.category || "ทั่วไป",
+            product.base_unit || "ชิ้น",
+            String(qty),
+            locationId?.replace(/^loc-/, "") || "",
+            product.supplier || "เพิ่มสต็อก",
+            new Date().toISOString(),
+          ];
+
+          if (firstEmptyIndex !== -1) {
+            await updateRow(sheetName, firstEmptyIndex + 2, newRow);
+          } else {
+            await appendRows(sheetName, [newRow]);
+          }
+        }
+
+        // อ่านชีตกลับมาตรวจว่าเขียนลงจริง — กัน "เขียนสำเร็จลอย ๆ" ที่เคยทำให้แถวหาย
+        await new Promise((resolve) => setTimeout(resolve, SYNC_ADD_VERIFY_DELAY_MS));
+        clearSheetCache(sheetName);
+        const verifyRows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+        const verified = locate(verifyRows);
+        if (verified.foundIndex !== -1 && Math.abs(qtyOf(verified.existingRow) - (lastTargetQty ?? 0)) < 0.001) {
+          return;
+        }
+        console.warn(
+          `[SheetsWarehouseSync] syncAdd verify mismatch (attempt ${attempt}/${SYNC_ADD_MAX_ATTEMPTS}) ` +
+            `${product.sku}: expect qty=${lastTargetQty}, sheet has ` +
+            `${verified.foundIndex !== -1 ? qtyOf(verified.existingRow) : "no row"}`
+        );
+      } catch (e) {
+        lastError = e;
+        console.error(
+          `[SheetsWarehouseSync] syncAdd attempt ${attempt}/${SYNC_ADD_MAX_ATTEMPTS} error (${product.sku} +${qty}):`,
+          e
+        );
+      }
+      if (attempt < SYNC_ADD_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, SYNC_ADD_RETRY_DELAY_MS * attempt));
+      }
+    }
+
+    throw new Error(
+      `ซิงก์สต็อก ${product.sku} (+${qty}) ลงแท็บ ${sheetName} ไม่สำเร็จหลังพยายาม ${SYNC_ADD_MAX_ATTEMPTS} ครั้ง — ต้องตรวจแถวในชีตด้วยตา`,
+      { cause: lastError }
+    );
+  }
+
+  async syncMove(
+    warehouseId: string,
+    productId: string,
+    qty: number,
+    fromLocationId?: string,
+    toLocationId?: string
+  ): Promise<void> {
+    try {
+      const sheetName = getWarehouseSheetName(warehouseId);
+      clearSheetCache(sheetName);
+      const rows = await readSheet(sheetName, "A2:I", { forceFresh: true });
+      if (!rows || rows.length === 0) {
+        console.warn(`[SheetsWarehouseSync] Sheet ${sheetName} returned empty rows for ${productId}`);
+        return;
+      }
+
+      const normTargetSku = cleanSkuCode(productId);
+      const normFromLoc = cleanLocCode(fromLocationId);
+      const cleanToLoc = (toLocationId || "").replace(/^loc-/, "").trim();
+
+      // Find matching row for the SKU and fromLocation (if specified)
+      let matchedIndex = -1;
+      let matchedRow: string[] = [];
+      let totalSourceQty = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[0] || !r[0].trim()) continue;
+
+        const rSku = cleanSkuCode(r[0]);
+        const rBarcode = cleanSkuCode(r[1]);
+
+        const isSkuMatch =
+          rSku === normTargetSku ||
+          rBarcode === normTargetSku ||
+          matchSku(r[0], productId) ||
+          matchSku(r[1], productId);
+
+        if (isSkuMatch) {
+          const rLoc = cleanLocCode(r[6] || "");
+          const isLocMatch =
+            !normFromLoc ||
+            !rLoc ||
+            rLoc === normFromLoc ||
+            rLoc.includes(normFromLoc) ||
+            normFromLoc.includes(rLoc);
+
+          if (isLocMatch) {
+            const rawQ = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
+            const parsedQ = isNaN(rawQ) ? 0 : rawQ;
+
+            if (matchedIndex === -1) {
+              matchedIndex = i;
+              matchedRow = [...r];
+              totalSourceQty = parsedQ;
+            }
+          }
+        }
+      }
+
+      // Fallback: If no location match, match any row with this SKU
+      if (matchedIndex === -1) {
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[0] || !r[0].trim()) continue;
+
+          const rSku = cleanSkuCode(r[0]);
+          const rBarcode = cleanSkuCode(r[1]);
+
+          const isSkuMatch =
+            rSku === normTargetSku ||
+            rBarcode === normTargetSku ||
+            matchSku(r[0], productId) ||
+            matchSku(r[1], productId) ||
+            r[0].trim().toLowerCase() === productId.trim().toLowerCase() ||
+            r[1]?.trim().toLowerCase() === productId.trim().toLowerCase();
+
+          if (isSkuMatch) {
+            const rawQ = parseFloat((r[5] || r[4] || "0").replace(/,/g, "").trim());
+            const parsedQ = isNaN(rawQ) ? 0 : rawQ;
+            matchedIndex = i;
+            matchedRow = [...r];
+            totalSourceQty = parsedQ;
+            break;
+          }
+        }
+      }
+
+      if (matchedIndex === -1) {
+        console.warn(`[SheetsWarehouseSync] No matching product found to move: ${productId}`);
+        return;
+      }
+
+      while (matchedRow.length < 9) matchedRow.push("");
+      const now = new Date().toISOString();
+
+      const actualMoveQty = qty > 0 ? qty : totalSourceQty;
+      const currentLoc = cleanLocCode(matchedRow[6] || "");
+
+      // Case 1: Assigning a location to unlabelled stock, or moving ALL stock ->
+      // simply update the location in place. A location-less row with a PARTIAL move
+      // must fall through to the split path below, otherwise the whole row would be
+      // relocated even though the user only shelved part of it.
+      if ((currentLoc && actualMoveQty >= totalSourceQty) || totalSourceQty <= 0) {
+        matchedRow[6] = cleanToLoc;
+        matchedRow[8] = now;
+        await updateRow(sheetName, matchedIndex + 2, matchedRow);
+        clearSheetCache(sheetName);
+        return;
+      }
+
+      // Case 2: Moving PARTIAL stock from an existing shelf to a new shelf -> Reduce source row, add/update destination row
+      const remainingQty = totalSourceQty - actualMoveQty;
+      matchedRow[5] = String(remainingQty);
+      matchedRow[8] = now;
+      await updateRow(sheetName, matchedIndex + 2, matchedRow);
+
+      const productInfo: ProductSyncInfo = {
+        sku: matchedRow[0]?.trim() || productId,
+        barcode: matchedRow[1]?.trim() || matchedRow[0]?.trim() || productId,
+        product_name: matchedRow[2]?.trim() || `สินค้า ${productId}`,
+        category: matchedRow[3]?.trim() || "ทั่วไป",
+        base_unit: matchedRow[4]?.trim() || "ชิ้น",
+        supplier: matchedRow[7]?.trim() || "ย้ายตำแหน่ง",
+      };
+
+      await this.syncAdd(warehouseId, productInfo, actualMoveQty, cleanToLoc);
+      clearSheetCache(sheetName);
+    } catch (e) {
+      // Do not swallow: callers (move-stock) must be able to record the sync failure
+      console.error("[SheetsWarehouseSync] syncMove error:", e);
+      throw e;
+    }
+  }
+}
+

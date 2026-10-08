@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse, serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

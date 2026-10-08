@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
-import { getStockBalances } from "@/lib/services/stock";
+import { getAuthSession } from "@/server/auth-session";
+import { getRepository } from "@/server/repositories";
+import { getStockBalances } from "@/server/services/stock";
 import {
   successResponse,
   unauthorizedResponse,
@@ -9,7 +9,7 @@ import {
   serverErrorResponse,
   getAccessibleWarehouseIds,
   hasWarehouseAccess,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export async function GET(req: NextRequest) {
   try {

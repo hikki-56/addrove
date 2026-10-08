@@ -22,9 +22,9 @@ import {
   removeExpressStatusRetry,
   type TaggedExpressItem,
   type ExpressSyncStatus,
-} from "@/lib/express-tag-utils";
+} from "@/client/express-tag-utils";
 import { expressItemKey } from "@/lib/express-status-utils";
-import { safeNavigate } from "@/lib/safe-navigate";
+import { safeNavigate } from "@/client/safe-navigate";
 import {
   useReactTable,
   getCoreRowModel,

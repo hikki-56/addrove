@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   readSheet,
   appendRows,
@@ -9,8 +9,8 @@ import {
   SHEETS,
   getWarehouseSheetName,
   clearSheetCache,
-} from "@/lib/google-sheets/client";
-import { logAudit } from "@/lib/audit";
+} from "@/server/google-sheets/client";
+import { logAudit } from "@/server/audit";
 import type { StockMovement } from "@/types/models";
 
 export const maxDuration = 60;

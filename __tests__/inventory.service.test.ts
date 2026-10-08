@@ -2,7 +2,7 @@
 // Unit Tests for InventoryService — 8 required test cases
 // Uses in-memory mock repositories (no Google Sheets needed)
 // ============================================================
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   let sheets: Record<string, string[][]> = {};
   const clone = (rows: string[][]) => rows.map((row) => [...row]);
 
@@ -37,8 +37,8 @@ jest.mock("@/lib/google-sheets/client", () => {
   };
 });
 
-import { InventoryService } from "@/lib/services/inventory.service";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import { InventoryService } from "@/server/services/inventory.service";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,
   Location,
@@ -52,7 +52,7 @@ import type {
   DashboardStats,
 } from "@/types/models";
 
-const sheetMock = jest.requireMock("@/lib/google-sheets/client") as {
+const sheetMock = jest.requireMock("@/server/google-sheets/client") as {
   __resetSheets: () => void;
   __setWarehouseRows: (warehouseId: string, rows: string[][]) => void;
 };

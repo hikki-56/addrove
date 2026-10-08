@@ -1,16 +1,16 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
-import { listShipments, createShipment } from "@/lib/services/outbound/shipment.service";
-import { ShipmentCreateSchema } from "@/lib/services/outbound/outbound-schemas";
+} from "@/server/api-response";
+import { listShipments, createShipment } from "@/server/services/outbound/shipment.service";
+import { ShipmentCreateSchema } from "@/server/services/outbound/outbound-schemas";
 
 export const maxDuration = 60;
 

@@ -14,7 +14,7 @@ import {
   purgeInvalidNotifications,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
-import { subscribeTransferSync } from "@/lib/transfer-sync-scheduler";
+import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 
 export default function StaffDashboard() {
   const { user: tabUser } = useTabAuth();

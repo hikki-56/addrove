@@ -1,16 +1,16 @@
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
-import { recordLoginLog } from "@/lib/services/login-log.service";
-import { getAuthSecret } from "@/lib/server-secrets";
-import { getAccessibleWarehouseIds } from "@/lib/api-response";
+import { recordLoginLog } from "@/server/services/login-log.service";
+import { getAuthSecret } from "@/server/server-secrets";
+import { getAccessibleWarehouseIds } from "@/server/api-response";
 import {
   clearFailedAttempts,
   getClientIp,
   getRateLimitRetryAfter,
   recordFailedAttempt,
-} from "@/lib/rate-limit";
+} from "@/server/rate-limit";
 
 const LOGIN_RATE_LIMIT = {
   maxFailures: 5,

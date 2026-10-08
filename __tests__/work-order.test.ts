@@ -1,13 +1,13 @@
-import type { IStockRepository } from "@/lib/repositories/interfaces";
-import type { Actor } from "@/lib/security/actor";
+import type { IStockRepository } from "@/server/repositories/interfaces";
+import type { Actor } from "@/server/security/actor";
 import type { Document } from "@/types/models";
 
-jest.mock("@/lib/services/stock", () => ({
+jest.mock("@/server/services/stock", () => ({
   issueStock: jest.fn(async () => ({ document_id: "iss-mock-1", document_no: "ISS-MOCK-1" })),
   receiveStock: jest.fn(async () => ({ document_id: "rcv-mock-1", document_no: "RCV-MOCK-1" })),
 }));
 
-import { issueStock, receiveStock } from "@/lib/services/stock";
+import { issueStock, receiveStock } from "@/server/services/stock";
 import {
   createWorkOrder,
   sendWorkOrder,
@@ -18,7 +18,7 @@ import {
   cancelWorkOrder,
   getQBoxHistory,
   WorkOrderError,
-} from "@/lib/services/outbound/work-order.service";
+} from "@/server/services/outbound/work-order.service";
 
 const admin: Actor = { id: "usr-admin", username: "แอดมิน", role: "ADMIN" } as Actor;
 const packerA: Actor = { id: "usr-p1", username: "พนักงาน1", role: "PACKER" } as Actor;

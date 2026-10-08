@@ -1,8 +1,8 @@
-import { mapStockErrorToResponse } from "@/lib/services/stock/stock-error-mapper";
+import { mapStockErrorToResponse } from "@/server/services/stock/stock-error-mapper";
 import {
   IdempotencyConflictError,
   IdempotencyInProgressError,
-} from "@/lib/idempotency";
+} from "@/server/idempotency";
 
 describe("mapStockErrorToResponse — idempotency errors", () => {
   test("IdempotencyInProgressError maps to 409 with the real message, not the generic 500", async () => {

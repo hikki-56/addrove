@@ -1,8 +1,8 @@
-jest.mock("@/lib/auth-session", () => ({
+jest.mock("@/server/auth-session", () => ({
   getAuthSession: jest.fn(async () => ({ user: { id: "user-1" } })),
 }));
 
-jest.mock("@/lib/security", () => ({
+jest.mock("@/server/security", () => ({
   PERMISSIONS: { STOCK_RECEIVE: "STOCK_RECEIVE" },
   createActorFromSession: jest.fn(async () => ({
     id: "user-1",
@@ -12,15 +12,15 @@ jest.mock("@/lib/security", () => ({
   authorize: jest.fn(),
 }));
 
-jest.mock("@/lib/repositories", () => ({
+jest.mock("@/server/repositories", () => ({
   getRepository: jest.fn(() => ({ repo: true })),
 }));
 
 const receiveStockMock = jest.fn();
 
-jest.mock("@/lib/services/stock", () => {
-  const actualReceive = jest.requireActual("@/lib/services/stock/receive-stock");
-  const actualMapper = jest.requireActual("@/lib/services/stock/stock-error-mapper");
+jest.mock("@/server/services/stock", () => {
+  const actualReceive = jest.requireActual("@/server/services/stock/receive-stock");
+  const actualMapper = jest.requireActual("@/server/services/stock/stock-error-mapper");
   return {
     ...actualReceive,
     ...actualMapper,
@@ -29,8 +29,8 @@ jest.mock("@/lib/services/stock", () => {
 });
 
 import { POST } from "@/app/api/movements/receive/route";
-import { StockValidationError } from "@/lib/services/stock/stock-errors";
-import { IdempotencyInProgressError } from "@/lib/idempotency";
+import { StockValidationError } from "@/server/services/stock/stock-errors";
+import { IdempotencyInProgressError } from "@/server/idempotency";
 
 function receiveRequest(body: Record<string, unknown>) {
   return new Request("http://localhost/api/movements/receive", {

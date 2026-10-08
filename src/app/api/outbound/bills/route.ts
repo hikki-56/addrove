@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
-import { listBills } from "@/lib/services/outbound/outbound-bill.service";
+} from "@/server/api-response";
+import { listBills } from "@/server/services/outbound/outbound-bill.service";
 
 export const maxDuration = 60;
 

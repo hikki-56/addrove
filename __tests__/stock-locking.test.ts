@@ -4,7 +4,7 @@ import {
   sortLockKeys,
   StockLockTimeoutError,
   InMemoryLockProvider,
-} from "@/lib/locking";
+} from "@/server/locking";
 
 describe("Stock Locking & Deadlock Prevention Tests", () => {
   test("sortLockKeys canonically sorts keys to avoid deadlocks across multiple resources", () => {

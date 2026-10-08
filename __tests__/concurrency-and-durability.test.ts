@@ -1,4 +1,4 @@
-jest.mock("@/lib/google-sheets/client", () => ({
+jest.mock("@/server/google-sheets/client", () => ({
   SHEETS: {
     DOCUMENTS: "DOCUMENTS",
     STOCK_MOVEMENTS: "STOCK_MOVEMENTS",
@@ -17,11 +17,11 @@ import {
   completeTransfer,
   cancelTransfer,
   CreateTransferSchema,
-} from "@/lib/services/stock/transfer-stock";
+} from "@/server/services/stock/transfer-stock";
 import {
   InvalidTransferStateError,
-} from "@/lib/services/stock/stock-errors";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+} from "@/server/services/stock/stock-errors";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,
   Product,
@@ -29,7 +29,7 @@ import type {
   StockMovement,
   StockSummary,
 } from "@/types/models";
-import type { IdempotencyRecord } from "@/lib/idempotency/idempotency.repository";
+import type { IdempotencyRecord } from "@/server/repositories/interfaces/idempotency.repository.interface";
 
 const mockWarehouse1: Warehouse = {
   warehouse_id: "wh-1",

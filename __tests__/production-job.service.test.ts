@@ -8,7 +8,7 @@
 import type { Product } from "@/types/models";
 
 // ---- Mock Google Sheets client เป็น store ในหน่วยความจำ ----
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   let sheets: Record<string, string[][]> = {};
   const clone = (rows: string[][]) => rows.map((r) => [...r]);
   return {
@@ -49,7 +49,7 @@ jest.mock("@/lib/google-sheets/client", () => {
 });
 
 // ---- Mock idempotency เป็น in-memory (replay คืน cached result) ----
-jest.mock("@/lib/idempotency", () => {
+jest.mock("@/server/idempotency", () => {
   const completed = new Map<string, unknown>();
   return {
     claimIdempotencyKey: jest.fn(async (_repo: unknown, key: string) =>
@@ -65,7 +65,7 @@ jest.mock("@/lib/idempotency", () => {
   };
 });
 
-jest.mock("@/lib/audit", () => ({
+jest.mock("@/server/audit", () => ({
   logAudit: jest.fn(async () => null),
 }));
 
@@ -135,7 +135,7 @@ function makeFakeRepo() {
 }
 
 let fakeRepo: ReturnType<typeof makeFakeRepo>;
-jest.mock("@/lib/repositories", () => ({
+jest.mock("@/server/repositories", () => ({
   getRepository: () => fakeRepo,
 }));
 
@@ -154,14 +154,14 @@ import {
   listNotifications,
   markNotificationsRead,
   ProductionError,
-} from "@/lib/production/production-job.service";
-import type { CreateProductionJobInput } from "@/lib/production/production-schemas";
+} from "@/server/production/production-job.service";
+import type { CreateProductionJobInput } from "@/server/production/production-schemas";
 
-const clientMock = require("@/lib/google-sheets/client") as {
+const clientMock = require("@/server/google-sheets/client") as {
   __resetSheets: () => void;
   __getSheets: () => Record<string, string[][]>;
 };
-const idemMock = require("@/lib/idempotency") as { __resetIdempotency: () => void };
+const idemMock = require("@/server/idempotency") as { __resetIdempotency: () => void };
 
 const ADMIN = { id: "usr-admin", name: "Admin ทดสอบ", role: "ADMIN" };
 const APPROVER = { id: "usr-approver", name: "ผู้ผลิต ทดสอบ", role: "APPROVER" };
@@ -426,8 +426,11 @@ describe("updateJob / deleteDraft — กติกาตามสถานะ", 
   });
 
   it("WAITING แก้สินค้า/จำนวน/โต๊ะได้แต่ต้องมีเหตุผล + แจ้ง APPROVER · เปลี่ยนวันที่ไม่ได้", async () => {
-    const [job] = await createJobs(ADMIN, [jobInput()]);
-    await submitJobs(ADMIN, [job.job_no]);
+    const [created] = await createJobs(ADMIN, [jobInput()]);
+    // ใช้ updated_at หลังส่งงาน (submit เปลี่ยน updated_at) — เดิมใช้ค่าตอนสร้าง ผ่านเฉพาะเมื่อ create/submit อยู่ในมิลลิวินาทีเดียวกัน
+    const {
+      submitted: [job],
+    } = await submitJobs(ADMIN, [created.job_no]);
 
     await expect(
       updateJob(ADMIN, job.job_no, { updated_at: job.updated_at, target_qty: 1500 })

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PERMISSIONS } from "@/lib/security";
+import { PERMISSIONS } from "@/server/security";
 import {
   guardProductionRoute,
   parseBody,
   productionErrorResponse,
-} from "@/lib/production/production-route-helpers";
-import { listJobs, createJobs } from "@/lib/production/production-job.service";
-import { createProductionJobsSchema } from "@/lib/production/production-schemas";
-import { successResponse } from "@/lib/api-response";
+} from "@/server/production/production-route-helpers";
+import { listJobs, createJobs } from "@/server/production/production-job.service";
+import { createProductionJobsSchema } from "@/server/production/production-schemas";
+import { successResponse } from "@/server/api-response";
 
 export const maxDuration = 60;
 

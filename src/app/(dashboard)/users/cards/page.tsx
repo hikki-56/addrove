@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { generateCode128PngDataUrl } from "@/lib/barcode-utils";
 import { employeeCardCode } from "@/lib/employee-card";
-import { feedbackDone } from "@/lib/feedback";
+import { feedbackDone } from "@/client/feedback";
 
 /**
  * พิมพ์บัตรบาร์โค้ดประจำตัวพนักงาน (สำหรับเข้าระบบหน้างาน)

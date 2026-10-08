@@ -1,22 +1,22 @@
 import { NextRequest } from "next/server";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
-import { getAuthSession } from "@/lib/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
+import { getAuthSession } from "@/server/auth-session";
 import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   createWorkOrder,
   getQBoxHistory,
   listWorkOrders,
-} from "@/lib/services/outbound/work-order.service";
-import { getBusyQCodes } from "@/lib/services/outbound/q-assignment.service";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
-import { OutboundReservationError } from "@/lib/services/outbound/stock-reservation.service";
+} from "@/server/services/outbound/work-order.service";
+import { getBusyQCodes } from "@/server/services/outbound/q-assignment.service";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
+import { OutboundReservationError } from "@/server/services/outbound/stock-reservation.service";
 
 export const maxDuration = 60;
 

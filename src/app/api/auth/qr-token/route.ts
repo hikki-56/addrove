@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRepository } from "@/lib/repositories";
-import { generateEmployeeQrToken } from "@/lib/qr-token";
-import { getAuthSession } from "@/lib/auth-session";
+import { getRepository } from "@/server/repositories";
+import { generateEmployeeQrToken } from "@/server/qr-token";
+import { getAuthSession } from "@/server/auth-session";
 
 export async function GET(req: NextRequest) {
   try {

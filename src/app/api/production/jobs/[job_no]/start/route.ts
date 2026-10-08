@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { PERMISSIONS } from "@/lib/security";
+import { PERMISSIONS } from "@/server/security";
 import {
   guardProductionRoute,
   productionErrorResponse,
-} from "@/lib/production/production-route-helpers";
-import { startJob } from "@/lib/production/production-job.service";
-import { successResponse } from "@/lib/api-response";
+} from "@/server/production/production-route-helpers";
+import { startJob } from "@/server/production/production-job.service";
+import { successResponse } from "@/server/api-response";
 
 export const maxDuration = 60;
 

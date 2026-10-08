@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
-import { getDocumentStatus } from "@/lib/document-status-store";
-import { isProductionOrderDocument } from "@/lib/legacy-prd-filter";
-import { getLoginLogs } from "@/lib/services/login-log.service";
+import { getAuthSession } from "@/server/auth-session";
+import { getRepository } from "@/server/repositories";
+import { getDocumentStatus } from "@/server/document-status-store";
+import { isProductionOrderDocument } from "@/server/legacy-prd-filter";
+import { getLoginLogs } from "@/server/services/login-log.service";
 import {
   successResponse,
   unauthorizedResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

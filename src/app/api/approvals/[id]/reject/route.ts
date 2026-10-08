@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
-import { withStockLocks, formatStockLockKey } from "@/lib/locking";
-import { logAudit } from "@/lib/audit";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
+import { withStockLocks, formatStockLockKey } from "@/server/locking";
+import { logAudit } from "@/server/audit";
 import {
   successResponse,
   notFoundResponse,
@@ -11,8 +11,8 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
-import { setDocumentStatus } from "@/lib/document-status-store";
+} from "@/server/api-response";
+import { setDocumentStatus } from "@/server/document-status-store";
 
 export const maxDuration = 60;
 

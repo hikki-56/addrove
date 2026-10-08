@@ -1,8 +1,8 @@
 import {
   logAudit,
   sanitizeMetadata,
-} from "@/lib/audit";
-import { InMemoryAuditRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
+} from "@/server/audit";
+import { InMemoryAuditRepository } from "@/server/repositories/in-memory/in-memory-stock.repository";
 
 describe("Append-Only Audit Logging Tests", () => {
   let repo: InMemoryAuditRepository;

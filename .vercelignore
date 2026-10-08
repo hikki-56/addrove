@@ -38,4 +38,3 @@ docs/
 
 # Scripts not needed at runtime
 scripts/seed-users.ts
-scripts/test-csv.ts

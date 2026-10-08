@@ -2,7 +2,7 @@
  * ทดสอบ SheetsWarehouseSyncRepository.syncAdd แบบ "เขียนแล้วต้องตรวจยืนยัน"
  * เป้าหมาย: รับเข้าหลายรายการติดกัน ข้อมูลห้ามหาย และห้ามบวกยอดซ้ำตอน retry
  */
-jest.mock("@/lib/google-sheets/client", () => {
+jest.mock("@/server/google-sheets/client", () => {
   const state = {
     sheets: {} as Record<string, string[][]>,
     readOverrides: [] as Array<(rows: string[][]) => string[][]>,
@@ -59,9 +59,9 @@ jest.mock("@/lib/google-sheets/client", () => {
   };
 });
 
-import { SheetsWarehouseSyncRepository } from "@/lib/repositories/sheets/warehouse-sync.sheets-repository";
-import type { ProductSyncInfo } from "@/lib/repositories/interfaces/warehouse-sync.repository.interface";
-import * as client from "@/lib/google-sheets/client";
+import { SheetsWarehouseSyncRepository } from "@/server/repositories/sheets/warehouse-sync.repository";
+import type { ProductSyncInfo } from "@/server/repositories/interfaces/warehouse-sync.repository.interface";
+import * as client from "@/server/google-sheets/client";
 
 const mock = client as any;
 const repo = new SheetsWarehouseSyncRepository();

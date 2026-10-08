@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import type { Product } from "@/types/models";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
-import { batchTagExpressItems } from "@/lib/express-tag-utils";
+import { batchTagExpressItems } from "@/client/express-tag-utils";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { isSameJson } from "@/lib/json-equal";

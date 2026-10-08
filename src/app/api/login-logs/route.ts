@@ -1,18 +1,18 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import {
   getLoginLogs,
   getProductsAddedByEmployee,
   EmployeeProductAddition,
-} from "@/lib/services/login-log.service";
-import { getRepository } from "@/lib/repositories";
+} from "@/server/services/login-log.service";
+import { getRepository } from "@/server/repositories";
 import { getWarehouseName } from "@/lib/warehouse-utils";
 import {
   successResponse,
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 interface LoginLogWithDetails {
   id: string;

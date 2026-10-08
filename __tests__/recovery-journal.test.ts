@@ -1,8 +1,8 @@
 import {
   executeWithJournal,
   ManualReviewRequiredError,
-} from "@/lib/recovery";
-import { InMemoryOperationJournalRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
+} from "@/server/recovery";
+import { InMemoryOperationJournalRepository } from "@/server/repositories/in-memory/in-memory-stock.repository";
 
 describe("Operation Journal & Saga Recovery Tests", () => {
   let journalRepo: InMemoryOperationJournalRepository;

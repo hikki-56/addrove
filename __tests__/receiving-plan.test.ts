@@ -9,14 +9,14 @@ import {
   cancelReceivingPlan,
   closeReceivingPlan,
   buildReceivingPlanView,
-} from "@/lib/services/stock/receiving-plan";
-import { receiveStock, ReceiveStockSchema } from "@/lib/services/stock/receive-stock";
+} from "@/server/services/stock/receiving-plan";
+import { receiveStock, ReceiveStockSchema } from "@/server/services/stock/receive-stock";
 import {
   StockConflictError,
   StockNotFoundError,
   StockValidationError,
-} from "@/lib/services/stock/stock-errors";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+} from "@/server/services/stock/stock-errors";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,
   Location,

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { detectWarehouseCode, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { decode } from "next-auth/jwt";
-import { getAuthSecret } from "@/lib/server-secrets";
+import { getAuthSecret } from "@/server/server-secrets";
 
 async function isValidSessionToken(token: string): Promise<boolean> {
   for (const salt of ["authjs.session-token", "next-auth.session-token"]) {

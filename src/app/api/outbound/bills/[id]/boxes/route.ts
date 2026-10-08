@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
@@ -10,7 +10,7 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   createBox,
   scanItemIntoBox,
@@ -18,9 +18,9 @@ import {
   cancelOpenBox,
   markStickerPrinted,
   getBoxesOfBillInfo,
-} from "@/lib/services/outbound/packing.service";
-import { BoxActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/packing.service";
+import { BoxActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

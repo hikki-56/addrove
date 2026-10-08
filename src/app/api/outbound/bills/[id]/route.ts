@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
 import {
   successResponse,
   errorResponse,
@@ -9,7 +9,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   getBillDetail,
   activateBill,
@@ -17,9 +17,9 @@ import {
   resumeBill,
   cancelBill,
   resolveShortage,
-} from "@/lib/services/outbound/outbound-bill.service";
-import { BillPatchActionSchema } from "@/lib/services/outbound/outbound-schemas";
-import { OutboundStateError } from "@/lib/services/outbound/outbound-state-machine";
+} from "@/server/services/outbound/outbound-bill.service";
+import { BillPatchActionSchema } from "@/server/services/outbound/outbound-schemas";
+import { OutboundStateError } from "@/server/services/outbound/outbound-state-machine";
 
 export const maxDuration = 60;
 

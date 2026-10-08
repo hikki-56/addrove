@@ -1,19 +1,19 @@
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
-import { recordLoginLog } from "@/lib/services/login-log.service";
+import { recordLoginLog } from "@/server/services/login-log.service";
 import type { User } from "@/types/models";
-import { getAuthSecret } from "@/lib/server-secrets";
-import { getAccessibleWarehouseIds } from "@/lib/api-response";
-import { verifyEmployeeQrToken } from "@/lib/qr-token";
+import { getAuthSecret } from "@/server/server-secrets";
+import { getAccessibleWarehouseIds } from "@/server/api-response";
+import { verifyEmployeeQrToken } from "@/server/qr-token";
 import { parseEmployeeCardCode } from "@/lib/employee-card";
 import {
   clearFailedAttempts,
   getClientIp,
   getRateLimitRetryAfter,
   recordFailedAttempt,
-} from "@/lib/rate-limit";
+} from "@/server/rate-limit";
 
 const PIN_RATE_LIMIT = {
   maxFailures: 5,

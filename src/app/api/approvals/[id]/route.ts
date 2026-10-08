@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
-import { logAudit } from "@/lib/audit";
+import { getAuthSession } from "@/server/auth-session";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { getRepository } from "@/server/repositories";
+import { logAudit } from "@/server/audit";
 import {
   successResponse,
   notFoundResponse,
@@ -11,7 +11,7 @@ import {
   conflictResponse,
   serverErrorResponse,
   errorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export async function PUT(
   req: NextRequest,

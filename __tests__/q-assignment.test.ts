@@ -1,4 +1,4 @@
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document } from "@/types/models";
 import {
   getBusyQCodes,
@@ -6,7 +6,7 @@ import {
   parseMaxItemsPerQ,
   planBillQAssignments,
   DEFAULT_MAX_ITEMS_PER_Q,
-} from "@/lib/services/outbound/q-assignment.service";
+} from "@/server/services/outbound/q-assignment.service";
 
 function billDoc(
   docNo: string,

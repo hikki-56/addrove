@@ -1,6 +1,6 @@
-import { readSheet, SHEETS } from "../src/lib/google-sheets/client";
-import { parseBillNote } from "../src/lib/services/outbound/outbound-documents";
-import { isBillReserving } from "../src/lib/services/outbound/outbound-state-machine";
+import { readSheet, SHEETS } from "../src/server/google-sheets/client";
+import { parseBillNote } from "../src/server/services/outbound/outbound-documents";
+import { isBillReserving } from "../src/server/services/outbound/outbound-state-machine";
 
 /**
  * วินิจฉัยปัญหา "สต็อกไม่พอสำหรับหยิบบิลนี้" — อ่านข้อมูลจริงจาก Google Sheets
