@@ -30,15 +30,6 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function cleanCode(str?: string): string {
-  if (!str) return "";
-  return String(str)
-    .trim()
-    .toLowerCase()
-    .replace(/^prod-/, "")
-    .replace(/[\s\-_#]/g, "");
-}
-
 export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
@@ -74,7 +65,7 @@ export async function GET(req: NextRequest) {
     // Semantic identity of one line item = (เลขที่เอกสาร, SKU) หลัง normalize
     // ใช้จับคู่แถวในชีตกับเอกสารในระบบที่เป็น "ข้อมูลชุดเดียวกัน" เพื่อกันการแสดงซ้ำ
     // (รายการที่โพสต์แล้วถูกเขียนลงชีตอัตโนมัติ แล้ว endpoint นี้ดึงทั้งชีตและเอกสารมา)
-    const semanticKey = (docNo: string, sku: string) => `${cleanCode(docNo)}|${cleanCode(sku)}`;
+    const semanticKey = (docNo: string, sku: string) => `${cleanExpressCode(docNo)}|${cleanExpressCode(sku)}`;
     const emittedSemanticKeys = new Set<string>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
@@ -102,7 +93,7 @@ export async function GET(req: NextRequest) {
           location: loc && loc !== "-" ? loc : "",
         };
 
-        const keys = [cleanCode(sku), cleanCode(bcode), sku.toLowerCase(), bcode.toLowerCase()].filter(Boolean);
+        const keys = [cleanExpressCode(sku), cleanExpressCode(bcode), sku.toLowerCase(), bcode.toLowerCase()].filter(Boolean);
         keys.forEach((k) => {
           const existing = productCatalogMap.get(k);
           if (!existing || (!existing.name && entry.name) || (!existing.barcode && entry.barcode)) {
@@ -131,7 +122,7 @@ export async function GET(req: NextRequest) {
 
     const enrichProduct = (rawSku: string, rawBarcode: string, rawName: string, rawLocation?: string) => {
       const cleanSku = (rawSku || "").replace(/^prod-/, "").trim();
-      const keys = [cleanCode(cleanSku), cleanCode(rawBarcode), cleanSku.toLowerCase()].filter(Boolean);
+      const keys = [cleanExpressCode(cleanSku), cleanExpressCode(rawBarcode), cleanSku.toLowerCase()].filter(Boolean);
 
       let matched: { sku: string; barcode: string; name: string; location: string } | undefined;
       for (const k of keys) {
