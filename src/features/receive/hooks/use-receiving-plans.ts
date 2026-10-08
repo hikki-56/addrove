@@ -5,7 +5,7 @@ import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 
 // ============================================================
 // แผนรับสินค้า (Receiving Plan) — mirror ของ ReceivingPlanView
-// ฝั่ง service (src/lib/services/stock/receiving-plan.ts)
+// ฝั่ง service (src/server/services/stock/receiving-plan.ts)
 // แยก type ไว้ที่นี่เพื่อไม่ดึงโมดูลฝั่ง server เข้า client bundle
 // ============================================================
 
