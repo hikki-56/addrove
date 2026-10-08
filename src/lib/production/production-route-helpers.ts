@@ -2,8 +2,8 @@
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import type { Permission } from "@/lib/security";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import type { Permission } from "@/server/security";
 import {
   unauthorizedResponse,
   forbiddenResponse,

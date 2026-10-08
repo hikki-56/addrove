@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { getAuthSession } from "@/lib/auth-session";
 import {

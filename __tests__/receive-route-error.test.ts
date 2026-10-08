@@ -2,7 +2,7 @@ jest.mock("@/lib/auth-session", () => ({
   getAuthSession: jest.fn(async () => ({ user: { id: "user-1" } })),
 }));
 
-jest.mock("@/lib/security", () => ({
+jest.mock("@/server/security", () => ({
   PERMISSIONS: { STOCK_RECEIVE: "STOCK_RECEIVE" },
   createActorFromSession: jest.fn(async () => ({
     id: "user-1",

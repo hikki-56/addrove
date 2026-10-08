@@ -1,6 +1,6 @@
 import type { Document } from "@/types/models";
 import type { IStockRepository } from "@/server/repositories/interfaces";
-import type { Actor } from "@/lib/security/actor";
+import type { Actor } from "@/server/security/actor";
 import {
   findDocumentByIdOrNo,
   listBillDocuments,

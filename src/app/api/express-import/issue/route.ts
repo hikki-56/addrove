@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
+import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";

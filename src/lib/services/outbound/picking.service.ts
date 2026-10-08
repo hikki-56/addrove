@@ -1,5 +1,5 @@
 import type { IStockRepository } from "@/server/repositories/interfaces";
-import type { Actor } from "@/lib/security/actor";
+import type { Actor } from "@/server/security/actor";
 import type {
   OutboundBillItem,
   OutboundExceptionType,

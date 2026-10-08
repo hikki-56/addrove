@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PERMISSIONS } from "@/lib/security";
+import { PERMISSIONS } from "@/server/security";
 import {
   guardProductionRoute,
   productionErrorResponse,

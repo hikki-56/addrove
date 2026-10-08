@@ -5,7 +5,7 @@ import {
   ForbiddenError,
   PERMISSIONS,
   Actor,
-} from "@/lib/security";
+} from "@/server/security";
 
 describe("Centralized Security & Authorization Tests", () => {
   const adminActor: Actor = {
