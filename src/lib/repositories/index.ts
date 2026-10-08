@@ -15,10 +15,10 @@ import { SheetsStockSummaryRepository } from "./sheets/stock-summary.repository"
 import { SheetsStockCountRepository } from "./sheets/stock-count.repository";
 import { SheetsUserRepository } from "./sheets/user.repository";
 import { SheetsDashboardRepository } from "./sheets/dashboard.repository";
-import { SheetsIdempotencyRepository } from "./sheets/idempotency.sheets-repository";
-import { SheetsAuditRepository } from "./sheets/audit.sheets-repository";
-import { SheetsWarehouseSyncRepository } from "./sheets/warehouse-sync.sheets-repository";
-import { SheetsOperationJournalRepository } from "./sheets/operation-journal.sheets-repository";
+import { SheetsIdempotencyRepository } from "./sheets/idempotency.repository";
+import { SheetsAuditRepository } from "./sheets/audit.repository";
+import { SheetsWarehouseSyncRepository } from "./sheets/warehouse-sync.repository";
+import { SheetsOperationJournalRepository } from "./sheets/operation-journal.repository";
 import { InMemoryStockRepository } from "./in-memory/in-memory-stock.repository";
 
 export * from "./interfaces";
