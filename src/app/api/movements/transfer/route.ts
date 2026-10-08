@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { createTransfer, mapStockErrorToResponse, CreateTransferSchema } from "@/lib/services/stock";
 import {
   successResponse,

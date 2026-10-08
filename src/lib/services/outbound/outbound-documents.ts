@@ -5,7 +5,7 @@ import type {
   ShipmentNote,
   WorkOrderQBox,
 } from "@/types/models";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import { withKeyedLock } from "@/lib/keyed-lock";
 
 /**

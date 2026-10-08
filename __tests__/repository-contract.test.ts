@@ -3,7 +3,7 @@ import {
   InMemoryStockRepository,
   SheetsWarehouseRepository,
   SheetsLocationRepository,
-} from "@/lib/repositories";
+} from "@/server/repositories";
 import { getStockBalances } from "@/lib/services/stock/shared";
 
 describe("Repository Contract Parity Tests", () => {

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { hasWarehouseAccess } from "@/lib/api-response";
 import type { StockMovement } from "@/types/models";
 import {

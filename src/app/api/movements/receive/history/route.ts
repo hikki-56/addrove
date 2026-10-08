@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { getDocumentStatus } from "@/lib/document-status-store";
 import { isProductionOrderDocument } from "@/lib/legacy-prd-filter";
 import { getLoginLogs } from "@/lib/services/login-log.service";

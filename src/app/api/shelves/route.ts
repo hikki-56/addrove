@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { CreateShelfSchema } from "@/types/api";
 import {
   successResponse,

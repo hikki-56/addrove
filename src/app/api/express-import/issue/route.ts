@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { parseTransferMetadata, isUsableLocationCode } from "@/lib/transfer-notification-utils";

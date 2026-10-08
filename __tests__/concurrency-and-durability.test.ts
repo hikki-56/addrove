@@ -21,7 +21,7 @@ import {
 import {
   InvalidTransferStateError,
 } from "@/lib/services/stock/stock-errors";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,
   Product,
@@ -29,7 +29,7 @@ import type {
   StockMovement,
   StockSummary,
 } from "@/types/models";
-import type { IdempotencyRecord } from "@/lib/repositories/interfaces/idempotency.repository.interface";
+import type { IdempotencyRecord } from "@/server/repositories/interfaces/idempotency.repository.interface";
 
 const mockWarehouse1: Warehouse = {
   warehouse_id: "wh-1",

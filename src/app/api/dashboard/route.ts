@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository, DashboardDataError } from "@/lib/repositories";
+import { getRepository, DashboardDataError } from "@/server/repositories";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse, serverErrorResponse,
   errorResponse, getAccessibleWarehouseIds, hasWarehouseAccess,

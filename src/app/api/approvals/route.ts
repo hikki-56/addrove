@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { readSheet, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import {

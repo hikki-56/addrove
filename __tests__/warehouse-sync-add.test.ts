@@ -59,8 +59,8 @@ jest.mock("@/server/google-sheets/client", () => {
   };
 });
 
-import { SheetsWarehouseSyncRepository } from "@/lib/repositories/sheets/warehouse-sync.repository";
-import type { ProductSyncInfo } from "@/lib/repositories/interfaces/warehouse-sync.repository.interface";
+import { SheetsWarehouseSyncRepository } from "@/server/repositories/sheets/warehouse-sync.repository";
+import type { ProductSyncInfo } from "@/server/repositories/interfaces/warehouse-sync.repository.interface";
 import * as client from "@/server/google-sheets/client";
 
 const mock = client as any;

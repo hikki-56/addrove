@@ -21,8 +21,8 @@ import {
 import { withKeyedLock } from "@/lib/keyed-lock";
 import { withStockLocks, formatStockLockKey } from "@/server/locking";
 import { executeAtomicOperation } from "@/lib/services/stock/atomic-stock-executor";
-import { getRepository } from "@/lib/repositories";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import { getRepository } from "@/server/repositories";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document } from "@/types/models";
 import type {
   ProductionJob,

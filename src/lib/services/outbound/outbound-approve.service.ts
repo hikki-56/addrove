@@ -1,4 +1,4 @@
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Actor } from "@/lib/security/actor";
 import { issueStock } from "@/lib/services/stock";
 import { findDocumentByIdOrNo, mutateBillNote, parseBillNote } from "./outbound-documents";

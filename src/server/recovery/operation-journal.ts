@@ -3,7 +3,7 @@ import type {
   JournalStep,
   OperationRecord,
   IOperationJournalRepository,
-} from "@/lib/repositories/interfaces/operation-journal.repository.interface";
+} from "@/server/repositories/interfaces/operation-journal.repository.interface";
 
 export type { OperationStatus, JournalStep, OperationRecord, IOperationJournalRepository };
 

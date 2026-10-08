@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/lib/security";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { getAuthSession } from "@/lib/auth-session";
 import {
   successResponse,

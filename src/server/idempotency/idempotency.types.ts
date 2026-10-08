@@ -1,4 +1,4 @@
-import type { IdempotencyStatus, IdempotencyRecord } from "@/lib/repositories/interfaces/idempotency.repository.interface";
+import type { IdempotencyStatus, IdempotencyRecord } from "@/server/repositories/interfaces/idempotency.repository.interface";
 
 export type { IdempotencyStatus, IdempotencyRecord };
 

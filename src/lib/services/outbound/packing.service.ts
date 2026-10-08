@@ -1,5 +1,5 @@
 import type { Document } from "@/types/models";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Actor } from "@/lib/security/actor";
 import { areBarcodesMatching, normalizeBarcode } from "@/lib/barcode-utils";
 import {

@@ -1,4 +1,4 @@
-import type { AuditOutcome, AuditLogEntry } from "@/lib/repositories/interfaces/audit.repository.interface";
+import type { AuditOutcome, AuditLogEntry } from "@/server/repositories/interfaces/audit.repository.interface";
 
 export type { AuditOutcome, AuditLogEntry };
 

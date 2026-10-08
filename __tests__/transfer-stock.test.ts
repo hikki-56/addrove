@@ -49,7 +49,7 @@ import {
   StockNotFoundError,
   UnauthorizedStockOperationError,
 } from "@/lib/services/stock/stock-errors";
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type {
   Warehouse,
   Product,

@@ -1,4 +1,4 @@
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
 import type { User } from "@/types/models";

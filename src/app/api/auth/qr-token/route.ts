@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { generateEmployeeQrToken } from "@/lib/qr-token";
 import { getAuthSession } from "@/lib/auth-session";
 

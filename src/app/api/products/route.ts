@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getStockStatus } from "@/lib/stock-status";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { CreateProductSchema } from "@/types/api";
 import {
   successResponse,

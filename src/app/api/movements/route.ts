@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/lib/auth-session";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { MovementFilterSchema } from "@/types/api";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse, serverErrorResponse,

@@ -1,7 +1,7 @@
 import { issueStock } from "@/lib/services/stock/issue-stock";
 import { receiveStock } from "@/lib/services/stock/receive-stock";
 import { completeTransfer, cancelTransfer, createTransfer } from "@/lib/services/stock/transfer-stock";
-import { InMemoryStockRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
+import { InMemoryStockRepository } from "@/server/repositories/in-memory/in-memory-stock.repository";
 
 describe("Atomic Stock Operations Concurrency", () => {
   let repo: InMemoryStockRepository;

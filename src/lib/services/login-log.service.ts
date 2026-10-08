@@ -1,5 +1,5 @@
 import { readSheet, appendRows, SHEETS } from "@/server/google-sheets/client";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { getWarehouseName } from "@/lib/warehouse-utils";
 import type { LoginLog, UserRole } from "@/types/models";
 

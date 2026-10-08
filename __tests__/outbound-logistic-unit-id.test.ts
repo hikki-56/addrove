@@ -4,7 +4,7 @@ import {
   generateLogisticUnitId,
   logisticUnitBarcodeValue,
 } from "@/lib/services/outbound/logistic-unit-id";
-import type { IDocumentRepository } from "@/lib/repositories/interfaces";
+import type { IDocumentRepository } from "@/server/repositories/interfaces";
 
 describe("logistic-unit-id — รหัสกล่อง (abstraction รองรับ SSCC วันหน้า)", () => {
   it("รับรูปแบบภายใน BX-YYYYMMDD-NNNNNN", () => {

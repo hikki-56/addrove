@@ -135,7 +135,7 @@ function makeFakeRepo() {
 }
 
 let fakeRepo: ReturnType<typeof makeFakeRepo>;
-jest.mock("@/lib/repositories", () => ({
+jest.mock("@/server/repositories", () => ({
   getRepository: () => fakeRepo,
 }));
 

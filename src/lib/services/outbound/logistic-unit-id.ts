@@ -1,4 +1,4 @@
-import type { IDocumentRepository } from "@/lib/repositories/interfaces";
+import type { IDocumentRepository } from "@/server/repositories/interfaces";
 
 /**
  * Abstraction ของ "รหัสหน่วยขนส่ง" (logistic unit) = กล่อง/พาเลท/หน่วยที่ขึ้นรถ

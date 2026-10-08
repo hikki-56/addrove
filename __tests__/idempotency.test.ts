@@ -6,7 +6,7 @@ import {
   IdempotencyConflictError,
   IdempotencyInProgressError,
 } from "@/server/idempotency";
-import { InMemoryIdempotencyRepository } from "@/lib/repositories/in-memory/in-memory-stock.repository";
+import { InMemoryIdempotencyRepository } from "@/server/repositories/in-memory/in-memory-stock.repository";
 
 describe("Idempotency Service Integration Tests", () => {
   let repo: InMemoryIdempotencyRepository;

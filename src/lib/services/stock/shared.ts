@@ -1,4 +1,4 @@
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Location, Warehouse, StockSummary } from "@/types/models";
 
 export interface StockUseCaseDeps {

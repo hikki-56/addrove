@@ -12,7 +12,7 @@ jest.mock("@/lib/security", () => ({
   authorize: jest.fn(),
 }));
 
-jest.mock("@/lib/repositories", () => ({
+jest.mock("@/server/repositories", () => ({
   getRepository: jest.fn(() => ({ repo: true })),
 }));
 

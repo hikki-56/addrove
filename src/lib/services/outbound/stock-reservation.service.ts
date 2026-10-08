@@ -1,4 +1,4 @@
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { OutboundBillNote, StockSummary } from "@/types/models";
 import { isBillReserving } from "./outbound-state-machine";
 import { listBillDocuments, parseBillNote } from "./outbound-documents";

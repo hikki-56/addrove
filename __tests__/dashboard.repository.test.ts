@@ -67,7 +67,7 @@ jest.mock("@/server/google-sheets/client", () => {
 import {
   SheetsDashboardRepository,
   DashboardDataError,
-} from "@/lib/repositories/sheets/dashboard.repository";
+} from "@/server/repositories/sheets/dashboard.repository";
 
 const sheetMock = jest.requireMock("@/server/google-sheets/client") as {
   __setTab: (name: string, rows: string[][]) => void;

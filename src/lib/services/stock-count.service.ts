@@ -1,4 +1,4 @@
-import type { IStockRepository } from "../repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { StockCount } from "@/types/models";
 import type { CreateStockCountInput } from "@/types/api";
 

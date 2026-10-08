@@ -8,7 +8,7 @@
 // - การปรับปรุงยอด (ADJUSTMENT) สร้าง movement ชนิด ADJUST ที่ตรวจสอบย้อนหลังได้
 // - ไม่ตัดวัตถุดิบ (ยังไม่มีสูตร BOM — รอกำหนดเพิ่ม)
 
-import type { IStockRepository } from "@/lib/repositories/interfaces";
+import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document, StockMovement } from "@/types/models";
 import type { ProductionJob, ProductionReport } from "@/types/production";
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import { UpdateUserSchema } from "@/types/api";
 import bcrypt from "bcryptjs";
 import {

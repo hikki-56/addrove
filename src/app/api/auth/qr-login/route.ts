@@ -1,4 +1,4 @@
-import { getRepository } from "@/lib/repositories";
+import { getRepository } from "@/server/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";

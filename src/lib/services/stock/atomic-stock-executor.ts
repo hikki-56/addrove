@@ -2,7 +2,7 @@ import { withStockLocks, formatStockLockKey } from '@/server/locking';
 import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey } from '@/server/idempotency';
 import { executeWithJournal } from '@/server/recovery';
 import { logAudit } from '@/server/audit';
-import type { IStockRepository } from '@/lib/repositories/interfaces';
+import type { IStockRepository } from '@/server/repositories/interfaces';
 import type { Document } from '@/types/models';
 
 export interface AtomicOperationConfig {
