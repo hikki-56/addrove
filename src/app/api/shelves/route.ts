@@ -8,9 +8,9 @@ import {
   hasWarehouseAccess,
   zodErrorResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ZodError } from "zod";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 
 export async function GET(req: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { getQrTokenSecret } from "@/lib/server-secrets";
+import { getQrTokenSecret } from "@/server/server-secrets";
 
 interface QrTokenPayload {
   employee_id: string;

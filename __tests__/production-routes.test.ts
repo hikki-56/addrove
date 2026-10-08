@@ -6,7 +6,7 @@
 
 let mockSession: { user?: { id: string; name: string; email: string; role: string } } | null = null;
 
-jest.mock("@/lib/auth-session", () => ({
+jest.mock("@/server/auth-session", () => ({
   getAuthSession: jest.fn(async () => mockSession),
 }));
 

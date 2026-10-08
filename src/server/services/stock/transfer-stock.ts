@@ -28,7 +28,7 @@ import {
   InsufficientStockError,
   UnauthorizedStockOperationError,
 } from "./stock-errors";
-import { hasWarehouseAccess } from "@/lib/api-response";
+import { hasWarehouseAccess } from "@/server/api-response";
 import { executeAtomicOperation } from "./atomic-stock-executor";
 import { appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { normalizeWarehouseId, getWarehouseName } from "@/lib/warehouse-utils";

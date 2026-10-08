@@ -6,7 +6,7 @@ import type {
   WorkOrderQBox,
 } from "@/types/models";
 import type { IStockRepository } from "@/server/repositories/interfaces";
-import { withKeyedLock } from "@/lib/keyed-lock";
+import { withKeyedLock } from "@/server/keyed-lock";
 
 /**
  * Helper จัดการเอกสาร outbound (บิล/กล่อง/รอบรถ) ที่เก็บข้อมูลละเอียด

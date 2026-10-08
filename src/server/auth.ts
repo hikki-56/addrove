@@ -2,13 +2,13 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getRepository } from "@/server/repositories";
-import { getAuthSecret } from "@/lib/server-secrets";
+import { getAuthSecret } from "@/server/server-secrets";
 import {
   clearFailedAttempts,
   getClientIp,
   getRateLimitRetryAfter,
   recordFailedAttempt,
-} from "@/lib/rate-limit";
+} from "@/server/rate-limit";
 import type { UserRole } from "@/types/models";
 
 const PASSWORD_RATE_LIMIT = {

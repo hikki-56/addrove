@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth";
+import { auth } from "@/server/auth";
 import { decode } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
-import { getAuthSecret } from "@/lib/server-secrets";
+import { getAuthSecret } from "@/server/server-secrets";
 import type { UserRole } from "@/types/models";
 
 const USER_ROLES = new Set<UserRole>([

@@ -5,7 +5,7 @@ import {
   productionErrorResponse,
 } from "@/server/production/production-route-helpers";
 import { startJob } from "@/server/production/production-job.service";
-import { successResponse } from "@/lib/api-response";
+import { successResponse } from "@/server/api-response";
 
 export const maxDuration = 60;
 

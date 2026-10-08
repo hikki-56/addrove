@@ -1,6 +1,6 @@
 import type { Actor } from "./actor";
 import { Permission, ROLE_PERMISSION_MATRIX } from "./permissions";
-import { hasWarehouseAccess } from "@/lib/api-response";
+import { hasWarehouseAccess } from "@/server/api-response";
 
 export class SecurityError extends Error {
   constructor(

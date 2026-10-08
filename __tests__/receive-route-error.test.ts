@@ -1,4 +1,4 @@
-jest.mock("@/lib/auth-session", () => ({
+jest.mock("@/server/auth-session", () => ({
   getAuthSession: jest.fn(async () => ({ user: { id: "user-1" } })),
 }));
 

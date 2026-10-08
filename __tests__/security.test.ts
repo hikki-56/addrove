@@ -1,12 +1,12 @@
 import {
   getAccessibleWarehouseIds,
   hasWarehouseAccess,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import {
   generateEmployeeQrToken,
   verifyEmployeeQrToken,
-} from "@/lib/qr-token";
-import { getAuthSecret } from "@/lib/server-secrets";
+} from "@/server/qr-token";
+import { getAuthSecret } from "@/server/server-secrets";
 
 describe("security helpers", () => {
   const originalAuthSecret = process.env.AUTH_SECRET;

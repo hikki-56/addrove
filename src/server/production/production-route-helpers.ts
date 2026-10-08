@@ -1,14 +1,14 @@
 // Helper กลางสำหรับ API routes ระบบผลิต — จบเรื่อง auth + zod + error mapping ในที่เดียว
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import type { Permission } from "@/server/security";
 import {
   unauthorizedResponse,
   forbiddenResponse,
   zodErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ProductionError } from "@/server/production/production-job.service";
 import type { ProductionActor } from "@/server/production/production-job.service";
 import type { ZodSchema } from "zod";

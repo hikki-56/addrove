@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { MovementFilterSchema } from "@/types/api";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse, serverErrorResponse,
   getAccessibleWarehouseIds, hasWarehouseAccess,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export async function GET(req: NextRequest) {
   try {

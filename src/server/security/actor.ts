@@ -63,7 +63,7 @@ export async function createActorFromSession(
     return extractActorFromSession(sessionOverride, req);
   }
   try {
-    const { getAuthSession } = await import("@/lib/auth-session");
+    const { getAuthSession } = await import("@/server/auth-session");
     const session = await getAuthSession(req);
     return extractActorFromSession(session, req);
   } catch {

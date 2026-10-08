@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateEnvironment } from "@/lib/server-secrets";
+import { validateEnvironment } from "@/server/server-secrets";
 import { readSheet, SHEETS } from "@/server/google-sheets/client";
 
 export const dynamic = "force-dynamic";

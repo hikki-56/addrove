@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { withStockLocks, formatStockLockKey } from "@/server/locking";
@@ -11,8 +11,8 @@ import {
   forbiddenResponse,
   conflictResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
-import { setDocumentStatus } from "@/lib/document-status-store";
+} from "@/server/api-response";
+import { setDocumentStatus } from "@/server/document-status-store";
 
 export const maxDuration = 60;
 

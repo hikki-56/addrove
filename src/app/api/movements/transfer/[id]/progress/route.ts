@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import {
@@ -8,7 +8,7 @@ import {
   forbiddenResponse,
   serverErrorResponse,
   notFoundResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export async function PATCH(
   req: NextRequest,

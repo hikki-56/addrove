@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
-import { auth } from "@/lib/auth";
+import { auth } from "@/server/auth";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { TabAuthProvider } from "@/context/TabAuthContext";
 import { SpeedInsights } from "@vercel/speed-insights/next";

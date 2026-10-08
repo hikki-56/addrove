@@ -18,7 +18,7 @@ import {
   ensureSheetTabExists,
   SHEETS,
 } from "@/server/google-sheets/client";
-import { withKeyedLock } from "@/lib/keyed-lock";
+import { withKeyedLock } from "@/server/keyed-lock";
 import { withStockLocks, formatStockLockKey } from "@/server/locking";
 import { executeAtomicOperation } from "@/server/services/stock/atomic-stock-executor";
 import { getRepository } from "@/server/repositories";

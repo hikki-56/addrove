@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import {
   getLoginLogs,
   getProductsAddedByEmployee,
@@ -12,7 +12,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 interface LoginLogWithDetails {
   id: string;

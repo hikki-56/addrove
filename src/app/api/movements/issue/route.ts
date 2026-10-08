@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { issueStock, mapStockErrorToResponse, IssueStockSchema } from "@/server/services/stock";
@@ -8,7 +8,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export const maxDuration = 60;
 

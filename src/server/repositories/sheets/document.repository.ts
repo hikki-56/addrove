@@ -5,7 +5,7 @@ import {
   SHEETS,
   clearSheetCache,
 } from "@/server/google-sheets/client";
-import { withKeyedLock } from "@/lib/keyed-lock";
+import { withKeyedLock } from "@/server/keyed-lock";
 import type { IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
 

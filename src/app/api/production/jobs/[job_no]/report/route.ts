@@ -7,7 +7,7 @@ import {
 } from "@/server/production/production-route-helpers";
 import { reportProduction } from "@/server/production/production-job.service";
 import { reportProductionSchema } from "@/server/production/production-schemas";
-import { successResponse } from "@/lib/api-response";
+import { successResponse } from "@/server/api-response";
 
 export const maxDuration = 60;
 

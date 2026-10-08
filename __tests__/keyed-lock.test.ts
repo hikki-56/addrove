@@ -1,4 +1,4 @@
-import { withKeyedLock } from "@/lib/keyed-lock";
+import { withKeyedLock } from "@/server/keyed-lock";
 
 describe("withKeyedLock — re-entrancy", () => {
   it("การเรียกซ้อนด้วย key เดิมใน chain เดียวกันต้องผ่าน ไม่ deadlock", async () => {

@@ -7,7 +7,7 @@ import {
 } from "@/server/google-sheets/client";
 import type { IStockSummaryRepository } from "../interfaces";
 import type { StockSummary } from "@/types/models";
-import { withKeyedLock } from "@/lib/keyed-lock";
+import { withKeyedLock } from "@/server/keyed-lock";
 
 // Columns: product_id, warehouse_id, location_id, quantity, last_updated
 function rowToSummary(row: string[]): StockSummary {

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getStockStatus } from "@/lib/stock-status";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { CreateProductSchema } from "@/types/api";
 import {
@@ -11,7 +11,7 @@ import {
   hasWarehouseAccess,
   zodErrorResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { ZodError } from "zod";
 

@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { StockCountService } from "@/server/services/stock-count.service";
 import {
   successResponse, unauthorizedResponse, forbiddenResponse,
   notFoundResponse, serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 
 export async function POST(
   req: NextRequest,

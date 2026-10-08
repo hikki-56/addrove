@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { CreateUserSchema } from "@/types/api";
 import bcrypt from "bcryptjs";
@@ -10,7 +10,7 @@ import {
   forbiddenResponse,
   zodErrorResponse,
   serverErrorResponse,
-} from "@/lib/api-response";
+} from "@/server/api-response";
 import { ZodError } from "zod";
 
 export async function GET(req: NextRequest) {
