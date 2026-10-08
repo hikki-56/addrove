@@ -9,7 +9,7 @@ import {
   aggregateDashboardOperations,
   DASHBOARD_CHART_DAYS,
   type DashboardAggregationInput,
-} from "@/lib/dashboard/dashboard-aggregation";
+} from "@/server/dashboard/dashboard-aggregation";
 import type {
   Document,
   Product,

@@ -6,7 +6,7 @@ import {
 } from "@/lib/google-sheets/client";
 import { SheetsProductRepository } from "./product.repository";
 import { cleanSkuCode } from "@/lib/services/stock/shared";
-import { aggregateDashboardOperations } from "@/lib/dashboard/dashboard-aggregation";
+import { aggregateDashboardOperations } from "@/server/dashboard/dashboard-aggregation";
 import type { IDashboardRepository } from "../interfaces";
 import type {
   DashboardStats,
