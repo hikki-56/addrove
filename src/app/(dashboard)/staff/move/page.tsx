@@ -4,9 +4,9 @@ import { useSearchParams } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import { useMoveMovement } from "../../movements/move/_hooks/use-move-movement";
-import MoveForm from "../../movements/move/_components/MoveForm";
-import MoveSuccessModal from "../../movements/move/_components/MoveSuccessModal";
+import { useMoveMovement } from "@/features/move/hooks/use-move-movement";
+import MoveForm from "@/features/move/components/MoveForm";
+import MoveSuccessModal from "@/features/move/components/MoveSuccessModal";
 
 export default function StaffMovePage() {
   const searchParams = useSearchParams();
