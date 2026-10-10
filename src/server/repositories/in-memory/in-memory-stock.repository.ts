@@ -5,6 +5,7 @@ import {
   IShelfRepository,
   IProductRepository,
   IDocumentRepository,
+  DocumentMutator,
   IStockMovementRepository,
   IStockSummaryRepository,
   IStockCountRepository,
@@ -312,6 +313,19 @@ export class InMemoryDocumentRepository implements IDocumentRepository {
   async updateDoc(id: string, updates: Partial<Document>): Promise<void> {
     const d = await this.findById(id);
     if (d) Object.assign(d, updates);
+  }
+
+  async mutate(id: string, mutator: DocumentMutator): Promise<Document | null> {
+    const target = id.trim().toLowerCase();
+    const document = this.documents.find(
+      (item) =>
+        item.document_id.trim().toLowerCase() === target ||
+        item.document_no.trim().toLowerCase() === target
+    ) || null;
+    if (!document) return null;
+    const updates = await mutator({ ...document });
+    if (updates) Object.assign(document, updates);
+    return document;
   }
 
   async generateDocumentNo(type: Document["document_type"]): Promise<string> {

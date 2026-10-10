@@ -40,15 +40,18 @@ export async function issueStock(
     warehouseId: input.warehouse_id,
     payload: input,
     execute: async ({ repo }) => {
-      const exists =
-        (await repo.movements.existsByIdempotencyKey(input.idempotency_key)) ||
-        (await repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`));
+      const [exists, warehouse] = await Promise.all([
+        Promise.all([
+          repo.movements.existsByIdempotencyKey(input.idempotency_key),
+          repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`),
+        ]).then((results) => results.some(Boolean)),
+        findWarehouse(repo, input.warehouse_id),
+      ]);
       if (exists) {
         throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
       }
 
       // 2. Warehouse existence check
-      const warehouse = await findWarehouse(repo, input.warehouse_id);
       if (!warehouse) {
         throw new StockNotFoundError("ไม่พบโกดังที่ระบุ");
       }

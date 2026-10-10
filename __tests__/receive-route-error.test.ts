@@ -60,6 +60,7 @@ describe("POST /api/movements/receive error mapping", () => {
     const body = await res.json();
 
     expect(res.status).toBe(400);
+    expect(res.headers.get("server-timing")).toMatch(/^stock-receive;dur=/);
     expect(body.message).toContain("ไม่พบตำแหน่ง A99");
     expect(body.message).not.toContain("เกิดข้อผิดพลาดภายในระบบ");
   });

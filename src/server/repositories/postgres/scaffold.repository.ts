@@ -2,6 +2,7 @@ import type {
   IAuditRepository,
   IDashboardRepository,
   IDocumentRepository,
+  DocumentMutator,
   IIdempotencyRepository,
   ILocationRepository,
   IOperationJournalRepository,
@@ -168,6 +169,10 @@ export class PostgresDocumentRepository implements IDocumentRepository {
 
   async updateDoc(id: string, updates: Partial<Document>): Promise<void> {
     return postgresRepositoryNotImplemented("documents.updateDoc");
+  }
+
+  async mutate(id: string, mutator: DocumentMutator): Promise<Document | null> {
+    return postgresRepositoryNotImplemented("documents.mutate");
   }
 
   async generateDocumentNo(type: Document["document_type"]): Promise<string> {

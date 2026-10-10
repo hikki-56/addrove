@@ -3,6 +3,8 @@ import {
   syncServerTransferNotifications,
   parseTransferMetadata,
   getInStockSourceLocations,
+  updateTransferTaskProgress,
+  whenTransferProgressSettled,
 } from "@/lib/transfer-notification-utils";
 import { detectWarehouseFromLocation, getWarehouseDisplayName } from "@/lib/warehouse-utils";
 import type { Product } from "@/types/models";
@@ -17,9 +19,11 @@ function installBrowserStorage() {
 
   (globalThis as any).window = {
     localStorage,
+    sessionStorage: localStorage,
     dispatchEvent: () => true,
   };
   (globalThis as any).localStorage = localStorage;
+  (globalThis as any).sessionStorage = localStorage;
 }
 
 describe("transfer notifications & warehouse detection", () => {
@@ -30,6 +34,7 @@ describe("transfer notifications & warehouse detection", () => {
   afterEach(() => {
     delete (globalThis as any).window;
     delete (globalThis as any).localStorage;
+    delete (globalThis as any).sessionStorage;
   });
 
   it("keeps a newly synced server assignment visible to the assigned staff member", () => {
@@ -266,5 +271,75 @@ describe("transfer notifications & warehouse detection", () => {
 
     expect(getInStockSourceLocations(task, [noBreakdown as Product])).toBeNull();
     expect(getInStockSourceLocations(task, undefined)).toBeNull();
+  });
+
+  it("does not send duplicate progress for the same step", async () => {
+    (globalThis as any).localStorage.setItem(
+      "stockify_transfer_notifications",
+      JSON.stringify([
+        {
+          id: "doc-progress-1",
+          product_id: "prod-1",
+          product_name: "สินค้า A",
+          sku: "SKU-1",
+          from_warehouse_id: "wh-01",
+          from_warehouse_name: "โกดัง1",
+          to_warehouse_id: "wh-02",
+          to_warehouse_name: "โกดัง2",
+          qty: 1,
+          moved_by: "พนักงาน",
+          created_at: "2026-10-10T00:00:00.000Z",
+          status: "PENDING",
+        },
+      ])
+    );
+    const fetchMock = jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 }));
+
+    updateTransferTaskProgress("doc-progress-1", 3);
+    updateTransferTaskProgress("doc-progress-1", 3);
+    await whenTransferProgressSettled("doc-progress-1");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      step: 3,
+      step_text: "กำลังนำเข้าตำแหน่งปลายทาง",
+    });
+    fetchMock.mockRestore();
+  });
+
+  it("retries an unchanged progress step after a failed sync", async () => {
+    (globalThis as any).localStorage.setItem(
+      "stockify_transfer_notifications",
+      JSON.stringify([
+        {
+          id: "doc-progress-retry",
+          product_id: "prod-1",
+          product_name: "สินค้า A",
+          sku: "SKU-1",
+          from_warehouse_id: "wh-01",
+          from_warehouse_name: "โกดัง1",
+          to_warehouse_id: "wh-02",
+          to_warehouse_name: "โกดัง2",
+          qty: 1,
+          moved_by: "พนักงาน",
+          created_at: "2026-10-10T00:00:00.000Z",
+          status: "PENDING",
+        },
+      ])
+    );
+    const fetchMock = jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }));
+
+    updateTransferTaskProgress("doc-progress-retry", 3);
+    await whenTransferProgressSettled("doc-progress-retry");
+    updateTransferTaskProgress("doc-progress-retry", 3);
+    await whenTransferProgressSettled("doc-progress-retry");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    fetchMock.mockRestore();
   });
 });

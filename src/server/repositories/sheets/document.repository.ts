@@ -6,7 +6,7 @@ import {
   clearSheetCache,
 } from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/server/keyed-lock";
-import type { IDocumentRepository } from "../interfaces";
+import type { DocumentMutator, IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
 
 // ทุก write ของชีต Documents เป็น read-modify-write "ทั้งแถว" (สถานะ+note อยู่แถวเดียวกัน)
@@ -275,6 +275,34 @@ export class SheetsDocumentRepository implements IDocumentRepository {
         await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
         clearSheetCache(SHEETS.DOCUMENTS);
       }
+    });
+  }
+
+  async mutate(id: string, mutator: DocumentMutator): Promise<Document | null> {
+    return withKeyedLock(documentRowLockKey(id), async () => {
+      const sheetRows = await this.getSheetRows({ forceFresh: true });
+      const target = id.trim().toLowerCase();
+      const idx = sheetRows.findIndex(
+        (row) =>
+          row[0]?.trim().toLowerCase() === target ||
+          row[1]?.trim().toLowerCase() === target
+      );
+      if (idx === -1) return null;
+
+      const document = rowToDocument(sheetRows[idx]);
+      const updates = await mutator({ ...document });
+      if (!updates) return document;
+
+      Object.assign(document, updates);
+      await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(document));
+      clearSheetCache(SHEETS.DOCUMENTS);
+
+      const memDoc = inMemoryDocs.find(
+        (item) => item.document_id === document.document_id || item.document_no === document.document_no
+      );
+      if (memDoc) Object.assign(memDoc, updates);
+
+      return document;
     });
   }
 

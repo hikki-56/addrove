@@ -33,3 +33,33 @@
 เก็บ Network timing และ server logs ของพนักงานช่วงเกิดอาการ พร้อมเส้นทางหน้า จำนวนรายการในเอกสาร และเวลารอ Google Sheets/lock แยกเวลาตอนเปิดหน้า สแกน และส่งรายการ เปรียบเทียบ p50/p95 ก่อนและหลังในช่วงโหลดใกล้เคียงกัน ไม่สรุปตัวเลขความเร็วจาก unit tests
 
 Timeout ที่เพิ่มใช้กับการอ่านข้อมูลเท่านั้น ไม่ยกเลิกการบันทึกสต็อกกลางทาง ซึ่งอาจทำให้ผู้ใช้ไม่ทราบว่ารายการบันทึกสำเร็จแล้วหรือยัง
+
+## การตรวจสอบต่อ — งานเบิกของพนักงาน
+
+เส้นทางที่พนักงานเรียกว่า "เบิกสินค้า" ใช้ `/staff/transfer` และคำสั่ง `/api/movements/transfer/[id]/submit` ไม่ได้เรียก `/api/movements/issue` โดยตรง
+
+### สาเหตุที่ยืนยันจากโค้ด
+
+- การเปลี่ยนไปขั้นปลายทางเคยเรียก sync progress ซ้ำจากทั้ง hook และ effect ของ modal คำขอแต่ละรอบอ่านแท็บ `Documents` แบบสดสองครั้งแล้วเขียนหนึ่งครั้ง ก่อน submit ฝั่ง client ยังรอคิว progress ได้สูงสุด 8 วินาที ความเชื่อมั่น: สูง
+- submit เคยอ่านเอกสารใน route หนึ่งรอบ จากนั้น service อ่านซ้ำ และ `updateDoc` อ่านสดอีกรอบก่อนเขียน รวมสูงสุดสามรอบอ่าน `Documents` ต่อการกดยืนยันหนึ่งครั้ง ความเชื่อมั่น: สูง
+- งานรับเข้าเริ่มตรวจ idempotency, โกดัง, สินค้า และตำแหน่งตามลำดับบางส่วน ทั้งที่เป็นข้อมูลอิสระ ทำให้เสียหลาย network round trip ไป Google Sheets ความเชื่อมั่น: สูง
+- `/api/movements/issue` ยังซิงก์แท็บโกดังต่อกลุ่มสินค้าแบบตามลำดับ แต่หน้าเบิกของพนักงานปัจจุบันไม่ได้ใช้ endpoint นี้ ความเชื่อมั่น: สูง
+
+### การแก้ไขรอบนี้
+
+- เพิ่ม document mutation ที่อ่านสดและเขียนภายใต้ keyed lock เดียวกัน ทำให้ progress และ submit ใช้เอกสารปัจจุบันเพียงรอบเดียว
+- progress ยอมเขียนเฉพาะเอกสาร `PENDING`, ไม่ลดหมายเลขขั้น และไม่เขียนซ้ำเมื่อขั้นกับข้อความเดิม จึงไม่ทับ `WAITING_APPROVAL` ด้วย progress เก่า
+- ฝั่ง client ตัด progress ที่มี signature ซ้ำ แต่ล้าง signature เมื่อ HTTP ล้มเหลวเพื่อให้ retry ขั้นเดิมได้
+- ตัดการอ่านเอกสารล่วงหน้าซ้ำใน submit route
+- รวม preflight reads ของงานรับเข้าไว้ใน `Promise.all` เพื่อให้ Google Sheets client รวมเป็น `batchGet`; งาน issue เริ่มตรวจ idempotency และโกดังพร้อมกัน
+- เพิ่ม `Server-Timing` ใน response ของ receive, issue, transfer progress และ transfer submit พร้อม log `[StockWorkflowTiming]`; atomic receive/issue มี log `[StockAtomicTiming]` แยกเวลารอ lock, idempotency, business logic และ journal overhead
+
+### ผลเชิงโครงสร้าง
+
+- progress หนึ่งขั้น: อ่าน `Documents` แบบสดลดจาก 2 รอบเหลือ 1 รอบ และ progress ขั้นเดิมไม่สร้าง request ซ้ำ
+- transfer submit: อ่าน `Documents` ลดจากสูงสุด 3 รอบเหลือ 1 รอบก่อนเขียน
+- receive preflight: logical reads ที่เป็นอิสระเริ่มพร้อมกัน จึงรวม quota unit/round trip ได้เมื่อ Sheets batch read พร้อมใช้งาน
+
+ตัวเลขข้างต้นเป็นจำนวน I/O จาก call graph ไม่ใช่เวลาที่เร็วขึ้นจริง ต้องเปรียบเทียบ `Server-Timing` และ production logs ก่อน/หลังด้วยจำนวนรายการและช่วงโหลดใกล้เคียงกัน โดยดู p50/p95 แยก `stock-receive`, `stock-transfer-progress` และ `stock-transfer-submit`
+
+ข้อจำกัดที่ยังเหลือ: keyed lock ป้องกันได้เฉพาะใน Node.js instance เดียว ส่วนหลาย serverless instance ยังไม่มี distributed lock และ Google Sheets ยังคงเป็นแหล่งเก็บข้อมูลหลักที่ latency/quota ผันผวน จึงควรใช้ log รอบนี้ตัดสินใจก่อนเพิ่ม Redis lock หรือย้าย transaction path ไป Postgres
