@@ -66,8 +66,9 @@ export async function receiveStock(
           throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
         }
 
-        const allDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
-        const docWithKey = allDocs.data.find((d: Document) => {
+        const docWithKey = repo.documents.existsByIdempotencyKey
+          ? await repo.documents.existsByIdempotencyKey(input.idempotency_key)
+          : (await repo.documents.findAll({ page: 1, limit: Number.MAX_SAFE_INTEGER })).data.some((d: Document) => {
           try {
             if (d.note && d.note.startsWith("{")) {
               const parsed = JSON.parse(d.note);
@@ -95,8 +96,10 @@ export async function receiveStock(
       let allProducts: any[] = [];
       let allLocations: any[] = [];
       try {
-        allProducts = await repo.products.findAll().catch(() => []);
-        allLocations = await repo.locations.findAll().catch(() => []);
+        [allProducts, allLocations] = await Promise.all([
+          repo.products.findAll().catch(() => []),
+          repo.locations.findAll().catch(() => []),
+        ]);
       } catch {
         // Non-critical: approval page will still work with raw IDs
       }

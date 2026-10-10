@@ -134,6 +134,18 @@ export class SheetsDocumentRepository implements IDocumentRepository {
     return row ? rowToDocument(row) : null;
   }
 
+  async existsByIdempotencyKey(key: string): Promise<boolean> {
+    const rows = await this.getAllRows();
+    return rows.some((row) => {
+      if (!row[0] || !row[6]?.startsWith("{")) return false;
+      try {
+        return JSON.parse(row[6]).idempotency_key === key;
+      } catch {
+        return false;
+      }
+    });
+  }
+
   async findByNo(no: string, options?: { forceFresh?: boolean }): Promise<Document | null> {
     const rows = await this.getAllRows(options);
     const row = rows.find((r) => r[1] === no);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Warehouse, Location, Product } from "@/types/models";
 import {
   getActiveWarehouse,
@@ -42,6 +42,7 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
 
   const changeActiveWarehouse = useCallback((newWhId: string) => {
     const normalized = normalizeWarehouseId(newWhId);
@@ -78,14 +79,19 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
   }, []);
 
   const refreshData = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(new Error("โหลดข้อมูลนานเกินไป กรุณาลองใหม่")), 30_000);
     setLoading(true);
     setError(null);
     try {
       const [whRes, locRes, prodRes] = await Promise.all([
-        fetch(`/api/warehouses`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
-        fetch(`/api/locations`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
-        fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
+        fetch(`/api/warehouses`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดโกดังไม่สำเร็จ"); return r.json(); }),
+        fetch(`/api/locations`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดตำแหน่งไม่สำเร็จ"); return r.json(); }),
+        fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดสินค้าไม่สำเร็จ"); return r.json(); }),
       ]);
+      if (requestRef.current !== controller || controller.signal.aborted) return;
 
       const fetchedWarehouses: Warehouse[] = whRes.data || [];
       const fetchedLocations: Location[] = locRes.data || [];
@@ -95,9 +101,12 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
       setLocations(fetchedLocations);
       setProducts(fetchedProducts);
     } catch (err) {
+      if (requestRef.current !== controller) return;
+      controller.abort();
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล");
     } finally {
-      setLoading(false);
+      window.clearTimeout(timeout);
+      if (requestRef.current === controller) setLoading(false);
     }
   }, [activeWhId]);
 
@@ -111,6 +120,8 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
     }
     return () => {
       mounted = false;
+      requestRef.current?.abort();
+      requestRef.current = null;
     };
   }, [autoFetch, refreshData]);
 

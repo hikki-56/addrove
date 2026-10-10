@@ -283,31 +283,41 @@ export function useReceiveMovement({
     });
     if (unresolved.length === 0) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
+    const codes = [...new Set(unresolved.map((line) => (line.product_id || "").trim()))];
+    codes.forEach((code) => attemptedResolveRef.current.add(code.toLowerCase()));
+    // Resolve all draft lines with one master read and one state update. Updating
+    // products inside a sequential loop used to cancel and restart that loop.
     (async () => {
-      for (const line of unresolved) {
-        const code = (line.product_id || "").trim();
-        attemptedResolveRef.current.add(code.toLowerCase());
-        try {
-          const res = await fetch(`/api/products?search=${encodeURIComponent(code)}&master_only=true`);
-          const json = await res.json();
-          if (cancelled) return;
-          if (!json.success) continue;
-          const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
+      try {
+        const res = await fetch("/api/products?master_only=true", {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
+        });
+        const json = await res.json();
+        if (controller.signal.aborted || !json.success) return;
+        const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
+        const resolved = codes.flatMap((code) => {
           const exact = list.find((p) => matchesProductExact(p, code));
-          if (exact) {
-            setProducts((prev) => {
-              const exists = (prev || []).some((p) => p.product_id === exact.product_id);
-              return exists ? prev : [exact, ...(prev || [])];
+          return exact ? [exact] : [];
+        });
+        if (resolved.length > 0) {
+          setProducts((prev) => {
+            const ids = new Set(prev.map((p) => p.product_id));
+            const additions = resolved.filter((p) => {
+              if (ids.has(p.product_id)) return false;
+              ids.add(p.product_id);
+              return true;
             });
-          }
-        } catch (e) {
-          console.error("[Receive Page] Draft product resolve error:", e);
+            return additions.length > 0 ? [...additions, ...prev] : prev;
+          });
         }
+      } catch (e) {
+        if (!controller.signal.aborted) console.error("[Receive Page] Draft product resolve error:", e);
       }
     })();
     return () => {
-      cancelled = true;
+      controller.abort();
+      codes.forEach((code) => attemptedResolveRef.current.delete(code.toLowerCase()));
     };
   }, [watchLines, products, setProducts]);
 

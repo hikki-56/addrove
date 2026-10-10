@@ -241,4 +241,56 @@ describe("issueStock Use Case", () => {
       StockConflictError
     );
   });
+
+  test("rejects repeated lines whose combined quantity exceeds the balance before writing", async () => {
+    const input = IssueStockSchema.parse({
+      warehouse_id: "wh-1", document_date: "2026-08-08", idempotency_key: "issue-repeated-over",
+      lines: [
+        { product_id: "prod-001", location_id: "loc-A", qty: 60 },
+        { product_id: "prod-001", location_id: "loc-A", qty: 60 },
+      ],
+    });
+    await expect(issueStock({ repo }, { ...input, user_id: "user-1" })).rejects.toThrow(InsufficientStockError);
+    expect(repo.documentsList).toHaveLength(0);
+    expect(repo.movementsList).toHaveLength(0);
+  });
+
+  test("reads a repeated stock position once while preserving both movement lines", async () => {
+    const readBalance = jest.spyOn(repo.movements, "getBalance");
+    const input = IssueStockSchema.parse({
+      warehouse_id: "wh-1", document_date: "2026-08-08", idempotency_key: "issue-repeated-ok",
+      lines: [
+        { product_id: "prod-001", location_id: "loc-A", qty: 20 },
+        { product_id: "prod-001", location_id: "loc-A", qty: 30 },
+      ],
+    });
+    await issueStock({ repo }, { ...input, user_id: "user-1" });
+    expect(readBalance).toHaveBeenCalledTimes(1);
+    expect(repo.movementsList.map((m) => m.qty_change)).toEqual([-20, -30]);
+    expect(repo.summaryList[0].quantity).toBe(-50);
+  });
+
+  test("finishes pending balance reads before releasing the lock or writing", async () => {
+    let release!: (qty: number) => void;
+    const pending = new Promise<number>((resolve) => { release = resolve; });
+    const readBalance = jest.spyOn(repo.movements, "getBalance")
+      .mockImplementation(async (productId) => productId === "prod-002" ? pending : 0);
+    const input = IssueStockSchema.parse({
+      warehouse_id: "wh-1", document_date: "2026-08-08", idempotency_key: "issue-pending-read",
+      lines: [
+        { product_id: "prod-001", location_id: "loc-A", qty: 1 },
+        { product_id: "prod-002", location_id: "loc-A", qty: 1 },
+      ],
+    });
+    let settled = false;
+    const operation = issueStock({ repo }, { ...input, user_id: "user-1" });
+    const assertion = expect(operation).rejects.toThrow(InsufficientStockError);
+    void operation.catch(() => { settled = true; });
+    for (let i = 0; i < 30 && readBalance.mock.calls.length < 2; i++) await Promise.resolve();
+    expect(readBalance).toHaveBeenCalledTimes(2);
+    expect(settled).toBe(false);
+    expect(repo.documentsList).toHaveLength(0);
+    release(100);
+    await assertion;
+  });
 });
