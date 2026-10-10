@@ -47,72 +47,123 @@ export interface AtomicOperationConfig {
  *     the `ILockProvider` interface in @/lib/locking/lock-provider.
  */
 export async function executeAtomicOperation(config: AtomicOperationConfig): Promise<Document> {
+  const startedAt = performance.now();
   return withStockLocks(config.lockKeys, async () => {
+    const lockWaitMs = performance.now() - startedAt;
+    let claimMs = 0;
+    let businessMs = 0;
+    let journalAndBusinessMs = 0;
+    let timingLogged = false;
+    const logTiming = (outcome: "success" | "failure" | "replay") => {
+      if (timingLogged || process.env.NODE_ENV === "test") return;
+      timingLogged = true;
+      console.info(
+        "[StockAtomicTiming]",
+        JSON.stringify({
+          operation: config.operationType,
+          warehouse_id: config.warehouseId,
+          outcome,
+          lock_count: config.lockKeys.length,
+          lock_wait_ms: Number(lockWaitMs.toFixed(1)),
+          idempotency_ms: Number(claimMs.toFixed(1)),
+          business_ms: Number(businessMs.toFixed(1)),
+          journal_overhead_ms: Number(
+            Math.max(0, journalAndBusinessMs - businessMs).toFixed(1)
+          ),
+          duration_ms: Number((performance.now() - startedAt).toFixed(1)),
+        })
+      );
+    };
+
     // Local idempotency check (fast path)
-    const claim = await claimIdempotencyKey<Document>(
-      config.repo.idempotency,
-      config.idempotencyKey,
-      config.operationType,
-      config.actorId,
-      config.payload
-    );
-    if (claim.isReplay && claim.cachedResult) {
-      return claim.cachedResult;
-    }
-
-    // Execute with journal for recovery if journal repository is available
     try {
-      const result = config.repo?.journal
-        ? await executeWithJournal<Document>({
-            journalRepo: config.repo.journal,
-            operationType: config.operationType,
-            idempotencyKey: config.idempotencyKey,
-            actorId: config.actorId,
-            payload: config.payload,
-            steps: [
-              {
-                name: `execute_${config.operationType.toLowerCase()}`,
-                execute: async () => config.execute({ repo: config.repo }),
-              },
-            ],
-          })
-        : await config.execute({ repo: config.repo });
+      const claimStartedAt = performance.now();
+      const claim = await claimIdempotencyKey<Document>(
+        config.repo.idempotency,
+        config.idempotencyKey,
+        config.operationType,
+        config.actorId,
+        config.payload
+      );
+      claimMs = performance.now() - claimStartedAt;
+      if (claim.isReplay && claim.cachedResult) {
+        logTiming("replay");
+        return claim.cachedResult;
+      }
 
-      // Fire-and-forget idempotency completion (caches result for replays, not critical path)
-      completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result)
-        .catch((e) => console.warn('[AtomicOperation] idempotency complete error (non-fatal):', e));
+      // Execute with journal for recovery if journal repository is available
+      try {
+        const runBusinessOperation = async () => {
+          const businessStartedAt = performance.now();
+          try {
+            return await config.execute({ repo: config.repo });
+          } finally {
+            businessMs = performance.now() - businessStartedAt;
+          }
+        };
+        const journalStartedAt = performance.now();
+        let result: Document;
+        try {
+          result = config.repo?.journal
+            ? await executeWithJournal<Document>({
+                journalRepo: config.repo.journal,
+                operationType: config.operationType,
+                idempotencyKey: config.idempotencyKey,
+                actorId: config.actorId,
+                payload: config.payload,
+                steps: [
+                  {
+                    name: `execute_${config.operationType.toLowerCase()}`,
+                    execute: runBusinessOperation,
+                  },
+                ],
+              })
+            : await runBusinessOperation();
+        } finally {
+          journalAndBusinessMs = performance.now() - journalStartedAt;
+        }
 
-      // Fire-and-forget audit log — do not block response waiting for Sheets write
-      logAudit(config.repo.audit, {
-        correlationId: config.correlationId,
-        idempotencyKey: config.idempotencyKey,
-        actorId: config.actorId,
-        actorRole: config.actorRole,
-        action: config.auditAction,
-        resourceType: 'Document',
-        resourceId: result.document_id,
-        warehouseId: config.warehouseId,
-        outcome: 'SUCCESS',
-      }).catch((e) => console.warn('[AtomicOperation] audit log error (non-fatal):', e));
+        // Fire-and-forget idempotency completion (caches result for replays, not critical path)
+        completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result)
+          .catch((e) => console.warn('[AtomicOperation] idempotency complete error (non-fatal):', e));
 
-      return result;
+        // Fire-and-forget audit log — do not block response waiting for Sheets write
+        logAudit(config.repo.audit, {
+          correlationId: config.correlationId,
+          idempotencyKey: config.idempotencyKey,
+          actorId: config.actorId,
+          actorRole: config.actorRole,
+          action: config.auditAction,
+          resourceType: 'Document',
+          resourceId: result.document_id,
+          warehouseId: config.warehouseId,
+          outcome: 'SUCCESS',
+        }).catch((e) => console.warn('[AtomicOperation] audit log error (non-fatal):', e));
+
+        logTiming("success");
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await failIdempotencyKey(config.repo.idempotency, config.idempotencyKey, msg);
+
+        await logAudit(config.repo.audit, {
+          correlationId: config.correlationId,
+          idempotencyKey: config.idempotencyKey,
+          actorId: config.actorId,
+          actorRole: config.actorRole,
+          action: config.auditAction,
+          resourceType: 'Document',
+          warehouseId: config.warehouseId,
+          outcome: 'FAILURE',
+          errorCode: err instanceof Error ? err.name : 'UNKNOWN_ERROR',
+          metadata: { error: msg },
+        });
+
+        logTiming("failure");
+        throw err;
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await failIdempotencyKey(config.repo.idempotency, config.idempotencyKey, msg);
-
-      await logAudit(config.repo.audit, {
-        correlationId: config.correlationId,
-        idempotencyKey: config.idempotencyKey,
-        actorId: config.actorId,
-        actorRole: config.actorRole,
-        action: config.auditAction,
-        resourceType: 'Document',
-        warehouseId: config.warehouseId,
-        outcome: 'FAILURE',
-        errorCode: err instanceof Error ? err.name : 'UNKNOWN_ERROR',
-        metadata: { error: msg },
-      });
-
+      logTiming("failure");
       throw err;
     }
   });

@@ -210,48 +210,43 @@ export async function createTransfer(
   });
 }
 
-export async function submitTransferMove(
-  deps: StockUseCaseDeps,
-  docId: string,
-  input: {
-    fromLocationId?: string;
-    toLocationId?: string;
-    sourceAllocations?: Array<{ location_id: string; qty: number }>;
-    userId?: string;
-    userName?: string;
-    userRole?: string;
-  }
-): Promise<Document> {
-  const doc =
-    (await deps.repo.documents.findById(docId, { forceFresh: true })) ||
-    (await deps.repo.documents.findByNo(docId, { forceFresh: true }));
-  if (!doc) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
+interface SubmitTransferMoveInput {
+  fromLocationId?: string;
+  toLocationId?: string;
+  sourceAllocations?: Array<{ location_id: string; qty: number }>;
+  userId?: string;
+  userName?: string;
+  userRole?: string;
+}
+
+function buildTransferSubmissionUpdates(
+  doc: Readonly<Document>,
+  input: SubmitTransferMoveInput
+): Partial<Document> | null {
   if (doc.document_type !== "TRANSFER") {
     throw new InvalidTransferStateError("เอกสารนี้ไม่ใช่ใบย้ายสินค้า");
   }
-
-  if (doc.status === "COMPLETED") {
-    return doc;
-  }
+  if (doc.status === "COMPLETED" || doc.status === "WAITING_APPROVAL") return null;
   if (doc.status === "CANCELLED" || doc.status === "REJECTED") {
     throw new InvalidTransferStateError("ไม่สามารถส่งย้ายสินค้าที่ยกเลิกหรือถูกปฏิเสธแล้วได้");
   }
 
-  let meta: any = {};
+  let meta: Record<string, any> = {};
   try {
-    meta = JSON.parse(doc.note || "{}");
-  } catch {
-    meta = {};
-  }
+    meta = JSON.parse(doc.note || "{}") as Record<string, any>;
+  } catch {}
 
   const rawAllocations = Array.isArray(input.sourceAllocations) && input.sourceAllocations.length > 0
     ? input.sourceAllocations
     : meta.source_allocations || [];
+  const finalFromLoc = String(
+    input.fromLocationId ||
+      meta.from_location_id ||
+      (rawAllocations.length > 0 ? rawAllocations[0].location_id : "A1")
+  ).trim();
+  const finalToLoc = String(input.toLocationId || meta.to_location_id || "A1").trim();
+  const moverName = input.userName?.trim() || input.userId || "พนักงาน";
 
-  const finalFromLoc = (input.fromLocationId || meta.from_location_id || (rawAllocations.length > 0 ? rawAllocations[0].location_id : "A1")).trim();
-  const finalToLoc = (input.toLocationId || meta.to_location_id || "A1").trim();
-
-  const moverName = (input.userName && input.userName.trim()) || input.userId || "พนักงาน";
   meta.from_location_id = finalFromLoc;
   meta.to_location_id = finalToLoc;
   meta.source_allocations = rawAllocations;
@@ -261,8 +256,7 @@ export async function submitTransferMove(
   meta.moved_by = moverName;
   meta.assigned_to_name = moverName;
   meta.mover_user_id = input.userId || "";
-  // Do not let another user silently take over the task: keep the original assignee
-  // unless the task is unassigned, the assignee submits their own task, or an ADMIN submits.
+
   const currentAssignee = String(doc.assigned_to_user_id || meta.assigned_to_user_id || "").trim();
   const isAssigneeOrUnassigned = !currentAssignee || currentAssignee === (input.userId || "").trim();
   if (isAssigneeOrUnassigned || input.userRole === "ADMIN") {
@@ -270,26 +264,48 @@ export async function submitTransferMove(
   }
 
   const finalAssignedUserId = String(meta.assigned_to_user_id || currentAssignee || "").trim();
-  const finalAssignedName = isAssigneeOrUnassigned || input.userRole === "ADMIN" ? moverName : String(doc.assigned_to_name || meta.assigned_to_name || moverName);
+  const finalAssignedName =
+    isAssigneeOrUnassigned || input.userRole === "ADMIN"
+      ? moverName
+      : String(doc.assigned_to_name || meta.assigned_to_name || moverName);
 
-  const updatedNote = JSON.stringify(meta);
-  if (typeof deps.repo.documents.updateDoc === "function") {
-    await deps.repo.documents.updateDoc(doc.document_id, {
-      status: "WAITING_APPROVAL",
-      note: updatedNote,
-      assigned_to_name: finalAssignedName,
-      assigned_to_user_id: finalAssignedUserId,
-    });
+  return {
+    status: "WAITING_APPROVAL",
+    note: JSON.stringify(meta),
+    assigned_to_name: finalAssignedName,
+    assigned_to_user_id: finalAssignedUserId,
+  };
+}
+
+export async function submitTransferMove(
+  deps: StockUseCaseDeps,
+  docId: string,
+  input: SubmitTransferMoveInput
+): Promise<Document> {
+  if (deps.repo.documents.mutate) {
+    const updated = await deps.repo.documents.mutate(docId, (doc) =>
+      buildTransferSubmissionUpdates(doc, input)
+    );
+    if (!updated) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
+    return updated;
+  }
+
+  const doc =
+    (await deps.repo.documents.findById(docId, { forceFresh: true })) ||
+    (await deps.repo.documents.findByNo(docId, { forceFresh: true }));
+  if (!doc) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
+
+  const updates = buildTransferSubmissionUpdates(doc, input);
+  if (!updates) return doc;
+
+  if (deps.repo.documents.updateDoc) {
+    await deps.repo.documents.updateDoc(doc.document_id, updates);
   } else {
-    await deps.repo.documents.updateNote(doc.document_id, updatedNote);
+    await deps.repo.documents.updateNote(doc.document_id, updates.note || doc.note);
     await deps.repo.documents.updateStatus(doc.document_id, "WAITING_APPROVAL");
   }
 
-  return {
-    ...doc,
-    status: "WAITING_APPROVAL",
-    note: updatedNote,
-  };
+  return { ...doc, ...updates };
 }
 
 export async function completeTransfer(
@@ -968,5 +984,4 @@ export async function cancelTransfer(
     }
   });
 }
-
 

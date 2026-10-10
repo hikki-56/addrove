@@ -8,6 +8,8 @@ import {
 } from "@/types/api";
 import {
   StockUseCaseDeps,
+  cleanLocCode,
+  cleanSkuCode,
   findWarehouse,
 } from "./shared";
 import {
@@ -39,30 +41,45 @@ export async function issueStock(
     warehouseId: input.warehouse_id,
     payload: input,
     execute: async ({ repo }) => {
-      const exists =
-        (await repo.movements.existsByIdempotencyKey(input.idempotency_key)) ||
-        (await repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`));
+      const [exists, warehouse] = await Promise.all([
+        Promise.all([
+          repo.movements.existsByIdempotencyKey(input.idempotency_key),
+          repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`),
+        ]).then((results) => results.some(Boolean)),
+        findWarehouse(repo, input.warehouse_id),
+      ]);
       if (exists) {
         throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
       }
 
       // 2. Warehouse existence check
-      const warehouse = await findWarehouse(repo, input.warehouse_id);
       if (!warehouse) {
         throw new StockNotFoundError("ไม่พบโกดังที่ระบุ");
       }
 
-      // 3. Check stock balance for each line
+      // Combine repeated stock positions before validating, so separate lines
+      // cannot each pass against the same balance and overdraw their total.
+      const grouped = new Map<string, { product_id: string; location_id: string; qty: number }>();
       for (const line of input.lines) {
-        const balance = await repo.movements.getBalance(
-          line.product_id,
-          warehouse.warehouse_id,
-          line.location_id
-        );
-        if (balance < line.qty) {
-          throw new InsufficientStockError(
-            `สินค้าในตำแหน่งนี้มีไม่เพียงพอ (ต้องการ ${line.qty} แต่มี ${balance})`
-          );
+        const key = JSON.stringify([cleanSkuCode(line.product_id), cleanLocCode(line.location_id)]);
+        const existing = grouped.get(key);
+        if (existing) existing.qty += line.qty;
+        else grouped.set(key, { ...line });
+      }
+      const stockLines = [...grouped.values()];
+      // Bound concurrent reads to avoid a large document flooding the adapter.
+      // All reads finish before any document or stock writes start.
+      for (let i = 0; i < stockLines.length; i += 4) {
+        const batch = stockLines.slice(i, i + 4);
+        const balances = await Promise.all(batch.map((line) => repo.movements.getBalance(
+          line.product_id, warehouse.warehouse_id, line.location_id
+        )));
+        for (let j = 0; j < batch.length; j++) {
+          if (balances[j] < batch[j].qty) {
+            throw new InsufficientStockError(
+              `สินค้าในตำแหน่งนี้มีไม่เพียงพอ (ต้องการ ${batch[j].qty} แต่มี ${balances[j]})`
+            );
+          }
         }
       }
 
@@ -103,7 +120,7 @@ export async function issueStock(
 
       // 7. Synchronize deduction via repository adapter
       if (repo.warehouseSync) {
-        for (const line of input.lines) {
+        for (const line of stockLines) {
           const product =
             (await repo.products.findById(line.product_id)) ||
             (await repo.products.findBySku(line.product_id));

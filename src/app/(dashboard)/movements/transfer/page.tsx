@@ -22,6 +22,8 @@ export default function TransferPage() {
     warehouses,
     products,
     refreshData,
+    error: warehouseError,
+    loading: productsLoading,
   } = useWarehouseData({ initialWarehouseId: whParam || undefined });
 
   const transferHook = useTransferMovement({
@@ -29,6 +31,7 @@ export default function TransferPage() {
     warehouses,
     products,
     refreshData,
+    productsLoading,
   });
 
   const {
@@ -98,6 +101,12 @@ export default function TransferPage() {
 
   return (
     <div className={`${containerWidth} mx-auto w-full px-3 sm:px-6 pt-2 pb-20 sm:pt-4 sm:pb-8 space-y-4`}>
+      {warehouseError && (
+        <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
+          {warehouseError}
+          <button type="button" className="ml-3 underline" onClick={() => void refreshData()}>ลองโหลดใหม่</button>
+        </div>
+      )}
       {isApprover ? (
         /* Dedicated Approver Banner */
         <div className="flex items-center gap-2 self-start sm:self-auto">

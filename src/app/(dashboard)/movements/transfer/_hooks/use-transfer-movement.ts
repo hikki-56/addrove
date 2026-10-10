@@ -144,6 +144,7 @@ export interface UseTransferMovementOptions {
   warehouses: Warehouse[];
   products: Product[];
   refreshData: () => void;
+  productsLoading?: boolean;
 }
 
 export function useTransferMovement({
@@ -151,6 +152,7 @@ export function useTransferMovement({
   warehouses,
   products,
   refreshData,
+  productsLoading = false,
 }: UseTransferMovementOptions) {
   const { user: tabUser } = useTabAuth();
   const [activeMode, setActiveMode] = useState<"ADMIN_CREATE" | "STAFF_EXECUTE" | "WAITING_APPROVAL">(
@@ -278,9 +280,19 @@ export function useTransferMovement({
     let isMounted = true;
     const targetWh = watchFromWh || activeWhId;
     if (!targetWh) return;
+    const useLoadedProducts = normalizeWarehouseId(targetWh) === normalizeWarehouseId(activeWhId);
+    if (useLoadedProducts && productsLoading) return;
+    const controller = new AbortController();
 
-    fetch(`/api/products?warehouse_id=${encodeURIComponent(targetWh)}`)
-      .then((res) => (res.ok ? res.json() : { data: [] }))
+    const source = useLoadedProducts
+      ? Promise.resolve({ data: products })
+      : fetch(`/api/products?warehouse_id=${encodeURIComponent(targetWh)}`, {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
+        }).then((res) => {
+          if (!res.ok) throw new Error("โหลดสินค้าต้นทางไม่สำเร็จ กรุณาลองใหม่");
+          return res.json();
+        });
+    source
       .then((json) => {
         if (!isMounted) return;
         const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.items || [];
@@ -315,12 +327,17 @@ export function useTransferMovement({
 
         setFromWhProducts(Array.from(map.values()));
       })
-      .catch((err) => console.error("Error fetching source warehouse products:", err));
+      .catch((err) => {
+        if (isMounted && !controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : "โหลดสินค้าต้นทางไม่สำเร็จ");
+        }
+      });
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
-  }, [watchFromWh, activeWhId]);
+  }, [watchFromWh, activeWhId, products, productsLoading]);
 
   const [selectedItems, setSelectedItems] = useState<SelectedTransferItem[]>([]);
 

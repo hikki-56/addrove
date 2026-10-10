@@ -9,26 +9,39 @@ import {
   forbiddenResponse,
   serverErrorResponse,
 } from "@/lib/api-response";
+import { finishStockWorkflowTiming } from "@/lib/stock-workflow-timing";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const startedAt = performance.now();
+  let warehouseId: string | undefined;
+  let itemCount: number | undefined;
+  const finish = (response: Response) =>
+    finishStockWorkflowTiming(response, startedAt, {
+      operation: "stock-issue",
+      warehouseId,
+      itemCount,
+    });
+
   try {
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
-    if (!actor) return unauthorizedResponse();
+    if (!actor) return finish(unauthorizedResponse());
 
     const body = await req.json().catch(() => ({}));
+    warehouseId = typeof body.warehouse_id === "string" ? body.warehouse_id : undefined;
+    itemCount = Array.isArray(body.lines) ? body.lines.length : undefined;
     const parsed = IssueStockSchema.safeParse(body);
     if (!parsed.success) {
-      return mapStockErrorToResponse(parsed.error);
+      return finish(mapStockErrorToResponse(parsed.error));
     }
 
     try {
       authorize(actor, PERMISSIONS.STOCK_ISSUE, parsed.data.warehouse_id);
     } catch (authErr: any) {
-      if (authErr.statusCode === 401) return unauthorizedResponse(authErr.message);
-      return forbiddenResponse(authErr.message);
+      if (authErr.statusCode === 401) return finish(unauthorizedResponse(authErr.message));
+      return finish(forbiddenResponse(authErr.message));
     }
 
     const repo = getRepository();
@@ -42,8 +55,8 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    return successResponse(doc, "เบิกสินค้าออกและตัดยอดสต็อกเรียบร้อยแล้ว", 201);
+    return finish(successResponse(doc, "เบิกสินค้าออกและตัดยอดสต็อกเรียบร้อยแล้ว", 201));
   } catch (e) {
-    return mapStockErrorToResponse(e) || serverErrorResponse(e);
+    return finish(mapStockErrorToResponse(e) || serverErrorResponse(e));
   }
 }

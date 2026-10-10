@@ -42,6 +42,7 @@ export default function ReceiveWorkspace() {
     products,
     setProducts,
     refreshData,
+    error: warehouseError,
     getWarehouseName,
   } = useWarehouseData({ initialWarehouseId: whParam || undefined });
 
@@ -152,6 +153,12 @@ export default function ReceiveWorkspace() {
 
   return (
     <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-24 sm:pb-10 space-y-4 sm:space-y-5">
+      {warehouseError && (
+        <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
+          {warehouseError}
+          <button type="button" className="ml-3 underline" onClick={() => void refreshData()}>ลองโหลดใหม่</button>
+        </div>
+      )}
       {/* Segmented switch: รายการที่ต้องรับ / รับเข้า / (แอดมิน) สร้างแผน + แผนทั้งหมด */}
       <div
         className="p-1.5 bg-slate-100 border border-[#E8ECEA] rounded-2xl gap-1.5 sm:gap-2 shadow-xs items-stretch grid"

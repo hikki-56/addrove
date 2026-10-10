@@ -11,6 +11,7 @@ export { sendSignedAppsScriptRequest };
 // ============================================================
 
 let sheetsInstance: sheets_v4.Sheets | null = null;
+const SHEET_READ_TIMEOUT_MS = 10_000;
 
 export function getSheetsClient(): sheets_v4.Sheets {
   if (sheetsInstance) return sheetsInstance;
@@ -220,7 +221,7 @@ async function readPublicSheetCsv(sheetName: string): Promise<string[][]> {
   let lastError: unknown = new Error(`ไม่สามารถอ่านชีต ${sheetName}`);
   for (const url of urls) {
     try {
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(SHEET_READ_TIMEOUT_MS) });
       if (!res.ok) {
         lastError = new Error(`Google Sheets CSV returned HTTP ${res.status}`);
         continue;
@@ -390,7 +391,7 @@ async function fetchSpreadsheetTabs(): Promise<SpreadsheetTabsCache | null> {
         getSheetsClient().spreadsheets.get({
           spreadsheetId: SPREADSHEET_ID,
           fields: "sheets.properties(title,sheetId)",
-        })
+        }, { timeout: SHEET_READ_TIMEOUT_MS })
       );
       sheetsMeta = (meta.data.sheets ?? []).map((s) => ({
         title: s.properties?.title,
@@ -398,7 +399,7 @@ async function fetchSpreadsheetTabs(): Promise<SpreadsheetTabsCache | null> {
       }));
     } else if (process.env.GOOGLE_API_KEY) {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties(title,sheetId)&key=${process.env.GOOGLE_API_KEY}`;
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(SHEET_READ_TIMEOUT_MS) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       sheetsMeta = (json.sheets ?? []).map(
@@ -533,7 +534,7 @@ async function fetchFreshRowsUncached(
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${process.env.GOOGLE_API_KEY}`;
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(SHEET_READ_TIMEOUT_MS) });
         if (res.ok) {
           const json = await res.json();
           let googleRows = (json.values as string[][]) ?? [];
@@ -584,7 +585,7 @@ async function fetchFreshRowsUncached(
         sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
           range: candRange,
-        })
+        }, { timeout: SHEET_READ_TIMEOUT_MS })
       );
       return stripHeaderRowIfPresent(
         (response.data.values as string[][]) ?? [],
@@ -758,7 +759,7 @@ async function flushSheetReadQueue(): Promise<void> {
           getSheetsClient().spreadsheets.values.batchGet({
             spreadsheetId: SPREADSHEET_ID,
             ranges,
-          })
+          }, { timeout: SHEET_READ_TIMEOUT_MS })
         );
         valueRanges = (response.data.valueRanges ?? []) as { values?: string[][] }[];
       } else {
@@ -767,7 +768,7 @@ async function flushSheetReadQueue(): Promise<void> {
         params.set("key", process.env.GOOGLE_API_KEY ?? "");
         const res = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${params.toString()}`,
-          { cache: "no-store" }
+          { cache: "no-store", signal: AbortSignal.timeout(SHEET_READ_TIMEOUT_MS) }
         );
         if (!res.ok) throw new Error(`batchGet HTTP ${res.status}`);
         const json = await res.json();

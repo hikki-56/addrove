@@ -57,32 +57,44 @@ export async function receiveStock(
     warehouseId: input.warehouse_id,
     payload: input,
     execute: async ({ repo }) => {
-      // 1. Idempotency Check (kept as fast-path guard on legacy stores)
-      if (input.idempotency_key) {
-        const existsInMovements =
-          (await repo.movements.existsByIdempotencyKey(input.idempotency_key)) ||
-          (await repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`));
-        if (existsInMovements) {
-          throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
-        }
+      const movementIdempotencyPromise = input.idempotency_key
+        ? Promise.all([
+            repo.movements.existsByIdempotencyKey(input.idempotency_key),
+            repo.movements.existsByIdempotencyKey(`${input.idempotency_key}-0`),
+          ]).then((results) => results.some(Boolean))
+        : Promise.resolve(false);
+      const documentIdempotencyPromise = input.idempotency_key
+        ? repo.documents.existsByIdempotencyKey
+          ? repo.documents.existsByIdempotencyKey(input.idempotency_key)
+          : repo.documents
+              .findAll({ page: 1, limit: Number.MAX_SAFE_INTEGER })
+              .then(({ data }) =>
+                data.some((document: Document) => {
+                  try {
+                    if (document.note?.startsWith("{")) {
+                      const parsed = JSON.parse(document.note);
+                      return parsed.idempotency_key === input.idempotency_key;
+                    }
+                  } catch {}
+                  return false;
+                })
+              )
+        : Promise.resolve(false);
 
-        const allDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
-        const docWithKey = allDocs.data.find((d: Document) => {
-          try {
-            if (d.note && d.note.startsWith("{")) {
-              const parsed = JSON.parse(d.note);
-              return parsed.idempotency_key === input.idempotency_key;
-            }
-          } catch {}
-          return false;
-        });
-        if (docWithKey) {
-          throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
-        }
+      const [existsInMovements, docWithKey, warehouse, allProducts, allLocations] =
+        await Promise.all([
+          movementIdempotencyPromise,
+          documentIdempotencyPromise,
+          findWarehouse(repo, input.warehouse_id),
+          repo.products.findAll().catch(() => []),
+          repo.locations.findAll().catch(() => []),
+        ]);
+
+      if (existsInMovements || docWithKey) {
+        throw new StockConflictError("รายการนี้ถูกบันทึกไปแล้ว (idempotency_key ซ้ำ)");
       }
 
       // 2. Resolve warehouse & validate existence
-      const warehouse = await findWarehouse(repo, input.warehouse_id);
       if (!warehouse) {
         throw new StockNotFoundError("ไม่พบโกดังที่ระบุ");
       }
@@ -90,16 +102,6 @@ export async function receiveStock(
         throw new StockValidationError("โกดังถูกปิดใช้งาน");
       }
       const warehouseName = warehouse.warehouse_name || `โกดัง${input.warehouse_id.replace(/^wh-0?/, "")}`;
-
-      // 3. Build approval payload with product/location details
-      let allProducts: any[] = [];
-      let allLocations: any[] = [];
-      try {
-        allProducts = await repo.products.findAll().catch(() => []);
-        allLocations = await repo.locations.findAll().catch(() => []);
-      } catch {
-        // Non-critical: approval page will still work with raw IDs
-      }
 
       // 3.1 รับตามแผนรับสินค้า — ตรวจแผน + บังคับนโยบาย "รับได้เฉพาะสินค้าในแผน"
       let planCtx: LoadPlanForReceiveResult | null = null;

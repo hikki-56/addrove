@@ -9,19 +9,67 @@ import {
   serverErrorResponse,
   notFoundResponse,
 } from "@/lib/api-response";
+import { finishStockWorkflowTiming } from "@/lib/stock-workflow-timing";
+import type { Document } from "@/types/models";
+
+function buildProgressUpdate(
+  document: Readonly<Document>,
+  step: number,
+  stepText: string,
+  actorId: string
+): Partial<Document> | null {
+  if (document.status !== "PENDING") return null;
+
+  let meta: Record<string, unknown> = {};
+  if (document.note && document.note.startsWith("{")) {
+    try {
+      meta = JSON.parse(document.note) as Record<string, unknown>;
+    } catch {}
+  } else if (document.note?.trim()) {
+    meta.original_note = document.note;
+  }
+
+  const currentStep = Number(meta.current_step) || 0;
+  if (currentStep > step) return null;
+
+  const resolvedStepText =
+    stepText ||
+    (step === 1
+      ? "กำลังสแกนบาร์โค้ดสินค้า"
+      : step === 2
+        ? "กำลังหยิบสินค้าต้นทาง"
+        : step === 3
+          ? "กำลังนำเข้าตำแหน่งปลายทาง"
+          : "รอดำเนินการ");
+  if (currentStep === step && meta.current_step_text === resolvedStepText) return null;
+
+  meta.current_step = step;
+  meta.current_step_text = resolvedStepText;
+  meta.last_active_at = new Date().toISOString();
+  meta.last_active_user_id = actorId;
+
+  return { note: JSON.stringify(meta) };
+}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = performance.now();
+  const finish = (response: Response) =>
+    finishStockWorkflowTiming(response, startedAt, {
+      operation: "stock-transfer-progress",
+      itemCount: 1,
+    });
+
   try {
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
-    if (!actor) return unauthorizedResponse();
+    if (!actor) return finish(unauthorizedResponse());
 
     // Read-only users must not update task progress
     if (actor.role === "VIEWER") {
-      return forbiddenResponse("ผู้ใช้งานแบบดูอย่างเดียวไม่สามารถอัปเดตขั้นตอนงานได้");
+      return finish(forbiddenResponse("ผู้ใช้งานแบบดูอย่างเดียวไม่สามารถอัปเดตขั้นตอนงานได้"));
     }
 
     const { id } = await params;
@@ -30,36 +78,36 @@ export async function PATCH(
     const stepText = typeof body.step_text === "string" ? body.step_text : "";
 
     const repo = getRepository();
-    // อ่านแบบสด (ไม่ผ่านแคช 30 วิ) — เดี๋ยวเอา note ไป merge แล้วเขียนกลับชีต
-    // ถ้าอ่านข้อมูลเก่า จะเขียนทับ metadata ที่ request อื่นเพิ่งเขียนทิ้ง
-    const doc =
-      (await repo.documents.findById(id, { forceFresh: true })) ||
-      (await repo.documents.findByNo(id, { forceFresh: true }));
-    if (!doc) {
-      return notFoundResponse("ไม่พบใบย้ายสินค้า");
+    let persisted = false;
+    const mutateProgress = (document: Readonly<Document>) => {
+      const updates = buildProgressUpdate(document, step, stepText, actor.id);
+      persisted = Boolean(updates);
+      return updates;
+    };
+
+    let doc: Document | null;
+    if (repo.documents.mutate) {
+      doc = await repo.documents.mutate(id, mutateProgress);
+    } else {
+      doc =
+        (await repo.documents.findById(id, { forceFresh: true })) ||
+        (await repo.documents.findByNo(id, { forceFresh: true }));
+      if (doc) {
+        const updates = mutateProgress(doc);
+        if (updates?.note) await repo.documents.updateNote(doc.document_id, updates.note);
+      }
     }
 
-    let meta: Record<string, any> = {};
-    if (doc.note && typeof doc.note === "string" && doc.note.startsWith("{")) {
-      try {
-        meta = JSON.parse(doc.note);
-      } catch {}
-    } else if (doc.note && doc.note.trim()) {
-      // Legacy plain-text note: keep the original content instead of overwriting it with an empty object
-      meta.original_note = doc.note;
-    }
+    if (!doc) return finish(notFoundResponse("ไม่พบใบย้ายสินค้า"));
 
-    meta.current_step = step;
-    if (stepText) meta.current_step_text = stepText;
-    meta.last_active_at = new Date().toISOString();
-    meta.last_active_user_id = actor.id;
-
-    const updatedNote = JSON.stringify(meta);
-    await repo.documents.updateNote(doc.document_id, updatedNote);
-
-    return successResponse({ id: doc.document_id, step, stepText }, "อัปเดตขั้นตอนสำเร็จ");
+    return finish(
+      successResponse(
+        { id: doc.document_id, step, stepText, persisted },
+        persisted ? "อัปเดตขั้นตอนสำเร็จ" : "ขั้นตอนเป็นข้อมูลล่าสุดอยู่แล้ว"
+      )
+    );
   } catch (e) {
-    return serverErrorResponse(e);
+    return finish(serverErrorResponse(e));
   }
 }
 

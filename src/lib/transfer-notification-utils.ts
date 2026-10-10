@@ -429,33 +429,52 @@ export function markTransferWaitingApproval(
   }
 }
 
+const progressSyncChains = new Map<string, Promise<void>>();
+const progressSyncSignatures = new Map<string, string>();
+
 export function updateTransferTaskProgress(id: string, step: number, stepText?: string) {
   if (typeof window === "undefined" || !id) return;
   try {
     const existing = getTransferNotifications();
     const targetLower = String(id).trim().toLowerCase();
-    const updated = existing.map((t) =>
-      t.id && String(t.id).trim().toLowerCase() === targetLower
-        ? {
-            ...t,
-            current_step: step,
-            current_step_text:
-              stepText ||
-              (step === 1
-                ? "กำลังสแกนบาร์โค้ดสินค้า"
-                : step === 2
-                ? "กำลังหยิบสินค้าต้นทาง"
-                : step === 3
-                ? "กำลังนำเข้าตำแหน่งปลายทาง"
-                : step >= 4
-                ? "ย้ายสินค้าสำเร็จ"
-                : "รอดำเนินการ"),
-            last_active_at: new Date().toISOString(),
-          }
-        : t
+    const resolvedStepText =
+      stepText ||
+      (step === 1
+        ? "กำลังสแกนบาร์โค้ดสินค้า"
+        : step === 2
+          ? "กำลังหยิบสินค้าต้นทาง"
+          : step === 3
+            ? "กำลังนำเข้าตำแหน่งปลายทาง"
+            : step >= 4
+              ? "ย้ายสินค้าสำเร็จ"
+              : "รอดำเนินการ");
+    const target = existing.find(
+      (item) => item.id && String(item.id).trim().toLowerCase() === targetLower
     );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    broadcastTransferChange();
+    const progressUnchanged = Boolean(
+      target &&
+      target.current_step === step &&
+      target.current_step_text === resolvedStepText
+    );
+
+    if (!progressUnchanged) {
+      const updated = existing.map((t) =>
+        t.id && String(t.id).trim().toLowerCase() === targetLower
+          ? {
+              ...t,
+              current_step: step,
+              current_step_text: resolvedStepText,
+              last_active_at: new Date().toISOString(),
+            }
+          : t
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      broadcastTransferChange();
+    }
+
+    const syncSignature = JSON.stringify([step, resolvedStepText]);
+    if (progressSyncSignatures.get(targetLower) === syncSignature) return;
+    progressSyncSignatures.set(targetLower, syncSignature);
 
     // Sync to server API in real-time
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -479,12 +498,16 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
 
     enqueueProgressSync(id, async () => {
       try {
-        await fetch(`/api/movements/transfer/${encodeURIComponent(id)}/progress`, {
+        const response = await fetch(`/api/movements/transfer/${encodeURIComponent(id)}/progress`, {
           method: "PATCH",
           headers,
-          body: JSON.stringify({ step, step_text: stepText }),
+          body: JSON.stringify({ step, step_text: resolvedStepText }),
         });
+        if (!response.ok) throw new Error(`Progress sync failed with HTTP ${response.status}`);
       } catch (err) {
+        if (progressSyncSignatures.get(targetLower) === syncSignature) {
+          progressSyncSignatures.delete(targetLower);
+        }
         console.warn("[TransferNotification] API sync progress failed:", err);
       }
     });
@@ -495,8 +518,6 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
 
 // คิว PATCH progress ต่อเอกสาร — กัน request เปลี่ยนขั้นตอนสองอันย้อนหลัง/ซ้อนกัน
 // ยิงชนกันจนอันที่อ่านข้อมูลเก่ากว่าเขียนทับอันใหม่ (ลำดับเขียนชีตไม่รับประกัน)
-const progressSyncChains = new Map<string, Promise<void>>();
-
 /** รอจน PATCH progress ที่ค้างอยู่ทั้งหมดของเอกสารนี้เขียนเสร็จ (ใช้ก่อน submit เพื่อไม่ให้ชนกัน) */
 export function whenTransferProgressSettled(id?: string): Promise<void> {
   if (!id) return Promise.resolve();
