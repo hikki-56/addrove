@@ -424,6 +424,7 @@ export default function DashboardHeader({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={mobileOpen ? null : false}
                   onClick={() => setMobileOpen(false)}
                   className={`sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 ${
                     isActive ? "is-active font-semibold" : "font-medium"

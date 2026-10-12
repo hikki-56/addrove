@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import type { Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 
 interface CameraBarcodeScannerModalProps {
@@ -83,11 +83,12 @@ export default function CameraBarcodeScannerModal({
     async function initLiveScanner() {
       await stopLiveCamera();
 
-      // Check if container element exists
-      const region = document.getElementById("html5qr-code-full-region");
-      if (!region) return;
-
       try {
+        // โหลด decoder เมื่อเปิดกล้องเท่านั้น เพื่อไม่ให้ทุกหน้าใช้งานต้องรอไลบรารีนี้
+        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+        // ผู้ใช้อาจปิดกล้องระหว่างดาวน์โหลด — อย่าเริ่มกล้องหลัง modal ถูกปิด
+        if (!isSubscribed || !document.getElementById("html5qr-code-full-region")) return;
+
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.CODE_128,
@@ -174,6 +175,7 @@ export default function CameraBarcodeScannerModal({
 
     try {
       // Create temporary Html5Qrcode instance for photo scanning
+      const { Html5Qrcode } = await import("html5-qrcode");
       const tempScanner = new Html5Qrcode("html5qr-temp-file-reader");
       const decodedText = await tempScanner.scanFile(file, false);
 

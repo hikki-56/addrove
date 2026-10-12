@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import StaffNavigationPending from "./StaffNavigationPending";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getActiveWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
 import {
@@ -80,6 +81,7 @@ export default function StaffDashboard() {
           {/* Square 1: รับสินค้าเข้าโกดัง */}
           <Link
             href={`/movements/receive?warehouse_id=${activeWh}`}
+            prefetch={true}
             id="staff-btn-receive"
             className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "90ms" }}
@@ -93,11 +95,13 @@ export default function StaffDashboard() {
                 <span className="block">โกดัง</span>
               </h2>
             </div>
+            <StaffNavigationPending />
           </Link>
 
           {/* Square 2: จัดตำแหน่งสินค้า */}
           <Link
             href={`/movements/move?warehouse_id=${activeWh}`}
+            prefetch={true}
             id="staff-btn-move"
             className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "180ms" }}
@@ -111,11 +115,13 @@ export default function StaffDashboard() {
                 <span className="block">สินค้า</span>
               </h2>
             </div>
+            <StaffNavigationPending />
           </Link>
 
           {/* Square 3: ย้ายสินค้า */}
           <Link
             href={`/staff/transfer?warehouse_id=${activeWh}`}
+            prefetch={true}
             id="staff-btn-transfer"
             className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "270ms" }}
@@ -133,11 +139,13 @@ export default function StaffDashboard() {
                 ย้ายสินค้า
               </h2>
             </div>
+            <StaffNavigationPending />
           </Link>
 
           {/* Square 4: สินค้าทั้งหมด */}
           <Link
             href="/products"
+            prefetch={true}
             id="staff-btn-products"
             className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "360ms" }}
@@ -153,6 +161,7 @@ export default function StaffDashboard() {
                 <span className="block">ทั้งหมด</span>
               </h2>
             </div>
+            <StaffNavigationPending />
           </Link>
 
         </div>
