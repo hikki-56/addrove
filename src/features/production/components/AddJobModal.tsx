@@ -7,6 +7,8 @@ import type { Product } from "@/types/models";
 import type { ProductionJob, ProductionPriority } from "@/types/production";
 import { PRODUCTION_TABLES } from "@/types/production";
 import { editRuleHint, formatQty } from "./ui";
+import { parseQtyInput } from "@/features/production/lib/quantity";
+import { canEditField } from "@/features/production/lib/job-form";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
 // — เลือกสินค้าจากรายการสินค้าจริงในระบบ (ProductSearchInput → /api/products)
@@ -69,12 +71,13 @@ export default function AddJobModal({
     reason: "",
   });
 
-  // โหลดรายการสินค้าเมื่อเปิด modal — เฉพาะสินค้าที่มีอยู่จริงในโกดัง 2 (คลังผลิต)
+  // โหลดรายการสินค้าเมื่อเปิด modal — เฉพาะสินค้าที่มีอยู่จริงในโกดัง 2 (คลังผลิต, warehouse_id = wh-02
+  // ให้ตรงกับคลังที่เซิร์ฟเวอร์รับผลผลิตเข้า PRODUCTION_RECEIVE_WAREHOUSE — เดิมใช้ wh-2 ซึ่งไม่มีใน master)
   // (ไม่ใส่ limit — เรียกแบบไม่มี limit จะได้ data เป็น array ตรง ๆ แบบ legacy)
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/products?active=true&warehouse_id=wh-2", { cache: "no-store" })
+    fetch("/api/products?active=true&warehouse_id=wh-02", { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
         if (cancelled || !json.success) return;
@@ -130,17 +133,21 @@ export default function AddJobModal({
   const canEditPlanFields = !isEdit || editStatus === "DRAFT" || editStatus === "WAITING";
   const canEditTarget = !isEdit || editStatus === "DRAFT" || editStatus === "WAITING" || editStatus === "IN_PROGRESS";
   const needReason = isEdit && (editStatus === "WAITING" || editStatus === "IN_PROGRESS");
+  // ช่องที่เซิร์ฟเวอร์ไม่รับในสถานะนั้น → ล็อกไว้ (เดิมแก้ได้แต่ถูกปฏิเสธ/ถูกเพิกเฉย)
+  const canEditPriority = !isEdit || canEditField(editStatus, "priority");
+  const canEditLocation = !isEdit || canEditField(editStatus, "location");
 
-  const parsedQty = parseFloat(form.target_qty);
-  const qtyInvalid = form.target_qty !== "" && (!Number.isFinite(parsedQty) || parsedQty < 0 || Math.round(parsedQty * 100) !== parsedQty * 100);
+  // ตรวจจำนวนเป้าหมายแบบนับตำแหน่งทศนิยมจากข้อความ (สูตรเดิม Math.round(v*100) === v*100 ปฏิเสธ 2.3, 1.15)
+  const qtyParse = useMemo(() => parseQtyInput(form.target_qty, { allowEmpty: false, allowZero: false }), [form.target_qty]);
+  const parsedQty = qtyParse.ok ? qtyParse.value : Number.NaN;
+  const qtyInvalid = !qtyParse.ok && !qtyParse.empty;
   const formError = useMemo(() => {
     if (!form.production_date) return "กรุณาเลือกวันที่ผลิต";
     if (!form.product_id) return "กรุณาเลือกสินค้าจากรายการ";
-    if (form.target_qty === "" || !Number.isFinite(parsedQty) || parsedQty <= 0) return "จำนวนเป้าหมายต้องมากกว่า 0";
-    if (qtyInvalid) return "จำนวนรับทศนิยมได้ไม่เกิน 2 ตำแหน่ง";
+    if (!qtyParse.ok) return qtyParse.empty ? "จำนวนเป้าหมายต้องมากกว่า 0" : `จำนวนเป้าหมาย: ${qtyParse.error}`;
     if (needReason && !form.reason.trim()) return "การแก้ไขงานที่ส่งแล้วต้องระบุเหตุผล";
     return null;
-  }, [form.production_date, form.product_id, form.target_qty, parsedQty, qtyInvalid, needReason, form.reason]);
+  }, [form.production_date, form.product_id, qtyParse, needReason, form.reason]);
 
   if (!open) return null;
 
@@ -249,8 +256,10 @@ export default function AddJobModal({
                     : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
                 } disabled:bg-slate-100 disabled:text-slate-400`}
               />
-              <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
-                {form.target_qty !== "" && Number.isFinite(parsedQty) && parsedQty > 0
+              <p className={`mt-1 truncate text-[11px] font-semibold ${qtyInvalid ? "text-rose-700" : "text-slate-400"}`}>
+                {!qtyParse.ok && !qtyParse.empty
+                  ? qtyParse.error
+                  : qtyParse.ok
                   ? `= ${formatQty(parsedQty)} ${form.unit} · ยอดสินค้าดี ไม่รวมของเสีย`
                   : "ยอดสินค้าดีที่ต้องการ — ไม่รวมของเสีย"}
               </p>
@@ -259,8 +268,9 @@ export default function AddJobModal({
               <span className="text-xs font-bold text-slate-500">ลำดับความสำคัญ</span>
               <select
                 value={form.priority}
+                disabled={!canEditPriority}
                 onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value as ProductionPriority }))}
-                className={`mt-1 ${inputClass}`}
+                className={`mt-1 ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
               >
                 <option value="NORMAL">ปกติ</option>
                 <option value="URGENT">ด่วน</option>
@@ -286,7 +296,7 @@ export default function AddJobModal({
             <input
               type="text"
               value={form.location}
-              disabled={!canEditPlanFields}
+              disabled={!canEditLocation}
               onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
               placeholder="เช่น 2A-05"
               className={`mt-1 font-mono ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
@@ -301,7 +311,7 @@ export default function AddJobModal({
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
                 placeholder="เช่น ลูกค้าเพิ่มออเดอร์ ต้องเพิ่มเป้าหมาย"
-                className="mt-1 resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
+                className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
               />
             </label>
           )}

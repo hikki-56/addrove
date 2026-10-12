@@ -6,10 +6,14 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import {
   useProductionJobs,
-  productionFetch,
   emitProductionUpdated,
-} from "../_lib/use-production-data";
-import { StatusBadge, PriorityBadge, JobNumbers, formatQty } from "../_components/ui";
+  PRODUCTION_POLL_MS,
+} from "@/features/production/hooks/use-production-data";
+import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
+import { productionApi, isConflict } from "@/features/production/lib/api";
+import { getAllowedActions } from "@/features/production/lib/permissions";
+import { ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
+import { StatusBadge, PriorityBadge, JobNumbers, formatQty } from "@/features/production/components/ui";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
@@ -25,20 +29,10 @@ export default function ProductionJobsPage() {
   const { user } = useTabAuth();
   const isApprover = user?.role === "APPROVER";
   const isAdmin = user?.role === "ADMIN";
-  const { jobs, loading, error, reload } = useProductionJobs();
-
-  usePollingWhenVisible(
-    useCallback(
-      (initial?: boolean) => {
-        if (!initial) reload();
-      },
-      [reload]
-    ),
-    30000
-  );
 
   const [preset, setPreset] = useState<DatePreset>("LAST_7_DAYS");
-  const [dateBounds, setDateBounds] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  // null = ยังไม่ได้คำนวณ (คำนวณใน effect ตามเวลาไทยฝั่ง client)
+  const [dateBounds, setDateBounds] = useState<{ from: string; to: string } | null>(null);
 
   useEffect(() => {
     const now = new Date();
@@ -56,7 +50,29 @@ export default function ProductionJobsPage() {
   const [tableFilter, setTableFilter] = useState<number | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [q, setQ] = useState("");
-  const [busyJob, setBusyJob] = useState<string | null>(null);
+  // ส่งช่วงวันที่/โต๊ะ/สถานะให้เซิร์ฟเวอร์กรอง (รอคำนวณช่วงวันที่จาก preset ก่อน)
+  const { jobs, loading, error, reload } = useProductionJobs(
+    {
+      date_from: dateBounds?.from || undefined,
+      date_to: dateBounds?.to || undefined,
+      table_no: tableFilter,
+      status: statusFilter,
+    },
+    { enabled: dateBounds !== null }
+  );
+
+  usePollingWhenVisible(
+    useCallback(
+      (initial?: boolean) => {
+        if (!initial) reload();
+      },
+      [reload]
+    ),
+    PRODUCTION_POLL_MS
+  );
+  const guard = useSubmitGuard();
+  const [startJob, setStartJob] = useState<ProductionJob | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
 
   useEffect(() => {
@@ -68,8 +84,8 @@ export default function ProductionJobsPage() {
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return jobs.filter((j) => {
-      if (dateBounds.from && j.production_date < dateBounds.from) return false;
-      if (dateBounds.to && j.production_date > dateBounds.to) return false;
+      if (dateBounds?.from && j.production_date < dateBounds.from) return false;
+      if (dateBounds?.to && j.production_date > dateBounds.to) return false;
       if (tableFilter !== "ALL" && j.table_no !== tableFilter) return false;
       if (statusFilter !== "ALL" && j.status !== statusFilter) return false;
       if (query && !`${j.job_no} ${j.sku} ${j.product_name}`.toLowerCase().includes(query)) return false;
@@ -83,14 +99,19 @@ export default function ProductionJobsPage() {
     return c;
   }, [filtered]);
 
-  const handleStart = async (job: ProductionJob) => {
-    if (!window.confirm(`เริ่มผลิต ${job.job_no}?\n${job.product_name} · โต๊ะ ${job.table_no} · เป้า ${formatQty(job.target_qty)} ${job.unit}`)) return;
-    setBusyJob(job.job_no);
-    const res = await productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/start`, "POST");
-    setBusyJob(null);
-    setToast({ tone: res.success ? "ok" : "err", message: res.message });
-    if (res.success) emitProductionUpdated();
-  };
+  const handleStart = (job: ProductionJob) =>
+    guard.run(async () => {
+      setStartError(null);
+      const res = await productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/start`, "POST");
+      if (res.success) {
+        setStartJob(null);
+        setToast({ tone: "ok", message: res.message });
+        emitProductionUpdated();
+      } else {
+        setStartError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, `start:${job.job_no}`);
 
   return (
     <div className="w-full max-w-full pb-10">
@@ -222,13 +243,16 @@ export default function ProductionJobsPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                  {isApprover && job.status === "WAITING" && (
+                  {getAllowedActions(job, user?.role).start && (
                     <button
-                      onClick={() => handleStart(job)}
-                      disabled={busyJob === job.job_no}
+                      onClick={() => {
+                        setStartError(null);
+                        setStartJob(job);
+                      }}
+                      disabled={guard.pending}
                       className="rounded-lg bg-[#06402B] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-95 disabled:opacity-50"
                     >
-                      {busyJob === job.job_no ? (
+                      {guard.isPending(`start:${job.job_no}`) ? (
                         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                       ) : (
                         "▶ เริ่มผลิต"
@@ -239,7 +263,7 @@ export default function ProductionJobsPage() {
                     href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
                     className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-center text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
                   >
-                    {isApprover && job.status === "IN_PROGRESS" ? "รายงานผล →" : "รายละเอียด →"}
+                    {getAllowedActions(job, user?.role).report ? "รายงานผล →" : "รายละเอียด →"}
                   </Link>
                 </div>
               </div>
@@ -256,6 +280,22 @@ export default function ProductionJobsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!startJob}
+        title="ยืนยันเริ่มผลิต"
+        hint="ระบบจะเปลี่ยนสถานะเป็น “กำลังผลิต” บันทึกผู้เริ่ม และแจ้ง ADMIN"
+        confirmLabel="ยืนยันเริ่มผลิต"
+        submitting={guard.pending}
+        error={startError}
+        onClose={() => {
+          setStartJob(null);
+          setStartError(null);
+        }}
+        onConfirm={() => startJob && handleStart(startJob)}
+      >
+        {startJob && <StartJobSummary job={startJob} />}
+      </ConfirmModal>
     </div>
   );
 }

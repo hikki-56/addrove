@@ -654,6 +654,41 @@ export async function updateJob(
   });
 }
 
+/**
+ * อ่านแถวเป้าหมายจากชีตใหม่อีกครั้ง (ตามเลขแถวจริง 1-based) ก่อนลบ แล้วยืนยันว่ายังเป็นงานเดิมและยังเป็น DRAFT
+ * — กันลบผิดแถวเมื่อชีตถูกแทรก/ลบแถวหรือเรียงใหม่ระหว่างอ่านกับลบ (เช่นมีคนแทรกหัวตาราง หรือ instance อื่นลบแถว)
+ * ใช้ keepHeader เพื่อไม่ให้ heuristic ตัดหัวตารางใน readSheet ตัดแถวที่อ่านมาทิ้ง
+ * ถ้าอ่านไม่ได้หรือไม่ตรง → 409 (ไม่ลบ)
+ * หมายเหตุ: ลดช่วงเวลา race ลงมาก แต่ Sheets API ไม่มี compare-and-delete แบบ atomic
+ */
+async function assertJobRowStillDraft(sheetRowNumber: number, expected: ProductionJobRow): Promise<void> {
+  const lastCol = columnLetter(PRODUCTION_JOBS_SHEET_HEADERS.length);
+  const fresh = await readSheet(
+    SHEETS.PRODUCTION_JOBS,
+    `A${sheetRowNumber}:${lastCol}${sheetRowNumber}`,
+    { forceFresh: true, keepHeader: true }
+  ).catch(() => null);
+  const current = fresh && fresh.length === 1 && str(fresh[0][0]).trim() ? jobRowToPartial(fresh[0]) : null;
+  const ok =
+    !!current &&
+    current.job_id.trim() === expected.job_id.trim() &&
+    current.job_no.trim().toLowerCase() === expected.job_no.trim().toLowerCase() &&
+    str(fresh![0][3]).trim().toUpperCase() === "DRAFT";
+  if (!ok) {
+    throw new ProductionError(
+      `ข้อมูลใบสั่งผลิต ${expected.job_no} ในชีตเปลี่ยนไประหว่างดำเนินการ (แถว ${sheetRowNumber} ไม่ตรงกับงานเดิมหรือไม่ใช่ฉบับร่างแล้ว) — ยังไม่ได้ลบ กรุณารีเฟรชแล้วลองใหม่`,
+      409
+    );
+  }
+}
+
+/** 1 → A, 26 → Z, 27 → AA */
+function columnLetter(n: number): string {
+  let out = "";
+  for (let x = n; x > 0; x = Math.floor((x - 1) / 26)) out = String.fromCharCode(65 + ((x - 1) % 26)) + out;
+  return out;
+}
+
 export async function deleteDraft(actor: ProductionActor, jobNo: string): Promise<void> {
   await withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const rows = await readJobRows(true);
@@ -663,7 +698,14 @@ export async function deleteDraft(actor: ProductionActor, jobNo: string): Promis
     if (base.status !== "DRAFT") {
       throw new ProductionError("ลบได้เฉพาะงานฉบับร่างเท่านั้น — งานที่ส่งแล้วให้ใช้การยกเลิก", 409);
     }
-    await deleteRows(SHEETS.PRODUCTION_JOBS, [idx]);
+    // readJobRows อ่านจาก A2 → idx เป็น index ของข้อมูล (idx 0 = แถว 2 ในชีต)
+    // deleteRows รับ index แถวในชีตแบบเริ่มที่ 0 (0 = แถว 1 หัวตาราง) → ต้องส่ง idx + 1
+    // (เดิมส่ง idx ตรง ๆ ทำให้ลบแถวที่อยู่เหนือเป้าหมาย และลบหัวตารางเมื่อเป็นงานแรก)
+    const sheetRowIndex0 = idx + 1;
+    await assertJobRowStillDraft(sheetRowIndex0 + 1, base);
+    await deleteRows(SHEETS.PRODUCTION_JOBS, [sheetRowIndex0], {
+      blankColumns: PRODUCTION_JOBS_SHEET_HEADERS.length,
+    });
     clearSheetCache(SHEETS.PRODUCTION_JOBS);
     await appendHistory(base.job_no, "DELETE", actor, "", { deleted_draft: base.job_no });
   });

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty } from "./ui";
+import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 
-// Modal ยืนยันพร้อมเหตุผลบังคับ (ยกเลิกงาน / เปิดงานผลิตต่อ) + Modal ปรับปรุงยอดผลผลิต (ADMIN)
+// Modal ยืนยันพร้อมเหตุผลบังคับ (ยกเลิกงาน / เปิดงานผลิตต่อ) + Modal ยืนยันทั่วไป (เช่น เริ่มผลิต)
+// + Modal ปรับปรุงยอดผลผลิต (ADMIN)
 
 interface ReasonModalProps {
   open: boolean;
@@ -100,6 +102,116 @@ export function ReasonModal({
   );
 }
 
+// ---- ยืนยันทั่วไป (ไม่ต้องกรอกเหตุผล) — แทน window.confirm ด้วยแพทเทิร์นเดียวกับ ReasonModal ----
+
+interface ConfirmModalProps {
+  open: boolean;
+  title: string;
+  hint?: string;
+  /** รายละเอียดที่ต้องตรวจก่อนยืนยัน (เช่น สินค้า เป้าหมาย หมายเหตุ) */
+  children?: ReactNode;
+  confirmLabel: string;
+  tone?: "danger" | "primary";
+  submitting: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export function ConfirmModal({
+  open,
+  title,
+  hint,
+  children,
+  confirmLabel,
+  tone = "primary",
+  submitting,
+  error,
+  onClose,
+  onConfirm,
+}: ConfirmModalProps) {
+  useEscapeKey(open && !submitting, onClose);
+  if (!open) return null;
+  const isDanger = tone === "danger";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative flex max-h-[88dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-md sm:rounded-xl"
+      >
+        <div className="border-b border-[#EEF1EF] px-5 py-4">
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+          {hint && <p className="mt-1 text-sm font-medium text-slate-500">{hint}</p>}
+        </div>
+        {(error || children) && (
+          <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+            {error && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
+                <p className="text-sm font-bold text-rose-800">{error}</p>
+              </div>
+            )}
+            {children}
+          </div>
+        )}
+        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={onConfirm}
+            className={`flex-[1.4] rounded-lg py-3 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 ${
+              isDanger ? "bg-[#B42318] hover:bg-[#912018]" : "bg-[#06402B] hover:bg-[#0A5C4E]"
+            }`}
+          >
+            {submitting ? (
+              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              confirmLabel
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** สรุปงานในการ์ดยืนยันเริ่มผลิต — สินค้า โต๊ะ เป้าหมาย หมายเหตุ */
+export function StartJobSummary({ job }: { job: ProductionJob }) {
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-xl border border-[#E8ECEA] bg-slate-50 p-4 text-sm">
+      <dt className="font-semibold text-slate-400">เลขใบสั่งผลิต</dt>
+      <dd className="font-mono font-bold text-slate-900">{job.job_no}</dd>
+      <dt className="font-semibold text-slate-400">สินค้า</dt>
+      <dd className="font-bold text-slate-900">
+        {job.product_name} <span className="font-mono text-xs font-semibold text-slate-400">({job.sku})</span>
+      </dd>
+      <dt className="font-semibold text-slate-400">โต๊ะ</dt>
+      <dd className="font-bold text-slate-900">โต๊ะ {job.table_no}</dd>
+      <dt className="font-semibold text-slate-400">เป้าหมาย</dt>
+      <dd className="font-mono font-bold tabular-nums text-[#06402B]">
+        {formatQty(job.target_qty)} {job.unit}
+      </dd>
+      {job.note && (
+        <>
+          <dt className="font-semibold text-slate-400">หมายเหตุ</dt>
+          <dd className="font-semibold text-slate-700">{job.note}</dd>
+        </>
+      )}
+    </dl>
+  );
+}
+
 // ---- ปรับปรุงยอดผลผลิต (ADMIN) — ห้ามเขียนทับ: สร้างรายการปรับ + ประวัติก่อน–หลัง + ปรับสต็อก ----
 
 interface AdjustModalProps {
@@ -108,7 +220,14 @@ interface AdjustModalProps {
   submitting: boolean;
   error: string | null;
   onClose: () => void;
-  onSubmit: (payload: { new_good_qty: number; new_defect_qty: number; reason: string; idempotency_key: string }) => void;
+  onSubmit: (payload: AdjustPayload) => void;
+}
+
+/** idempotency key แนบโดยหน้าที่เรียกใช้ (lib/idempotency.ts) — ไม่สร้างใหม่ทุกครั้งที่เปิด modal */
+export interface AdjustPayload {
+  new_good_qty: number;
+  new_defect_qty: number;
+  reason: string;
 }
 
 export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }: AdjustModalProps) {
@@ -116,28 +235,30 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
   const [goodText, setGoodText] = useState("");
   const [defectText, setDefectText] = useState("");
   const [reason, setReason] = useState("");
-  const [idemKey, setIdemKey] = useState("");
 
   useEffect(() => {
     if (open && job) {
       setGoodText(String(job.produced_good));
       setDefectText(String(job.defect_total));
       setReason("");
-      setIdemKey(`adj-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
     }
   }, [open, job]);
 
   if (!open || !job) return null;
 
-  const newGood = Number.isFinite(parseFloat(goodText)) ? Math.max(0, Math.round(parseFloat(goodText) * 100) / 100) : -1;
-  const newDefect = Number.isFinite(parseFloat(defectText)) ? Math.max(0, Math.round(parseFloat(defectText) * 100) / 100) : -1;
-  const goodDelta = Math.round((newGood - job.produced_good) * 100) / 100;
-  const defectDelta = Math.round((newDefect - job.defect_total) * 100) / 100;
-  const invalid =
-    newGood < 0 ||
-    newDefect < 0 ||
-    (goodDelta === 0 && defectDelta === 0) ||
-    !reason.trim();
+  // ยอดใหม่ต้องกรอก (≥ 0) ทศนิยมไม่เกิน 2 ตำแหน่ง — ไม่ปัดเศษเงียบ ๆ
+  const goodParse = parseQtyInput(goodText, { allowEmpty: false });
+  const defectParse = parseQtyInput(defectText, { allowEmpty: false });
+  const newGood = goodParse.ok ? goodParse.value : -1;
+  const newDefect = defectParse.ok ? defectParse.value : -1;
+  const goodDelta = goodParse.ok ? roundQty(newGood - job.produced_good) : 0;
+  const defectDelta = defectParse.ok ? roundQty(newDefect - job.defect_total) : 0;
+  const qtyError = !goodParse.ok
+    ? `ผลิตดีสะสมใหม่: ${goodParse.error}`
+    : !defectParse.ok
+      ? `ของเสียสะสมใหม่: ${defectParse.error}`
+      : null;
+  const invalid = !!qtyError || (goodDelta === 0 && defectDelta === 0) || !reason.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
@@ -186,6 +307,7 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
               />
             </label>
           </div>
+          {qtyError && <p className="-mt-2 text-xs font-bold text-rose-700">{qtyError}</p>}
           <label className="block">
             <span className="text-xs font-bold text-rose-600">เหตุผลการปรับปรุง (จำเป็น)</span>
             <textarea
@@ -229,7 +351,7 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
           <button
             type="button"
             disabled={invalid || submitting}
-            onClick={() => onSubmit({ new_good_qty: newGood, new_defect_qty: newDefect, reason: reason.trim(), idempotency_key: idemKey })}
+            onClick={() => onSubmit({ new_good_qty: newGood, new_defect_qty: newDefect, reason: reason.trim() })}
             className="flex-[1.4] rounded-lg bg-[#06402B] py-3 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"
           >
             {submitting ? (

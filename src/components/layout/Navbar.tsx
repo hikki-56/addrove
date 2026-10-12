@@ -154,8 +154,8 @@ export default function DashboardHeader({
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) */}
-            <ProductionBell />
+            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — mount จริงเฉพาะช่องที่ตรง breakpoint */}
+            <ProductionBell placement="mobile" />
             {/* Notification */}
             <div className="relative">
               {isAdmin ? (
@@ -244,8 +244,8 @@ export default function DashboardHeader({
             <p className="truncate text-xs 2xl:text-sm text-[#667085]">{breadcrumb.parent}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) */}
-            <ProductionBell />
+            {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — mount จริงเฉพาะช่องที่ตรง breakpoint */}
+            <ProductionBell placement="desktop" />
             {/* Notification */}
             <div className="relative">
               {isAdmin ? (

@@ -154,6 +154,7 @@ export const ALLOWED_ACTIONS = [
   "ping",
   "append",
   "update",
+  "updateDocumentProgress",
   "deleteRow",
   "atomicStockOperation",
 ] as const;
@@ -263,6 +264,20 @@ export function validateMutationPayload(
     }
   }
 
+  if (action === "updateDocumentProgress") {
+    if (
+      parsed.sheetName !== "Documents" ||
+      !Number.isInteger(parsed.rowNumber) || Number(parsed.rowNumber) < 2 || Number(parsed.rowNumber) > 1_000_000 ||
+      typeof parsed.progress !== "string" || Buffer.byteLength(parsed.progress, "utf8") > 50_000
+    ) {
+      throw new Error("VALIDATION: invalid isolated document progress payload");
+    }
+    const progress = JSON.parse(parsed.progress);
+    if (progress.kind !== "stockify-transfer-progress-v1" || !Number.isInteger(progress.current_step) || progress.current_step < 1 || progress.current_step > 3) {
+      throw new Error("VALIDATION: invalid transfer progress step");
+    }
+  }
+
   if (action === "deleteRow") {
     const rowNumber = Number(parsed.rowNumber);
     if (!rowNumber || rowNumber < 2) {
@@ -296,7 +311,10 @@ export async function sendSignedAppsScriptRequest(
   );
   validateMutationPayload(payload as Record<string, unknown>);
 
-  const requestBody = isLegacyAppsScriptMode()
+  // This action has no legacy equivalent: an old raw importer may return success without writing.
+  const useLegacyBody = isLegacyAppsScriptMode() &&
+    (payload as { action?: string }).action !== "updateDocumentProgress";
+  const requestBody = useLegacyBody
     ? JSON.stringify(payload)
     : JSON.stringify(createSignedEnvelope(payload));
 

@@ -17,10 +17,10 @@ import {
   markTransferCompleted,
   unmarkTransferCompleted,
   updateTransferTaskProgress,
-  whenTransferProgressSettled,
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
+import { createTransferStockSnapshot } from "@/client/transfer-stock-snapshot";
 import { areBarcodesMatching } from "@/lib/barcode-utils";
 import { normalizeWarehouseId, getDefaultLocationsForWarehouse } from "@/lib/warehouse-utils";
 import { tagExpressItem } from "@/client/express-tag-utils";
@@ -195,6 +195,9 @@ export function useTransferMovement({
   const staffSourceLocationInputRef = useRef<HTMLInputElement | null>(null);
   const staffDestLocationInputRef = useRef<HTMLInputElement | null>(null);
   const isStepTransitioningRef = useRef<boolean>(false);
+  const sourceStockSnapshotRef = useRef<ReturnType<typeof createTransferStockSnapshot> | null>(null);
+  if (!sourceStockSnapshotRef.current) sourceStockSnapshotRef.current = createTransferStockSnapshot();
+  useEffect(() => { sourceStockSnapshotRef.current?.clear(); }, [selectedTask?.id, tabUser?.id]);
   // เก็บ idempotency base key ของ "ชุดข้อมูลที่กำลังส่ง" — ต้องคงเดิมระหว่าง retry
   // เพื่อไม่ให้เกิดใบเบิกซ้ำ (regenerate เฉพาะเมื่อ submit สำเร็จ หรือผู้ใช้ resetForm)
   const idempotencyBaseKeyRef = useRef<string>(uuidv4());
@@ -224,8 +227,9 @@ export function useTransferMovement({
 
   const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; role: string }>>(defaultStaff);
 
-  // Fetch real users list from /api/users
+  // รายชื่อผู้รับมอบหมายใช้เฉพาะฟอร์มสร้างใบเบิกของแอดมิน
   useEffect(() => {
+    if (tabUser?.role !== "ADMIN") return;
     let isMounted = true;
     fetch("/api/users")
       .then((res) => (res.ok ? res.json() : null))
@@ -249,7 +253,7 @@ export function useTransferMovement({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [tabUser?.role]);
 
   // Initialize from_warehouse_id and to_warehouse_id on initial mount or when active warehouse prop changes
   const isInitializedRef = useRef(false);
@@ -935,29 +939,28 @@ export function useTransferMovement({
     let availableLocStock = remainingNeeded;
 
     try {
-      const prodRes = await fetch(`/api/products?warehouse_id=${srcWhId}`).catch(() => null);
-      if (prodRes && prodRes.ok) {
-        const prodData = await prodRes.json();
-        const items = Array.isArray(prodData.data) ? prodData.data : prodData.data?.items || [];
-        const normTargetSku = norm(selectedTask.sku || selectedTask.product_id);
-        const matchedProductRows = items.filter((p: any) => {
-          const pSku = norm(p.sku || p.product_id);
-          return pSku === normTargetSku;
-        });
+      const items = await sourceStockSnapshotRef.current!.get(srcWhId);
+      const normTargetSku = norm(selectedTask.sku || selectedTask.product_id);
+      const matchedProductRows = items.filter((p: any) => {
+        const pSku = norm(p.sku || p.product_id);
+        return pSku === normTargetSku;
+      });
 
-        const targetNormLoc = norm(targetLocId);
-        const locItem = matchedProductRows.find((p: any) => {
-          const pLoc = norm(p.location || p.location_id || "");
-          return pLoc === targetNormLoc || pLoc.includes(targetNormLoc) || targetNormLoc.includes(pLoc);
-        });
+      const targetNormLoc = norm(targetLocId);
+      const locItem = matchedProductRows.find((p: any) => {
+        const pLoc = norm(p.location || p.location_id || "");
+        return pLoc === targetNormLoc || pLoc.includes(targetNormLoc) || targetNormLoc.includes(pLoc);
+      });
 
-        if (locItem && typeof locItem.quantity === "number") {
-          availableLocStock = locItem.quantity;
-        } else if (matchedProductRows.length === 1 && typeof matchedProductRows[0].quantity === "number") {
-          availableLocStock = matchedProductRows[0].quantity;
-        }
+      if (locItem && typeof locItem.quantity === "number") {
+        availableLocStock = locItem.quantity;
+      } else if (matchedProductRows.length === 1 && typeof matchedProductRows[0].quantity === "number") {
+        availableLocStock = matchedProductRows[0].quantity;
       }
-    } catch { }
+    } catch (error) {
+      setStaffError(error instanceof Error ? error.message : "โหลดสต็อกต้นทางไม่สำเร็จ กรุณาลองอีกครั้ง");
+      return;
+    }
 
     if (availableLocStock <= 0) {
       setStaffError(`ตำแหน่ง "${targetLocId}" ไม่มีสินค้าคงเหลือในคลัง`);
@@ -1211,12 +1214,7 @@ export function useTransferMovement({
         headers["Authorization"] = `Bearer ${storedToken}`;
       }
 
-      // รอ PATCH progress (เปลี่ยนขั้นตอน) ที่ยิงค้างไว้ของใบนี้ให้เขียนชีตจบก่อน
-      // — ไม่งั้นมันจะไปอ่านแถวก่อน submit แล้วกลับมาเขียนทับสถานะ WAITING_APPROVAL ทิ้ง
-      await Promise.race([
-        whenTransferProgressSettled(selectedTask.id),
-        new Promise<void>((resolve) => setTimeout(resolve, 8000)),
-      ]);
+      // Progress now writes its own cell, so late PATCHes cannot overwrite submission.
 
       const res = await fetch(`/api/movements/transfer/${selectedTask.id}/submit`, {
         method: "POST",
@@ -1246,6 +1244,7 @@ export function useTransferMovement({
       });
       setPendingTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
       setStaffStep(4);
+      sourceStockSnapshotRef.current?.clear();
       // ไม่ต้องยิง updateTransferTaskProgress(4) ซ้ำ — submitTransferMove บันทึก step 4 + text
       // ลงชีตแล้ว และ markTransferWaitingApproval ด้านบนอัปเดต localStorage ให้ครบแล้ว
     } catch (err: unknown) {

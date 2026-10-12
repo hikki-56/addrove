@@ -115,7 +115,7 @@ export default function StaffDashboard() {
 
           {/* Square 3: ย้ายสินค้า */}
           <Link
-            href={`/movements/transfer?warehouse_id=${activeWh}`}
+            href={`/staff/transfer?warehouse_id=${activeWh}`}
             id="staff-btn-transfer"
             className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
             style={{ animationDelay: "270ms" }}

@@ -22,10 +22,12 @@ export const DEFAULT_WAREHOUSES: { warehouse_id: string; warehouse_name: string 
 export interface UseWarehouseDataOptions {
   initialWarehouseId?: string;
   autoFetch?: boolean;
+  /** ใบงานเบิกโหลดตำแหน่งเฉพาะใบงานเอง จึงไม่ต้องโหลดตำแหน่งทั้งหมด */
+  loadLocations?: boolean;
 }
 
 export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
-  const { initialWarehouseId, autoFetch = true } = options;
+  const { initialWarehouseId, autoFetch = true, loadLocations = true } = options;
 
   const [activeWhId, setActiveWhIdState] = useState<string>(() => {
     if (initialWarehouseId) return getActiveWarehouse(initialWarehouseId);
@@ -88,7 +90,9 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
     try {
       const [whRes, locRes, prodRes] = await Promise.all([
         fetch(`/api/warehouses`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดโกดังไม่สำเร็จ"); return r.json(); }),
-        fetch(`/api/locations`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดตำแหน่งไม่สำเร็จ"); return r.json(); }),
+        loadLocations
+          ? fetch(`/api/locations`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดตำแหน่งไม่สำเร็จ"); return r.json(); })
+          : Promise.resolve({ data: [] as Location[] }),
         fetch(`/api/products?warehouse_id=${encodeURIComponent(activeWhId)}`, { cache: "no-store", signal: controller.signal }).then((r) => { if (!r.ok) throw new Error("โหลดสินค้าไม่สำเร็จ"); return r.json(); }),
       ]);
       if (requestRef.current !== controller || controller.signal.aborted) return;
@@ -108,7 +112,7 @@ export function useWarehouseData(options: UseWarehouseDataOptions = {}) {
       window.clearTimeout(timeout);
       if (requestRef.current === controller) setLoading(false);
     }
-  }, [activeWhId]);
+  }, [activeWhId, loadLocations]);
 
   useEffect(() => {
     let mounted = true;

@@ -980,6 +980,33 @@ export async function updateRow(
   throw new Error(`ไม่สามารถอัปเดตชีต ${sheetName} แถว ${rowNumber} (กรุณาตรวจสอบสิทธิ์การเขียน)`);
 }
 
+/** Transfer progress lives in J only; never fall back to a whole-row update. */
+export async function updateDocumentProgressCell(rowNumber: number, progress: string): Promise<void> {
+  if (!Number.isInteger(rowNumber) || rowNumber < 2) throw new Error("Invalid document progress row");
+  clearSheetCache(SHEETS.DOCUMENTS);
+  if (hasServiceAccountCredentials()) {
+    const title = await resolveSheetTitle(SHEETS.DOCUMENTS) || SHEETS.DOCUMENTS;
+    const safeTitle = `'${title.replace(/'/g, "''")}'`;
+    try {
+      await withRetry(() => getSheetsClient().spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${safeTitle}!J${rowNumber}`,
+        valueInputOption: "RAW",
+        requestBody: { values: [[progress]] },
+      }));
+      clearSheetCache(SHEETS.DOCUMENTS);
+      return;
+    } catch (error) {
+      if (!process.env.GOOGLE_SCRIPT_URL) throw error;
+    }
+  }
+  const response = await sendSignedAppsScriptRequest({
+    action: "updateDocumentProgress", sheetName: SHEETS.DOCUMENTS, rowNumber, progress,
+  });
+  await assertAppsScriptSuccess(response, "Update isolated document progress (Apps Script must support updateDocumentProgress)");
+  clearSheetCache(SHEETS.DOCUMENTS);
+}
+
 // ------ Batch update multiple rows ------
 export async function batchUpdateRows(
   sheetName: string,
@@ -1077,13 +1104,29 @@ export async function getSheetId(sheetName: string): Promise<number | null> {
 }
 
 // ------ Delete specific rows by 0-indexed row numbers ------
+/**
+ * ลบแถวในชีต — rowIndices เป็น index ของแถวในชีตแบบเริ่มที่ 0 (0 = แถวหัวตาราง, 1 = แถว 2 ในชีต)
+ * ผู้เรียกที่อ่านข้อมูลจากช่วง "A2:..." ต้องส่ง (index ของข้อมูล + 1) เสมอ
+ * index 0 (หัวตาราง) ถูกปฏิเสธเพื่อกันลบหัวตารางโดยไม่ตั้งใจ
+ *
+ * options.blankColumns — จำนวนคอลัมน์ที่จะล้างค่าเมื่อ Apps Script ลบแถวไม่ได้ (fallback)
+ * ค่าเริ่มต้น 9 คอลัมน์ (A:I) ตามแท็บโกดังเดิม; แท็บที่กว้างกว่าควรส่งจำนวนคอลัมน์จริง
+ */
 export async function deleteRows(
   sheetName: string,
-  rowIndices: number[]
+  rowIndices: number[],
+  options: { blankColumns?: number } = {}
 ): Promise<void> {
   if (rowIndices.length === 0) return;
+
+  if (rowIndices.some((i) => !Number.isInteger(i) || i < 1)) {
+    throw new Error(
+      `deleteRows(${sheetName}): row index ต้องเป็นจำนวนเต็ม ≥ 1 (0 = แถวหัวตาราง) — ได้รับ ${JSON.stringify(rowIndices)}`
+    );
+  }
   clearSheetCache(sheetName);
 
+  const blankColumns = Math.max(1, Math.floor(options.blankColumns ?? 9));
   const sorted = [...new Set(rowIndices)].sort((a, b) => b - a);
 
   if (hasServiceAccountCredentials()) {
@@ -1123,7 +1166,7 @@ export async function deleteRows(
           await assertAppsScriptSuccess(response, `Delete ${sheetName} row ${rowNumber}`);
         } catch (scriptErr) {
           console.warn(`[deleteRows] Apps Script deleteRow failed/unsupported for ${sheetName} row ${rowNumber}, blanking row via update:`, scriptErr);
-          await updateRow(sheetName, rowNumber, ["", "", "", "", "", "", "", "", ""]);
+          await updateRow(sheetName, rowNumber, new Array<string>(blankColumns).fill(""));
         }
       }
       return;

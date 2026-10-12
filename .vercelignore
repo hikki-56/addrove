@@ -38,3 +38,8 @@ docs/
 
 # Scripts not needed at runtime
 scripts/seed-users.ts
+
+# Local reports, deployment exports, and offline tools
+artifacts/
+scripts/performance/
+scripts/migrations/

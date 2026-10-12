@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import {
   useProductionJobs,
-  productionFetch,
   emitProductionUpdated,
-} from "./_lib/use-production-data";
-import AddJobModal, { type AddJobFormValue } from "./_components/AddJobModal";
-import { ReasonModal } from "./_components/ActionModals";
-import { StatusBadge, PriorityBadge, JobNumbers, formatQty, todayYMD } from "./_components/ui";
+  PRODUCTION_POLL_MS,
+} from "@/features/production/hooks/use-production-data";
+import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
+import { productionApi, isConflict } from "@/features/production/lib/api";
+import { getAllowedActions, showCancelOnPlanningCard } from "@/features/production/lib/permissions";
+import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
+import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
+import { ReasonModal } from "@/features/production/components/ActionModals";
+import { StatusBadge, PriorityBadge, JobNumbers, formatQty, todayYMD } from "@/features/production/components/ui";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
@@ -25,7 +30,6 @@ const filterInputClass =
 export default function ProductionPlanningPage() {
   const { user } = useTabAuth();
   const isAdmin = user?.role === "ADMIN";
-  const { jobs, loading, error, reload } = useProductionJobs();
 
   const [dateFilter, setDateFilter] = useState("");
   const [today, setToday] = useState("");
@@ -40,15 +44,37 @@ export default function ProductionPlanningPage() {
     setDateFilter(t);
   }, []);
 
+  // ส่งตัวกรองวันที่/โต๊ะ/สถานะให้เซิร์ฟเวอร์กรอง (รอค่า "วันนี้" ก่อนจึงเริ่มดึง — ไม่ดึงทุกงานรอบแรกทิ้ง)
+  const { jobs, loading, error, reload } = useProductionJobs(
+    {
+      date_from: dateFilter || undefined,
+      date_to: dateFilter || undefined,
+      table_no: tableFilter,
+      status: statusFilter,
+    },
+    { enabled: isAdmin && today !== "" }
+  );
+
+  // อัปเดตอัตโนมัติทุก 30 วิขณะแท็บมองเห็น (หยุดเมื่อซ่อนแท็บ · กลับมาแล้วโหลดทันที)
+  usePollingWhenVisible(
+    useCallback(
+      (initial?: boolean) => {
+        if (!initial && isAdmin) reload();
+      },
+      [isAdmin, reload]
+    ),
+    PRODUCTION_POLL_MS
+  );
+
   // modals
   const [addOpen, setAddOpen] = useState(false);
   const [addTable, setAddTable] = useState(1);
   const [editJob, setEditJob] = useState<ProductionJob | null>(null);
   const [cancelJob, setCancelJob] = useState<ProductionJob | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const guard = useSubmitGuard();
+  const submitting = guard.pending;
   const [modalError, setModalError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [submittingJobs, setSubmittingJobs] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -79,105 +105,93 @@ export default function ProductionPlanningPage() {
     });
   };
 
-  const handleAdd = async (value: AddJobFormValue) => {
-    setSubmitting(true);
-    setModalError(null);
-    const res = await productionFetch("/api/production/jobs", "POST", {
-      jobs: [
-        {
-          production_date: value.production_date,
-          table_no: value.table_no,
-          product_id: value.product_id,
-          target_qty: parseFloat(value.target_qty),
-          priority: value.priority,
-          note: value.note,
-          location: value.location,
-        },
-      ],
-    });
-    setSubmitting(false);
-    if (res.success) {
-      setAddOpen(false);
-      setDateFilter(value.production_date);
-      setTableFilter(value.table_no);
-      setToast(`เพิ่มงานฉบับร่างเรียบร้อย — แก้ไข/ย้ายโต๊ะได้ทันทีก่อนส่งงาน`);
-      emitProductionUpdated();
-    } else {
-      setModalError(res.message);
-    }
-  };
+  const handleAdd = (value: AddJobFormValue) =>
+    guard.run(async () => {
+      setModalError(null);
+      const res = await productionApi("/api/production/jobs", "POST", {
+        jobs: [buildCreateJobInput(value)],
+      });
+      if (res.success) {
+        setAddOpen(false);
+        setDateFilter(value.production_date);
+        setTableFilter(value.table_no);
+        setToast(`เพิ่มงานฉบับร่างเรียบร้อย — แก้ไข/ย้ายโต๊ะได้ทันทีก่อนส่งงาน`);
+        emitProductionUpdated();
+      } else {
+        setModalError(res.message);
+      }
+    }, "create");
 
-  const handleEdit = async (value: AddJobFormValue) => {
-    if (!editJob) return;
-    setSubmitting(true);
-    setModalError(null);
-    const res = await productionFetch(`/api/production/jobs/${encodeURIComponent(editJob.job_no)}`, "PATCH", {
-      updated_at: editJob.updated_at,
-      production_date: value.production_date,
-      table_no: value.table_no,
-      product_id: value.product_id,
-      target_qty: parseFloat(value.target_qty),
-      priority: value.priority,
-      note: value.note,
-      location: value.location,
-      reason: value.reason,
-    });
-    setSubmitting(false);
-    if (res.success) {
-      setEditJob(null);
-      setToast("แก้ไขงานเรียบร้อย" + (editJob.status !== "DRAFT" ? " — แจ้งผู้ผลิตแล้ว" : ""));
-      emitProductionUpdated();
-    } else {
-      setModalError(res.message);
-    }
-  };
+  const handleEdit = (value: AddJobFormValue) =>
+    guard.run(async () => {
+      if (!editJob) return;
+      setModalError(null);
+      const res = await productionApi(
+        `/api/production/jobs/${encodeURIComponent(editJob.job_no)}`,
+        "PATCH",
+        buildJobPatch(editJob, value)
+      );
+      if (res.success) {
+        setEditJob(null);
+        setToast("แก้ไขงานเรียบร้อย" + (editJob.status !== "DRAFT" ? " — แจ้งผู้ผลิตแล้ว" : ""));
+        emitProductionUpdated();
+      } else {
+        setModalError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, "edit");
 
-  const handleDeleteDraft = async (job: ProductionJob) => {
+  const handleDeleteDraft = (job: ProductionJob) => {
+    if (guard.pending) return;
     if (!window.confirm(`ลบงานฉบับร่าง ${job.job_no} (${job.product_name}) ?`)) return;
-    const res = await productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}`, "DELETE");
-    if (res.success) {
-      setToast("ลบฉบับร่างเรียบร้อย");
-      emitProductionUpdated();
-    } else {
-      setToast(res.message);
-    }
+    return guard.run(async () => {
+      const res = await productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}`, "DELETE");
+      if (res.success) {
+        setToast("ลบฉบับร่างเรียบร้อย");
+        emitProductionUpdated();
+      } else {
+        setToast(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, `delete:${job.job_no}`);
   };
 
-  const handleCancelJob = async (reason: string) => {
-    if (!cancelJob) return;
-    setSubmitting(true);
-    setModalError(null);
-    const res = await productionFetch(
-      `/api/production/jobs/${encodeURIComponent(cancelJob.job_no)}/cancel`,
-      "POST",
-      { reason }
-    );
-    setSubmitting(false);
-    if (res.success) {
-      setCancelJob(null);
-      setToast("ยกเลิกงานเรียบร้อย — ผลผลิตที่ยืนยันแล้วยังเก็บไว้ครบ");
-      emitProductionUpdated();
-    } else {
-      setModalError(res.message);
-    }
-  };
+  const handleCancelJob = (reason: string) =>
+    guard.run(async () => {
+      if (!cancelJob) return;
+      setModalError(null);
+      const res = await productionApi(
+        `/api/production/jobs/${encodeURIComponent(cancelJob.job_no)}/cancel`,
+        "POST",
+        { reason }
+      );
+      if (res.success) {
+        setCancelJob(null);
+        setToast("ยกเลิกงานเรียบร้อย — ผลผลิตที่ยืนยันแล้วยังเก็บไว้ครบ");
+        emitProductionUpdated();
+      } else {
+        setModalError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, "cancel");
 
-  const handleSubmitJobs = async () => {
-    if (selectedJobs.length === 0) return;
+  const handleSubmitJobs = () => {
+    if (selectedJobs.length === 0 || guard.pending) return;
     const names = selectedJobs.map((j) => j.job_no).join(", ");
     if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}\n\nเมื่อส่งแล้วระบบจะแจ้งเตือนไปยังผู้ผลิต (APPROVER) ทันที`)) return;
-    setSubmittingJobs(true);
-    const res = await productionFetch("/api/production/jobs/submit", "POST", {
-      job_nos: selectedJobs.map((j) => j.job_no),
-    });
-    setSubmittingJobs(false);
-    if (res.success) {
-      setSelected(new Set());
-      setToast(res.message);
-      emitProductionUpdated();
-    } else {
-      setToast(res.message);
-    }
+    return guard.run(async () => {
+      const res = await productionApi("/api/production/jobs/submit", "POST", {
+        job_nos: selectedJobs.map((j) => j.job_no),
+      });
+      if (res.success) {
+        setSelected(new Set());
+        setToast(res.message);
+        emitProductionUpdated();
+      } else {
+        setToast(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, "submit");
   };
 
   if (!isAdmin) {
@@ -372,73 +386,78 @@ export default function ProductionPlanningPage() {
                   <p className="py-8 text-center text-sm font-semibold text-slate-300">ยังไม่มีงานในโต๊ะนี้</p>
                 ) : (
                   <div className="space-y-2.5">
-                    {tableJobs.map((job) => (
-                      <div key={job.job_no} className="rounded-lg border border-[#EEF1EF] bg-[#F7FAF8] p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex min-w-0 items-start gap-2.5">
-                            {job.status === "DRAFT" && (
-                              <input
-                                type="checkbox"
-                                checked={selected.has(job.job_no)}
-                                onChange={() => toggleSelect(job.job_no)}
-                                className="mt-1 h-4.5 w-4.5 shrink-0 accent-[#06402B]"
-                              />
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <StatusBadge status={job.status} />
-                                <PriorityBadge priority={job.priority} />
-                              </div>
-                              <div className="mt-1 truncate text-sm font-bold text-slate-900">{job.product_name}</div>
-                              <div className="font-mono text-[11px] font-semibold text-slate-400">
-                                {job.job_no} · {job.sku}
+                    {tableJobs.map((job) => {
+                      const actions = getAllowedActions(job, user?.role);
+                      return (
+                        <div key={job.job_no} className="rounded-lg border border-[#EEF1EF] bg-[#F7FAF8] p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex min-w-0 items-start gap-2.5">
+                              {actions.submit && (
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(job.job_no)}
+                                  onChange={() => toggleSelect(job.job_no)}
+                                  className="mt-1 h-4.5 w-4.5 shrink-0 accent-[#06402B]"
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <StatusBadge status={job.status} />
+                                  <PriorityBadge priority={job.priority} />
+                                </div>
+                                <div className="mt-1 truncate text-sm font-bold text-slate-900">{job.product_name}</div>
+                                <div className="font-mono text-[11px] font-semibold text-slate-400">
+                                  {job.job_no} · {job.sku}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            <Link
-                              href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                              className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#0F5C3F] hover:bg-[#EAF2EE]"
-                            >
-                              รายละเอียด →
-                            </Link>
-                            {job.status === "DRAFT" || job.status === "WAITING" || job.status === "IN_PROGRESS" ? (
-                              <button
-                                onClick={() => setEditJob(job)}
-                                className="rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <Link
+                                href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
+                                className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#0F5C3F] hover:bg-[#EAF2EE]"
                               >
-                                แก้ไข
+                                รายละเอียด →
+                              </Link>
+                              {actions.edit ? (
+                                <button
+                                  onClick={() => setEditJob(job)}
+                                  className="rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                                >
+                                  แก้ไข
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-2.5">
+                            <JobNumbers job={job} compact />
+                          </div>
+
+                          {actions.deleteDraft && (
+                            <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
+                              <button
+                                onClick={() => handleDeleteDraft(job)}
+                                disabled={submitting}
+                                className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                              >
+                                ลบฉบับร่าง
                               </button>
-                            ) : null}
-                          </div>
+                            </div>
+                          )}
+                          {/* เดิมแสดงบนงาน "จบงาน" ด้วย — ตอนนี้ใช้กติกาเดียวกับหน้ารายละเอียด */}
+                          {showCancelOnPlanningCard(actions) && (
+                            <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
+                              <button
+                                onClick={() => setCancelJob(job)}
+                                className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
+                              >
+                                ยกเลิกงาน
+                              </button>
+                            </div>
+                          )}
                         </div>
-
-                        <div className="mt-2.5">
-                          <JobNumbers job={job} compact />
-                        </div>
-
-                        {job.status === "DRAFT" && (
-                          <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
-                            <button
-                              onClick={() => handleDeleteDraft(job)}
-                              className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
-                            >
-                              ลบฉบับร่าง
-                            </button>
-                          </div>
-                        )}
-                        {job.status !== "DRAFT" && job.status !== "CANCELLED" && (
-                          <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
-                            <button
-                              onClick={() => setCancelJob(job)}
-                              className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
-                            >
-                              ยกเลิกงาน
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -448,11 +467,11 @@ export default function ProductionPlanningPage() {
       )}
 
       {/* แถบล่าง: ยืนยันส่งงานผลิตหลายงานพร้อมกัน */}
-      {selected.size > 0 && (
+      {selectedJobs.length > 0 && (
         <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
           <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-xl bg-[#06402B] px-5 py-3.5 shadow-2xl">
             <div className="text-sm font-bold text-white">
-              เลือก {selected.size} งานฉบับร่าง
+              เลือก {selectedJobs.length} งานฉบับร่าง
               <span className="ml-2 font-mono text-xs font-semibold text-[#9CC7B4]">
                 เป้ารวม {formatQty(selectedJobs.reduce((s, j) => s + j.target_qty, 0))} ชิ้น
               </span>
@@ -466,10 +485,10 @@ export default function ProductionPlanningPage() {
               </button>
               <button
                 onClick={handleSubmitJobs}
-                disabled={submittingJobs}
+                disabled={submitting}
                 className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
               >
-                {submittingJobs ? (
+                {guard.isPending("submit") ? (
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#06402B] border-t-transparent" />
                 ) : (
                   "ยืนยันส่งงานผลิต"

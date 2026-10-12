@@ -518,7 +518,7 @@ export function updateTransferTaskProgress(id: string, step: number, stepText?: 
 
 // คิว PATCH progress ต่อเอกสาร — กัน request เปลี่ยนขั้นตอนสองอันย้อนหลัง/ซ้อนกัน
 // ยิงชนกันจนอันที่อ่านข้อมูลเก่ากว่าเขียนทับอันใหม่ (ลำดับเขียนชีตไม่รับประกัน)
-/** รอจน PATCH progress ที่ค้างอยู่ทั้งหมดของเอกสารนี้เขียนเสร็จ (ใช้ก่อน submit เพื่อไม่ให้ชนกัน) */
+/** Wait for progress synchronization (diagnostics/tests); submission writes independently. */
 export function whenTransferProgressSettled(id?: string): Promise<void> {
   if (!id) return Promise.resolve();
   const chain = progressSyncChains.get(String(id).trim().toLowerCase());
@@ -981,19 +981,16 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
 }
 
 let globalSyncPromise: Promise<void> | null = null;
-let lastSyncTimestamp = 0;
 
 export async function fetchAndSyncTransferNotifications(): Promise<void> {
   if (typeof window === "undefined") return;
-  const now = Date.now();
-  if (globalSyncPromise && now - lastSyncTimestamp < 3000) {
+  if (globalSyncPromise) {
     try {
       await globalSyncPromise;
     } catch {}
     return;
   }
 
-  lastSyncTimestamp = now;
   const promise = (async () => {
     try {
       const headers: Record<string, string> = {};

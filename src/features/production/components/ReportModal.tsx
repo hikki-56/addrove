@@ -4,10 +4,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty } from "./ui";
+import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 
 // Modal รายงานผลผลิต (APPROVER) — ยอดเฉพาะรอบนี้ ระบบคำนวณยอดสะสมเอง
 // ก่อนยืนยันมีสรุปยอดรอบนี้ + สะสมเทียบเป้าเสมอ · มีของเสีย → บังคับสาเหตุ
-// จบงานไม่ครบเป้า/เกินเป้า → บังคับเหตุผล · idempotency key ผูกกับการเปิด modal ครั้งนั้น (กันกดยืนยันซ้ำ)
+// จบงานไม่ครบเป้า/เกินเป้า → บังคับเหตุผล
+// idempotency key ไม่ได้สร้างที่นี่ — หน้าที่เรียกใช้ผูก key กับ "การส่งที่ตั้งใจ" ต่องาน
+// (lib/idempotency.ts: คงอยู่ข้ามการปิด/เปิด modal จนกว่าเซิร์ฟเวอร์ยืนยันสำเร็จ)
+
+export interface ReportPayload {
+  good_qty: number;
+  defect_qty: number;
+  defect_cause: string;
+  note: string;
+  report_kind: "PARTIAL" | "FINAL";
+  close_reason: string;
+}
 
 interface ReportModalProps {
   open: boolean;
@@ -15,24 +27,11 @@ interface ReportModalProps {
   submitting: boolean;
   error: string | null;
   onClose: () => void;
-  onSubmit: (payload: {
-    good_qty: number;
-    defect_qty: number;
-    defect_cause: string;
-    note: string;
-    report_kind: "PARTIAL" | "FINAL";
-    close_reason: string;
-    idempotency_key: string;
-  }) => void;
+  onSubmit: (payload: ReportPayload) => void;
 }
 
 const inputClass =
   "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
-
-function parseRoundQty(v: string): number {
-  const n = parseFloat(v);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
-}
 
 export default function ReportModal({ open, job, submitting, error, onClose, onSubmit }: ReportModalProps) {
   useEscapeKey(open && !submitting, onClose);
@@ -43,8 +42,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
   const [note, setNote] = useState("");
   const [reportKind, setReportKind] = useState<"PARTIAL" | "FINAL">("PARTIAL");
   const [closeReason, setCloseReason] = useState("");
-  // idempotency key ใหม่ทุกครั้งที่เปิด modal = การกดยืนยัน 1 ครั้ง (กดซ้ำหลังสำเร็จจะถูก server ปฏิเสธโดยคืนผลเดิม)
-  const [idemKey, setIdemKey] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -54,23 +51,28 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
       setNote("");
       setReportKind("PARTIAL");
       setCloseReason("");
-      setIdemKey(`rpt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
     }
   }, [open]);
 
-  const good = parseRoundQty(goodText);
-  const defect = parseRoundQty(defectText);
+  // ไม่ปัดเศษเงียบ ๆ อีกต่อไป — ทศนิยมเกิน 2 ตำแหน่ง/ไม่ใช่ตัวเลข → แจ้ง error และห้ามยืนยัน
+  const goodParse = parseQtyInput(goodText);
+  const defectParse = parseQtyInput(defectText);
+  const good = goodParse.ok ? goodParse.value : 0;
+  const defect = defectParse.ok ? defectParse.value : 0;
   const target = job?.target_qty ?? 0;
-  const cumGood = (job?.produced_good ?? 0) + good;
-  const cumDefect = (job?.defect_total ?? 0) + defect;
-  const remainingAfter = Math.max(0, Math.round((target - cumGood) * 100) / 100);
-  const overAfter = Math.max(0, Math.round((cumGood - target) * 100) / 100);
+  const cumGood = roundQty((job?.produced_good ?? 0) + good);
+  const cumDefect = roundQty((job?.defect_total ?? 0) + defect);
+  const remainingAfter = Math.max(0, roundQty(target - cumGood));
+  const overAfter = Math.max(0, roundQty(cumGood - target));
   const isFinal = reportKind === "FINAL";
-
-  const inputInvalid = (v: string) => v !== "" && !Number.isFinite(parseFloat(v));
+  const qtyError = !goodParse.ok
+    ? `ผลิตดีรอบนี้: ${goodParse.error}`
+    : !defectParse.ok
+      ? `ของเสียรอบนี้: ${defectParse.error}`
+      : null;
 
   const formError = useMemo(() => {
-    if (inputInvalid(goodText) || inputInvalid(defectText)) return "กรุณากรอกจำนวนเป็นตัวเลขที่ถูกต้อง";
+    if (qtyError) return qtyError;
     if (good + defect <= 0) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
     if (defect > 0 && !defectCause.trim()) return "มีของเสีย — ต้องระบุสาเหตุของเสีย";
     if (isFinal && (remainingAfter > 0 || overAfter > 0) && !closeReason.trim()) {
@@ -79,7 +81,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
         : `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`;
     }
     return null;
-  }, [goodText, defectText, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job?.unit]);
+  }, [qtyError, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job?.unit]);
 
   if (!open || !job) return null;
 
@@ -114,7 +116,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 placeholder="0"
                 disabled={submitting}
                 className={`mt-1 w-full rounded-lg border px-3 py-3 text-center font-mono text-xl font-black text-[#06402B] focus:outline-none ${
-                  inputInvalid(goodText)
+                  !goodParse.ok
                     ? "border-[#F04438] bg-[#FEF3F2]"
                     : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
                 }`}
@@ -132,13 +134,14 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 placeholder="0"
                 disabled={submitting}
                 className={`mt-1 w-full rounded-lg border px-3 py-3 text-center font-mono text-xl font-black text-rose-700 focus:outline-none ${
-                  inputInvalid(defectText)
+                  !defectParse.ok
                     ? "border-[#F04438] bg-[#FEF3F2]"
                     : "border-[#E8ECEA] bg-slate-50 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20"
                 }`}
               />
             </label>
           </div>
+          {qtyError && <p className="-mt-2 text-xs font-bold text-rose-700">{qtyError}</p>}
 
           {defect > 0 && (
             <label className="block">
@@ -186,7 +189,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 value={closeReason}
                 onChange={(e) => setCloseReason(e.target.value)}
                 placeholder={remainingAfter > 0 ? "เช่น วัตถุดิบไม่พอ ต้องปิดงานก่อน" : "เช่น ทำเกินตามคำขอของ ADMIN"}
-                className="mt-1 resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
+                className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
               />
             </label>
           )}
@@ -255,7 +258,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 note: note.trim(),
                 report_kind: reportKind,
                 close_reason: closeReason.trim(),
-                idempotency_key: idemKey,
               })
             }
             className="flex-[1.4] rounded-lg bg-[#06402B] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"

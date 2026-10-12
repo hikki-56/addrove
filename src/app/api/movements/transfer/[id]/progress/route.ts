@@ -85,18 +85,11 @@ export async function PATCH(
       return updates;
     };
 
-    let doc: Document | null;
-    if (repo.documents.mutate) {
-      doc = await repo.documents.mutate(id, mutateProgress);
-    } else {
-      doc =
-        (await repo.documents.findById(id, { forceFresh: true })) ||
-        (await repo.documents.findByNo(id, { forceFresh: true }));
-      if (doc) {
-        const updates = mutateProgress(doc);
-        if (updates?.note) await repo.documents.updateNote(doc.document_id, updates.note);
-      }
+    // Submission no longer waits for progress: a whole-row fallback would reintroduce the race.
+    if (!repo.documents.mutateTransferProgress) {
+      throw new Error("Configured repository does not support isolated transfer progress");
     }
+    const doc = await repo.documents.mutateTransferProgress(id, mutateProgress);
 
     if (!doc) return finish(notFoundResponse("ไม่พบใบย้ายสินค้า"));
 

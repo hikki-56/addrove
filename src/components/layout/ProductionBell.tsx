@@ -1,24 +1,64 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { PRODUCTION_UPDATED_EVENT } from "@/app/(dashboard)/production/_lib/use-production-data";
+import { subscribeProductionUpdated } from "@/features/production/lib/events";
+import { productionApi } from "@/features/production/lib/api";
+import { canViewProductionNotifications } from "@/features/production/lib/permissions";
 import type { ProductionNotification } from "@/types/production";
 
 // กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — อ่าน/ยังไม่อ่านเก็บฝั่งเซิร์ฟเวอร์ (ข้ามอุปกรณ์ได้)
 // โพลล์ทุก 30 วิขณะเปิดหน้า + รีเฟรชทันทีเมื่อมี action ในระบบผลิต · กดรายการ = ทำเครื่องหมายอ่าน + เปิดงาน
+//
+// - ตรวจบทบาทก่อน: บทบาทอื่นไม่ mount ตัวที่มี hook → ไม่ poll /api/production/notifications เลย
+// - Navbar มีช่องวางกระดิ่ง 2 ที่ (header มือถือ `md:hidden` และ header เดสก์ท็อป `md:flex`)
+//   แต่ละช่องส่ง placement มา — mount จริงเพียงช่องที่ตรงกับ breakpoint ปัจจุบัน (instance เดียว = poll ชุดเดียว)
 
 interface NotifItem extends ProductionNotification {
   is_read: boolean;
 }
 
-export default function ProductionBell() {
+interface NotificationsPayload {
+  items?: NotifItem[];
+  unread_count?: number;
+}
+
+/** ต้องตรงกับ breakpoint `md` ของ Tailwind ที่ Navbar ใช้สลับ header มือถือ/เดสก์ท็อป (48rem = 768px) */
+const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
+
+function subscribeDesktop(onChange: () => void): () => void {
+  const mql = window.matchMedia(DESKTOP_MEDIA_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+/** true = เดสก์ท็อป · false = มือถือ · null = ยังไม่รู้ (SSR/ก่อน hydrate — ไม่ render เพื่อไม่ให้ mount ซ้ำ) */
+function useIsDesktop(): boolean | null {
+  return useSyncExternalStore<boolean | null>(
+    subscribeDesktop,
+    () => window.matchMedia(DESKTOP_MEDIA_QUERY).matches,
+    () => null
+  );
+}
+
+export interface ProductionBellProps {
+  /** ช่องที่วางใน Navbar — render เฉพาะช่องที่มองเห็นตาม breakpoint */
+  placement: "mobile" | "desktop";
+}
+
+export default function ProductionBell({ placement }: ProductionBellProps) {
   const { user } = useTabAuth();
+  const isDesktop = useIsDesktop();
+  if (!canViewProductionNotifications(user?.role)) return null;
+  if (isDesktop === null || isDesktop !== (placement === "desktop")) return null;
+  return <ProductionBellInner />;
+}
+
+function ProductionBellInner() {
   const router = useRouter();
-  const visible = user?.role === "ADMIN" || user?.role === "APPROVER";
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotifItem[]>([]);
@@ -26,14 +66,11 @@ export default function ProductionBell() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/production/notifications", { cache: "no-store" });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setItems(json.data.items || []);
-        setUnread(json.data.unread_count || 0);
-      }
-    } catch {}
+    const res = await productionApi<NotificationsPayload>("/api/production/notifications");
+    if (res.success && res.data) {
+      setItems(res.data.items || []);
+      setUnread(res.data.unread_count || 0);
+    }
   }, []);
 
   usePollingWhenVisible(
@@ -43,11 +80,13 @@ export default function ProductionBell() {
     30000
   );
 
-  useEffect(() => {
-    const handler = () => load();
-    window.addEventListener(PRODUCTION_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(PRODUCTION_UPDATED_EVENT, handler);
-  }, [load]);
+  useEffect(
+    () =>
+      subscribeProductionUpdated(() => {
+        load();
+      }),
+    [load]
+  );
 
   // ปิดเมื่อคลิกนอกกรอบ
   useEffect(() => {
@@ -61,16 +100,8 @@ export default function ProductionBell() {
 
   useEscapeKey(open, () => setOpen(false));
 
-  if (!visible) return null;
-
   const markRead = async (ids: string[] | "all") => {
-    try {
-      await fetch("/api/production/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-    } catch {}
+    await productionApi("/api/production/notifications", "PATCH", { ids });
     load();
   };
 

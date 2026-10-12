@@ -12,6 +12,7 @@ import {
   purgeInvalidNotifications,
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 
 // ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
 const OPERATION_ORDER = [
@@ -203,23 +204,18 @@ export default function Sidebar({
   }, [role]);
 
   // แผนรับสินค้าที่ยังเปิดอยู่ — สำหรับแอดมินและพนักงานโกดังที่ต้องลงมือรับ
-  useEffect(() => {
-    if (role === "ADMIN" || role === "WAREHOUSE_STAFF") {
-      const fetchOpenPlans = () => {
-        fetch(`/api/receiving-plans?status=OPEN`, { cache: "no-store" })
-          .then((r) => r.json())
-          .then((res) => {
-            if (res.success && Array.isArray(res.data)) {
-              setOpenPlanCount(res.data.length);
-            }
-          })
-          .catch(() => {});
-      };
-      fetchOpenPlans();
-      const interval = setInterval(fetchOpenPlans, 60000);
-      return () => clearInterval(interval);
-    }
+  const fetchOpenPlans = useCallback(() => {
+    if (role !== "ADMIN" && role !== "WAREHOUSE_STAFF") return;
+    fetch(`/api/receiving-plans?status=OPEN`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setOpenPlanCount(res.data.length);
+        }
+      })
+      .catch(() => {});
   }, [role]);
+  usePollingWhenVisible(fetchOpenPlans, 60000);
 
   const itemsForRole = getNavItems(role);
   // บัญชีแอดมินที่ถูกจำกัดเมนู (เช่น milk) เห็นเฉพาะหน้าที่กำหนด

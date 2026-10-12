@@ -4,24 +4,24 @@ import {
   updateRow,
   SHEETS,
   clearSheetCache,
+  updateDocumentProgressCell,
 } from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/server/keyed-lock";
 import type { DocumentMutator, IDocumentRepository } from "../interfaces";
 import type { Document, DocumentType } from "@/types/models";
 
-// ทุก write ของชีต Documents เป็น read-modify-write "ทั้งแถว" (สถานะ+note อยู่แถวเดียวกัน)
-// เดิม PATCH /progress (พนักงานเปลี่ยนขั้นตอน) ชนกับ POST /submit ทำให้สถานะ
-// WAITING_APPROVAL ที่ submit เพิ่งเขียน ถูก progress ที่อ่านข้อมูลก่อนหน้าเขียนทับกลับเป็น PENDING
-// — serialize ด้วย key ต่อเอกสาร (ครอบคลุม traffic บน instance เดียวกัน)
+// Business writes update A:I under a per-document lock inside one instance.
+// Transient progress writes J separately so late progress cannot regress submission.
 function documentRowLockKey(id: string): string {
   return `sheet-doc-row:${String(id || "").trim().toLowerCase()}`;
 }
 import type { MovementFilterInput } from "@/types/api";
 import { generateUuid } from "@/lib/id";
 
-// Columns: document_id, document_no, document_type, reference_no, document_date, status, note, created_by, created_at
+// A:I: document_id, document_no, document_type, reference_no, document_date, status, note, created_by, created_at.
+// J (optional): transfer progress JSON, ignored once the document leaves PENDING.
 function rowToDocument(row: string[]): Document {
-  return {
+  const document: Document = {
     document_id: row[0] ?? "",
     document_no: row[1] ?? "",
     document_type: row[2] as DocumentType,
@@ -32,6 +32,22 @@ function rowToDocument(row: string[]): Document {
     created_by: row[7] ?? "",
     created_at: row[8] ?? "",
   };
+  // Column J is optional progress only. Final states always use the authoritative note in G.
+  if (document.document_type === "TRANSFER" && document.status === "PENDING" && row[9]) {
+    try {
+      const progress = JSON.parse(row[9]);
+      let meta: Record<string, unknown>;
+      try { meta = JSON.parse(document.note || "{}"); }
+      catch { meta = { original_note: document.note }; }
+      if (progress.kind === "stockify-transfer-progress-v1" && Number(progress.current_step) >= (Number(meta.current_step) || 0)) {
+        document.note = JSON.stringify({ ...meta,
+          current_step: progress.current_step, current_step_text: progress.current_step_text,
+          last_active_at: progress.last_active_at, last_active_user_id: progress.last_active_user_id,
+        });
+      }
+    } catch { /* Legacy or malformed cells do not hide the original document. */ }
+  }
+  return document;
 }
 
 function documentToRow(d: Document): string[] {
@@ -78,7 +94,7 @@ export class SheetsDocumentRepository implements IDocumentRepository {
    * Write paths must forceFresh — a stale cached read would write old status back over the sheet.
    */
   private async getSheetRows(options?: { forceFresh?: boolean }): Promise<string[][]> {
-    return await readSheet(SHEETS.DOCUMENTS, "A2:I", options).catch(() => []);
+    return await readSheet(SHEETS.DOCUMENTS, "A2:J", options).catch(() => []);
   }
 
   /**
@@ -275,6 +291,36 @@ export class SheetsDocumentRepository implements IDocumentRepository {
         await updateRow(SHEETS.DOCUMENTS, idx + 2, documentToRow(doc));
         clearSheetCache(SHEETS.DOCUMENTS);
       }
+    });
+  }
+
+  async mutateTransferProgress(id: string, mutator: DocumentMutator): Promise<Document | null> {
+    // Separate lock and cell: submission does not wait for progress, even across instances.
+    return withKeyedLock(`sheet-doc-progress:${id.trim().toLowerCase()}`, async () => {
+      const rows = await this.getSheetRows({ forceFresh: true });
+      const target = id.trim().toLowerCase();
+      const idx = rows.findIndex(row => row[0]?.trim().toLowerCase() === target || row[1]?.trim().toLowerCase() === target);
+      if (idx === -1) return null;
+      const document = rowToDocument(rows[idx]);
+      if (document.document_type !== "TRANSFER" || document.status !== "PENDING") return document;
+      const updates = await mutator(document);
+      if (!updates?.note) return document;
+      if (rows[idx][9]) {
+        let kind: unknown;
+        try { kind = JSON.parse(rows[idx][9]).kind; } catch {}
+        if (kind !== "stockify-transfer-progress-v1") throw new Error("Documents column J is already in use; cannot save transfer progress");
+      }
+      const meta = JSON.parse(updates.note);
+      const progress = JSON.stringify({
+        kind: "stockify-transfer-progress-v1",
+        current_step: meta.current_step,
+        current_step_text: meta.current_step_text,
+        last_active_at: meta.last_active_at,
+        last_active_user_id: meta.last_active_user_id,
+      });
+      await updateDocumentProgressCell(idx + 2, progress);
+      clearSheetCache(SHEETS.DOCUMENTS);
+      return { ...document, note: updates.note };
     });
   }
 

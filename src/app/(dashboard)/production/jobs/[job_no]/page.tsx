@@ -1,49 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import {
   useProductionJobDetail,
-  productionFetch,
   emitProductionUpdated,
-} from "../../_lib/use-production-data";
-import ReportModal from "../../_components/ReportModal";
-import AddJobModal, { type AddJobFormValue } from "../../_components/AddJobModal";
-import { ReasonModal, AdjustModal } from "../../_components/ActionModals";
-import { StatusBadge, PriorityBadge, formatQty, formatDateTime } from "../../_components/ui";
+  PRODUCTION_POLL_MS,
+} from "@/features/production/hooks/use-production-data";
+import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
+import { productionApi, isConflict, type ProductionApiResult } from "@/features/production/lib/api";
+import { sendWithIdempotency } from "@/features/production/lib/idempotency";
+import { getAllowedActions } from "@/features/production/lib/permissions";
+import { buildJobPatch } from "@/features/production/lib/job-form";
+import { formatHistoryDetail, historyActionLabel } from "@/features/production/lib/history";
+import ReportModal from "@/features/production/components/ReportModal";
+import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
+import { ReasonModal, AdjustModal, ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
+import { StatusBadge, PriorityBadge, formatQty, formatDateTime } from "@/features/production/components/ui";
+import type { ProductionJob } from "@/types/production";
 
 // รายละเอียดงานผลิต (§3, §6) — APPROVER: เริ่มผลิต/รายงานผล · ADMIN: แก้ไข/ยกเลิก/เปิดใหม่/ปรับปรุงยอด
 // แสดงเป้าหมาย ยอดสะสม ของเสีย ยอดขาด/เกิน + ประวัติรายงานทุกรอบ + ประวัติการเปลี่ยนแปลง
-
-const HISTORY_ACTION_LABELS: Record<string, string> = {
-  CREATE: "สร้างงาน",
-  EDIT: "แก้ไขงาน",
-  DELETE: "ลบฉบับร่าง",
-  SUBMIT: "ส่งงานผลิต",
-  START: "เริ่มผลิต",
-  REPORT_PARTIAL: "รายงานบางส่วน",
-  REPORT_FINAL: "รายงานและจบงาน",
-  CANCEL: "ยกเลิกงาน",
-  REOPEN: "เปิดงานผลิตต่อ",
-  ADJUST: "ปรับปรุงยอดผลผลิต",
-};
 
 export default function ProductionJobDetailPage() {
   const params = useParams<{ job_no: string }>();
   const jobNo = params?.job_no ? decodeURIComponent(params.job_no) : undefined;
   const { user } = useTabAuth();
-  const isApprover = user?.role === "APPROVER";
-  const isAdmin = user?.role === "ADMIN";
   const { detail, loading, error, reload } = useProductionJobDetail(jobNo);
+
+  // อัปเดตอัตโนมัติทุก 30 วิขณะแท็บมองเห็น (หยุดเมื่อซ่อนแท็บ · กลับมาแล้วโหลดทันที)
+  usePollingWhenVisible(
+    useCallback(
+      (initial?: boolean) => {
+        if (!initial && jobNo) reload();
+      },
+      [jobNo, reload]
+    ),
+    PRODUCTION_POLL_MS
+  );
+
+  // ภาพนิ่งของงานตอนเปิด modal แก้ไข/ปรับยอด — polling ไม่รีเซ็ตฟอร์มกลางคัน และ
+  // PATCH ส่ง updated_at ของข้อมูลที่ผู้ใช้เห็นตอนเริ่มแก้ (optimistic lock ยังจับการแก้ซ้อนได้)
+  const [modalJob, setModalJob] = useState<ProductionJob | null>(null);
 
   const [reportOpen, setReportOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
+  const guard = useSubmitGuard();
+  const submitting = guard.pending;
   const [modalError, setModalError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
 
@@ -54,6 +64,8 @@ export default function ProductionJobDetailPage() {
     setCancelOpen(false);
     setReopenOpen(false);
     setAdjustOpen(false);
+    setStartOpen(false);
+    setModalJob(null);
     setModalError(null);
   };
 
@@ -83,26 +95,29 @@ export default function ProductionJobDetailPage() {
   }
 
   const { job, reports, history } = detail;
-  const canStart = isApprover && job.status === "WAITING";
-  const canReport = isApprover && job.status === "IN_PROGRESS";
-  const canEdit = isAdmin && ["DRAFT", "WAITING", "IN_PROGRESS"].includes(job.status);
-  const canCancel = isAdmin && ["DRAFT", "WAITING", "IN_PROGRESS"].includes(job.status);
-  const canReopen = isAdmin && job.status === "COMPLETED";
-  const canAdjust = isAdmin && ["IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(job.status);
+  const actions = getAllowedActions(job, user?.role);
+  const canStart = actions.start;
+  const canReport = actions.report;
+  const canEdit = actions.edit;
+  const canCancel = actions.cancel;
+  const canReopen = actions.reopen;
+  const canAdjust = actions.adjust;
 
-  const runAction = async (fn: () => Promise<{ success: boolean; message: string }>, closeOnSuccess = true) => {
-    setSubmitting(true);
-    setModalError(null);
-    const res = await fn();
-    setSubmitting(false);
-    if (res.success) {
-      if (closeOnSuccess) clearModal();
-      setToastOnce("ok", res.message);
-      emitProductionUpdated();
-    } else {
-      setModalError(res.message);
-    }
-  };
+  // ทุก action ที่เปลี่ยนข้อมูลผ่าน guard เดียว — กันกดซ้ำ/กดหลาย action พร้อมกัน
+  const runAction = (key: string, fn: () => Promise<ProductionApiResult>, closeOnSuccess = true) =>
+    guard.run(async () => {
+      setModalError(null);
+      const res = await fn();
+      if (res.success) {
+        if (closeOnSuccess) clearModal();
+        setToastOnce("ok", res.message);
+        emitProductionUpdated();
+      } else {
+        setModalError(res.message);
+        // 409 = ข้อมูลบนจอเก่า → โหลดใหม่ให้เห็นสถานะล่าสุด (ข้อความแนะนำให้รีเฟรชอยู่ใน message แล้ว)
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, key);
 
   return (
     <div className="w-full max-w-full pb-28">
@@ -232,20 +247,33 @@ export default function ProductionJobDetailPage() {
           <p className="px-5 py-8 text-center text-sm font-semibold text-slate-300">ยังไม่มีประวัติ</p>
         ) : (
           <ol className="divide-y divide-[#EEF1EF]">
-            {history.map((h) => (
-              <li key={h.history_id} className="px-5 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-slate-800">{HISTORY_ACTION_LABELS[h.action] || h.action}</span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    {h.actor_name} · {formatDateTime(h.at)}
-                  </span>
-                </div>
-                {h.reason && <p className="mt-0.5 text-xs font-semibold text-slate-500">เหตุผล: {h.reason}</p>}
-                {h.detail && h.detail !== "{}" && (
-                  <p className="mt-0.5 font-mono text-[11px] text-slate-400">{h.detail}</p>
-                )}
-              </li>
-            ))}
+            {history.map((h) => {
+              const detailView = formatHistoryDetail(h.action, h.detail);
+              return (
+                <li key={h.history_id} className="px-5 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-800">{historyActionLabel(h.action)}</span>
+                    <span className="text-xs font-semibold text-slate-400">
+                      {h.actor_name} · {formatDateTime(h.at)}
+                    </span>
+                  </div>
+                  {h.reason && <p className="mt-0.5 text-xs font-semibold text-slate-500">เหตุผล: {h.reason}</p>}
+                  {detailView.lines.length > 0 && (
+                    <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+                      {detailView.lines.map((line, idx) => (
+                        <div key={`${line.label}-${idx}`} className="contents">
+                          <dt className="font-semibold text-slate-400">{line.label}</dt>
+                          <dd className="font-semibold tabular-nums text-slate-600">{line.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {detailView.raw && (
+                    <p className="mt-0.5 break-all font-mono text-[11px] text-slate-400">{detailView.raw}</p>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         )}
       </div>
@@ -256,7 +284,10 @@ export default function ProductionJobDetailPage() {
           <div className="pointer-events-auto flex w-full max-w-2xl flex-wrap items-center justify-center gap-2 rounded-xl bg-[#06402B] px-4 py-3 shadow-2xl">
             {canStart && (
               <button
-                onClick={() => runAction(() => productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/start`, "POST"))}
+                onClick={() => {
+                  setModalError(null);
+                  setStartOpen(true);
+                }}
                 disabled={submitting}
                 className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
               >
@@ -269,7 +300,8 @@ export default function ProductionJobDetailPage() {
                   setModalError(null);
                   setReportOpen(true);
                 }}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95"
+                disabled={submitting}
+                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
               >
                 📊 รายงานผลผลิต
               </button>
@@ -278,9 +310,11 @@ export default function ProductionJobDetailPage() {
               <button
                 onClick={() => {
                   setModalError(null);
+                  setModalJob(job);
                   setEditOpen(true);
                 }}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                disabled={submitting}
+                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
               >
                 ✏️ แก้ไขงาน
               </button>
@@ -289,9 +323,11 @@ export default function ProductionJobDetailPage() {
               <button
                 onClick={() => {
                   setModalError(null);
+                  setModalJob(job);
                   setAdjustOpen(true);
                 }}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                disabled={submitting}
+                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
               >
                 ⚖️ ปรับปรุงยอด
               </button>
@@ -302,7 +338,8 @@ export default function ProductionJobDetailPage() {
                   setModalError(null);
                   setReopenOpen(true);
                 }}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                disabled={submitting}
+                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
               >
                 🔁 เปิดผลิตต่อ
               </button>
@@ -313,7 +350,8 @@ export default function ProductionJobDetailPage() {
                   setModalError(null);
                   setCancelOpen(true);
                 }}
-                className="rounded-lg bg-[#B42318] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#912018] active:scale-95"
+                disabled={submitting}
+                className="rounded-lg bg-[#B42318] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#912018] active:scale-95 disabled:opacity-50"
               >
                 🚫 ยกเลิกงาน
               </button>
@@ -322,6 +360,22 @@ export default function ProductionJobDetailPage() {
         </div>
       )}
 
+      {/* ยืนยันก่อนเริ่มผลิต (เดิมหน้ารายการถาม แต่หน้ารายละเอียดไม่ถาม) */}
+      <ConfirmModal
+        open={startOpen}
+        title="ยืนยันเริ่มผลิต"
+        hint="ระบบจะเปลี่ยนสถานะเป็น “กำลังผลิต” บันทึกผู้เริ่ม และแจ้ง ADMIN"
+        confirmLabel="ยืนยันเริ่มผลิต"
+        submitting={submitting}
+        error={modalError}
+        onClose={clearModal}
+        onConfirm={() =>
+          runAction("start", () => productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/start`, "POST"))
+        }
+      >
+        <StartJobSummary job={job} />
+      </ConfirmModal>
+
       <ReportModal
         open={reportOpen}
         job={job}
@@ -329,32 +383,33 @@ export default function ProductionJobDetailPage() {
         error={modalError}
         onClose={clearModal}
         onSubmit={(payload) =>
-          runAction(() =>
-            productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/report`, "POST", payload)
+          runAction("report", () =>
+            sendWithIdempotency(
+              { action: "report", jobNo: job.job_no, round: job.report_count + 1, payload: { ...payload } },
+              (idempotency_key) =>
+                productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/report`, "POST", {
+                  ...payload,
+                  idempotency_key,
+                })
+            )
           )
         }
       />
 
       <AddJobModal
-        open={editOpen}
+        open={editOpen && !!modalJob}
         mode="edit"
-        job={job}
+        job={modalJob || undefined}
         submitting={submitting}
         error={modalError}
         onClose={clearModal}
         onSubmit={(value: AddJobFormValue) =>
-          runAction(() =>
-            productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}`, "PATCH", {
-              updated_at: job.updated_at,
-              production_date: value.production_date,
-              table_no: value.table_no,
-              product_id: value.product_id,
-              target_qty: parseFloat(value.target_qty),
-              priority: value.priority,
-              note: value.note,
-              location: value.location,
-              reason: value.reason,
-            })
+          runAction("edit", () =>
+            productionApi(
+              `/api/production/jobs/${encodeURIComponent(job.job_no)}`,
+              "PATCH",
+              buildJobPatch(modalJob ?? job, value)
+            )
           )
         }
       />
@@ -370,8 +425,8 @@ export default function ProductionJobDetailPage() {
         error={modalError}
         onClose={clearModal}
         onSubmit={(reason) =>
-          runAction(() =>
-            productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/cancel`, "POST", { reason })
+          runAction("cancel", () =>
+            productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/cancel`, "POST", { reason })
           )
         }
       />
@@ -386,21 +441,28 @@ export default function ProductionJobDetailPage() {
         error={modalError}
         onClose={clearModal}
         onSubmit={(reason) =>
-          runAction(() =>
-            productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/reopen`, "POST", { reason })
+          runAction("reopen", () =>
+            productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/reopen`, "POST", { reason })
           )
         }
       />
 
       <AdjustModal
-        open={adjustOpen}
-        job={job}
+        open={adjustOpen && !!modalJob}
+        job={modalJob}
         submitting={submitting}
         error={modalError}
         onClose={clearModal}
         onSubmit={(payload) =>
-          runAction(() =>
-            productionFetch(`/api/production/jobs/${encodeURIComponent(job.job_no)}/adjust`, "POST", payload)
+          runAction("adjust", () =>
+            sendWithIdempotency(
+              { action: "adjust", jobNo: job.job_no, round: (modalJob ?? job).report_count + 1, payload: { ...payload } },
+              (idempotency_key) =>
+                productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/adjust`, "POST", {
+                  ...payload,
+                  idempotency_key,
+                })
+            )
           )
         }
       />

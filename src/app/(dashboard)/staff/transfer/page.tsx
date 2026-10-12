@@ -18,7 +18,7 @@ export default function StaffTransferPage() {
     error: warehouseError,
     loading: productsLoading,
     getWarehouseName,
-  } = useWarehouseData({ initialWarehouseId: whParam || undefined });
+  } = useWarehouseData({ initialWarehouseId: whParam || undefined, loadLocations: false });
 
   const transferHook = useTransferMovement({
     activeWhId,

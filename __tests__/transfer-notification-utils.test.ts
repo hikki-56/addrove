@@ -5,6 +5,7 @@ import {
   getInStockSourceLocations,
   updateTransferTaskProgress,
   whenTransferProgressSettled,
+  fetchAndSyncTransferNotifications,
 } from "@/lib/transfer-notification-utils";
 import { detectWarehouseFromLocation, getWarehouseDisplayName } from "@/lib/warehouse-utils";
 import type { Product } from "@/types/models";
@@ -35,6 +36,32 @@ describe("transfer notifications & warehouse detection", () => {
     delete (globalThis as any).window;
     delete (globalThis as any).localStorage;
     delete (globalThis as any).sessionStorage;
+  });
+
+  it("shares a slow notification request across subscribers and permits refresh after completion", async () => {
+    let finishRequest!: (response: Response) => void;
+    const pendingResponse = new Promise<Response>((resolve) => {
+      finishRequest = resolve;
+    });
+    const clock = jest.spyOn(Date, "now").mockReturnValue(1000);
+    const fetchMock = jest.spyOn(globalThis, "fetch").mockReturnValue(pendingResponse);
+
+    try {
+      const first = fetchAndSyncTransferNotifications();
+      // Another page subscribes while the original request has been slow for 5s.
+      clock.mockReturnValue(6000);
+      const second = fetchAndSyncTransferNotifications();
+      finishRequest(new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }));
+      await Promise.all([first, second]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }));
+      await fetchAndSyncTransferNotifications();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+      fetchMock.mockRestore();
+    }
   });
 
   it("keeps a newly synced server assignment visible to the assigned staff member", () => {

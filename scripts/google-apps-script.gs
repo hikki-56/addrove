@@ -24,7 +24,7 @@
 
 // ---- Configuration ----
 
-var ALLOWED_ACTIONS = ['ping', 'append', 'update', 'deleteRow', 'atomicStockOperation'];
+var ALLOWED_ACTIONS = ['ping', 'append', 'update', 'updateDocumentProgress', 'deleteRow', 'atomicStockOperation'];
 var ALLOWED_ATOMIC_ACTIONS = ['append', 'update', 'updateStatus', 'checkBalance'];
 var ALLOWED_SHEETS = [
   'Warehouses', 'Locations', 'Shelves', 'PRODUCTS', 'Documents',
@@ -291,6 +291,18 @@ function validatePayload(parsed) {
     assertValidRowNumber(parsed.rowNumber, 'deleteRow');
   }
 
+  if (action === 'updateDocumentProgress') {
+    if (parsed.sheetName !== 'Documents' || typeof parsed.progress !== 'string' || getUtf8ByteLength(parsed.progress) > MAX_CELL_BYTES) {
+      throw new Error('VALIDATION: invalid isolated document progress payload');
+    }
+    assertValidRowNumber(parsed.rowNumber, 'updateDocumentProgress');
+    var progress = JSON.parse(parsed.progress);
+    if (progress.kind !== 'stockify-transfer-progress-v1' || typeof progress.current_step !== 'number' ||
+        Math.floor(progress.current_step) !== progress.current_step || progress.current_step < 1 || progress.current_step > 3) {
+      throw new Error('VALIDATION: invalid transfer progress step');
+    }
+  }
+
   if (action === 'atomicStockOperation') {
     if (typeof parsed.idempotencyKey !== 'string' || !parsed.idempotencyKey ||
         parsed.idempotencyKey.length > 200 || typeof parsed.operationType !== 'string' ||
@@ -438,6 +450,22 @@ function doUpdate(parsed) {
   sheet.getRange(rowNumber, 1, 1, rowValues.length).setValues([rowValues]);
   SpreadsheetApp.flush();
   return { success: true, message: 'Updated row successfully', rowNumber: rowNumber };
+}
+
+function doUpdateDocumentProgress(parsed) {
+  var sheet = getSheet('Documents');
+  var row = assertValidRowNumber(parsed.rowNumber, 'updateDocumentProgress');
+  if (row > sheet.getLastRow() || sheet.getMaxColumns() < 10) {
+    throw new Error('VALIDATION: document progress cell is outside sheet bounds');
+  }
+  var cell = sheet.getRange(row, 10);
+  var existing = cell.getValue();
+  if (existing && JSON.parse(String(existing)).kind !== 'stockify-transfer-progress-v1') {
+    throw new Error('VALIDATION: Documents column J is already in use');
+  }
+  cell.setValue(parsed.progress);
+  SpreadsheetApp.flush();
+  return { success: true, rowNumber: row };
 }
 
 function doDeleteRow(parsed) {
@@ -818,6 +846,10 @@ function doPost(e) {
       return jsonResponse(doUpdate(parsed));
     }
 
+    if (action === 'updateDocumentProgress') {
+      return jsonResponse(doUpdateDocumentProgress(parsed));
+    }
+
     if (action === 'deleteRow') {
       return jsonResponse(doDeleteRow(parsed));
     }
@@ -844,6 +876,7 @@ function doPost(e) {
 function doGet() {
   return jsonResponse({
     status: 'OK',
+    capabilities: ['updateDocumentProgress'],
     timestamp: new Date().toISOString()
   });
 }

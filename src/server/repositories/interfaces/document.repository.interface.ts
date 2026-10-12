@@ -15,5 +15,7 @@ export interface IDocumentRepository {
   updateNote(id: string, note: string): Promise<void>;
   updateDoc?(id: string, updates: Partial<Document>): Promise<void>;
   mutate?(id: string, mutator: DocumentMutator): Promise<Document | null>;
+  /** Persists transient transfer progress separately from status and business metadata. */
+  mutateTransferProgress?(id: string, mutator: DocumentMutator): Promise<Document | null>;
   generateDocumentNo(type: Document["document_type"]): Promise<string>;
 }

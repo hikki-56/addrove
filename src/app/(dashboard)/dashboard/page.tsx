@@ -1,19 +1,29 @@
 "use client";
 
 import { useTabAuth } from "@/context/TabAuthContext";
-import AdminDashboard from "./_components/AdminDashboard";
+import dynamic from "next/dynamic";
 import StaffDashboard from "./_components/StaffDashboard";
-import PackerDashboard from "./_components/PackerDashboard";
+
+function DashboardLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 border-2 border-[#06402B] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+const AdminDashboard = dynamic(() => import("./_components/AdminDashboard"), {
+  loading: DashboardLoading,
+});
+const PackerDashboard = dynamic(() => import("./_components/PackerDashboard"), {
+  loading: DashboardLoading,
+});
 
 export default function DashboardPage() {
   const { user, status } = useTabAuth();
 
   if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-[#06402B] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   const role = user?.role;

@@ -14,7 +14,7 @@ jest.mock("@/server/security", () => ({
 jest.mock("@/server/repositories", () => ({
   getRepository: jest.fn(() => ({
     documents: {
-      mutate: (...args: unknown[]) => mutateMock(...args),
+      mutateTransferProgress: (...args: unknown[]) => mutateMock(...args),
     },
   })),
 }));

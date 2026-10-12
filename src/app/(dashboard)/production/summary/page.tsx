@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { useProductionJobs } from "../_lib/use-production-data";
-import { formatQty } from "../_components/ui";
+import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
+import { useProductionJobs, PRODUCTION_POLL_MS } from "@/features/production/hooks/use-production-data";
+import { formatQty } from "@/features/production/components/ui";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
@@ -34,13 +35,13 @@ interface SummaryRow {
 export default function ProductionSummaryPage() {
   const { user } = useTabAuth();
   const isAdmin = user?.role === "ADMIN";
-  const { jobs, loading, error } = useProductionJobs();
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [tableFilter, setTableFilter] = useState<number | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [q, setQ] = useState("");
+  const [datesReady, setDatesReady] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -49,7 +50,30 @@ export default function ProductionSummaryPage() {
     const weekAgo = new Date(bangkok.getTime() - 6 * 86400000).toISOString().slice(0, 10);
     setDateFrom(weekAgo);
     setDateTo(today);
+    setDatesReady(true);
   }, []);
+
+  // ส่งช่วงวันที่/โต๊ะ/สถานะให้เซิร์ฟเวอร์กรอง (รอค่าเริ่มต้น 7 วันล่าสุดก่อน) · กรองซ้ำฝั่ง client เสมอ
+  const { jobs, loading, error, reload } = useProductionJobs(
+    {
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      table_no: tableFilter,
+      status: statusFilter,
+    },
+    { enabled: isAdmin && datesReady }
+  );
+
+  // อัปเดตอัตโนมัติทุก 30 วิขณะแท็บมองเห็น (หยุดเมื่อซ่อนแท็บ · กลับมาแล้วโหลดทันที)
+  usePollingWhenVisible(
+    useCallback(
+      (initial?: boolean) => {
+        if (!initial && isAdmin) reload();
+      },
+      [isAdmin, reload]
+    ),
+    PRODUCTION_POLL_MS
+  );
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();

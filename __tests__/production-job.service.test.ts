@@ -20,7 +20,14 @@ jest.mock("@/server/google-sheets/client", () => {
       PRODUCTION_NOTIFS: "ProductionNotifications",
     },
     getWarehouseSheetName: (whId: string) => `warehouse:${whId}`,
-    readSheet: jest.fn(async (name: string) => clone(sheets[name] || [])),
+    // store เก็บข้อมูลตั้งแต่แถว 2 ของชีต (index 0 = แถว 2) — รองรับช่วงแบบ "A2:AA" และแถวเดียว "A5:AA5"
+    readSheet: jest.fn(async (name: string, range?: string) => {
+      const rows = clone(sheets[name] || []);
+      const m = /^[A-Z]+(\d+):[A-Z]+(\d+)?$/.exec(range || "");
+      if (!m) return rows;
+      const start = Number(m[1]) - 2;
+      return m[2] ? rows.slice(start, Number(m[2]) - 1) : rows.slice(start);
+    }),
     appendRows: jest.fn(async (name: string, rows: (string | number)[][]) => {
       sheets[name] = [...(sheets[name] || []), ...rows.map((r) => r.map((v) => String(v)))];
     }),
@@ -35,8 +42,11 @@ jest.mock("@/server/google-sheets/client", () => {
       sheets[name] = rows;
     }),
     deleteRows: jest.fn(async (name: string, rowIndices: number[]) => {
+      if (rowIndices.some((i) => !Number.isInteger(i) || i < 1)) {
+        throw new Error(`deleteRows(${name}): refusing to delete header row (index ${JSON.stringify(rowIndices)})`);
+      }
       const rows = sheets[name] || [];
-      for (const idx of [...rowIndices].sort((a, b) => b - a)) rows.splice(idx, 1);
+      for (const idx of [...rowIndices].sort((a, b) => b - a)) rows.splice(idx - 1, 1);
       sheets[name] = rows;
     }),
     ensureSheetTabExists: jest.fn(async (name: string) => name),
@@ -160,6 +170,7 @@ import type { CreateProductionJobInput } from "@/server/production/production-sc
 const clientMock = require("@/server/google-sheets/client") as {
   __resetSheets: () => void;
   __getSheets: () => Record<string, string[][]>;
+  readSheet: jest.Mock;
 };
 const idemMock = require("@/server/idempotency") as { __resetIdempotency: () => void };
 
@@ -574,5 +585,123 @@ describe("notifications — สถานะอ่านต่อผู้ใช�
     const after = await listNotifications("APPROVER", "usr-approver");
     expect(after.unread_count).toBe(1);
     expect(after.items.find((n) => n.notif_id === before.items[0].notif_id)?.is_read).toBe(true);
+  });
+});
+
+// ── deleteDraft ──────────────────────────────
+
+describe("deleteDraft — ลบแถวที่ถูกต้อง (ไม่ลบหัวตาราง/แถวข้างเคียง)", () => {
+  function jobNosInSheet() {
+    return (clientMock.__getSheets()["ProductionJobs"] || []).map((r) => r[1]);
+  }
+
+  it("ลบงานแรกของแท็บ → ส่ง index 1 (แถว 2 ในชีต) ไม่ใช่ 0 (หัวตาราง) · งานอื่นอยู่ครบ", async () => {
+    const [a, b, c] = await createJobs(ADMIN, [jobInput(), jobInput({ table_no: 3 }), jobInput({ table_no: 4 })]);
+    clientMock.deleteRows.mockClear();
+
+    await deleteDraft(ADMIN, a.job_no);
+
+    expect(clientMock.deleteRows).toHaveBeenCalledTimes(1);
+    expect(clientMock.deleteRows.mock.calls[0][0]).toBe("ProductionJobs");
+    expect(clientMock.deleteRows.mock.calls[0][1]).toEqual([1]);
+    // fallback ล้างค่าเต็มความกว้างแท็บงานผลิต (27 คอลัมน์) ไม่ใช่ 9 คอลัมน์ของแท็บโกดัง
+    expect(clientMock.deleteRows.mock.calls[0][2]).toEqual({ blankColumns: 27 });
+    expect(jobNosInSheet()).toEqual([b.job_no, c.job_no]);
+  });
+
+  it("ลบงานกลาง/งานสุดท้าย → ลบเฉพาะงานนั้น", async () => {
+    const [a, b, c] = await createJobs(ADMIN, [jobInput(), jobInput({ table_no: 3 }), jobInput({ table_no: 4 })]);
+    await deleteDraft(ADMIN, b.job_no);
+    expect(jobNosInSheet()).toEqual([a.job_no, c.job_no]);
+    await deleteDraft(ADMIN, c.job_no);
+    expect(jobNosInSheet()).toEqual([a.job_no]);
+    await expect(getJobDetail(a.job_no)).resolves.not.toBeNull();
+  });
+
+  // ---- อ่านแถวเป้าหมายซ้ำก่อนลบ ----
+  const isSingleRowRange = (range?: string) => /^A(\d+):[A-Z]+\1$/.test(range || "");
+
+  /** แทรกพฤติกรรมตอน deleteDraft อ่านแถวเป้าหมายซ้ำ (จำลองชีตเปลี่ยนระหว่างอ่านกับลบ) */
+  async function withRowRereadHook(hook: () => void, run: () => Promise<unknown>) {
+    const original = clientMock.readSheet.getMockImplementation()!;
+    let fired = false;
+    clientMock.readSheet.mockImplementation(async (name: string, range?: string, opts?: unknown) => {
+      if (!fired && name === "ProductionJobs" && isSingleRowRange(range)) {
+        fired = true;
+        hook();
+      }
+      return original(name, range, opts);
+    });
+    try {
+      return await run();
+    } finally {
+      clientMock.readSheet.mockImplementation(original);
+    }
+  }
+
+  it("อ่านแถวเป้าหมายซ้ำแบบสด (forceFresh + keepHeader) ที่เลขแถวจริงก่อนลบ", async () => {
+    const [, b] = await createJobs(ADMIN, [jobInput(), jobInput({ table_no: 3 })]);
+    clientMock.readSheet.mockClear();
+    await deleteDraft(ADMIN, b.job_no);
+    const reread = clientMock.readSheet.mock.calls.find(
+      ([name, range]: [string, string]) => name === "ProductionJobs" && isSingleRowRange(range)
+    );
+    // งานที่ 2 = ข้อมูล idx 1 = แถว 3 ในชีต · 27 คอลัมน์ = A:AA
+    expect(reread).toEqual(["ProductionJobs", "A3:AA3", { forceFresh: true, keepHeader: true }]);
+    expect(clientMock.deleteRows.mock.calls.at(-1)[1]).toEqual([2]);
+  });
+
+  it("มีแถวถูกแทรกเหนือเป้าหมายระหว่างอ่านกับลบ → 409 ไม่ลบอะไรเลย ไม่บันทึกประวัติ DELETE", async () => {
+    const [a, b] = await createJobs(ADMIN, [jobInput(), jobInput({ table_no: 3 })]);
+    clientMock.deleteRows.mockClear();
+    const sheetsStore = clientMock.__getSheets();
+    const intruder = [...sheetsStore["ProductionJobs"][0]];
+    intruder[0] = "prj-intruder";
+    intruder[1] = "PRD-OTHER-999999";
+
+    await expect(
+      withRowRereadHook(
+        () => sheetsStore["ProductionJobs"].unshift(intruder),
+        () => deleteDraft(ADMIN, b.job_no)
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(clientMock.deleteRows).not.toHaveBeenCalled();
+    expect(jobNosInSheet()).toEqual(["PRD-OTHER-999999", a.job_no, b.job_no]);
+    const history = clientMock.__getSheets()["ProductionHistory"] || [];
+    expect(history.some((h) => h.includes("DELETE"))).toBe(false);
+  });
+
+  it("งานถูกส่ง (ไม่ใช่ DRAFT แล้ว) ระหว่างอ่านกับลบ → 409 ไม่ลบ", async () => {
+    const [a] = await createJobs(ADMIN, [jobInput()]);
+    clientMock.deleteRows.mockClear();
+    const sheetsStore = clientMock.__getSheets();
+    await expect(
+      withRowRereadHook(
+        () => {
+          sheetsStore["ProductionJobs"][0][3] = "WAITING";
+        },
+        () => deleteDraft(ADMIN, a.job_no)
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(clientMock.deleteRows).not.toHaveBeenCalled();
+    expect(jobNosInSheet()).toEqual([a.job_no]);
+  });
+
+  it("อ่านแถวซ้ำไม่ได้ (ว่าง/error) → 409 ไม่ลบ (fail-safe)", async () => {
+    const [a] = await createJobs(ADMIN, [jobInput()]);
+    clientMock.deleteRows.mockClear();
+    const original = clientMock.readSheet.getMockImplementation()!;
+    clientMock.readSheet.mockImplementation(async (name: string, range?: string, opts?: unknown) => {
+      if (name === "ProductionJobs" && isSingleRowRange(range)) throw new Error("Sheets 503");
+      return original(name, range, opts);
+    });
+    try {
+      await expect(deleteDraft(ADMIN, a.job_no)).rejects.toMatchObject({ statusCode: 409 });
+    } finally {
+      clientMock.readSheet.mockImplementation(original);
+    }
+    expect(clientMock.deleteRows).not.toHaveBeenCalled();
+    expect(jobNosInSheet()).toEqual([a.job_no]);
   });
 });
