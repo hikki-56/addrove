@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/layout/Navbar";
 import { safeNavigate } from "@/client/safe-navigate";
+import { MenuVisibilityProvider } from "@/context/MenuVisibilityContext";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, status } = useTabAuth();
@@ -48,6 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <MenuVisibilityProvider>
     <div className={`flex h-[100dvh] max-h-[100dvh] bg-[#EFF3F1] text-[#111827] overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
       <Sidebar
         role={user.role}
@@ -67,5 +69,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+    </MenuVisibilityProvider>
   );
 }

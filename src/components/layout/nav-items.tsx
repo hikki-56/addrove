@@ -1,4 +1,6 @@
+import React from "react";
 import type { UserRole } from "@/types/models";
+import { canManageUserMenus, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
 
 export interface NavItem {
   href: string;
@@ -67,6 +69,34 @@ export function getNavItems(role?: UserRole): NavItem[] {
     }
     return item;
   });
+}
+
+export interface MenuUser {
+  email?: string | null;
+  name?: string | null;
+  role: UserRole;
+}
+
+/** Available checkboxes cannot grant privileges beyond the user's role. */
+export function getSelectableMenuItems(user: MenuUser): NavItem[] {
+  return getNavItems(user.role).filter((item) =>
+    (!item.roles || item.roles.includes(user.role)) &&
+    (!SYSTEM_MENU_HREFS.includes(item.href) || isSystemMenuUser(user.email))
+  );
+}
+
+export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, canManage = canManageUserMenus(user.email)): NavItem[] {
+  const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
+  const visible = getSelectableMenuItems(user).filter((item) => allowed === null || allowed.includes(item.href));
+  // Keep the account owner able to restore menus even when all boxes are cleared.
+  if (canManage && canManageUserMenus(user.email)) {
+    visible.push({
+      href: MENU_SETTINGS_HREF,
+      label: "ตั้งค่าเมนูผู้ใช้",
+      icon: <Icon><path d="M4 7h16M4 12h16M4 17h16" /><circle cx="8" cy="7" r="2" /><circle cx="16" cy="12" r="2" /><circle cx="10" cy="17" r="2" /></Icon>,
+    });
+  }
+  return visible;
 }
 
 export const navItems: NavItem[] = [

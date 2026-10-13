@@ -184,6 +184,7 @@ export interface User {
   pin_hash: string;          // bcrypt hash of 4-digit PIN for QR login (empty = not set)
   role: UserRole;
   warehouse_access: string; // JSON array of warehouse_ids, or "*" for all
+  menu_hrefs?: string[] | null; // null = existing defaults; [] = hide all optional menus
   active: boolean;
   created_at: string;
   updated_at: string;

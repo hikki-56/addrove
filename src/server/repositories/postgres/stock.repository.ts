@@ -282,7 +282,7 @@ export class PostgresUserRepository {
     async findById(value: string): Promise<User | null> { const [row] = await query("SELECT * FROM users WHERE user_id=$1", [value]); return row ? userFromRow(row) : null; }
     async findByEmail(value: string): Promise<User | null> { const [row] = await query("SELECT * FROM users WHERE lower(email)=lower($1)", [value]); return row ? userFromRow(row) : null; }
     async create(input: Omit<User, "user_id" | "created_at" | "updated_at">): Promise<User> { return userFromRow(await insertRow("users", { ...input, user_id: id("usr"), warehouse_access: input.warehouse_access || "[]" })); }
-    async update(value: string, changes: Partial<User>): Promise<User | null> { const row = await updateRecord("users", "user_id", value, changes, ["full_name", "email", "password_hash", "pin_hash", "role", "warehouse_access", "active"]); return row ? userFromRow(row) : null; }
+    async update(value: string, changes: Partial<User>): Promise<User | null> { const row = await updateRecord("users", "user_id", value, changes, ["full_name", "email", "password_hash", "pin_hash", "role", "warehouse_access", "menu_hrefs", "active"]); return row ? userFromRow(row) : null; }
 }
 export class PostgresIdempotencyRepository {
     async findByKey(key: string): Promise<IdempotencyRecord | null> { return (await query<IdempotencyRecord>("SELECT * FROM idempotency_records WHERE key=$1", [key]))[0] ?? null; }

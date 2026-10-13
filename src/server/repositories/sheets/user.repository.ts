@@ -9,6 +9,7 @@ import {
 import type { IUserRepository } from "../interfaces";
 import type { User, UserRole } from "@/types/models";
 import { generateUuid } from "@/lib/id";
+import { parseMenuHrefs } from "@/lib/menu-visibility";
 
 // Matches exact columns in Google Sheets (UsersTable / USERS):
 // A (0): user_id
@@ -24,6 +25,7 @@ import { generateUuid } from "@/lib/id";
 // K (10): updated_at
 // L (11): รหัส PIN (pin_hash)
 // M (12): warehouse_access (JSON array or specific warehouse list)
+// N (13): menu_hrefs (JSON array; blank preserves existing defaults)
 
 function rowToUser(row: string[]): User {
   const firstName = row[4] ?? "";
@@ -45,6 +47,7 @@ function rowToUser(row: string[]): User {
     pin_hash: pinHash,
     role: role,
     warehouse_access: warehouseAccess,
+    menu_hrefs: parseMenuHrefs(row[13]),
     active: parseBoolean(row[8]),
     created_at: row[9] ?? "",
     updated_at: row[10] ?? "",
@@ -71,12 +74,13 @@ function userToRow(u: User): (string | boolean)[] {
     u.updated_at, // K: updated_at
     u.pin_hash ?? "", // L: รหัส PIN
     u.warehouse_access ?? (u.role === "ADMIN" ? '["*"]' : "[]"), // M: warehouse_access
+    u.menu_hrefs == null ? "" : JSON.stringify(u.menu_hrefs), // N: menu_hrefs
   ];
 }
 
 export class SheetsUserRepository implements IUserRepository {
   private async getAllRows(): Promise<string[][]> {
-    return readSheet(SHEETS.USERS, "A2:M");
+    return readSheet(SHEETS.USERS, "A2:N");
   }
 
   async findAll(): Promise<User[]> {

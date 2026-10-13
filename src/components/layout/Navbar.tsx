@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, SYSTEM_MENU_HREFS } from "@/components/layout/nav-items";
+import { getVisibleNavItems } from "@/components/layout/nav-items";
+import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 import { getPendingTransferNotifications, getDisplayProductName } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
@@ -47,6 +48,7 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/staff/move": { parent: "พนักงาน", title: "สแกนจัดตำแหน่งสินค้า" },
   "/movements/history": { parent: "การเคลื่อนไหว", title: "ประวัติการเคลื่อนไหว" },
   "/users": { parent: "การตั้งค่า", title: "จัดการพนักงาน" },
+  "/menu-settings": { parent: "การตั้งค่า", title: "ตั้งค่าเมนูผู้ใช้" },
   "/login-logs": { parent: "การแจ้งเตือน", title: "ประวัติการเข้าระบบ" },
 };
 
@@ -56,6 +58,7 @@ export default function DashboardHeader({
   user: { name: string; email: string; role: UserRole };
 }) {
   const { logout: tabLogout } = useTabAuth();
+  const { menu_hrefs, can_manage } = useMenuVisibility();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -119,16 +122,7 @@ export default function DashboardHeader({
         ? { parent: "งานผลิต", title: "รายละเอียดงานผลิต" }
         : { parent: "Stockify", title: "ภาพรวม" });
 
-  const itemsForRole = getNavItems(user.role);
-  const systemMenuVisible = isSystemMenuUser(user.email);
-  // บัญชีแอดมินที่ถูกจำกัดเมนู (เช่น milk) เห็นเฉพาะหน้าที่กำหนด
-  const allowedHrefs = getAllowedMenuHrefs(user);
-  const visibleItems = itemsForRole.filter(
-    (item) =>
-      (!item.roles || item.roles.includes(user.role)) &&
-      (systemMenuVisible || !SYSTEM_MENU_HREFS.includes(item.href)) &&
-      (!allowedHrefs || allowedHrefs.includes(item.href))
-  );
+  const visibleItems = getVisibleNavItems(user, menu_hrefs, can_manage);
 
   const headerNotificationCount = isAdmin ? pendingApprovalCount : pendingTransferCount;
 

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
-import { getNavItems, getAllowedMenuHrefs, isSystemMenuUser, type NavItem } from "@/components/layout/nav-items";
+import { getVisibleNavItems, SYSTEM_MENU_HREFS, type NavItem } from "@/components/layout/nav-items";
+import { MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
+import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 import { getExpressTagCounts } from "@/client/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -108,6 +110,7 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const { user: tabUser } = useTabAuth();
+  const { menu_hrefs, can_manage } = useMenuVisibility();
 
   // กลุ่มเมนูที่ถูกพับไว้ — จำสถานะใน localStorage ต่ออุปกรณ์
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -217,14 +220,7 @@ export default function Sidebar({
   }, [role]);
   usePollingWhenVisible(fetchOpenPlans, 60000);
 
-  const itemsForRole = getNavItems(role);
-  // บัญชีแอดมินที่ถูกจำกัดเมนู (เช่น milk) เห็นเฉพาะหน้าที่กำหนด
-  const allowedHrefs = getAllowedMenuHrefs({ email: tabUser?.email, name: userName });
-  const visibleItems = itemsForRole.filter(
-    (item) =>
-      (!item.roles || item.roles.includes(role)) &&
-      (!allowedHrefs || allowedHrefs.includes(item.href))
-  );
+  const visibleItems = getVisibleNavItems({ email: tabUser?.email, name: userName, role }, menu_hrefs, can_manage);
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
   const inventoryNav = visibleItems.filter((i) =>
@@ -250,9 +246,7 @@ export default function Sidebar({
       ].includes(i.href)
     )
     .sort(byOperationOrder);
-  const systemNav = isSystemMenuUser(tabUser?.email)
-    ? visibleItems.filter((i) => ["/users", "/login-logs", "/users/cards"].includes(i.href))
-    : [];
+  const systemNav = visibleItems.filter((i) => [...SYSTEM_MENU_HREFS, MENU_SETTINGS_HREF].includes(i.href));
   const expressNav = visibleItems.filter((i) =>
     ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
   );
