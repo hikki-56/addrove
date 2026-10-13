@@ -174,6 +174,15 @@ export function useReceiveMovement({
   const { fields, insert, remove, move } = useFieldArray({ control, name: "lines" });
   const watchLines = watch("lines");
 
+  // Inserting a row shifts both form rows and their index-based UI state.
+  // A new product must never inherit another product's location or confirmation.
+  const insertLine = useCallback((index: number, line: ReceiveDocumentInput["lines"][number]) => {
+    insert(index, line);
+    const shift = (i: number): number => i >= index ? i + 1 : i;
+    setLocationInputs((prev) => remapIndexState(prev, shift));
+    setConfirmedLines((prev) => remapIndexState(prev, shift));
+  }, [insert]);
+
   // Remove a line AND remap index-keyed state (locationInputs/confirmedLines) so values
   // of the removed line can never leak onto a different line after indices shift
   const removeLine = useCallback((index: number) => {
@@ -337,7 +346,7 @@ export function useReceiveMovement({
   const handleAddLocationForProduct = (index: number) => {
     const currentLine = watchLines[index];
     if (!currentLine) return;
-    insert(index + 1, {
+    insertLine(index + 1, {
       product_id: currentLine.product_id,
       location_id: "",
       extra_locations: [],
@@ -521,7 +530,7 @@ export function useReceiveMovement({
           message: `[${matched.sku}] ${shortName(matched.product_name)}`,
         });
       } else {
-        insert(0, {
+        insertLine(0, {
           product_id: pid,
           location_id: "",
           extra_locations: [],
@@ -682,7 +691,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [step, locations, products, activeWhId, watchLines, confirmedLines, activePlan, setValue, insert, moveLineToTop, setLocations, setProducts]);
+  }, [locations, products, activeWhId, watchLines, confirmedLines, activePlan, setValue, insertLine, moveLineToTop, setLocations, setProducts, setActiveWhId]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);
@@ -887,7 +896,7 @@ export function useReceiveMovement({
         message: `[${product.sku}] ${shortName(product.product_name)}`,
       });
       } else {
-        insert(0, {
+        insertLine(0, {
         product_id: pid,
         location_id: "",
         extra_locations: [],
