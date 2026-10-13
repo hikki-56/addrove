@@ -10,6 +10,8 @@ import type {
   Warehouse,
 } from "@/types/models";
 import { cleanSkuCode } from "@/server/services/stock/shared";
+import type { AuditLogEntry } from "@/server/repositories/interfaces/audit.repository.interface";
+import { appendDocumentActivities } from "./today-activities";
 
 export const DASHBOARD_TIME_ZONE = "Asia/Bangkok";
 export const DASHBOARD_CHART_DAYS = 90;
@@ -18,6 +20,7 @@ interface DocumentNoteMetadata {
   type?: string;
   order_no?: string;
   rows?: unknown[];
+  created_by_name?: string;
 }
 
 interface ActivityAccumulator {
@@ -39,6 +42,9 @@ export interface DashboardAggregationInput {
   products: Product[];
   users: User[];
   warehouses: Warehouse[];
+  auditLogs?: AuditLogEntry[];
+  activityWarehouseId?: string;
+  userAliases?: Record<string, string>;
   now?: Date;
 }
 
@@ -151,6 +157,7 @@ function isPendingApproval(document: Document, metadata: DocumentNoteMetadata): 
 }
 
 function displayActorName(actorId: string, userMap: Map<string, User>, fallback?: string): string {
+  actorId = actorId.trim();
   const user = userMap.get(actorId.trim().toLowerCase());
   const fromUser = user?.full_name?.trim() || user?.email?.split("@")[0]?.trim();
   if (fromUser) return fromUser;
@@ -160,7 +167,8 @@ function displayActorName(actorId: string, userMap: Map<string, User>, fallback?
     /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(actorId) ||
     /^(usr|id|user)-/i.test(actorId) ||
     /^admin$/i.test(actorId);
-  return actorId && !looksLikeId ? actorId : "ไม่ทราบผู้ทำรายการ";
+  const looksLikeDocument = /^(doc-|RCV-|TRF-|ISS-|PLN-|BIL-|MOV-|ADJ-)/i.test(actorId);
+  return actorId && !looksLikeId && !looksLikeDocument ? actorId : "ไม่ทราบผู้ทำรายการ";
 }
 
 function newestTimestamp(first: string, second: string): string {
@@ -170,9 +178,16 @@ function newestTimestamp(first: string, second: string): string {
 function actionLabel(actionType: TodayActivityType): string {
   return {
     RECEIVE: "รับสินค้า",
-    ISSUE: "เบิกสินค้า",
-    TRANSFER: "โอนสินค้า",
+    ISSUE: "ทำรายการเบิก",
+    TRANSFER: "ทำรายการโอนสินค้า",
     ADJUST: "ปรับยอด",
+    DOCUMENT_CREATE: "สร้างใบรายการ",
+    RECEIVE_REQUEST: "ทำรายการรับเข้า",
+    ISSUE_REQUEST: "ทำรายการเบิก",
+    APPROVE_RECEIVE: "อนุมัติรับเข้า",
+    APPROVE_ISSUE: "อนุมัติเบิก",
+    TRANSFER_REQUEST: "ทำรายการโอนสินค้า (ส่งอนุมัติ)",
+    APPROVE_TRANSFER: "อนุมัติโอนสินค้า",
   }[actionType];
 }
 
@@ -185,7 +200,7 @@ function createActivityAccumulator(
     actionType,
     documentId: movement.document_id,
     documentNo: document?.document_no || "",
-    actorId: document?.created_by || movement.created_by,
+    actorId: movement.created_by || document?.created_by || "",
     createdAt: movement.created_at,
     quantity: 0,
     productNames: new Set<string>(),
@@ -201,6 +216,9 @@ export function aggregateDashboardOperations({
   products,
   users,
   warehouses,
+  auditLogs = [],
+  activityWarehouseId,
+  userAliases = {},
   now = new Date(),
 }: DashboardAggregationInput): OperationalDashboardStats {
   const today = getBangkokDateKey(now);
@@ -211,6 +229,22 @@ export function aggregateDashboardOperations({
   const uniqueDocuments = deduplicateDocuments(documents);
   const documentMap = new Map(uniqueDocuments.map((document) => [document.document_id, document]));
   const userMap = new Map(users.map((user) => [user.user_id.trim().toLowerCase(), user]));
+  const aliases = new Map<string, User | null>();
+  for (const user of users) {
+    for (const alias of [user.email, user.email?.split("@")[0], user.full_name]) {
+      const key = alias?.trim().toLowerCase();
+      if (!key) continue;
+      const existing = aliases.get(key);
+      aliases.set(key, existing === undefined || existing?.user_id === user.user_id ? user : null);
+    }
+  }
+  for (const [alias, userId] of Object.entries(userAliases)) {
+    const user = userMap.get(userId.trim().toLowerCase());
+    if (user) aliases.set(alias.trim().toLowerCase(), user);
+  }
+  for (const [alias, user] of aliases) {
+    if (user && !userMap.has(alias)) userMap.set(alias, user);
+  }
   const productMap = new Map<string, Product>();
   for (const product of products) {
     productMap.set(product.product_id.trim().toLowerCase(), product);
@@ -275,7 +309,7 @@ export function aggregateDashboardOperations({
     } else if (movement.movement_type === "ADJUST") type = "ADJUST";
     if (!type) continue;
 
-    const groupKey = `${type}:${movement.document_id || movement.movement_id}`;
+    const groupKey = `${type}:${movement.document_id || movement.movement_id}:${movement.created_by}`;
     const group =
       activityGroups.get(groupKey) || createActivityAccumulator(type, movement, document);
     const product =
@@ -304,8 +338,11 @@ export function aggregateDashboardOperations({
     const document = documentMap.get(group.documentId);
     activities.push({
       id: `activity:${key}`,
-      actor_id: group.actorId,
-      actor_name: displayActorName(group.actorId, userMap),
+      actor_id: userMap.get(group.actorId.trim().toLowerCase())?.user_id || group.actorId,
+      actor_name: displayActorName(group.actorId, userMap,
+        group.actorId === document?.created_by
+          ? document?.created_by_name || parseMetadata(document.note).created_by_name
+          : undefined),
       action_type: group.actionType,
       action_label: actionLabel(group.actionType),
       document_id: group.documentId || undefined,
@@ -323,6 +360,13 @@ export function aggregateDashboardOperations({
     });
   }
 
+  appendDocumentActivities({ activities, documents: uniqueDocuments, movements: uniqueMovements,
+    products, warehouses, auditLogs, today, productionDocumentIds, warehouseId: activityWarehouseId,
+    resolveActor: (id, fallback) => {
+      const actorKey = id.trim() || fallback?.trim() || "";
+      return { actor_id: userMap.get(actorKey.toLowerCase())?.user_id || actorKey,
+        actor_name: displayActorName(actorKey, userMap, fallback) };
+    }, dateKey: getBangkokDateKey });
   activities.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return {

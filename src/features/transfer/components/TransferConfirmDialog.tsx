@@ -31,19 +31,19 @@ const CONFIRM_TEXT: Record<
   approve: {
     title: "อนุมัติใบเบิกสินค้า?",
     confirmLabel: "อนุมัติการเบิก",
-    resultText: "ระบบจะตัดสต็อกต้นทางและเพิ่มปลายทาง",
+    resultText: "ลดสต็อกต้นทาง เพิ่มปลายทาง",
     destructive: false,
   },
   reject: {
     title: "ปฏิเสธใบเบิกสินค้า?",
     confirmLabel: "ปฏิเสธ",
-    resultText: "ใบงานจะปิดเป็นสถานะปฏิเสธ และไม่มีการตัดสต็อก",
+    resultText: "ปฏิเสธใบงาน โดยไม่ตัดสต็อก",
     destructive: true,
   },
   cancel: {
     title: "ยกเลิกใบเบิกสินค้า?",
     confirmLabel: "ยกเลิกใบเบิก",
-    resultText: "ใบงานจะถูกยกเลิก พนักงานจะไม่เห็นใบนี้อีก",
+    resultText: "ยกเลิกใบงานและนำออกจากคิว",
     destructive: true,
   },
   cleanup: {

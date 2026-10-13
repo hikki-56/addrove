@@ -728,9 +728,6 @@ export default function ApprovalsPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-black text-slate-900">ไม่มีรายการรออนุมัติ</h3>
-            <p className="text-sm text-slate-500 font-medium">
-              เอกสารรับเข้าใหม่จะแสดงที่นี่เมื่อพนักงานบันทึกรายการ
-            </p>
           </div>
           <button
             type="button"
@@ -965,8 +962,8 @@ export default function ApprovalsPage() {
                 </p>
                 <p className="text-sm text-slate-500 mt-2 leading-relaxed">
                   {confirmAction.type === "approve"
-                    ? "เมื่อยืนยัน ระบบจะเพิ่มยอดสินค้าเข้าคลังและส่งรายการต่อไปยังคิวนำเข้า Express"
-                    : "เอกสารจะถูกนำออกจากคิวรออนุมัติ โดยไม่มีการเพิ่มยอดสินค้าเข้าคลัง"}
+                    ? "เพิ่มสต็อกและส่งต่อเข้า Express"
+                    : "ปฏิเสธรายการ โดยไม่เพิ่มสต็อก"}
                 </p>
               </div>
             </div>
@@ -1021,9 +1018,6 @@ export default function ApprovalsPage() {
                     <h3 id="edit-dialog-title" className="text-base font-extrabold text-slate-900 leading-snug">
                       แก้ไขเอกสารรับเข้า <span className="font-mono whitespace-nowrap">{editingDoc.document_no}</span>
                     </h3>
-                    <p className="text-sm text-slate-500 font-medium">
-                      ปรับเปลี่ยนข้อมูลสินค้า จำนวน หรือตำแหน่งจัดเก็บก่อนทำการอนุมัติ
-                    </p>
                   </div>
                 </div>
               </div>

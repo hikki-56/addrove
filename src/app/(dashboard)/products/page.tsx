@@ -349,9 +349,6 @@ export default function ProductsPage() {
             </svg>
           </div>
           <p className="mt-4 text-sm font-extrabold text-slate-900">โหลดข้อมูลสินค้าไม่สำเร็จ</p>
-          <p className="mt-1 text-xs text-slate-500 font-medium">
-            เชื่อมต่อฐานข้อมูลไม่ได้ในขณะนี้ — ตรวจสายเน็ตแล้วลองอีกครั้ง
-          </p>
           <button
             type="button"
             onClick={loadProducts}
@@ -370,11 +367,6 @@ export default function ProductsPage() {
           </div>
           <p className="mt-4 text-sm font-extrabold text-slate-900">
             {hasActiveFilters ? "ไม่พบสินค้าที่ตรงเงื่อนไข" : "ยังไม่มีรายการสินค้า"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 font-medium">
-            {hasActiveFilters
-              ? "ลองปรับคำค้นหาหรือตัวกรอง แล้วค้นหาใหม่อีกครั้ง"
-              : "เพิ่มสินค้าแรกเพื่อเริ่มบันทึกยอดคงเหลือและตำแหน่งจัดเก็บ"}
           </p>
           <div className="mt-5">
             {hasActiveFilters ? (

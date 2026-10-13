@@ -159,9 +159,6 @@ export default function ProductionSummaryPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900">สรุปผลผลิต</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            ยอดรวมแยกตามสินค้า × โต๊ะ — เรียงงานที่ต้องสนใจขึ้นบน (จบต่ำกว่าเป้า · ผลิตเกิน · มีของเสีย)
-          </p>
         </div>
         <Link
           href="/production"
@@ -237,7 +234,6 @@ export default function ProductionSummaryPage() {
         <div className="rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#C9DFD4] bg-[#EAF2EE] text-2xl">📈</div>
           <h2 className="mt-4 text-lg font-extrabold text-slate-900">ไม่มีข้อมูลผลผลิตในช่วงที่เลือก</h2>
-          <p className="mt-1.5 text-sm font-medium text-slate-500">ลองปรับช่วงวันที่หรือตัวกรอง</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#E8ECEA] bg-white shadow-xs">
@@ -317,7 +313,7 @@ export default function ProductionSummaryPage() {
             </table>
           </div>
           <p className="border-t border-[#EEF1EF] px-4 py-2.5 text-[11px] font-semibold text-slate-400">
-            หน่วยแสดงต่อรายการสินค้า — ไม่รวมยอดสินค้าต่างหน่วยเป็นตัวเลขเดียว · “ยังขาด” และ “เกินเป้า” คำนวณจากผลิตดีเท่านั้น (ไม่รวมของเสีย)
+            ยอดขาด/เกินนับเฉพาะสินค้าดี
           </p>
         </div>
       )}

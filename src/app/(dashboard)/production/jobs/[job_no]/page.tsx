@@ -364,7 +364,6 @@ export default function ProductionJobDetailPage() {
       <ConfirmModal
         open={startOpen}
         title="ยืนยันเริ่มผลิต"
-        hint="ระบบจะเปลี่ยนสถานะเป็น “กำลังผลิต” บันทึกผู้เริ่ม และแจ้ง ADMIN"
         confirmLabel="ยืนยันเริ่มผลิต"
         submitting={submitting}
         error={modalError}
@@ -417,7 +416,7 @@ export default function ProductionJobDetailPage() {
       <ReasonModal
         open={cancelOpen}
         title={`ยกเลิกงาน ${job.job_no}`}
-        hint="ผลผลิตที่ยืนยันแล้วทั้งหมดยังเก็บไว้ — ระบบจะแจ้งผู้ผลิต"
+        hint="เก็บผลผลิตเดิมไว้"
         reasonLabel="เหตุผลการยกเลิก"
         confirmLabel="ยืนยันยกเลิก"
         tone="danger"
@@ -434,7 +433,7 @@ export default function ProductionJobDetailPage() {
       <ReasonModal
         open={reopenOpen}
         title={`เปิดงาน ${job.job_no} กลับมาผลิตต่อ`}
-        hint="สถานะจะกลับเป็น “กำลังผลิต” — ผลิตดีสะสมเดิมยังอยู่ และรายงานต่อได้ทันที"
+        hint="ผลิตต่อจากยอดเดิม"
         reasonLabel="เหตุผลการเปิดผลิตต่อ"
         confirmLabel="เปิดงานผลิตต่อ"
         submitting={submitting}

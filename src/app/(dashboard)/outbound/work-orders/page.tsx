@@ -267,7 +267,6 @@ function ZoomQRModal({
               <h2 className="text-xl sm:text-2xl font-black font-mono text-slate-900 tracking-tight leading-tight truncate">
                 กล่อง {qCode}
               </h2>
-              <div className="text-xs text-slate-400 font-medium">รายละเอียดกล่อง Q และรายการสินค้า</div>
             </div>
           </div>
           <button
@@ -402,9 +401,6 @@ function ZoomQRModal({
                     ✓
                   </div>
                   <div className="text-base font-bold text-emerald-950 mb-1.5">กล่องว่าง พร้อมใช้งาน</div>
-                  <p className="text-sm text-emerald-800/70 max-w-xs leading-relaxed">
-                    ยังไม่มีบิลหรือใบงานใดผูกอยู่กับกล่อง {qCode} สามารถนำไปจัดสรรกับบิลใหม่ได้ทันที
-                  </p>
                 </div>
               )}
             </div>

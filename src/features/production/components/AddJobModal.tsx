@@ -139,7 +139,6 @@ export default function AddJobModal({
 
   // ตรวจจำนวนเป้าหมายแบบนับตำแหน่งทศนิยมจากข้อความ (สูตรเดิม Math.round(v*100) === v*100 ปฏิเสธ 2.3, 1.15)
   const qtyParse = useMemo(() => parseQtyInput(form.target_qty, { allowEmpty: false, allowZero: false }), [form.target_qty]);
-  const parsedQty = qtyParse.ok ? qtyParse.value : Number.NaN;
   const qtyInvalid = !qtyParse.ok && !qtyParse.empty;
   const formError = useMemo(() => {
     if (!form.production_date) return "กรุณาเลือกวันที่ผลิต";
@@ -200,13 +199,13 @@ export default function AddJobModal({
 
           <div>
             <span className="text-xs font-bold text-slate-500">
-              สินค้าที่จะผลิต — เลือกจากสินค้าที่มีอยู่ในโกดัง 2 เท่านั้น
+              สินค้า (โกดัง 2)
             </span>
             <div className="mt-1">
               {canEditProduct ? (
                 <ProductSearchInput
                   products={products}
-                  placeholder="พิมพ์บาร์โค้ด / 4 ตัวท้ายบาร์โค้ด / รหัสสินค้า / ชื่อสินค้า..."
+                  placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
                   onSelectProduct={(p) =>
                     setForm((f) => ({
                       ...f,
@@ -228,19 +227,13 @@ export default function AddJobModal({
                 <p className="mt-1 font-mono text-xs font-semibold text-slate-400">
                   {form.product_name} · {form.sku} · หน่วย: {form.unit}
                 </p>
-              ) : (
-                canEditProduct && (
-                  <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                    ค้นหาได้ทั้งบาร์โค้ดเต็ม · ตัวเลข 4 ตัวท้ายของบาร์โค้ด · รหัสสินค้า (SKU) · ชื่อสินค้า — แสดงเฉพาะสินค้าที่มีในโกดัง 2
-                  </p>
-                )
-              )}
+              ) : null}
             </div>
           </div>
 
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="block truncate text-xs font-bold text-[#06402B]">จำนวนเป้าหมาย</span>
+              <span className="block truncate text-xs font-bold text-[#06402B]">เป้าหมายสินค้าดี</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -256,13 +249,9 @@ export default function AddJobModal({
                     : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
                 } disabled:bg-slate-100 disabled:text-slate-400`}
               />
-              <p className={`mt-1 truncate text-[11px] font-semibold ${qtyInvalid ? "text-rose-700" : "text-slate-400"}`}>
-                {!qtyParse.ok && !qtyParse.empty
-                  ? qtyParse.error
-                  : qtyParse.ok
-                  ? `= ${formatQty(parsedQty)} ${form.unit} · ยอดสินค้าดี ไม่รวมของเสีย`
-                  : "ยอดสินค้าดีที่ต้องการ — ไม่รวมของเสีย"}
-              </p>
+              {qtyInvalid && !qtyParse.ok && (
+                <p className="mt-1 text-[11px] font-semibold text-rose-700">{qtyParse.error}</p>
+              )}
             </label>
             <label className="block">
               <span className="text-xs font-bold text-slate-500">ลำดับความสำคัญ</span>
@@ -305,7 +294,7 @@ export default function AddJobModal({
 
           {needReason && (
             <label className="block">
-              <span className="text-xs font-bold text-rose-600">เหตุผลการแก้ไข (จะแจ้งไปยังผู้ผลิต)</span>
+              <span className="text-xs font-bold text-rose-600">เหตุผลการแก้ไข</span>
               <textarea
                 rows={2}
                 value={form.reason}

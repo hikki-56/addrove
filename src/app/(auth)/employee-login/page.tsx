@@ -283,7 +283,6 @@ function PinScreen() {
           {/* Card Title */}
           <div className="text-center mb-3">
             <h1 className="text-slate-900 font-bold text-lg sm:text-xl mb-0.5">กรอกรหัส PIN</h1>
-            <p className="text-slate-600 text-sm">แตะรหัส PIN 4 หลักเพื่อเริ่มต้นปฏิบัติงาน</p>
           </div>
 
           {/* 4 PIN Square Indicator Boxes */}
@@ -371,9 +370,7 @@ function PinScreen() {
                     : error}
                 </span>
               </div>
-            ) : (
-              <p className="text-slate-600 text-sm">แตะปุ่มตัวเลขด้านล่างเพื่อป้อนรหัส</p>
-            )}
+            ) : null}
           </div>
 
           {/* On-Screen Ergonomic Numpad Grid */}

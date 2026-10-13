@@ -334,7 +334,7 @@ export default function OutboundBillDetailPage({ params }: { params: Promise<{ i
         </Link>
       )}
       {pickedDone && status === "PICKED_WAITING_APPROVAL" && (
-        <div className="text-center text-sm text-slate-500">รอแอดมินอนุมัติบิล (ปุ่มด้านบน) จึงจะแพ็กได้</div>
+        <div className="text-center text-sm text-slate-500">รออนุมัติก่อนแพ็ก</div>
       )}
     </div>
   );

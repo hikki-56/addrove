@@ -284,9 +284,10 @@ export async function completePick(
     assertBillTransition(n.outbound_status, "PICKED_WAITING_APPROVAL");
     n.outbound_status = "PICKED_WAITING_APPROVAL";
     n.pick_completed_at = new Date().toISOString();
+    n.pick_completed_by = actor.id;
+    n.pick_completed_by_name = actor.username;
   }, { alsoStatus: billStatusToDocumentStatus("PICKED_WAITING_APPROVAL") });
   if (!result) throw new Error("บันทึกไม่สำเร็จ");
-  void actor;
 
   return {
     bill_status: "PICKED_WAITING_APPROVAL",

@@ -108,6 +108,7 @@ export async function approveOutboundPick(
       n.issue_document_id = issueDoc.document_id;
       n.issue_document_no = issueDocs.map((d) => d.document_no).join(", ");
       n.approved_by = actor.username;
+      n.approved_by_id = actor.id;
       n.approved_at = new Date().toISOString();
     }, { alsoStatus: billStatusToDocumentStatus("READY_TO_PACK") });
 

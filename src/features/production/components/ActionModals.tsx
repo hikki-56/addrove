@@ -269,9 +269,6 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
           <p className="mt-0.5 font-mono text-xs font-semibold text-slate-500">
             {job.job_no} · {job.product_name} ({job.sku})
           </p>
-          <p className="mt-1 text-xs font-semibold text-slate-400">
-            รายงานเดิมถูกเก็บไว้ทั้งหมด — ระบบสร้าง “รายการปรับปรุง” พร้อมประวัติยอดก่อน–หลังและรายการปรับสต็อก ตรวจสอบย้อนหลังได้
-          </p>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {error && (
@@ -334,7 +331,7 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
             </div>
             {goodDelta !== 0 && (
               <p className="mt-2 text-[11px] font-semibold text-[#4A7A66]">
-                ระบบจะปรับสต็อกโกดัง 2 ตามส่วนต่างผลิตดี ({goodDelta > 0 ? "เพิ่ม" : "ลด"} {formatQty(Math.abs(goodDelta))} {job.unit}) ผ่านรายการ ADJUST
+                สต็อกโกดัง 2: {goodDelta > 0 ? "เพิ่ม" : "ลด"} {formatQty(Math.abs(goodDelta))} {job.unit}
               </p>
             )}
           </div>

@@ -234,6 +234,13 @@ export interface DashboardChartPoint {
 }
 
 export type TodayActivityType =
+  | "DOCUMENT_CREATE"
+  | "RECEIVE_REQUEST"
+  | "ISSUE_REQUEST"
+  | "APPROVE_RECEIVE"
+  | "APPROVE_ISSUE"
+  | "TRANSFER_REQUEST"
+  | "APPROVE_TRANSFER"
   | "RECEIVE"
   | "ISSUE"
   | "TRANSFER"
@@ -416,9 +423,12 @@ export interface OutboundBillNote {
   pick_assigned_to_name?: string;
   pick_started_at?: string;
   pick_completed_at?: string;
+  pick_completed_by?: string;
+  pick_completed_by_name?: string;
   issue_document_id?: string;
   issue_document_no?: string;
   approved_by?: string;
+  approved_by_id?: string;
   approved_at?: string;
   packed_at?: string;
   box_document_ids: string[];

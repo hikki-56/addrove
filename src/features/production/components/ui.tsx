@@ -89,8 +89,8 @@ export function JobNumbers({ job, compact = false }: { job: ProductionJob; compa
 
 /** คำอธิบายกติกาการแก้ไขตามสถานะ — ใช้ใน modal แก้ไขงาน */
 export function editRuleHint(status: ProductionJobStatus): string {
-  if (status === "DRAFT") return "ฉบับร่าง — แก้ไขได้ทุกอย่าง";
-  if (status === "WAITING") return "ส่งงานแล้วแต่ยังไม่เริ่ม — แก้สินค้า จำนวน และโต๊ะได้ พร้อมระบุเหตุผล (ระบบแจ้งผู้ผลิต)";
-  if (status === "IN_PROGRESS") return "กำลังผลิต — แก้ได้เฉพาะเป้าหมายและหมายเหตุ พร้อมระบุเหตุผล (ระบบแจ้งผู้ผลิต)";
+  if (status === "DRAFT") return "ฉบับร่าง";
+  if (status === "WAITING") return "แก้สินค้า จำนวน และโต๊ะได้";
+  if (status === "IN_PROGRESS") return "แก้เฉพาะเป้าหมายและหมายเหตุ";
   return "งานสถานะนี้แก้ไขไม่ได้";
 }

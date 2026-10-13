@@ -195,6 +195,7 @@ async function handlePOST(
           outcome: "SUCCESS",
           metadata: {
             reconciled: true,
+            actor_name: actor.username,
             existing_movements: existingMovements.length,
           },
         });
@@ -459,6 +460,7 @@ async function handlePOST(
         outcome: "SUCCESS",
         metadata: {
           approved_movements_count: createdMovements.length,
+          actor_name: actor.username,
           ...(warehouseSyncFailures.length > 0
             ? { warehouse_sync_failed_count: warehouseSyncFailures.length }
             : {}),

@@ -90,10 +90,6 @@ export default function ReceiveLinesTable({
           </svg>
         </div>
         <h3 className="text-base font-bold text-slate-900">ยังไม่มีรายการสินค้า</h3>
-        <p className="text-sm text-[#667085]">
-          ยิงบาร์โค้ดที่กล่องสินค้าในช่องสแกนด้านบน
-          (หรือกดปุ่มกล้องเพื่อสแกนด้วยมือถือ) — รายการจะขึ้นที่นี่ทันที
-        </p>
       </div>
     );
   }

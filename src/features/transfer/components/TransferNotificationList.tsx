@@ -124,9 +124,6 @@ export default function TransferNotificationList({
         </div>
         <div>
           <div className="text-base sm:text-lg font-bold text-slate-900">ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้</div>
-          <p className="text-sm text-slate-600 font-medium mt-1 max-w-md mx-auto">
-            เมื่อมีการสร้างใบเบิกสินค้า ระบบจะแสดงรายการที่ต้องดำเนินการที่นี่ทันที
-          </p>
         </div>
       </div>
     );
@@ -321,7 +318,7 @@ export default function TransferNotificationList({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
                   </svg>
                   <span className="flex-1 font-bold leading-relaxed">
-                    ข้อมูลสินค้าไม่ครบ — รายการนี้ไม่มี SKU และบาร์โค้ด ระบบตรวจสอบตัวตนสินค้าตอนสแกนไม่ได้ กรุณาแก้ข้อมูลสินค้าในระบบ หรือยกเลิกใบนี้แล้วสร้างใหม่
+                    สินค้าไม่มี SKU และบาร์โค้ด — แก้ข้อมูลก่อนสแกน
                   </span>
                 </div>
               )}
@@ -393,7 +390,7 @@ export default function TransferNotificationList({
                       <div className="space-y-1.5 flex-1 min-w-[200px]">
                         <div className="text-[13px] font-semibold text-amber-700 flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                          <span>พนักงานเบิกสินค้าเรียบร้อยแล้ว รอ Admin อนุมัติ</span>
+                          <span>เบิกแล้ว — รออนุมัติ</span>
                         </div>
                         {/* Creator & Performer info */}
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[#66736D]">
@@ -448,7 +445,7 @@ export default function TransferNotificationList({
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                         <div className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200/70 px-2.5 py-1 rounded-full flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                          <span>เบิกสินค้าแล้ว (ส่งให้ Admin อนุมัติเรียบร้อยแล้ว)</span>
+                          <span>เบิกแล้ว — รออนุมัติ</span>
                         </div>
                         <span className="inline-flex items-center gap-1.5 text-[13px] text-[#66736D]">
                           <span className="text-xs font-medium text-[#94A09A]">ผู้สร้าง:</span>

@@ -85,9 +85,6 @@ export default function AdminLoginPage() {
             <img src="/logo.png" alt="A'AMAZON Logo" className="h-16 sm:h-20 w-auto object-contain max-w-[300px]" />
           </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Stockify Admin</h1>
-          <p className="text-slate-500 mt-1 text-xs">
-            กรุณากรอกบัญชีผู้ดูแลระบบเพื่อเข้าสู่ระบบ
-          </p>
         </div>
 
         {/* Admin Login Card */}

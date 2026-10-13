@@ -1176,9 +1176,7 @@ export default function ExpressIssuePage() {
                     ล้างตัวกรอง
                   </button>
                 </>
-              ) : (
-                <p className="text-sm text-slate-500 mt-1">รายการจะแสดงที่นี่เมื่อมีการบันทึกเบิกสินค้าในระบบ</p>
-              )}
+              ) : null}
             </div>
           ) : tagFilter === "PENDING" && !searchQuery.trim() ? (
             /* กรอง "รอนำเข้า" แล้วว่าง = นำเข้าครบแล้ว */

@@ -371,3 +371,25 @@ describe("SheetsDashboardRepository — warehouse_distribution ของกร�
     ).toBe(60);
   });
 });
+
+describe("SheetsDashboardRepository — ชื่อผู้ทำรายการและประวัติอนุมัติ", () => {
+  it("อ่านคนสร้างจาก Documents และคนอนุมัติจาก AuditLogs พร้อมชื่อจริงใน Users", async () => {
+    const timestamp = new Date().toISOString();
+    sheetMock.__setTab("Documents", [["header"], ["rcv-1", "RCV-001", "RECEIVE", "", timestamp.slice(0, 10),
+      "POSTED", JSON.stringify({ warehouse_id: "wh-1" }), "creator", timestamp]]);
+    sheetMock.__setTab("StockMovements", [["header"], ["m1", "rcv-1", "SKU-A", "wh-1", "", "8", "RECEIVE", "key", "creator", timestamp]]);
+    sheetMock.__setTab("Users", [["header"],
+      ["creator", "creator_login", "", "STAFF", "สมชาย", "ใจดี", "creator@example.com"],
+      ["approver", "approve_login", "", "ADMIN", "สมหญิง", "ขยัน", "approver@example.com"]]);
+    sheetMock.__setTab("AuditLogs", [["header"], ["audit-1", "corr-1", "", "approver", "ADMIN", "STOCK_RECEIVE",
+      "Document", "rcv-1", "wh-1", timestamp, "SUCCESS", "", JSON.stringify({ approved_movements_count: 1 })]]);
+
+    const stats = await new SheetsDashboardRepository().getStats();
+    expect(stats.today_activities).toHaveLength(2);
+    expect(stats.today_activities.find((activity) => activity.action_type === "RECEIVE_REQUEST"))
+      .toMatchObject({ actor_id: "creator", actor_name: "สมชาย ใจดี", document_no: "RCV-001" });
+    expect(stats.today_activities.find((activity) => activity.action_type === "APPROVE_RECEIVE"))
+      .toMatchObject({ actor_id: "approver", actor_name: "สมหญิง ขยัน", action_label: "อนุมัติรับเข้า", quantity: 8 });
+    expect(stats.received_today).toBe(8);
+  });
+});

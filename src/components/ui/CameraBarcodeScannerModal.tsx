@@ -235,7 +235,6 @@ export default function CameraBarcodeScannerModal({
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
-              <p className="text-xs sm:text-xs text-slate-500 truncate">สแกนกล้องสด หรือ ถ่ายรูปบาร์โค้ดด่วน</p>
             </div>
           </div>
 

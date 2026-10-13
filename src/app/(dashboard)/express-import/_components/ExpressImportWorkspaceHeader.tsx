@@ -97,9 +97,6 @@ export default function ExpressImportWorkspaceHeader({
               <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
                 {isReceive ? "รับสินค้า เข้า Express" : "เบิกสินค้า เข้า Express"}
               </h1>
-              <p className="text-sm text-slate-500 font-medium">
-                {isReceive ? "ติดตามรายการรับเข้าที่รอนำเข้าโปรแกรม Express" : "ติดตามรายการเบิกที่รอนำเข้าโปรแกรม Express"}
-              </p>
             </div>
           </div>
 

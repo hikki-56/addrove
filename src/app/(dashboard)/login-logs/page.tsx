@@ -508,7 +508,6 @@ export default function LoginNotificationsPage() {
           <div className="p-12 text-center space-y-2 text-slate-400">
             <span className="text-4xl">👤</span>
             <h3 className="text-base font-bold text-slate-700">ไม่พบประวัติการเข้าสู่ระบบ</h3>
-            <p className="text-sm text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

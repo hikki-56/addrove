@@ -34,9 +34,6 @@ export default function HistoryModal({ open, loading, records, onClose }: Histor
         <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-[#F2F4F3]">
           <div>
             <h2 className="text-base font-bold text-[#06402B]">ประวัติการตัดสต็อก</h2>
-            <p className="mt-0.5 text-xs text-slate-500 font-medium">
-              รายการตัดสต็อกชั่วคราวล่าสุดจากโกดัง2
-            </p>
           </div>
           <button
             type="button"
@@ -68,7 +65,6 @@ export default function HistoryModal({ open, loading, records, onClose }: Histor
                 </svg>
               </div>
               <p className="text-sm font-semibold text-slate-600">ยังไม่มีประวัติการตัดสต็อก</p>
-              <p className="text-xs text-slate-400">รายการตัดสต็อกชั่วคราวจะแสดงที่นี่</p>
             </div>
           ) : (
             <ul className="space-y-3">

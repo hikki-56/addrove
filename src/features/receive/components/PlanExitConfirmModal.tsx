@@ -34,8 +34,7 @@ export default function PlanExitConfirmModal({ isOpen, onClose, onConfirm, lineC
         </div>
 
         <div className="rounded-2xl bg-rose-50 border border-rose-200 p-3.5 text-sm text-rose-700 font-semibold">
-          รายการที่สแกนไว้ในแผน {planNo} จำนวน {lineCount} รายการจะถูกล้างทั้งหมด
-          และไม่สามารถกู้คืนกลับมาได้ — หากยังไม่บันทึก กรุณากดยืนยันการรับก่อนออก
+          ล้าง {lineCount} รายการที่ยังไม่บันทึกในแผน {planNo} — กู้คืนไม่ได้
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row gap-2.5 pt-1">

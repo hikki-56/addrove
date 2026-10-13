@@ -176,7 +176,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
             ))}
           </div>
           <p className="-mt-2 text-xs font-semibold text-slate-400">
-            {isFinal ? "จบงานแล้วจะรายงานเพิ่มไม่ได้จนกว่า ADMIN เปิดงานใหม่" : "รายงานบางส่วน — งานยังอยู่ในสถานะกำลังผลิต"}
+            {isFinal ? "จบงานแล้วจะรายงานเพิ่มไม่ได้" : "งานยังไม่จบ"}
           </p>
 
           {isFinal && (remainingAfter > 0 || overAfter > 0) && (
@@ -207,7 +207,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
           {/* สรุปยอดก่อนยืนยัน — กันกรอกผิด */}
           <div className="rounded-xl border border-[#C9DFD4] bg-[#EAF2EE] p-4">
-            <p className="text-xs font-extrabold uppercase tracking-wide text-[#4A7A66]">สรุปยอดรอบนี้ (ตรวจสอบก่อนยืนยัน)</p>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-[#4A7A66]">สรุปรอบนี้</p>
             <div className="mt-2 space-y-1.5 font-mono text-sm font-bold text-[#031B14]">
               <div className="flex justify-between">
                 <span>ผลิตดีรอบนี้</span>
@@ -233,7 +233,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
               </div>
             </div>
             <p className="mt-2 text-[11px] font-semibold text-[#4A7A66]">
-              กดยืนยันแล้วระบบเพิ่มสต็อกสินค้าดี {formatQty(good)} {job.unit} เข้าโกดัง 2 ทันที (ครั้งเดียวต่อรายงาน) และแจ้ง ADMIN
+              เพิ่มสต็อก {formatQty(good)} {job.unit} เข้าโกดัง 2
             </p>
           </div>
         </div>

@@ -107,8 +107,7 @@ export default function EmployeeCardsPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#06402B]">บัตรบาร์โค้ดพนักงาน</h1>
           <p className="text-sm text-slate-500">
-            พิมพ์บัตรให้พนักงาน แล้วให้สแกนบัตร + PIN 4 หลักที่หน้าเข้างาน (/employee-login) —
-            สแกนบัตรเพียงอย่างเดียวเข้าระบบไม่ได้ ต้องมี PIN เสมอ
+            ใช้บัตรร่วมกับ PIN 4 หลัก
           </p>
         </div>
         <div className="flex gap-2">
@@ -185,7 +184,7 @@ export default function EmployeeCardsPage() {
       <div className="card-print-area">
         {cards.length === 0 ? (
           <p className="no-print text-sm text-slate-400 text-center py-6">
-            ยังไม่ได้เลือกพนักงาน — ติ๊กจากตารางด้านบนแล้วกดพิมพ์
+            ยังไม่ได้เลือกพนักงาน
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

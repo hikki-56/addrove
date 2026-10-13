@@ -256,9 +256,6 @@ export default function QPickingPanel() {
             <span className="text-5xl">📦</span>
             <div>
               <div className="text-xl sm:text-2xl font-extrabold">งานกล่อง Q (Q1 - Q6)</div>
-              <div className="text-xs sm:text-sm text-sky-100">
-                สแกน QR Code / บาร์โค้ดหน้ากล่องเพื่อเปิดรายการสินค้า
-              </div>
             </div>
           </div>
           <div className="rounded-xl bg-white/95 p-3">
@@ -309,7 +306,7 @@ export default function QPickingPanel() {
           <div className="text-2xl font-black text-emerald-900">กล่อง {qData.q_code} หยิบเสร็จ</div>
           <div className="text-sm text-emerald-700">{doneMessage}</div>
           <div className="text-xs text-emerald-600">
-            รายการทั้งหมด {totalCount} รายการ — กดยืนยันเพื่อไปขั้นตอนแพ็กของใส่กล่อง
+            {totalCount} รายการ
           </div>
         </div>
         <button
@@ -384,7 +381,7 @@ export default function QPickingPanel() {
           onChange={setItemScanValue}
           onScanSubmit={(code) => void handleItemScan(code)}
           onOpenScannerModal={() => setCameraMode("item")}
-          placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อสินค้าเพื่อตัดยอดหยิบทันที…"
+          placeholder="สแกนบาร์โค้ด / ค้นหาสินค้า"
           isProcessing={busy}
         />
       </div>

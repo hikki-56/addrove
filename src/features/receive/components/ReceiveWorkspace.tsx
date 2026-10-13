@@ -68,7 +68,6 @@ export default function ReceiveWorkspace() {
     remove,
     submitted,
     error,
-    successMessage,
     barcodeInput,
     setBarcodeInput,
     barcodeInputRef,
@@ -133,10 +132,10 @@ export default function ReceiveWorkspace() {
   if (submitted) {
     return (
       <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-24 sm:pb-10">
-        <ReceiveSuccessCard onReset={resetForm} successMessage={successMessage} />
+        <ReceiveSuccessCard onReset={resetForm} />
         {activePlan && (
           <p className="mt-3 text-center text-sm text-slate-500 font-semibold">
-            ส่งการรับตามแผน {activePlan.document_no} เรียบร้อย — รอแอดมินอนุมัติ และติดตามความคืบหน้าของแผนได้ในแท็บ “รายการที่ต้องรับ”
+            แผน {activePlan.document_no}
           </p>
         )}
       </div>

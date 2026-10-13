@@ -633,7 +633,7 @@ export default function TransferStaffWorkflowModal({
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span>ยืนยันการเบิก (ส่งให้ Admin อนุมัติ)</span>
+                      <span>ยืนยันส่งเบิก</span>
                     </>
                   )}
                 </button>
@@ -670,12 +670,12 @@ export default function TransferStaffWorkflowModal({
                   {selectedTask.doc_no}
                 </span>
                 <h4 className="text-xl sm:text-2xl font-extrabold text-slate-900 pt-1">
-                  เบิกสินค้าและส่งข้อมูลเรียบร้อยแล้ว
+                  ส่งรายการเบิกแล้ว
                 </h4>
               </div>
 
               <p className="text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
-                การเบิกสินค้าเสร็จสิ้น ข้อมูลถูกส่งไปให้ <strong>ผู้ดูแลระบบ (Admin)</strong> กดอนุมัติเพื่อบันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว
+                รออนุมัติ
               </p>
 
               <button
@@ -683,7 +683,7 @@ export default function TransferStaffWorkflowModal({
                 onClick={onClose}
                 className="w-full py-4 px-6 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base cursor-pointer shadow-lg shadow-[#06402B]/20 active:scale-95 transition-all"
               >
-                ปิดหน้าต่าง / กลับสู่รายการ
+                กลับสู่รายการ
               </button>
             </div>
           </div>

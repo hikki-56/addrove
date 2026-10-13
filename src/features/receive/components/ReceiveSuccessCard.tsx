@@ -4,11 +4,9 @@ import React from "react";
 
 export interface ReceiveSuccessCardProps {
   onReset: () => void;
-  /** Server message describing what actually happened (e.g. "sent for approval") */
-  successMessage?: string;
 }
 
-export default function ReceiveSuccessCard({ onReset, successMessage }: ReceiveSuccessCardProps) {
+export default function ReceiveSuccessCard({ onReset }: ReceiveSuccessCardProps) {
   return (
     <div className="max-w-md mx-auto py-6 sm:py-12 px-4">
       <div className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] p-8 sm:p-10 text-center space-y-6 scale-in">
@@ -24,15 +22,12 @@ export default function ReceiveSuccessCard({ onReset, successMessage }: ReceiveS
           <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
             ส่งรายการรับสินค้าแล้ว
           </h2>
-          <p className="text-[#667085] text-sm sm:text-base">
-            {successMessage || "ส่งรายการรับสินค้าไปรออนุมัติแล้ว"}
-          </p>
           <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-left">
             <p className="text-amber-800 text-sm font-semibold flex items-start gap-2">
               <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>เอกสารอยู่สถานะ รออนุมัติ — ยอดสต็อกจะเข้าโกดังหลังผู้ดูแลอนุมัติเท่านั้น</span>
+              <span>รออนุมัติ — ยังไม่เพิ่มสต็อก</span>
             </p>
           </div>
         </div>

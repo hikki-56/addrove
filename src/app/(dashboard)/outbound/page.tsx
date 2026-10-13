@@ -138,7 +138,7 @@ export default function OutboundPage() {
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-slate-400">
             {bills.length === 0
-              ? "ยังไม่มีบิล — เริ่มจากกด \"นำเข้าบิลจากไฟล์ Express\""
+              ? "ยังไม่มีบิล"
               : "ไม่มีบิลในสถานะนี้"}
           </div>
         ) : (

@@ -72,7 +72,7 @@ export default function ReceivingPlanAllList({
   if (!loading && !error && plans.length === 0) {
     return (
       <div className={`${cardClass} p-8 text-center text-slate-500 font-semibold`}>
-        ยังไม่มีแผนรับสินค้า — สร้างแผนแรกได้ในแท็บ “สร้างแผนรับ”
+        ยังไม่มีแผนรับสินค้า
       </div>
     );
   }

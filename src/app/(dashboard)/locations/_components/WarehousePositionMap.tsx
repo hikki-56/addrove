@@ -246,7 +246,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
             {layout ? (
               <p className="text-sm text-slate-500 font-medium">{layout.address_label}</p>
             ) : (
-              <p className="text-sm text-slate-500 font-medium">ยังไม่มีผังล็อกสำหรับโกดังนี้ — แสดงเฉพาะสินค้าที่มีตำแหน่งอยู่ด้านล่าง</p>
+              <p className="text-sm text-slate-500 font-medium">ยังไม่มีผังโกดัง</p>
             )}
           </div>
           <button
@@ -288,7 +288,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
           </div>
         )}
         <p className="text-xs text-slate-400 font-medium">
-          ตำแหน่งย่อย: ซ้าย = 1, ขวา = 2, ล่าง = A, บน = B เช่น 1K14-1A คือซ้ายล่างของล็อก 14 • จำนวนเป็นค่าประมาณ (สินค้าที่ระบุหลายตำแหน่งถูกแบ่งเท่า ๆ กัน)
+          จำนวนในผังเป็นค่าประมาณ
         </p>
       </div>
 
@@ -373,7 +373,6 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
             <h3 className="font-extrabold text-slate-900 text-sm">
               สินค้าที่ตำแหน่งนอกผัง ({others.length.toLocaleString()} รายการ)
             </h3>
-            <p className="text-xs text-slate-500 font-medium">รหัสตำแหน่งไม่ตรงรูปแบบล็อก เช่น ยังไม่ระบุ หรือรหัสเก่า</p>
           </div>
           <ul className="divide-y divide-[#EEF1EF]">
             {others.slice(0, 50).map((o, i) => (
@@ -427,7 +426,6 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
             {!selectedOcc || selectedOcc.items.length === 0 ? (
               <div className="py-8 text-center space-y-1">
                 <p className="text-base font-extrabold text-slate-400">ตำแหน่งว่าง</p>
-                <p className="text-sm text-slate-500 font-medium">ยังไม่มีสินค้าจัดเก็บที่ตำแหน่งนี้</p>
               </div>
             ) : (
               <div className="space-y-3">

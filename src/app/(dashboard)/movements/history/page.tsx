@@ -528,7 +528,6 @@ export default function HistoryPage() {
           <div className="p-12 text-center space-y-2 text-slate-400">
             <span className="text-4xl">🔄</span>
             <h3 className="text-base font-bold text-slate-700">ไม่พบรายการประวัติการเคลื่อนไหว</h3>
-            <p className="text-sm text-slate-400">ลองเปลี่ยนตัวกรองหรือคำค้นหาด้านบน</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

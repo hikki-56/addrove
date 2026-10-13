@@ -95,10 +95,6 @@ export default function LoginPage() {
             <h1 className="mt-4 text-4xl font-black text-white tracking-wider uppercase drop-shadow-lg">
               STOCKIFY
             </h1>
-            <p className="mt-3 text-xs font-semibold text-[#8FB3A3] flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#8FB3A3] animate-ping inline-block shrink-0" />
-              ระบบขนย้าย จัดเก็บ และเช็คสต็อกสินค้าเข้าคลัง
-            </p>
           </div>
         </div>
 
@@ -146,12 +142,6 @@ export default function LoginPage() {
                 className="w-full h-80 lg:h-56 xl:h-80 object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-3 left-4 right-4 text-white">
-                <p className="text-sm font-semibold text-[#8FB3A3] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#8FB3A3] animate-ping inline-block" />
-                  ระบบขนย้าย จัดเก็บ และเช็คสต็อกสินค้าเข้าคลัง
-                </p>
-              </div>
             </div>
           </div>
 
@@ -184,7 +174,6 @@ export default function LoginPage() {
                 </svg>
                 <span>เข้าสู่ระบบผู้ดูแลระบบ (Admin)</span>
               </h2>
-              <p className="text-sm text-slate-500 mt-1">กรอกอีเมลและรหัสผ่านเพื่อจัดการคลังสินค้า</p>
             </div>
 
             {/* Error message */}

@@ -5,6 +5,8 @@ import {
   getSheetReadError,
 } from "@/server/google-sheets/client";
 import { SheetsProductRepository } from "./product.repository";
+import { SheetsAuditRepository } from "./audit.repository";
+import type { IAuditRepository } from "@/server/repositories/interfaces/audit.repository.interface";
 import { cleanSkuCode } from "@/server/services/stock/shared";
 import { aggregateDashboardOperations } from "@/server/dashboard/dashboard-aggregation";
 import type { IDashboardRepository, IProductRepository } from "@/server/repositories/interfaces";
@@ -137,7 +139,7 @@ export class DashboardDataError extends Error {
 }
 
 export class SheetsDashboardRepository implements IDashboardRepository {
-  constructor(private readonly products?: IProductRepository) {}
+  constructor(private readonly products?: IProductRepository, private readonly audits?: IAuditRepository) {}
   // ชีตสำคัญ: อ่านได้ [] พร้อมบันทึก error = อ่านไม่สำเร็จ → throw ไม่ใช่เงียบแล้วคืน 0
   private async readCriticalSheet(
     sheetName: string,
@@ -248,6 +250,7 @@ export class SheetsDashboardRepository implements IDashboardRepository {
       products,
       summaryRows,
       tabStocks,
+      auditLogs,
     ] = await Promise.all([
       // ชีตสำคัญ: อ่านไม่ได้ต้อง throw (จะคืน 0 ทำให้เข้าใจว่าหมดสต็อกทั้งหมด)
       this.readCriticalSheet(
@@ -276,6 +279,10 @@ export class SheetsDashboardRepository implements IDashboardRepository {
           this.readWarehouseTabStock(tab.warehouse_name, "getStats:readWarehouseStock")
         )
       ),
+      (this.audits ?? new SheetsAuditRepository()).findAll({ action: "STOCK_RECEIVE" }).catch((error: unknown) => {
+        console.warn("[SheetsDashboardRepository] อ่านประวัติอนุมัติไม่สำเร็จ:", error);
+        return [];
+      }),
     ]);
 
     // PRODUCTS อ่านมาแล้วเหลือ 0 แถว + มี read error = อ่านไม่สำเร็จจริง → throw
@@ -403,6 +410,9 @@ export class SheetsDashboardRepository implements IDashboardRepository {
       products,
       users,
       warehouses,
+      auditLogs,
+      activityWarehouseId: warehouseId,
+      userAliases: Object.fromEntries(userRows.filter((row) => row[0] && row[1]).map((row) => [row[1], row[0]])),
     });
 
     // Recent movements (last 10)

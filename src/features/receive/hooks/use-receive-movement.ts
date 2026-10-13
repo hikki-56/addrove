@@ -142,7 +142,6 @@ export function useReceiveMovement({
   const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
   const [lastScannedId, setLastScannedId] = useState<string | null>(null);
@@ -802,7 +801,6 @@ export function useReceiveMovement({
           localStorage.removeItem(RECEIVE_DRAFT_KEY);
         }
         refreshWarehouseData();
-        setSuccessMessage(typeof json.message === "string" && json.message ? json.message : "ส่งรายการรับสินค้าไปรออนุมัติแล้ว");
         setSubmitted(true);
         setConfirmModalOpen(false);
       } else {
@@ -826,7 +824,6 @@ export function useReceiveMovement({
     refreshWarehouseData();
     setSubmitted(false);
     setStep(1);
-    setSuccessMessage("");
     setActivePlan(null);
     setRestoredInfo(null);
     reset({
@@ -846,7 +843,6 @@ export function useReceiveMovement({
     }
     setActivePlan(plan);
     setSubmitted(false);
-    setSuccessMessage("");
     setError("");
     setStep(1);
     setRestoredInfo(null);
@@ -940,7 +936,6 @@ export function useReceiveMovement({
     submitted,
     error,
     setError,
-    successMessage,
     barcodeInput,
     setBarcodeInput,
     barcodeInputRef,

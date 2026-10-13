@@ -162,7 +162,6 @@ export default function MoveForm({
             ) : (
               <div className="py-5 px-4 text-center space-y-1.5 bg-white border border-[#E8ECEA] rounded-2xl shadow-xs">
                 <p className="text-base font-bold text-slate-900">ยิงสแกนบาร์โค้ดสินค้าที่ต้องการย้าย</p>
-                <p className="text-sm text-slate-600 font-medium">ยิงสแกนบาร์โค้ดสินค้าที่ช่องสแกนด้านบน</p>
               </div>
             )}
 
@@ -295,7 +294,6 @@ export default function MoveForm({
             ) : (
               <div className="py-5 px-4 text-center space-y-1.5 bg-white border border-[#E8ECEA] rounded-2xl shadow-xs">
                 <p className="text-base font-bold text-slate-900">ยิงป้าย QR ที่ชั้นวางปลายทาง</p>
-                <p className="text-sm text-slate-600 font-medium">ป้ายติดอยู่ที่หน้าชั้น</p>
               </div>
             )}
 

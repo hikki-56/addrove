@@ -370,7 +370,7 @@ export class PostgresStockRepository implements IStockRepository {
     stockSummary = new PostgresStockSummaryRepository();
     stockCounts = new PostgresStockCountRepository();
     users = new PostgresUserRepository();
-    dashboard = new SheetsDashboardRepository(this.products);
+    dashboard = new SheetsDashboardRepository(this.products, new PostgresAuditRepository());
     idempotency = new PostgresIdempotencyRepository();
     audit = new PostgresAuditRepository();
     journal = new PostgresOperationJournalRepository();

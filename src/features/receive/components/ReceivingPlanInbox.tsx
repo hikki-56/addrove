@@ -47,10 +47,6 @@ export default function ReceivingPlanInbox({
           </svg>
         </div>
         <p className="font-extrabold text-slate-900">ไม่มีรายการที่ต้องรับใน{warehouseName}</p>
-        <p className="text-sm text-slate-500 font-semibold">
-          เมื่อแอดมินสร้างแผนรับสินค้าของโกดังนี้ รายการจะขึ้นที่นี่โดยอัตโนมัติ —
-          หรือกดแท็บ “รับเข้า” เพื่อรับสินค้าแบบไม่มีแผนได้ตามปกติ
-        </p>
       </div>
     );
   }

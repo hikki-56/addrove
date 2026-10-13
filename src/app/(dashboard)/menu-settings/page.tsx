@@ -76,7 +76,6 @@ export default function MenuSettingsPage() {
     <section className="mx-auto max-w-4xl space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-[#06402B]">ตั้งค่าเมนูผู้ใช้</h1>
-        <p className="mt-2 text-sm text-[#667085]">เลือกพนักงาน แล้วติ๊กเมนูที่ต้องการให้แสดง เอาติ๊กออกเพื่อซ่อน และกดบันทึก</p>
       </div>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{message}</p>}
@@ -111,7 +110,6 @@ export default function MenuSettingsPage() {
               </label>)}
             </fieldset>
             {selectedUser.available_menus.length === 0 && <p className="text-sm text-[#667085]">บทบาทนี้ยังไม่มีเมนูที่เลือกแสดงได้</p>}
-            <p className="text-sm text-[#667085]">เลือกได้เฉพาะเมนูที่บทบาทของพนักงานใช้งานได้ เมนูตั้งค่านี้แสดงเฉพาะผู้ดูแลที่กำหนดไว้เสมอ</p>
             <div className="flex flex-wrap gap-3 border-t border-[#E8ECEA] pt-5">
               <button type="button" disabled={saving} onClick={() => void save(selectedHrefs)} className="rounded-xl bg-[#06402B] px-5 py-3 text-sm font-medium text-white cursor-pointer hover:bg-[#0B5740] disabled:opacity-50 disabled:cursor-not-allowed">{saving ? "กำลังบันทึก..." : "บันทึกเมนู"}</button>
               <button type="button" disabled={saving} onClick={() => void save(null)} className={buttonClass}>คืนค่าเมนูเริ่มต้น</button>

@@ -110,10 +110,6 @@ export default function ReceivingPlanCreateForm({
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#EEF1EF]">
           <div>
             <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">สร้างแผนรับสินค้า</h3>
-            <p className="text-sm text-slate-500 font-semibold mt-0.5">
-              กำหนดรายการสินค้าที่คาดว่าจะมาถึงโกดัง — พนักงานจะเห็นในแท็บ “รายการที่ต้องรับ”
-              และรับได้เฉพาะสินค้าในแผน
-            </p>
           </div>
         </div>
 
@@ -277,7 +273,7 @@ export default function ReceivingPlanCreateForm({
 
         <div className="flex items-center justify-between gap-3 pt-1">
           <p className="text-xs text-slate-500 font-semibold">
-            เว้นว่างจำนวนที่คาดหวัง = รายการเช็คลิสต์อย่างเดียว (ไม่นับในการปิดแผนอัตโนมัติ)
+            ไม่ระบุจำนวน = ไม่ตั้งเป้ารับ
           </p>
           <button
             type="button"

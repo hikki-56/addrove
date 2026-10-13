@@ -234,7 +234,6 @@ export default function OutboundPackPage() {
         <h1 className="text-xl font-bold text-[#06402B] flex items-center gap-2">
           <span className="text-3xl">📦</span> แพ็กใส่กล่อง
         </h1>
-        <p className="text-sm text-slate-500">เฉพาะบิลที่อนุมัติและหยิบครบแล้ว (สต็อกถูกตัดไปแล้ว)</p>
 
         {queue.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#E8ECEA] p-8 text-center text-slate-400">
@@ -265,7 +264,7 @@ export default function OutboundPackPage() {
                 </div>
               </div>
               {b.outbound_status === "PACKED" && (
-                <div className="mt-2 text-xs font-semibold text-emerald-700">แพ็กครบ — เข้ารอบรถได้ / พิมพ์สติกเกอร์ชุดเต็มได้</div>
+                <div className="mt-2 text-xs font-semibold text-emerald-700">แพ็กครบแล้ว</div>
               )}
             </button>
           ))
@@ -398,7 +397,6 @@ export default function OutboundPackPage() {
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
             <div className="text-5xl mb-2">✅</div>
             <div className="font-bold text-emerald-900">แพ็กครบ {boxes.length} กล่อง — พร้อมเข้ารอบรถ</div>
-            <div className="text-sm text-emerald-700 mt-1">ไปหน้าขึ้นรถเพื่อสร้างรอบ/สแกนกล่อง</div>
           </div>
           <button
             onClick={printAllLabels}

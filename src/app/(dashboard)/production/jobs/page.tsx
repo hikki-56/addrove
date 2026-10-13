@@ -117,11 +117,6 @@ export default function ProductionJobsPage() {
     <div className="w-full max-w-full pb-10">
       <div className="mb-5">
         <h1 className="text-2xl font-extrabold text-slate-900">งานผลิต</h1>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          {isApprover
-            ? "งานทั้ง 5 โต๊ะ — กด “เริ่มผลิต” เมื่อรับงาน แล้วรายงานผลได้หลายรอบจนกว่าจะจบงาน"
-            : "ภาพรวมงานผลิตทั้ง 5 โต๊ะ — กดดูรายละเอียดเพื่อติดตามผลและจัดการงาน"}
-        </p>
       </div>
 
       {toast && (
@@ -211,11 +206,6 @@ export default function ProductionJobsPage() {
         <div className="rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#C9DFD4] bg-[#EAF2EE] text-2xl">🏭</div>
           <h2 className="mt-4 text-lg font-extrabold text-slate-900">ไม่พบงานผลิตตามตัวกรอง</h2>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm font-medium text-slate-500">
-            {isApprover
-              ? "เมื่อ ADMIN ส่งงานผลิตใหม่ งานจะมาปรากฏที่นี่พร้อมแจ้งเตือน"
-              : "ลองปรับตัวกรอง หรือไปสร้างงานใหม่ที่หน้าวางแผนผลิต"}
-          </p>
           {isAdmin && (
             <Link href="/production" className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]">
               ไปหน้าวางแผนผลิต
@@ -284,7 +274,6 @@ export default function ProductionJobsPage() {
       <ConfirmModal
         open={!!startJob}
         title="ยืนยันเริ่มผลิต"
-        hint="ระบบจะเปลี่ยนสถานะเป็น “กำลังผลิต” บันทึกผู้เริ่ม และแจ้ง ADMIN"
         confirmLabel="ยืนยันเริ่มผลิต"
         submitting={guard.pending}
         error={startError}

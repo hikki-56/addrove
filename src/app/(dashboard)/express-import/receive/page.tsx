@@ -910,9 +910,7 @@ export default function ExpressReceivePage() {
                     ล้างตัวกรอง
                   </button>
                 </>
-              ) : (
-                <p className="text-base text-slate-500 mt-1.5">รายการจะแสดงที่นี่เมื่อมีการบันทึกรับสินค้าในระบบ</p>
-              )}
+              ) : null}
             </div>
           ) : tagFilter === "PENDING" && !searchQuery.trim() ? (
             /* กรอง "รอนำเข้า" แล้วว่าง = นำเข้าครบแล้ว */

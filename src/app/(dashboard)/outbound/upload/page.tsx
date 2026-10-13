@@ -317,7 +317,7 @@ export default function OutboundUploadPage() {
               }}
             />
             <div className="text-5xl mb-3">📄</div>
-            <div className="font-semibold text-slate-700">เลือกไฟล์ที่ export จาก Express</div>
+            <div className="font-semibold text-slate-700">เลือกไฟล์ Express</div>
             {busy && <div className="text-sm text-slate-400 mt-1">กำลังอ่านไฟล์…</div>}
           </label>
         </div>
@@ -568,7 +568,7 @@ export default function OutboundUploadPage() {
                   disabled={busy || !warehouseId || previewBills.length === duplicates.length}
                   className="px-4 py-2.5 rounded-xl bg-amber-500 text-white font-semibold disabled:opacity-40"
                 >
-                  นำเข้าเฉพาะบิลที่ครบ (ข้ามที่มีสินค้า match ไม่ได้)
+                  นำเข้าเฉพาะบิลที่สินค้าครบ
                 </button>
               )}
               <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl border border-[#E8ECEA] text-slate-600">{pdfDoc ? "ย้อนกลับดูเอกสาร" : "แก้การจับคู่"}</button>

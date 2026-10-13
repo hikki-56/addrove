@@ -23,9 +23,6 @@ export default function ReceiveRestoreBanner({ lineCount, planNo, onDiscard }: R
         <p className="text-sm font-extrabold">
           กู้คืนรายการที่สแกนค้างไว้ {lineCount} รายการ{planNo ? ` (จากแผน ${planNo})` : ""}
         </p>
-        <p className="mt-0.5 text-xs font-semibold text-[#0A4A34]">
-          ออกจากหน้าไปแล้วกลับมาใหม่ — รายการยังอยู่ครบ สแกนต่อได้เลย หรือกด &quot;เริ่มใหม่&quot; หากไม่ต้องการรายการเดิม
-        </p>
       </div>
       <button
         type="button"

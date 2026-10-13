@@ -178,7 +178,7 @@ export default function ProductionPlanningPage() {
   const handleSubmitJobs = () => {
     if (selectedJobs.length === 0 || guard.pending) return;
     const names = selectedJobs.map((j) => j.job_no).join(", ");
-    if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}\n\nเมื่อส่งแล้วระบบจะแจ้งเตือนไปยังผู้ผลิต (APPROVER) ทันที`)) return;
+    if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}`)) return;
     return guard.run(async () => {
       const res = await productionApi("/api/production/jobs/submit", "POST", {
         job_nos: selectedJobs.map((j) => j.job_no),
@@ -201,9 +201,6 @@ export default function ProductionPlanningPage() {
         <div className="mt-6 rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-xl">🔒</div>
           <h2 className="mt-3.5 text-base font-extrabold text-slate-900">เฉพาะผู้ดูแลระบบ (Admin)</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            หน้านี้สำหรับวางแผนการผลิต — ผู้ผลิตใช้งานที่เมนู “งานผลิต” แทน
-          </p>
           <Link
             href="/production/jobs"
             className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]"
@@ -220,9 +217,6 @@ export default function ProductionPlanningPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            สร้างงานเป็นฉบับร่างก่อน — แก้ไข ลบ ย้ายโต๊ะได้ทันที แล้วเลือกส่งหลายงานพร้อมกันในคลิกเดียว
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -306,7 +300,7 @@ export default function ProductionPlanningPage() {
         </div>
         <div className="mt-2.5 flex items-center justify-between">
           <p className="text-xs font-semibold text-slate-400">
-            พบ {filtered.length} งาน · ฉบับร่าง {drafts.length} งาน (ส่งได้ทีละหลายงาน)
+            พบ {filtered.length} งาน · ฉบับร่าง {drafts.length} งาน
           </p>
           {(dateFilter !== today || tableFilter !== "ALL" || statusFilter !== "ALL" || q) && (
             <button
@@ -529,7 +523,7 @@ export default function ProductionPlanningPage() {
       <ReasonModal
         open={!!cancelJob}
         title={`ยกเลิกงาน ${cancelJob?.job_no || ""}`}
-        hint="งานที่ยกเลิกจะไม่ถูกลบ — ผลผลิตที่ยืนยันแล้วทั้งหมดยังเก็บไว้ และระบบจะแจ้งผู้ผลิต"
+        hint="เก็บผลผลิตเดิมไว้"
         reasonLabel="เหตุผลการยกเลิก"
         confirmLabel="ยืนยันยกเลิก"
         tone="danger"

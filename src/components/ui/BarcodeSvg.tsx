@@ -98,7 +98,7 @@ function BarcodeSvgComponent({
         onClick={() => {
           if (!disableZoom) setIsZoomed(true);
         }}
-        title={disableZoom ? "" : "🔍 คลิกเพื่อขยายบาร์โค้ดขนาดใหญ่เต็มจอ สำหรับยิงสแกนง่ายขึ้น"}
+        title={disableZoom ? "" : "ขยายบาร์โค้ด"}
         className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-[#E8ECEA] shadow-2xs ${
           disableZoom ? "" : "hover:border-[#5B8A74] hover:shadow-md cursor-zoom-in"
         } transition-all select-none overflow-hidden ${sizeClasses} ${className}`}
@@ -139,15 +139,9 @@ function BarcodeSvgComponent({
             </button>
 
             <div className="text-center space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF2EE] text-[#053425] font-bold text-xs border border-[#C9DFD4]">
-                🎯 ขนาดใหญ่พิเศษสำหรับเครื่องยิงบาร์โค้ด
-              </span>
               <h3 className="text-lg font-black text-slate-800">
                 บาร์โค้ด: <span className="font-mono text-[#053425]">{cleanValue}</span>
               </h3>
-              <p className="text-xs text-slate-500">
-                สามารถใช้เครื่องยิงบาร์โค้ดยิงที่กรอบสีขาวด้านล่างได้ทันที (ระยะยิง 10 - 50 ซม.)
-              </p>
             </div>
 
             {/* Giant White Box Canvas */}

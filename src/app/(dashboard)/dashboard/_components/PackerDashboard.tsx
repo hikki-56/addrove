@@ -34,7 +34,6 @@ export default function PackerDashboard() {
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors">
                 หยิบของ
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">หยิบสินค้าตามบิล</p>
             </div>
           </Link>
 
@@ -56,7 +55,6 @@ export default function PackerDashboard() {
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">
                 แพ็กใส่กล่อง
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">แพ็กสินค้าลงกล่อง</p>
             </div>
           </Link>
 
@@ -80,7 +78,6 @@ export default function PackerDashboard() {
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">
                 ของขึ้นรถ
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">ตรวจนับและขึ้นรถส่ง</p>
             </div>
           </Link>
 

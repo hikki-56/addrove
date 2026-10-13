@@ -17,6 +17,7 @@ import type {
   User,
   Warehouse,
 } from "@/types/models";
+import type { AuditLogEntry } from "@/server/repositories/interfaces/audit.repository.interface";
 
 // 2026-09-08 09:00 ตามเวลาไทย (UTC+7) — ใช้เป็น "now" ตลอดไฟล์
 const NOW = new Date("2026-09-08T02:00:00.000Z");
@@ -371,7 +372,7 @@ describe("aggregateDashboardOperations — กิจกรรมวันนี�
       ]
     );
 
-    expect(result.today_activities).toHaveLength(2);
+    expect(result.today_activities).toHaveLength(3);
     const receive = result.today_activities.find((a) => a.action_type === "RECEIVE");
     expect(receive?.actor_name).toBe("สมชาย ใจดี");
     expect(receive?.quantity).toBe(15);
@@ -442,6 +443,137 @@ describe("aggregateDashboardOperations — กิจกรรมวันนี�
 });
 
 // ── รายการรออนุมัติ ─────────────────────────────────────────────
+
+describe("กิจกรรมตามขั้นตอนและผู้ทำรายการจริง", () => {
+  function operations(overrides: Partial<DashboardAggregationInput>) {
+    return aggregateDashboardOperations({ movements: [], documents: [], products: FIXTURE_PRODUCTS,
+      users: FIXTURE_USERS, warehouses: FIXTURE_WAREHOUSES, now: NOW, ...overrides });
+  }
+
+  function approval(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
+    return { audit_id: "audit-1", correlation_id: "corr-1", actor_id: "user-2", actor_role: "ADMIN",
+      action: "STOCK_RECEIVE", resource_type: "Document", resource_id: "rcv-1", warehouse_id: "wh-1",
+      timestamp: TODAY_ISO, outcome: "SUCCESS", metadata: { approved_movements_count: 1 }, ...overrides };
+  }
+
+  it("ส่งรับเข้ารออนุมัติมีกิจกรรมและชื่อสำรอง แต่ยังไม่เพิ่มยอดรับเข้า", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "rcv-1", status: "PENDING",
+      created_by: "usr-missing", note: JSON.stringify({ created_by_name: "พิมพ์ ใจดี", warehouse_id: "wh-1",
+        lines: [{ product_id: "SKU-A", qty: 8 }] }) })] });
+    expect(result.today_activities).toEqual([expect.objectContaining({ actor_name: "พิมพ์ ใจดี",
+      action_type: "RECEIVE_REQUEST", action_label: "ทำรายการรับเข้า", quantity: 8,
+      product_name: "สินค้า A", warehouse_name: "โกดัง1" })]);
+    expect(result.received_today).toBe(0);
+  });
+
+  it("ผู้สร้างรับเข้ากับผู้อนุมัติคนละคน แสดงคนและเวลาแยกกัน ไม่ซ้ำ movement", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "rcv-1",
+      created_at: TODAY_MIDNIGHT_BANGKOK_ISO })], movements: [makeMovement({ movement_id: "m1",
+      document_id: "rcv-1", qty_change: 8 })], auditLogs: [approval(), approval({ audit_id: "retry" })] });
+    expect(result.today_activities).toHaveLength(2);
+    expect(result.today_activities[0]).toMatchObject({ action_label: "อนุมัติรับเข้า",
+      actor_id: "user-2", actor_name: "สมหญิง ขยัน", quantity: 8, created_at: TODAY_ISO });
+    expect(result.today_activities[1]).toMatchObject({ action_label: "ทำรายการรับเข้า",
+      actor_id: "user-1", actor_name: "สมชาย ใจดี", created_at: TODAY_MIDNIGHT_BANGKOK_ISO });
+    expect(result.received_today).toBe(8);
+  });
+
+  it("อนุมัติเอกสารที่สร้างเมื่อวาน แสดงเฉพาะการอนุมัติวันนี้", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "rcv-1", created_at: YESTERDAY_EVENING_ISO })],
+      auditLogs: [approval()] });
+    expect(result.today_activities).toHaveLength(1);
+    expect(result.today_activities[0].action_type).toBe("APPROVE_RECEIVE");
+  });
+
+  it("audit ส่งรายการหรืออนุมัติไม่สำเร็จ ไม่แสดงว่าอนุมัติแล้ว", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "rcv-1" })],
+      auditLogs: [approval({ metadata: undefined }), approval({ outcome: "FAILURE" })] });
+    expect(result.today_activities.map((entry) => entry.action_type)).toEqual(["RECEIVE_REQUEST"]);
+  });
+
+  it("สร้างใบโอนกับทำรายการโอนใช้คนละคน และชื่อผู้ทำรายการไม่ใช่เลขเอกสาร", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "trf-1", document_type: "TRANSFER",
+      document_no: "TRF-001", created_at: TODAY_MIDNIGHT_BANGKOK_ISO,
+      note: JSON.stringify({ completed_by: "user-2", completed_by_name: "ชื่อเก่า", qty: 3 }) })],
+      movements: [makeMovement({ movement_id: "m1", document_id: "trf-1", movement_type: "TRANSFER_OUT",
+        qty_change: -3, created_by: "user-2" }), makeMovement({ movement_id: "m2", document_id: "trf-1",
+        movement_type: "TRANSFER_IN", qty_change: 3, created_by: "user-2", warehouse_id: "wh-2" })] });
+    expect(result.today_activities).toHaveLength(2);
+    expect(result.today_activities[0]).toMatchObject({ action_label: "ทำรายการโอนสินค้า", actor_name: "สมหญิง ขยัน", quantity: 3 });
+    expect(result.today_activities[1]).toMatchObject({ action_label: "สร้างใบโอนสินค้า", actor_name: "สมชาย ใจดี" });
+  });
+
+  it("สร้างใบเบิก ส่งอนุมัติ และอนุมัติเบิก แสดงสามกิจกรรมและไม่ซ้ำใบตัดสต็อก", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "bill-1", document_type: "OUTBOUND_ORDER",
+      document_no: "BIL-001", note: JSON.stringify({ items: [{ product_id: "SKU-A", qty_required: 5 }],
+        pick_completed_at: TODAY_ISO, pick_completed_by: "user-1", approved_at: TODAY_ISO,
+        approved_by_id: "user-2", approved_by: "ชื่อเก่า", issue_document_id: "iss-1", issue_document_no: "ISS-001, ISS-002" }) }),
+      makeDocument({ document_id: "iss-1", document_type: "ISSUE", document_no: "ISS-001" }),
+      makeDocument({ document_id: "iss-2", document_type: "ISSUE", document_no: "ISS-002" })],
+      movements: [makeMovement({ movement_id: "m1", document_id: "iss-1", movement_type: "ISSUE", qty_change: -3 }),
+        makeMovement({ movement_id: "m2", document_id: "iss-2", movement_type: "ISSUE", qty_change: -2 })] });
+    expect(result.today_activities).toHaveLength(3);
+    expect(result.today_activities.find((entry) => entry.action_type === "APPROVE_ISSUE"))
+      .toMatchObject({ actor_id: "user-2", actor_name: "สมหญิง ขยัน", action_label: "อนุมัติเบิก", quantity: 5 });
+    expect(result.today_activities.find((entry) => entry.action_type === "ISSUE_REQUEST")?.actor_id).toBe("user-1");
+    expect(result.issued_today).toBe(5);
+  });
+
+  it("ใบโอนแยกคนสร้าง คนส่งงาน และคนอนุมัติครบสามขั้นตอน", () => {
+    const result = operations({ users: [...FIXTURE_USERS, makeUser("user-3", "มานะ ตรวจสอบ")],
+      documents: [makeDocument({ document_id: "trf-1", document_type: "TRANSFER", created_at: TODAY_MIDNIGHT_BANGKOK_ISO,
+        note: JSON.stringify({ moved_at: TODAY_ISO, mover_user_id: "user-2", moved_by: "ชื่อเก่า",
+          completed_by: "user-3", completed_at: TODAY_ISO, qty: 3 }) })],
+      movements: [makeMovement({ movement_id: "m1", document_id: "trf-1", movement_type: "TRANSFER_OUT",
+        qty_change: -3, created_by: "user-3" }), makeMovement({ movement_id: "m2", document_id: "trf-1",
+        movement_type: "TRANSFER_IN", qty_change: 3, created_by: "user-3", warehouse_id: "wh-2" })] });
+    expect(result.today_activities).toHaveLength(3);
+    expect(result.today_activities.find((entry) => entry.action_type === "DOCUMENT_CREATE")?.actor_name).toBe("สมชาย ใจดี");
+    expect(result.today_activities.find((entry) => entry.action_type === "TRANSFER_REQUEST"))
+      .toMatchObject({ actor_name: "สมหญิง ขยัน", action_label: "ทำรายการโอนสินค้า (ส่งอนุมัติ)" });
+    expect(result.today_activities.find((entry) => entry.action_type === "APPROVE_TRANSFER"))
+      .toMatchObject({ actor_name: "มานะ ตรวจสอบ", action_label: "อนุมัติโอนสินค้า", quantity: 3 });
+  });
+
+  it("ชื่อที่เป็น username จับคู่กับชื่อจริงและใช้ actor_id เดียวกับตัวกรอง", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "bill-1", document_type: "OUTBOUND_ORDER",
+      created_at: YESTERDAY_EVENING_ISO, note: JSON.stringify({ approved_by: "user-2", approved_at: TODAY_ISO }) })] });
+    expect(result.today_activities[0]).toMatchObject({ actor_id: "user-2", actor_name: "สมหญิง ขยัน" });
+  });
+
+  it("ไม่มีชื่อคนจริง ไม่แสดงเลขเอกสารเป็นชื่อผู้ทำรายการ", () => {
+    const result = operations({ movements: [makeMovement({ movement_id: "m1", created_by: "TRF-20261012-000672" })] });
+    expect(result.today_activities[0].actor_name).toBe("ไม่ทราบผู้ทำรายการ");
+  });
+
+  it("username ในชีตไม่ตรงกับ email ยังจับคู่เป็นชื่อคนจริงได้", () => {
+    const result = operations({ userAliases: { warehouse_operator: "user-2" },
+      documents: [makeDocument({ document_id: "bill-1", document_type: "OUTBOUND_ORDER",
+        created_at: YESTERDAY_EVENING_ISO,
+        note: JSON.stringify({ approved_by: "warehouse_operator", approved_at: TODAY_ISO }) })] });
+    expect(result.today_activities[0]).toMatchObject({ actor_id: "user-2", actor_name: "สมหญิง ขยัน" });
+  });
+
+  it("ชื่อซ้ำไม่ทำให้ประวัติของคนหนึ่งถูกโยงไปยัง user_id อีกคน", () => {
+    const result = operations({ users: [makeUser("user-1", "ชื่อซ้ำ"), makeUser("user-2", "ชื่อซ้ำ")],
+      documents: [makeDocument({ document_id: "bill-1", document_type: "OUTBOUND_ORDER",
+        created_at: YESTERDAY_EVENING_ISO,
+        note: JSON.stringify({ approved_by: "ชื่อซ้ำ", approved_at: TODAY_ISO }) })] });
+    expect(result.today_activities[0].actor_id).toBe("ชื่อซ้ำ");
+  });
+
+  it("ตัวกรองโกดังไม่แสดงกิจกรรมการสร้างใบของโกดังอื่น", () => {
+    const result = operations({ activityWarehouseId: "wh-1", documents: [
+      makeDocument({ document_id: "rcv-1", note: JSON.stringify({ warehouse_id: "wh-01" }) }),
+      makeDocument({ document_id: "rcv-2", note: JSON.stringify({ warehouse_id: "wh-2" }) })] });
+    expect(result.today_activities.map((entry) => entry.document_id)).toEqual(["rcv-1"]);
+  });
+
+  it("JSON note เสียยังแสดงคนสร้างรายการได้โดยไม่ทำให้ Dashboard ล้มเหลว", () => {
+    const result = operations({ documents: [makeDocument({ document_id: "rcv-1", note: "{broken" })] });
+    expect(result.today_activities[0]).toMatchObject({ action_type: "RECEIVE_REQUEST", actor_name: "สมชาย ใจดี" });
+  });
+});
 
 describe("aggregateDashboardOperations — pending_approval_count", () => {
   it("นับรายการ RECEIVE ที่รออนุมัติทั้งหมด (ไม่ใช่แค่ที่แสดง)", () => {

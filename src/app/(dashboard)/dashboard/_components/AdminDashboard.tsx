@@ -90,10 +90,16 @@ const CHART_SERIES_META = [
 function badgeForActivity(actionType: TodayActivity["action_type"]): string {
   switch (actionType) {
     case "RECEIVE":
+    case "RECEIVE_REQUEST":
+    case "APPROVE_RECEIVE":
       return "bg-[#EAF2EE] text-[#06402B]";
     case "ISSUE":
+    case "ISSUE_REQUEST":
+    case "APPROVE_ISSUE":
       return "bg-[#FCEFED] text-[#B42318]";
     case "TRANSFER":
+    case "TRANSFER_REQUEST":
+    case "APPROVE_TRANSFER":
       return "bg-[#EFF8FF] text-[#175CD3]";
     default:
       return "bg-[#F3F6F4] text-[#475467]";
@@ -397,9 +403,9 @@ export default function AdminDashboard() {
               {loading ? (
                 <div className="mx-4 mb-2 h-[280px] rounded-xl skeleton opacity-40 sm:h-[320px]" />
               ) : dashError ? (
-                <SectionStateBox tone="error" title="โหลดข้อมูลกราฟไม่สำเร็จ" hint="กด “ลองโหลดอีกครั้ง” ด้านบนเพื่อลองใหม่" />
+                <SectionStateBox tone="error" title="โหลดข้อมูลกราฟไม่สำเร็จ" />
               ) : visibleChart.length === 0 ? (
-                <SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" hint="รายการรับ–เบิกจะแสดงที่นี่" />
+                <SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" />
               ) : (
                 <div className="h-[280px] w-full pr-4 sm:h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -478,7 +484,6 @@ export default function AdminDashboard() {
           <div className="rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
             <div className="px-6 pt-6">
               <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">สินค้าแยกตามโกดัง</h2>
-              <p className="mt-1 text-sm 2xl:text-base text-[#667085]">สัดส่วนจำนวนคงเหลือในแต่ละโกดัง</p>
             </div>
             <div className="flex flex-1 flex-col items-center gap-6 px-6 py-6">
               {loading ? (
@@ -491,9 +496,9 @@ export default function AdminDashboard() {
                   </div>
                 </>
               ) : dashError ? (
-                <SectionStateBox tone="error" title="โหลดข้อมูลสต็อกแยกโกดังไม่สำเร็จ" hint="กด “ลองโหลดอีกครั้ง” ด้านบนเพื่อลองใหม่" />
+                <SectionStateBox tone="error" title="โหลดข้อมูลสต็อกแยกโกดังไม่สำเร็จ" />
               ) : !donut.hasData ? (
-                <SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" hint="ยอดรวมทุกโกดังเป็น 0 — ยังไม่มีสต็อกให้แสดงสัดส่วน" />
+                <SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" />
               ) : (
                 <>
                   <div className="relative w-full max-w-[360px]">
@@ -615,7 +620,7 @@ const ACTIVITY_PAGE_SIZE = 5;
 
 // class ของ td รายคอลัมน์ — จัด padding/การจัดวางให้เหมือนเดิมทุกจุด
 const ACTIVITY_TD_CLASS: Record<string, string> = {
-  actor_name: "py-3.5 pl-6 pr-3",
+  actor_name: "min-w-[160px] py-3.5 pl-6 pr-3",
   action_type: "px-3 py-3.5",
   product_name: "max-w-[240px] px-3 py-3.5",
   warehouse_name: "whitespace-nowrap px-3 py-3.5",
@@ -627,8 +632,8 @@ const ACTIVITY_TD_CLASS: Record<string, string> = {
 const ACTIVITY_RIGHT_COLUMNS = new Set(["quantity", "created_at"]);
 
 function qtyColorClass(actionType: TodayActivity["action_type"]): string {
-  if (actionType === "RECEIVE") return "text-[#06402B]";
-  if (actionType === "ISSUE") return "text-[#B42318]";
+  if (["RECEIVE", "RECEIVE_REQUEST", "APPROVE_RECEIVE"].includes(actionType)) return "text-[#06402B]";
+  if (["ISSUE", "ISSUE_REQUEST", "APPROVE_ISSUE"].includes(actionType)) return "text-[#B42318]";
   return "text-[#111827]";
 }
 
@@ -673,13 +678,10 @@ function ActivityCard({
         accessorKey: "actor_name",
         header: "ผู้ทำรายการ",
         cell: ({ row }) => (
-          <div className="flex min-w-0 items-baseline gap-1.5">
-            <span className="truncate font-medium text-[#111827]" title={row.original.actor_name}>
+          <div className="min-w-[130px]">
+            <span className="block font-medium text-[#111827]" title={row.original.actor_name}>
               {row.original.actor_name}
             </span>
-            {row.original.document_no ? (
-              <span className="shrink-0 text-xs text-[#667085]">{row.original.document_no}</span>
-            ) : null}
           </div>
         ),
       },
@@ -697,8 +699,11 @@ function ActivityCard({
         accessorKey: "product_name",
         header: "สินค้า / เอกสาร",
         cell: ({ row }) => (
-          <div className="truncate font-medium text-[#111827]" title={row.original.product_name}>
-            {row.original.product_name || row.original.document_no || "-"}
+          <div className="min-w-[180px]">
+            <div className="truncate font-medium text-[#111827]" title={row.original.product_name}>
+              {row.original.product_name || "-"}
+            </div>
+            {row.original.document_no ? <div className="text-xs text-[#667085]">{row.original.document_no}</div> : null}
           </div>
         ),
       },
@@ -753,7 +758,6 @@ function ActivityCard({
       <div className="flex flex-col gap-3 px-6 pb-2 pt-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
           <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">กิจกรรมวันนี้</h2>
-          <p className="text-sm 2xl:text-base text-[#667085]">รายการรับ–เบิก–โอน–ปรับยอด ของวันนี้ (ตามเวลาประเทศไทย)</p>
         </div>
         <div className="flex flex-col gap-1">
           <label
@@ -787,17 +791,16 @@ function ActivityCard({
         </div>
       ) : dashError ? (
         <div className="px-6 pb-6 pt-2">
-          <SectionStateBox tone="error" title="โหลดกิจกรรมวันนี้ไม่สำเร็จ" hint="กด “ลองโหลดอีกครั้ง” ด้านบนเพื่อลองใหม่" />
+          <SectionStateBox tone="error" title="โหลดกิจกรรมวันนี้ไม่สำเร็จ" />
         </div>
       ) : todayActivities.length === 0 ? (
         <div className="px-6 pb-6 pt-2">
-          <SectionStateBox title="ยังไม่มีกิจกรรมวันนี้" hint="กิจกรรมการรับ–เบิก–โอนย้ายของวันนี้จะแสดงที่นี่" />
+          <SectionStateBox title="ยังไม่มีกิจกรรมวันนี้" />
         </div>
       ) : visibleActivities.length === 0 ? (
         <div className="px-6 pb-6 pt-2">
           <SectionStateBox
             title="ไม่พบกิจกรรมของผู้ทำรายการที่เลือก"
-            hint="ลองเลือก “ทุกคน” เพื่อดูกิจกรรมทั้งหมดของวันนี้"
           />
         </div>
       ) : (
@@ -857,9 +860,6 @@ function ActivityCard({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col gap-0.5">
                       <span className="line-clamp-1 text-sm font-medium text-[#111827]">{item.actor_name}</span>
-                      {item.document_no ? (
-                        <span className="text-xs text-[#667085]">{item.document_no}</span>
-                      ) : null}
                     </div>
                     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeForActivity(item.action_type)}`}>
                       {item.action_label}
@@ -868,6 +868,7 @@ function ActivityCard({
                   {item.product_name ? (
                     <p className="text-sm text-[#111827]">{item.product_name}</p>
                   ) : null}
+                  {item.document_no ? <p className="text-xs text-[#667085]">เอกสาร {item.document_no}</p> : null}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-[#667085]">โกดัง</span>
@@ -875,13 +876,7 @@ function ActivityCard({
                     </div>
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-[#667085]">จำนวน</span>
-                      <span className={`text-sm font-medium tabular-nums ${
-                        item.action_type === "RECEIVE"
-                          ? "text-[#06402B]"
-                          : item.action_type === "ISSUE"
-                            ? "text-[#B42318]"
-                            : "text-[#111827]"
-                      }`}>
+                      <span className={`text-sm font-medium tabular-nums ${qtyColorClass(item.action_type)}`}>
                         {item.quantity.toLocaleString()} {item.unit}
                       </span>
                     </div>
@@ -953,11 +948,9 @@ function WarehouseLegendRow({ slice }: { slice: WarehouseDonutSlice }) {
 /* ── กล่องสถานะว่าง/ผิดพลาดของแต่ละส่วน ── */
 function SectionStateBox({
   title,
-  hint,
   tone = "empty",
 }: {
   title: string;
-  hint?: string;
   tone?: "empty" | "error";
 }) {
   return (
@@ -967,7 +960,6 @@ function SectionStateBox({
       }`}
     >
       <p className={`text-sm font-semibold ${tone === "error" ? "text-[#B42318]" : "text-[#344054]"}`}>{title}</p>
-      {hint ? <p className="mt-1 text-sm text-[#667085]">{hint}</p> : null}
     </div>
   );
 }

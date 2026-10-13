@@ -166,7 +166,7 @@ export default function TransferForm({
                 setValue("product_id", "");
               }
             }}
-            placeholder="ค้นหาชื่อสินค้า SKU หรือ บาร์โค้ด แล้วคลิกเพื่อเพิ่ม..."
+            placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
           />
         </div>
 
@@ -190,7 +190,6 @@ export default function TransferForm({
           {totalItemsCount === 0 ? (
             <div className="p-5 rounded-2xl bg-slate-50 border border-[#E8ECEA] text-center text-slate-600 text-sm font-medium space-y-1.5">
               <div className="font-bold text-slate-800 text-base">ยังไม่ได้เลือกสินค้า</div>
-              <div>ค้นหาและคลิกเลือกสินค้าในช่องด้านบน สามารถเลือกได้หลายรายการ</div>
             </div>
           ) : (
             <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-0.5">

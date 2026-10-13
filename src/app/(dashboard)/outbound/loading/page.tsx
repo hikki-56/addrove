@@ -325,7 +325,7 @@ export default function OutboundLoadingPage() {
               <div className="text-center">
                 <div className="text-4xl mb-1">⚠️</div>
                 <div className="font-bold text-slate-800">ยังมี {missingBoxes.length} กล่องที่ไม่ได้ขึ้นรถ</div>
-                <div className="text-xs text-slate-500">ต้องตัดสินทุกใบก่อนปิดรอบ — ระบุเหตุผลและเลือกผล</div>
+                <div className="text-xs text-slate-500">ระบุผลและเหตุผลให้ครบทุกใบ</div>
               </div>
               {missingBoxes.map((b) => {
                 const c = confirmations[b.box_id] ?? { outcome: "ROLLOVER" as const, reason: "" };
@@ -350,7 +350,7 @@ export default function OutboundLoadingPage() {
                       type="text"
                       value={c.reason}
                       onChange={(e) => setConfirmations((prev) => ({ ...prev, [b.box_id]: { ...c, reason: e.target.value } }))}
-                      placeholder="เหตุผล (จดผู้ยืนยัน+เวลาอัตโนมัติ)"
+                      placeholder="เหตุผล"
                       className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2 text-sm"
                     />
                   </div>
@@ -473,7 +473,7 @@ export default function OutboundLoadingPage() {
       {/* รายการรอบ */}
       {shipments.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E8ECEA] p-8 text-center text-slate-400">
-          ยังไม่มีรอบรถ — สร้างรอบแรกได้เลย
+          ยังไม่มีรอบรถ
         </div>
       ) : (
         shipments.map((s) => (
@@ -509,7 +509,7 @@ export default function OutboundLoadingPage() {
                 {s.shipment_status === "OPEN" ? "เปิดรอบ" : s.shipment_status === "LOADING" ? "กำลังขึ้นรถ" : s.shipment_status === "CLOSED" ? "ปิดรอบแล้ว" : "ยกเลิก"}
               </span>
               {s.shipment_status !== "CLOSED" && s.shipment_status !== "CANCELLED" && (
-                <span className="text-xs text-slate-400">กดเพื่อสแกนกล่อง ▶</span>
+                <span className="text-xs text-slate-400">สแกนกล่อง ▶</span>
               )}
             </div>
           </button>

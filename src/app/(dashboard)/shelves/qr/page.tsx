@@ -376,7 +376,6 @@ export default function ShelfQrPage() {
           <div className="py-20 text-center bg-white border border-[#E8ECEA] shadow-xs rounded-2xl p-8 space-y-3">
             <span className="text-4xl block">🔍</span>
             <p className="text-slate-800 font-bold text-base">ไม่พบข้อมูลชั้นวางสินค้า</p>
-            <p className="text-slate-500 text-xs">ลองเปลี่ยนคำค้นหา หรือเลือกโกดังอื่น</p>
           </div>
         ) : selectedLevel === "ALL" && groupedByLevel.length > 1 ? (
           <div className="space-y-8">

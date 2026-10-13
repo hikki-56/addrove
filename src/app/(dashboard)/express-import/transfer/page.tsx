@@ -1294,7 +1294,6 @@ export default function ExpressTransferPage() {
               </svg>
             </div>
             <h3 className="text-base font-bold text-slate-800 mb-1">ไม่พบรายการย้ายสินค้าที่ตรงกับเงื่อนไข</h3>
-            <p className="text-slate-500 text-xs sm:text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาหรือตัวกรองแท็ก</p>
           </div>
         ) : (
           /* Table View */
@@ -1472,9 +1471,6 @@ export default function ExpressTransferPage() {
                 {selectedItemIds.size} รายการ
               </span>
             </h3>
-            <p className="text-xs text-slate-500">
-              ระบุชื่อแท็กหรือกลุ่มข้อมูลสำหรับจัดเก็บรายการย้ายสินค้านี้ เช่น &quot;โอนย้ายไปสาขา B&quot;, &quot;ล็อตย้ายด่วน&quot;
-            </p>
 
             <input
               type="text"
