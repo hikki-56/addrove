@@ -282,12 +282,21 @@ export async function submitTransferMove(
   docId: string,
   input: SubmitTransferMoveInput
 ): Promise<Document> {
+  const verifySubmission = async (documentId: string): Promise<Document> => {
+    // A successful writer response is not proof that the row changed. The old
+    // Apps Script importer acknowledged update requests without writing them.
+    const persisted = await deps.repo.documents.findById(documentId, { forceFresh: true });
+    if (!persisted || !["WAITING_APPROVAL", "COMPLETED"].includes(persisted.status)) {
+      throw new InvalidTransferStateError("ยังบันทึกการส่งงานไม่สำเร็จ กรุณาลองส่งใบเดิมอีกครั้ง ไม่ต้องย้ายสินค้าซ้ำ");
+    }
+    return persisted;
+  };
   if (deps.repo.documents.mutate) {
     const updated = await deps.repo.documents.mutate(docId, (doc) =>
       buildTransferSubmissionUpdates(doc, input)
     );
     if (!updated) throw new StockNotFoundError("ไม่พบเอกสารใบย้ายสินค้า");
-    return updated;
+    return verifySubmission(updated.document_id);
   }
 
   const doc =
@@ -305,7 +314,7 @@ export async function submitTransferMove(
     await deps.repo.documents.updateStatus(doc.document_id, "WAITING_APPROVAL");
   }
 
-  return { ...doc, ...updates };
+  return verifySubmission(doc.document_id);
 }
 
 export async function completeTransfer(

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
 }
 
 /** POST /api/outbound/shipments — สร้างรอบรถ (เลือกทะเบียน + บิล → รู้ Expected กล่องรวม) */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
@@ -71,3 +72,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

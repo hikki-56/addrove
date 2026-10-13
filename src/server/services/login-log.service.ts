@@ -2,6 +2,7 @@ import { readSheet, appendRows, SHEETS } from "@/server/google-sheets/client";
 import { getRepository } from "@/server/repositories";
 import { getWarehouseName } from "@/lib/warehouse-utils";
 import type { LoginLog, UserRole } from "@/types/models";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
 
 // In-memory fallback cache for when durable storage is temporarily read
 let cachedSheetLogs: LoginLog[] = [];
@@ -41,6 +42,7 @@ export async function recordLoginLog(
   try {
     await appendRows(SHEETS.LOGIN_LOGS, [logRow]);
   } catch (err) {
+    if (getStorageDriver() === "postgres") throw err;
     console.error("[Login Log] Error saving to durable storage:", err);
     // In production or test, keep track in memory if sheets writer encounters an issue
     cachedSheetLogs.unshift(newLog);

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -10,7 +11,7 @@ import { successResponse } from "@/server/api-response";
 export const maxDuration = 60;
 
 // POST /api/production/jobs/[job_no]/start — APPROVER เริ่มผลิต: WAITING → IN_PROGRESS + แจ้ง ADMIN
-export async function POST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_REPORT);
     if (!guard.ok) return guard.response;
@@ -22,3 +23,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ job
     return productionErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/production/jobs — สร้างงานฉบับร่าง (ADMIN) หลายงานพร้อมกันได้
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_MANAGE);
     if (!guard.ok) return guard.response;
@@ -47,3 +48,5 @@ export async function POST(req: NextRequest) {
     return productionErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

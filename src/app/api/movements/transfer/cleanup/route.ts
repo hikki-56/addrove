@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import {
@@ -14,7 +15,7 @@ import {
  * จะทำลายความถูกต้องของบัญชีคุมสต็อก (Inventory Ledger Integrity), ยอดคงเหลือทางบัญชี (Balance Integrity)
  * และประวัติการตรวจสอบย้อนกลับ (Audit Trail)
  */
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -38,3 +39,5 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+
+export const DELETE = withStorageRequest(handleDELETE);

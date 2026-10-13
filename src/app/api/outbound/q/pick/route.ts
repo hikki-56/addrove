@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -37,7 +38,7 @@ const QPickActionSchema = z.object({
  *  - confirm-item: สแกนสินค้ายืนยัน 1 ชิ้น (สินค้าผิด/เกินจำนวนโดนปฏิเสธ)
  *  - report-problem: แจ้งหัวหน้าปัญหาของรายการในกล่องนั้น
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -96,3 +97,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -149,7 +150,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -467,11 +468,13 @@ export async function POST(req: NextRequest) {
         updated_at: now,
       },
       allSheetSynced
-        ? "อัปเดตสถานะ Express ทั้งบนระบบและ Google Sheet เรียบร้อยแล้ว"
-        : "อัปเดตสถานะบนระบบแล้ว แต่ยังเขียน Google Sheet ไม่ครบทุกแถว"
+        ? "อัปเดตสถานะ Express เรียบร้อยแล้ว"
+        : "อัปเดตสถานะแล้ว แต่ยังบันทึกรายการไม่ครบทุกแถว"
     );
   } catch (error) {
     console.error("[POST /api/express-import/status] Error:", error);
     return serverErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

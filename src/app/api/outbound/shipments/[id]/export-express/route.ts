@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -32,7 +33,7 @@ export const maxDuration = 60;
  * กันซ้ำ 2 ชั้น: express_synced_at ทั้งของรอบและของแต่ละบิล
  * (บิล partial ที่กล่อง rollover ไปรอบถัดไปจะไม่ถูกส่งซ้ำอีก)
  */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -133,3 +134,5 @@ export async function POST(
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

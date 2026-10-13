@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           err
         );
         return errorResponse(
-          "โหลดข้อมูล Dashboard ไม่สำเร็จ: อ่านข้อมูลจาก Google Sheets ไม่ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง",
+          "โหลดข้อมูล Dashboard ไม่สำเร็จ: อ่านข้อมูลไม่ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง",
           503
         );
       }

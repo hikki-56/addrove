@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getRepository } from "@/server/repositories";
 import { CreateShelfSchema } from "@/types/api";
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -56,3 +57,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

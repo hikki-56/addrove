@@ -1,3 +1,4 @@
+import { getStorageDriver } from "@/server/repositories/storage-driver";
 const MIN_SECRET_LENGTH = 32;
 
 function normalizeSecret(value: string | undefined): string | undefined {
@@ -76,6 +77,17 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
     }
   }
 
+  if (getStorageDriver() === "postgres") {
+    const databaseUrl = normalizeSecret(process.env.DATABASE_URL);
+    if (!databaseUrl) errors.push("DATABASE_URL is required for PostgreSQL storage");
+    else {
+      try {
+        const url = new URL(databaseUrl);
+        if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.username || !url.password) errors.push("DATABASE_URL must contain PostgreSQL server credentials");
+      } catch { errors.push("DATABASE_URL is invalid"); }
+    }
+    return { valid: errors.length === 0, errors };
+  }
   const sheetId = normalizeSecret(process.env.GOOGLE_SHEET_ID);
   if (!sheetId) {
     errors.push("GOOGLE_SHEET_ID is required for storage");

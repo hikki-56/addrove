@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -77,7 +78,7 @@ export async function GET(
  *  - cancel: ยกเลิก (ได้เฉพาะร่าง)
  *  - resolve-shortage: ตัดสินใบงานของไม่ครบ (REDUCE_QTY / CANCEL + คืนสต็อก)
  */
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -136,3 +137,5 @@ export async function PATCH(
     return serverErrorResponse(e);
   }
 }
+
+export const PATCH = withStorageRequest(handlePATCH);

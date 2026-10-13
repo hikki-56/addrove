@@ -1,6 +1,7 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextResponse } from "next/server";
 
-export async function POST() {
+async function handlePOST() {
   const response = NextResponse.json({ success: true, message: "ออกจากระบบสำเร็จ" });
   const cookieOptions = {
     httpOnly: true,
@@ -21,3 +22,5 @@ export async function POST() {
 
   return response;
 }
+
+export const POST = withStorageRequest(handlePOST);

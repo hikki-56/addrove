@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { getRepository } from "@/server/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -42,7 +43,7 @@ function verifyPassword(password: string, hash: string): boolean {
   return false;
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const body = await req.json();
     const { email, password } = body;
@@ -154,3 +155,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

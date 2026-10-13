@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -21,7 +22,7 @@ import { cleanExpressCode, expressItemKey, todayBangkokIsoDate } from "@/lib/exp
 
 export const maxDuration = 60;
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -265,68 +266,8 @@ export async function POST(
       setDocumentStatus(doc.document_id, "POSTED");
       setDocumentStatus(doc.document_no, "POSTED");
 
-      // ซิงก์ลงแท็บโกดัง "ทีละรายการ" เท่านั้น — เขียนขนานพร้อมกันทีเดียวทั้งเอกสาร
-      // (แบบเดิม) ทำให้ Apps Script รับงานพร้อมกันหลายงานและมีรายการถูกทิ้ง
-      // โดยไม่มี error เกิดขึ้น (เกิดขึ้นจริงกับ RCV ที่มีหลายสิบรายการ: หาย 5 จาก 14)
-      // รายการที่ syncAdd retry ครบแล้วยังล้มจะถูกจดไว้ใน note ของเอกสารเพื่อไล่แก้ทีหลัง
-      const warehouseSyncFailures: Array<{
-        product_id: string;
-        sku: string;
-        product_name: string;
-        qty: number;
-        location_id: string;
-        target_sheet: string;
-        error: string;
-      }> = [];
-
-      if (repo.warehouseSync) {
-        const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
-
-        for (let idx = 0; idx < createdMovements.length; idx++) {
-          const mov = createdMovements[idx];
-          let skuVal = mov.product_id.replace(/^prod-/, "");
-          let nameVal = skuVal;
-          try {
-            const prod =
-              (await repo.products.findById(mov.product_id)) ||
-              (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")));
-
-            const rowData = parsedPayload.rows && parsedPayload.rows[idx] ? parsedPayload.rows[idx] : null;
-
-            skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
-            nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
-            const barcodeVal = prod?.barcode || (rowData ? String(rowData[2] ?? "") : skuVal);
-            const supplierVal = prod?.supplier || (rowData ? String(rowData[6] ?? "") : "รับสินค้าเข้าคลัง");
-            const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "");
-
-            await repo.warehouseSync!.syncAdd(
-              targetWh,
-              {
-                sku: skuVal,
-                barcode: barcodeVal,
-                product_name: nameVal,
-                category: prod?.category || "ทั่วไป",
-                base_unit: prod?.base_unit || "ชิ้น",
-                supplier: supplierVal,
-              },
-              mov.qty_change,
-              locVal
-            );
-          } catch (syncErr) {
-            console.error("[Approve Route] warehouseSync.syncAdd error:", syncErr);
-            warehouseSyncFailures.push({
-              product_id: mov.product_id,
-              sku: skuVal,
-              product_name: nameVal,
-              qty: Number(mov.qty_change) || 0,
-              location_id: mov.location_id || "",
-              target_sheet: targetWh,
-              error: syncErr instanceof Error ? syncErr.message : String(syncErr),
-            });
-          }
-        }
-      }
-
+      // Persist the Express queue before the slow warehouse sync. The approved
+      // document is also a queue source if either Express write is interrupted.
       // Automatically record into Google Sheets Tab: "รับสินค้าเข้าExpress" / "นำเข้าสินค้าเข้าExpress"
       try {
         const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
@@ -407,7 +348,9 @@ export async function POST(
           currentMeta.express_sheet_error = expressSheetError;
           currentMeta.express_sheet_failed_at = nowIso;
         }
-        await repo.documents.updateNote(doc.document_id, JSON.stringify(currentMeta)).catch(() => {});
+        await repo.documents.updateNote(doc.document_id, JSON.stringify(currentMeta)).catch((error) => {
+          console.warn("[approve] Express metadata persistence failed:", doc.document_id, error);
+        });
 
         // Update in-memory expressStatusMap — ระดับรายการ (docno|sku) คือตัวตัดสินแสดงผล
         const entry = {
@@ -425,13 +368,75 @@ export async function POST(
         console.warn("[approve] Auto-append to EXPRESS_RECEIVE sheet warning:", sheetErr);
       }
 
+      // ซิงก์ลงแท็บโกดัง "ทีละรายการ" เท่านั้น — เขียนขนานพร้อมกันทีเดียวทั้งเอกสาร
+      // (แบบเดิม) ทำให้ Apps Script รับงานพร้อมกันหลายงานและมีรายการถูกทิ้ง
+      // โดยไม่มี error เกิดขึ้น (เกิดขึ้นจริงกับ RCV ที่มีหลายสิบรายการ: หาย 5 จาก 14)
+      // รายการที่ syncAdd retry ครบแล้วยังล้มจะถูกจดไว้ใน note ของเอกสารเพื่อไล่แก้ทีหลัง
+      const warehouseSyncFailures: Array<{
+        product_id: string;
+        sku: string;
+        product_name: string;
+        qty: number;
+        location_id: string;
+        target_sheet: string;
+        error: string;
+      }> = [];
+
+      if (repo.warehouseSync) {
+        const targetWh = (doc.note && doc.note.includes("target_sheet") ? JSON.parse(doc.note).target_sheet : null) || warehouseId;
+
+        for (let idx = 0; idx < createdMovements.length; idx++) {
+          const mov = createdMovements[idx];
+          let skuVal = mov.product_id.replace(/^prod-/, "");
+          let nameVal = skuVal;
+          try {
+            const prod =
+              (await repo.products.findById(mov.product_id)) ||
+              (await repo.products.findBySku(mov.product_id.replace(/^prod-/, "")));
+
+            const rowData = parsedPayload.rows && parsedPayload.rows[idx] ? parsedPayload.rows[idx] : null;
+
+            skuVal = prod?.sku || (rowData ? String(rowData[0] ?? "") : mov.product_id.replace(/^prod-/, ""));
+            nameVal = prod?.product_name || (rowData ? String(rowData[3] ?? "") : skuVal);
+            const barcodeVal = prod?.barcode || (rowData ? String(rowData[2] ?? "") : skuVal);
+            const supplierVal = prod?.supplier || (rowData ? String(rowData[6] ?? "") : "รับสินค้าเข้าคลัง");
+            const locVal = mov.location_id || (rowData ? String(rowData[1] ?? "") : "");
+
+            await repo.warehouseSync!.syncAdd(
+              targetWh,
+              {
+                sku: skuVal,
+                barcode: barcodeVal,
+                product_name: nameVal,
+                category: prod?.category || "ทั่วไป",
+                base_unit: prod?.base_unit || "ชิ้น",
+                supplier: supplierVal,
+              },
+              mov.qty_change,
+              locVal
+            );
+          } catch (syncErr) {
+            console.error("[Approve Route] warehouseSync.syncAdd error:", syncErr);
+            warehouseSyncFailures.push({
+              product_id: mov.product_id,
+              sku: skuVal,
+              product_name: nameVal,
+              qty: Number(mov.qty_change) || 0,
+              location_id: mov.location_id || "",
+              target_sheet: targetWh,
+              error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+            });
+          }
+        }
+      }
+
       // จดรายการที่ซิงก์ลงแท็บโกดังไม่สำเร็จไว้ในเอกสาร — กันข้อมูลหายเงียบ ๆ
       // (อ่าน note ล่าสุดจากชีตมา merge เพราะบล็อก Express เพิ่งเขียน note ไป)
       if (warehouseSyncFailures.length > 0) {
         try {
           const freshDoc =
-            (await repo.documents.findById(doc.document_id)) ||
-            (await repo.documents.findByNo(doc.document_no || "").catch(() => null));
+            (await repo.documents.findById(doc.document_id, { forceFresh: true })) ||
+            (await repo.documents.findByNo(doc.document_no || "", { forceFresh: true }).catch(() => null));
           let meta: Record<string, any> = {};
           try {
             if (freshDoc?.note && freshDoc.note.startsWith("{")) meta = JSON.parse(freshDoc.note);
@@ -477,3 +482,5 @@ export async function POST(
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -13,7 +14,7 @@ export const maxDuration = 60;
 
 // POST /api/production/jobs/[job_no]/report — APPROVER รายงานผล (บางส่วน/จบงาน)
 // กันกดยืนยันซ้ำด้วย idempotency_key · เพิ่มสต็อกผลิตดีเข้าโกดัง 2 ครั้งเดียวต่อรายงาน · แจ้ง ADMIN ทันที
-export async function POST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_REPORT);
     if (!guard.ok) return guard.response;
@@ -35,3 +36,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ job
     return productionErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

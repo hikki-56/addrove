@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession } from "@/server/security";
@@ -13,7 +14,7 @@ import {
 
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
@@ -78,3 +79,5 @@ export async function POST(req: NextRequest) {
     return mapStockErrorToResponse(e) || serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

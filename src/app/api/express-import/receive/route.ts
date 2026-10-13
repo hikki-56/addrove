@@ -1,7 +1,9 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
+import { isProductionOrderDocument } from "@/server/legacy-prd-filter";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
 import { getWarehouseName, normalizeWarehouseId } from "@/lib/warehouse-utils";
@@ -30,6 +32,20 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function isApprovedReceiveDocument(doc: {
+  document_type?: string;
+  status?: string;
+  document_id?: string;
+  document_no?: string;
+  reference_no?: string;
+  note?: string;
+}): boolean {
+  const type = (doc.document_type || "").trim().toUpperCase();
+  if (type !== "RECEIVE" && type !== "RCV") return false;
+  if (isProductionOrderDocument(doc)) return false;
+  return ["COMPLETED", "POSTED", "APPROVED"].includes((doc.status || "").trim().toUpperCase());
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
@@ -43,6 +59,19 @@ export async function GET(req: NextRequest) {
     }
 
     const repo = getRepository();
+    // Native movements store location IDs; document/import rows can store codes.
+    // Resolve both against the same warehouse before displaying or matching them.
+    const locationCodes = new Map<string, string>();
+    const locationKey = (warehouse: string, location: string) =>
+      JSON.stringify([normalizeWarehouseId(warehouse), location.trim().toUpperCase()]);
+    for (const location of await repo.locations.findAll()) {
+      const code = location.location_code || location.location_id;
+      for (const alias of [location.location_id, location.location_code]) {
+        if (alias) locationCodes.set(locationKey(location.warehouse_id, alias), code);
+      }
+    }
+    const canonicalLocation = (warehouse: string, location: string) =>
+      locationCodes.get(locationKey(warehouse, location)) || location.trim();
     const items: Array<{
       id: string;
       movement_id: string;
@@ -62,11 +91,12 @@ export async function GET(req: NextRequest) {
       status: "PENDING" | "IMPORTED";
     }> = [];
 
-    // Semantic identity of one line item = (เลขที่เอกสาร, SKU) หลัง normalize
+    // Match individual allocations, including repeated rows of the same SKU.
     // ใช้จับคู่แถวในชีตกับเอกสารในระบบที่เป็น "ข้อมูลชุดเดียวกัน" เพื่อกันการแสดงซ้ำ
     // (รายการที่โพสต์แล้วถูกเขียนลงชีตอัตโนมัติ แล้ว endpoint นี้ดึงทั้งชีตและเอกสารมา)
-    const semanticKey = (docNo: string, sku: string) => `${cleanExpressCode(docNo)}|${cleanExpressCode(sku)}`;
-    const emittedSemanticKeys = new Set<string>();
+    const semanticKey = (docNo: string, sku: string, warehouse: string, location: string, quantity: number) =>
+      JSON.stringify([cleanExpressCode(docNo), cleanExpressCode(sku), normalizeWarehouseId(warehouse), canonicalLocation(warehouse, location).toUpperCase(), quantity]);
+    const sheetLineCounts = new Map<string, number>();
 
     // 1. Preload master product catalog from PRODUCTS sheet and Warehouse tabs
     const productCatalogMap = new Map<string, { sku: string; barcode: string; name: string; location: string }>();
@@ -147,7 +177,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const finalLocation = (rawLocation && rawLocation !== "-" && rawLocation !== "A1") ? rawLocation : (matched?.location || rawLocation || "-");
+      const finalLocation = (rawLocation && rawLocation !== "-") ? rawLocation : (matched?.location || rawLocation || "-");
 
       return {
         sku: finalSku,
@@ -159,19 +189,16 @@ export async function GET(req: NextRequest) {
 
     // 2. Preload documents map
     const allDocsMap = new Map<string, any>();
-    let allDocsList: any[] = [];
-    try {
-      const allDocs = await repo.documents.findAll({ page: 1, limit: 9999 });
-      allDocsList = allDocs.data || [];
-      allDocsList.forEach((doc) => {
-        const docIdKey = (doc.document_id || "").trim().toLowerCase();
-        const docNoKey = (doc.document_no || "").trim().toLowerCase();
-        if (docIdKey) allDocsMap.set(docIdKey, doc);
-        if (docNoKey) allDocsMap.set(docNoKey, doc);
-      });
-    } catch (e) {
-      console.warn("[GET /api/express-import/receive] Preload all docs error:", e);
-    }
+    // A failed document read cannot be treated as an empty queue: documents
+    // contain approved receipts that may never have reached the Express sheet.
+    const allDocs = await repo.documents.findAll({ page: 1, limit: Number.MAX_SAFE_INTEGER });
+    const allDocsList = allDocs.data || [];
+    allDocsList.forEach((doc) => {
+      const docIdKey = (doc.document_id || "").trim().toLowerCase();
+      const docNoKey = (doc.document_no || "").trim().toLowerCase();
+      if (docIdKey) allDocsMap.set(docIdKey, doc);
+      if (docNoKey) allDocsMap.set(docNoKey, doc);
+    });
 
     // 3. Read Google Sheets tab "รับสินค้าเข้าExpress" / "นำเข้าสินค้าเข้าExpress"
     try {
@@ -254,7 +281,10 @@ export async function GET(req: NextRequest) {
         if (!docNo) docNo = `RCV-SH-${i + 1}`;
 
         const docNoKey = docNo.toLowerCase();
+        const linkedDocument = allDocsMap.get(docNoKey);
+        if (linkedDocument && !isApprovedReceiveDocument(linkedDocument)) continue;
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
+        enriched.location = canonicalLocation(whName, enriched.location);
 
         // สถานะตัดสินที่ระดับ "รายการ" — คิว: สถานะที่เพิ่งกด (memory, คีย์ docno|sku) → ข้อความในเซลล์ → PENDING
         // เดิมอ่าน map ด้วยเลขเอกสารเฉย ๆ และตรวจ "มีคำว่า แล้ว" ก่อน "รอนำเข้า"
@@ -265,8 +295,9 @@ export async function GET(req: NextRequest) {
         const rowStatus: ExpressSyncStatusValue = memItemStatus || cellStatus || "PENDING";
         const uniqueKey = `sheet_rec_${docNoKey}_${enriched.sku}_${i}`;
 
-        // แถวจากชีตมาก่อน ถือเป็นตัวแทนของรายการนี้ — จด key ไว้เพื่อให้ลูปเอกสารข้ามของซ้ำ
-        emittedSemanticKeys.add(semanticKey(docNoKey, enriched.sku));
+        // A partial sheet write must not hide the document's remaining allocations.
+        const lineKey = semanticKey(docNoKey, enriched.sku, whName, enriched.location, qtyVal);
+        sheetLineCounts.set(lineKey, (sheetLineCounts.get(lineKey) || 0) + 1);
 
         items.push({
           id: uniqueKey,
@@ -291,20 +322,15 @@ export async function GET(req: NextRequest) {
       console.warn("[GET /api/express-import/receive] Read EXPRESS_RECEIVE sheet warning:", sheetErr);
     }
 
-    // 4. Ingest approved receive documents with express tag from repo.documents (if not already in sheet)
-    //    ต้องเป็นเอกสาร RECEIVE จริง และมี marker express แบบเจาะจง —
-    //    เดิมยอมให้ "note มี target_sheet" รวมทั้ง substring "express" กว้าง ๆ
-    //    ทำให้เอกสารประเภทอื่นที่ note มีคำเหล่านั้นหลุดมาแสดงในหน้ารับสินค้า
-    const expressReceiveDocs = allDocsList.filter((d) => {
-      const isReceive = (d.document_type || "").toUpperCase().includes("RECEIVE");
-      if (!isReceive) return false;
-      const isCompleted = d.status === "COMPLETED" || d.status === "POSTED" || d.status === "APPROVED";
-      if (!isCompleted) return false;
-      const note = d.note || "";
-      return note.includes("express_tag") || note.includes("express_status") || note.includes("express_items");
-    });
+    // 4. Approval itself puts a receive document in the Express queue. Express
+    // metadata/sheet writes may be interrupted, so they cannot be prerequisites.
+    const expressReceiveDocs = allDocsList.filter(isApprovedReceiveDocument);
 
+    const seenDocuments = new Set<string>();
     for (const doc of expressReceiveDocs) {
+      const documentKey = doc.document_id || doc.document_no;
+      if (seenDocuments.has(documentKey)) continue;
+      seenDocuments.add(documentKey);
       let parsedPayload: any = {};
       try {
         if (doc.note && doc.note.startsWith("{")) {
@@ -321,7 +347,7 @@ export async function GET(req: NextRequest) {
         parsedPayload.express_items && typeof parsedPayload.express_items === "object" ? parsedPayload.express_items : {};
       const rows: any[][] = Array.isArray(parsedPayload.rows) ? parsedPayload.rows : [];
       const legacyDocStatus = rows.length === 1 ? parsedPayload.express_status : undefined;
-      const targetWh = parsedPayload.target_sheet || doc.warehouse_id || "โกดัง 1";
+      const targetWh = parsedPayload.target_sheet || parsedPayload.warehouse_id || "โกดัง 1";
       const docDate = doc.document_date || (doc.created_at || new Date().toISOString()).slice(0, 10);
 
       rows.forEach((row, rowIdx) => {
@@ -334,6 +360,7 @@ export async function GET(req: NextRequest) {
         if (!rawSku && !rawBcode && !rawName) return;
 
         const enriched = enrichProduct(rawSku, rawBcode, rawName, rawLoc);
+        enriched.location = canonicalLocation(targetWh, enriched.location);
         const uniqueKey = `doc_rec_${docNoKey}_${enriched.sku}_${rowIdx}`;
 
         // คิวสถานะรายรายการ: memory (เพิ่งกด) → note.express_items[sku] → มรดกระดับเอกสาร (เฉพาะ 1 รายการ) → PENDING
@@ -345,12 +372,12 @@ export async function GET(req: NextRequest) {
           (legacyDocStatus === "IMPORTED" ? "IMPORTED" : undefined) ||
           "PENDING";
 
-        // ข้ามถ้าชีตมีรายการ (เลขที่เอกสาร, SKU) นี้อยู่แล้ว หรือ record เอกสารซ้ำกันเอง
-        // เดิมเทียบด้วย uniqueKey ที่ฝัง document_id/ลำดับแถว ทำให้ไม่มีวันตรงกัน
-        // และข้อมูลเดิมปรากฏซ้ำทั้งจากชีตและจากเอกสาร
-        const sKey = semanticKey(docNoKey, enriched.sku);
-        if (emittedSemanticKeys.has(sKey)) return;
-        emittedSemanticKeys.add(sKey);
+        const sKey = semanticKey(docNoKey, enriched.sku, targetWh, enriched.location, qtyVal);
+        const sheetCount = sheetLineCounts.get(sKey) || 0;
+        if (sheetCount > 0) {
+          sheetLineCounts.set(sKey, sheetCount - 1);
+          return;
+        }
 
         items.push({
           id: uniqueKey,
@@ -388,7 +415,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -472,3 +499,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

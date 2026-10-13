@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -24,7 +25,7 @@ export const maxDuration = 60;
  * POST /api/outbound/bills/[id]/approve — แอดมินอนุมัติบิล (ยืนยันจำนวนที่หยิบ → ตัดสต็อก)
  * { outcome: "APPROVE" } | { outcome: "REJECT", reject_to: "REPICK" | "CANCEL" }
  */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -80,3 +81,5 @@ export async function POST(
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

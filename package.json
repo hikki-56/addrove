@@ -11,7 +11,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand --config jest.config.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --config jest.config.js",
+    "database:export": "tsx scripts/database/export-sheets.ts",
+    "database:preflight": "tsx scripts/database/import-snapshot.ts",
+    "database:import": "tsx scripts/database/import-snapshot.ts --apply",
     "test:employee-performance": "node scripts/performance/employee-performance.mjs",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build"
   },
@@ -28,6 +31,7 @@
     "next": "16.3.4",
     "next-auth": "^5.0.0-beta.32",
     "pdf-parse": "^2.4.5",
+    "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -38,10 +42,12 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^30.0.0",
     "@types/jsbarcode": "^3.11.4",
     "@types/node": "^24",
+    "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -51,6 +57,7 @@
     "jest-environment-node": "^30.4.1",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.12",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

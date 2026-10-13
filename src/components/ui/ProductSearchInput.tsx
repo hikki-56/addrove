@@ -243,7 +243,7 @@ export default function ProductSearchInput({
 
           <div className="px-3.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 border-b border-[#E8ECEA] flex justify-between items-center">
             <span>
-              {/^\d{4}$/.test(query.trim()) ? "ผลลัพธ์ค้นหาจาก 4 ตัวท้ายบาร์โค้ด" : "รายการสินค้า (จาก Google Sheet)"}
+              {/^\d{4}$/.test(query.trim()) ? "ผลลัพธ์ค้นหาจาก 4 ตัวท้ายบาร์โค้ด" : "รายการสินค้า"}
             </span>
             <span className="text-[#06402B] font-mono font-bold">
               {filteredProducts.length > 50

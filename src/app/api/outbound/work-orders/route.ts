@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
 }
 
 /** POST /api/outbound/work-orders — Admin สร้างร่างใบงาน Q */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -111,3 +112,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

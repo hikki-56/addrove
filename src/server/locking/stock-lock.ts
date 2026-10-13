@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { ILockProvider, defaultLockProvider, StockLockTimeoutError } from "./lock-provider";
 import { normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
+import { withStorageTransaction } from "@/server/storage-transaction";
 
 export { StockLockTimeoutError };
 
@@ -41,6 +43,7 @@ export async function withStockLocks<T>(
   action: () => Promise<T>,
   options: StockLockOptions = {}
 ): Promise<T> {
+  if (getStorageDriver() === "postgres") return withStorageTransaction(action);
   const provider = options.provider || defaultLockProvider;
   const timeoutMs = options.timeoutMs ?? 10000;
 

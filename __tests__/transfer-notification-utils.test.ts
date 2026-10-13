@@ -6,6 +6,9 @@ import {
   updateTransferTaskProgress,
   whenTransferProgressSettled,
   fetchAndSyncTransferNotifications,
+  getTransferNotifications,
+  isTransferCompleted,
+  unmarkTransferCompleted,
 } from "@/lib/transfer-notification-utils";
 import { detectWarehouseFromLocation, getWarehouseDisplayName } from "@/lib/warehouse-utils";
 import type { Product } from "@/types/models";
@@ -36,6 +39,83 @@ describe("transfer notifications & warehouse detection", () => {
     delete (globalThis as any).window;
     delete (globalThis as any).localStorage;
     delete (globalThis as any).sessionStorage;
+  });
+
+  it("syncs a large completion history once without flooding shared UI subscribers", () => {
+    const pending = { document_id: "pending-fixture", document_no: "TRF-PENDING", status: "PENDING",
+      product_id: "prod-fixture", sku: "SKU-FIXTURE", product_name: "Fixture", created_at: new Date().toISOString() };
+    const history = Array.from({ length: 800 }, (_, i) => ({
+      ...pending, document_id: `completed-${i}`, document_no: `TRF-${i}`,
+      status: ["COMPLETED", "CANCELLED", "REJECTED", "POSTED"][i % 4],
+    }));
+    const read = jest.spyOn(localStorage, "getItem");
+    const write = jest.spyOn(localStorage, "setItem");
+    const dispatch = jest.spyOn(window, "dispatchEvent").mockImplementation(() => {
+      // Sidebar and Navbar both synchronously read notifications on this event.
+      getPendingTransferNotifications();
+      getPendingTransferNotifications();
+      return true;
+    });
+
+    syncServerTransferNotifications([...history, pending]);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls.length).toBeLessThanOrEqual(8);
+    expect(getPendingTransferNotifications().map((task) => task.id)).toEqual([pending.document_id]);
+    expect(isTransferCompleted("COMPLETED-0")).toBe(true);
+    expect(isTransferCompleted("completed-1")).toBe(true);
+    expect(isTransferCompleted("completed-2")).toBe(true);
+
+    read.mockClear(); write.mockClear(); dispatch.mockClear();
+    syncServerTransferNotifications([...history, pending]);
+    expect(write).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(read.mock.calls.length).toBeLessThanOrEqual(3);
+
+    // A new completion still removes the task and updates both UI consumers once.
+    syncServerTransferNotifications([...history, { ...pending, status: "COMPLETED" }]);
+    expect(getPendingTransferNotifications()).toEqual([]);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads completion IDs once per notification list and respects rollback and document numbers", () => {
+    localStorage.setItem("stockify_completed_transfers", JSON.stringify([" DOC-1 ", "trf-0002"]));
+    localStorage.setItem("stockify_transfer_notifications", JSON.stringify([
+      { id: "doc-1", doc_no: "TRF-0001", status: "PENDING" },
+      { id: "doc-2", doc_no: "TRF-0002", status: "PENDING" },
+      { id: "doc-3", doc_no: "TRF-0003", status: "PENDING" },
+    ]));
+    const read = jest.spyOn(localStorage, "getItem");
+    expect(getTransferNotifications().filter((task) => task.status === "COMPLETED")).toHaveLength(2);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(getPendingTransferNotifications().map((task) => task.id)).toEqual(["doc-3"]);
+    unmarkTransferCompleted("doc-1");
+    expect(isTransferCompleted("doc-1")).toBe(false);
+    expect(getTransferNotifications().find((task) => task.id === "doc-1")?.status).toBe("WAITING_APPROVAL");
+  });
+
+  it("removes posted ledger history and cached legacy references from the picking queue", () => {
+    const legacyNote = JSON.stringify({ kind: "LEGACY_IMPORT_REFERENCE" });
+    const pending = { document_id: "real-pending", document_no: "TRF-NEW", status: "PENDING",
+      product_id: "prod-fixture", sku: "SKU-FIXTURE", product_name: "Fixture", created_at: new Date().toISOString() };
+    localStorage.setItem("stockify_transfer_notifications", JSON.stringify([
+      { id: "legacy-posted", doc_no: "LEGACY-fixture", status: "PENDING", note: legacyNote },
+      { id: "posted-transfer", doc_no: "TRF-OLD", status: "PENDING" },
+    ]));
+    // The legacy task cached by the previous version is hidden even before polling.
+    expect(getTransferNotifications().some((task) => task.id === "legacy-posted")).toBe(false);
+    syncServerTransferNotifications([
+      { document_id: "legacy-posted", document_no: "LEGACY-fixture", status: "POSTED", note: legacyNote },
+      { document_id: "legacy-reference", document_no: "LEGACY-reference", status: "PENDING", note: legacyNote },
+      { ...pending, document_id: "posted-transfer", document_no: "TRF-OLD", status: "POSTED" },
+      pending,
+      { ...pending, document_id: "real-waiting", document_no: "TRF-WAITING", status: "WAITING_APPROVAL" },
+    ]);
+    expect(getPendingTransferNotifications().map((task) => task.id)).toEqual(["real-pending"]);
+    expect(getTransferNotifications().find((task) => task.id === "real-waiting")?.status).toBe("WAITING_APPROVAL");
+    expect(isTransferCompleted("posted-transfer")).toBe(true);
+    expect(isTransferCompleted("legacy-posted")).toBe(true);
+    expect(isTransferCompleted("legacy-reference")).toBe(true);
   });
 
   it("shares a slow notification request across subscribers and permits refresh after completion", async () => {

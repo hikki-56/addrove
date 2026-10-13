@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -13,7 +14,7 @@ import {
   errorResponse,
 } from "@/server/api-response";
 
-export async function PUT(
+async function handlePUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -150,3 +151,5 @@ export async function PUT(
     return serverErrorResponse(e);
   }
 }
+
+export const PUT = withStorageRequest(handlePUT);

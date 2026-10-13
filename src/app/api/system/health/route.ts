@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { validateEnvironment } from "@/server/server-secrets";
 import { readSheet, SHEETS } from "@/server/google-sheets/client";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
+  const driver = getStorageDriver();
   const envCheck = validateEnvironment();
   let storageStatus = "UNCHECKED";
   let storageError: string | null = null;
@@ -15,7 +17,9 @@ export async function GET() {
 
   // 1. Google Sheets read check
   try {
-    const rows = await readSheet(SHEETS.WAREHOUSES, "A1:B2");
+    const rows = driver === "postgres"
+      ? await (await import("@/server/repositories/postgres/database")).query("SELECT 1 AS connected")
+      : await readSheet(SHEETS.WAREHOUSES, "A1:B2");
     storageStatus = Array.isArray(rows) ? "CONNECTED" : "UNREACHABLE";
   } catch (err: unknown) {
     storageStatus = "ERROR";
@@ -23,7 +27,9 @@ export async function GET() {
   }
 
   // 2. Apps Script signed ping check (if configured)
-  if (process.env.GOOGLE_SCRIPT_URL) {
+  if (driver === "postgres") {
+    appsScriptStatus = "SKIPPED";
+  } else if (process.env.GOOGLE_SCRIPT_URL) {
     try {
       // Dynamic import to avoid bundling crypto in client code
       const { isLegacyAppsScriptMode, sendSignedAppsScriptRequest } = await import(
@@ -105,6 +111,7 @@ export async function GET() {
         }),
       },
       storage: {
+        driver,
         status: storageStatus,
         // Only include error detail in non-production
         ...(process.env.NODE_ENV !== "production" &&

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -13,7 +14,7 @@ import { finishStockWorkflowTiming } from "@/server/stock-workflow-timing";
 
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const startedAt = performance.now();
   let warehouseId: string | undefined;
   let itemCount: number | undefined;
@@ -60,3 +61,5 @@ export async function POST(req: NextRequest) {
     return finish(mapStockErrorToResponse(e) || serverErrorResponse(e));
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

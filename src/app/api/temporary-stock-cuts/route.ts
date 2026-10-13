@@ -1,7 +1,9 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession } from "@/server/security";
 import { getRepository } from "@/server/repositories";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
 import {
   readSheet,
   appendRows,
@@ -140,7 +142,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     const actor = await createActorFromSession(req, session);
@@ -270,7 +272,7 @@ export async function POST(req: NextRequest) {
         created_by: actor.id || "admin",
       };
     });
-    await repo.movements.batchCreate(movements).catch((err) => {
+    if (getStorageDriver() !== "postgres") await repo.movements.batchCreate(movements).catch((err) => {
       console.warn("[POST /api/temporary-stock-cuts] batchCreate movements warning:", err);
       return [];
     });
@@ -315,6 +317,8 @@ export async function POST(req: NextRequest) {
     ]).catch((err) => {
       console.warn("[POST /api/temporary-stock-cuts] Sheet append fallback:", err);
     });
+    // PostgreSQL requires the referenced document before inserting its ledger rows.
+    if (getStorageDriver() === "postgres") await repo.movements.batchCreate(movements);
 
     // 7. เคลียร์ cache ให้หน้าอื่นเห็นยอดใหม่
     clearSheetCache(wh2SheetName);
@@ -369,3 +373,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

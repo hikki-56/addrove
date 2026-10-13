@@ -1,2 +1,4 @@
 import { handlers } from "@/server/auth";
-export const { GET, POST } = handlers;
+import { withMaintenanceGuard } from "@/server/storage-transaction";
+export const GET = handlers.GET;
+export const POST = withMaintenanceGuard(handlers.POST);

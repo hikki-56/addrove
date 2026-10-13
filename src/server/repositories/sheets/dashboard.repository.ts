@@ -7,7 +7,7 @@ import {
 import { SheetsProductRepository } from "./product.repository";
 import { cleanSkuCode } from "@/server/services/stock/shared";
 import { aggregateDashboardOperations } from "@/server/dashboard/dashboard-aggregation";
-import type { IDashboardRepository } from "../interfaces";
+import type { IDashboardRepository, IProductRepository } from "@/server/repositories/interfaces";
 import type {
   DashboardStats,
   Document,
@@ -137,6 +137,7 @@ export class DashboardDataError extends Error {
 }
 
 export class SheetsDashboardRepository implements IDashboardRepository {
+  constructor(private readonly products?: IProductRepository) {}
   // ชีตสำคัญ: อ่านได้ [] พร้อมบันทึก error = อ่านไม่สำเร็จ → throw ไม่ใช่เงียบแล้วคืน 0
   private async readCriticalSheet(
     sheetName: string,
@@ -221,7 +222,7 @@ export class SheetsDashboardRepository implements IDashboardRepository {
     warehouseId?: string,
     _days: number = 90
   ): Promise<DashboardStats> {
-    const productRepo = new SheetsProductRepository();
+    const productRepo = this.products ?? new SheetsProductRepository();
 
     // ชีตรายโกดัง (สำนักงานใหญ่ + โกดัง1-5) คือแหล่งข้อมูลเดียวของสองค่านี้:
     // - total_remaining_quantity = ผลรวมคอลัมน์ "จำนวนคงเหลือ" ทุกแถวทุกแท็บ (หน่วย: ชิ้น)

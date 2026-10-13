@@ -17,7 +17,7 @@ export default function MoveSuccessModal({ onReset }: MoveSuccessModalProps) {
         </div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">จัดตำแหน่งสินค้าสำเร็จ!</h2>
         <p className="text-slate-600 text-sm sm:text-base max-w-md mx-auto font-medium">
-          ระบบได้อัปเดตตำแหน่งจัดเก็บสินค้าเข้าสู่ Google Sheets และฐานข้อมูลเรียบร้อยแล้ว
+          ระบบได้อัปเดตตำแหน่งจัดเก็บสินค้าเรียบร้อยแล้ว
         </p>
         <div className="pt-4">
           <button

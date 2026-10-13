@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -31,7 +32,7 @@ export const maxDuration = 60;
  * action: start | confirm-item | report-problem | complete
  * ทุก action ผ่าน state machine — ผู้ใช้เปลี่ยนสถานะเองไม่ได้
  */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -108,3 +109,5 @@ export async function POST(
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

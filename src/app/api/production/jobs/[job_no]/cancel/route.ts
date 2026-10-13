@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -12,7 +13,7 @@ import { successResponse } from "@/server/api-response";
 export const maxDuration = 60;
 
 // POST /api/production/jobs/[job_no]/cancel — ADMIN ยกเลิกงาน (เก็บผลผลิตที่ยืนยันแล้วไว้ทั้งหมด)
-export async function POST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_MANAGE);
     if (!guard.ok) return guard.response;
@@ -27,3 +28,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ job
     return productionErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

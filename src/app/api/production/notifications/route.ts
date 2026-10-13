@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/production/notifications — ทำเครื่องหมายอ่านแล้ว (body: { ids: string[] } หรือ { ids: "all" })
-export async function PATCH(req: NextRequest) {
+async function handlePATCH(req: NextRequest) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_VIEW);
     if (!guard.ok) return guard.response;
@@ -43,3 +44,5 @@ export async function PATCH(req: NextRequest) {
     return productionErrorResponse(error);
   }
 }
+
+export const PATCH = withStorageRequest(handlePATCH);

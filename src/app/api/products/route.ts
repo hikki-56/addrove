@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getStockStatus } from "@/lib/stock-status";
 import { getAuthSession } from "@/server/auth-session";
@@ -14,6 +15,8 @@ import {
 } from "@/server/api-response";
 import { readSheet, appendRows, SHEETS, getWarehouseSheetName } from "@/server/google-sheets/client";
 import { ZodError } from "zod";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
+import { createProductWithStock } from "@/server/services/create-product";
 
 export async function GET(req: NextRequest) {
   try {
@@ -296,7 +299,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -329,6 +332,10 @@ export async function POST(req: NextRequest) {
       return forbiddenResponse("คุณไม่มีสิทธิ์เพิ่มสินค้าในโกดังนี้");
     }
     const targetSheet = getWarehouseSheetName(warehouseId);
+    if (getStorageDriver() === "postgres") {
+      const saved = await createProductWithStock(input, { id: session.user.id, name: session.user.name || session.user.id, role: session.user.role });
+      return successResponse(saved, session.user.role === "ADMIN" ? "บันทึกรายการสินค้าแล้ว" : "บันทึกรายการสินค้าแล้ว (รอ Admin อนุมัติ)", 201);
+    }
     const now = new Date().toISOString();
     const initialQty = input.initial_quantity || 1;
 
@@ -384,3 +391,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

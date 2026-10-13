@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ job_
 }
 
 // PATCH /api/production/jobs/[job_no] — แก้ไขงานตามกติกาสถานะ (ADMIN)
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_MANAGE);
     if (!guard.ok) return guard.response;
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ jo
 }
 
 // DELETE /api/production/jobs/[job_no] — ลบได้เฉพาะฉบับร่าง (ADMIN)
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ job_no: string }> }) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_MANAGE);
     if (!guard.ok) return guard.response;
@@ -62,3 +63,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ j
     return productionErrorResponse(error);
   }
 }
+
+export const PATCH = withStorageRequest(handlePATCH);
+export const DELETE = withStorageRequest(handleDELETE);

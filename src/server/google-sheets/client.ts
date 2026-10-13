@@ -1,4 +1,5 @@
 import { google, sheets_v4 } from "googleapis";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
 import {
   isLegacyAppsScriptMode,
   sendSignedAppsScriptRequest,
@@ -319,6 +320,7 @@ const sheetReadErrors = globalForSheetFetch.sheetReadErrors;
 // readSheet กลบ error เป็น [] เพื่อ resilience — map นี้เก็บ error ล่าสุดไว้ให้ caller
 // แยกแยะ "ชีตว่างจริง" ออกจาก "อ่านชีตไม่สำเร็จ" (เช่น Dashboard ต้องตอบ error ไม่ใช่ 0)
 export function getSheetReadError(sheetName: string): string | null {
+  if (getStorageDriver() === "postgres") return null;
   return sheetReadErrors.get(sheetNameKey(sheetName))?.message ?? null;
 }
 
@@ -812,6 +814,10 @@ export async function readSheet(
   range?: string,
   options?: { forceFresh?: boolean; maxAgeMs?: number; keepHeader?: boolean }
 ): Promise<string[][]> {
+  if (getStorageDriver() === "postgres") {
+    const { readPostgresTab } = await import("@/server/repositories/postgres/tab-adapter");
+    return readPostgresTab(sheetName, range, options);
+  }
   if (!SPREADSHEET_ID) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("GOOGLE_SHEET_ID is required");
@@ -853,6 +859,10 @@ export async function appendRows(
   sheetName: string,
   values: (string | number | boolean)[][]
 ): Promise<void> {
+  if (getStorageDriver() === "postgres") {
+    const { appendPostgresRows } = await import("@/server/repositories/postgres/tab-adapter");
+    return appendPostgresRows(sheetName, values);
+  }
   clearSheetCache(sheetName);
 
   if (hasServiceAccountCredentials()) {
@@ -919,6 +929,10 @@ export async function updateRow(
   rowNumber: number,
   values: (string | number | boolean)[]
 ): Promise<void> {
+  if (getStorageDriver() === "postgres") {
+    const { updatePostgresRows } = await import("@/server/repositories/postgres/tab-adapter");
+    return updatePostgresRows(sheetName, [{ rowNumber, values }]);
+  }
   clearSheetCache(sheetName);
 
   if (hasServiceAccountCredentials()) {
@@ -982,6 +996,10 @@ export async function updateRow(
 
 /** Transfer progress lives in J only; never fall back to a whole-row update. */
 export async function updateDocumentProgressCell(rowNumber: number, progress: string): Promise<void> {
+  if (getStorageDriver() === "postgres") {
+    const { updatePostgresProgress } = await import("@/server/repositories/postgres/tab-adapter");
+    return updatePostgresProgress(rowNumber, progress);
+  }
   if (!Number.isInteger(rowNumber) || rowNumber < 2) throw new Error("Invalid document progress row");
   clearSheetCache(SHEETS.DOCUMENTS);
   if (hasServiceAccountCredentials()) {
@@ -1012,6 +1030,10 @@ export async function batchUpdateRows(
   sheetName: string,
   updates: { rowNumber: number; values: (string | number | boolean)[] }[]
 ): Promise<void> {
+  if (getStorageDriver() === "postgres") {
+    const { updatePostgresRows } = await import("@/server/repositories/postgres/tab-adapter");
+    return updatePostgresRows(sheetName, updates);
+  }
   if (updates.length === 0) return;
   clearSheetCache(sheetName);
 
@@ -1081,6 +1103,10 @@ export async function batchAppendRows(
 
 // ------ Get numeric sheet ID by tab name ------
 export async function getSheetId(sheetName: string): Promise<number | null> {
+  if (getStorageDriver() === "postgres") {
+    const { postgresTabId } = await import("@/server/repositories/postgres/tab-adapter");
+    return postgresTabId(sheetName);
+  }
   if (!SPREADSHEET_ID) return null;
   try {
     // metadata cache มี sheetId ครบ — ไม่ต้องยิง spreadsheets.get ทุกครั้ง
@@ -1117,6 +1143,10 @@ export async function deleteRows(
   rowIndices: number[],
   options: { blankColumns?: number } = {}
 ): Promise<void> {
+  if (getStorageDriver() === "postgres") {
+    const { deletePostgresRows } = await import("@/server/repositories/postgres/tab-adapter");
+    return deletePostgresRows(sheetName, rowIndices);
+  }
   if (rowIndices.length === 0) return;
 
   if (rowIndices.some((i) => !Number.isInteger(i) || i < 1)) {
@@ -1185,6 +1215,10 @@ export async function ensureSheetTabExists(
   sheetName: string,
   headers: string[] = []
 ): Promise<string> {
+  if (getStorageDriver() === "postgres") {
+    const { ensurePostgresTab } = await import("@/server/repositories/postgres/tab-adapter");
+    return ensurePostgresTab(sheetName, headers);
+  }
   if (!SPREADSHEET_ID) return sheetName;
 
   try {

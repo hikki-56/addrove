@@ -249,7 +249,7 @@ export default function ExpressIssuePage() {
         if (json?.data?.all_sheet_synced === false) {
           queueExpressStatusRetry(items);
           setToast({
-            message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) บนระบบแล้ว แต่ยังเขียน Google Sheets ไม่สำเร็จ — ระบบจะลองใหม่อัตโนมัติ`,
+            message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) แล้ว แต่ยังบันทึกรายการไม่ครบ — ระบบจะลองใหม่อัตโนมัติ`,
             tone: "error",
           });
           return;
@@ -257,7 +257,7 @@ export default function ExpressIssuePage() {
 
         removeExpressStatusRetry(items);
         setToast({
-          message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) เข้า Google Sheets เรียบร้อย`,
+          message: `บันทึกสถานะ "${statusLabel}" (${docDesc}) เรียบร้อย`,
           tone: "success",
         });
       } catch (e) {
@@ -265,7 +265,7 @@ export default function ExpressIssuePage() {
         console.warn("[ExpressIssuePage] Background status sync to sheet failed:", e);
         queueExpressStatusRetry(items);
         setToast({
-          message: "ไม่สามารถบันทึกสถานะเข้า Google Sheets ได้ — ระบบจะลองใหม่อัตโนมัติ",
+          message: "ไม่สามารถบันทึกสถานะได้ — ระบบจะลองใหม่อัตโนมัติ",
           tone: "error",
         });
       }

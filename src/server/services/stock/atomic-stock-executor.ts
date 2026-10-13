@@ -4,6 +4,7 @@ import { executeWithJournal } from '@/server/recovery';
 import { logAudit } from '@/server/audit';
 import type { IStockRepository } from '@/server/repositories/interfaces';
 import type { Document } from '@/types/models';
+import { getStorageDriver } from '@/server/repositories/storage-driver';
 
 export interface AtomicOperationConfig {
   repo: IStockRepository;
@@ -124,11 +125,12 @@ export async function executeAtomicOperation(config: AtomicOperationConfig): Pro
         }
 
         // Fire-and-forget idempotency completion (caches result for replays, not critical path)
-        completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result)
-          .catch((e) => console.warn('[AtomicOperation] idempotency complete error (non-fatal):', e));
+        const completion = completeIdempotencyKey(config.repo.idempotency, config.idempotencyKey, result);
+        if (getStorageDriver() === 'postgres') await completion;
+        else completion.catch((e) => console.warn('[AtomicOperation] idempotency complete error (non-fatal):', e));
 
         // Fire-and-forget audit log — do not block response waiting for Sheets write
-        logAudit(config.repo.audit, {
+        const audit = logAudit(config.repo.audit, {
           correlationId: config.correlationId,
           idempotencyKey: config.idempotencyKey,
           actorId: config.actorId,
@@ -138,7 +140,9 @@ export async function executeAtomicOperation(config: AtomicOperationConfig): Pro
           resourceId: result.document_id,
           warehouseId: config.warehouseId,
           outcome: 'SUCCESS',
-        }).catch((e) => console.warn('[AtomicOperation] audit log error (non-fatal):', e));
+        });
+        if (getStorageDriver() === 'postgres') await audit;
+        else audit.catch((e) => console.warn('[AtomicOperation] audit log error (non-fatal):', e));
 
         logTiming("success");
         return result;

@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getRepository } from "@/server/repositories";
 import { UpdateUserSchema } from "@/types/api";
@@ -49,7 +50,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -97,3 +98,5 @@ export async function PATCH(
     return serverErrorResponse(e);
   }
 }
+
+export const PATCH = withStorageRequest(handlePATCH);

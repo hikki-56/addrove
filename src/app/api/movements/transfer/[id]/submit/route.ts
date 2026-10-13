@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession } from "@/server/security";
@@ -13,7 +14,7 @@ import { finishStockWorkflowTiming } from "@/server/stock-workflow-timing";
 
 export const maxDuration = 60;
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -64,3 +65,5 @@ export async function POST(
     return finish(mapStockErrorToResponse(e) || serverErrorResponse(e));
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

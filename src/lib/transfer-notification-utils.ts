@@ -282,12 +282,19 @@ export function cleanProductName(name?: string, note?: string): string {
 
 export function getTransferNotifications(): TransferNotification[] {
   if (typeof window === "undefined") return [];
+  return readTransferNotifications(readCompletedTransferIds());
+}
+
+function readTransferNotifications(completedIds: ReadonlySet<string>): TransferNotification[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: TransferNotification[] = JSON.parse(raw);
-    const list = parsed.map((t) => {
-      const completed = isTransferCompleted(t.id) || isTransferCompleted(t.doc_no);
+    // Older versions cached migration references as pending tasks. Hide those
+    // immediately on load, before the next server refresh replaces that cache.
+    const list = parsed.filter((t) => t && parseTransferMetadata(t.note).kind !== "LEGACY_IMPORT_REFERENCE").map((t) => {
+      const completed = completedIds.has(String(t.id || "").trim().toLowerCase()) ||
+        completedIds.has(String(t.doc_no || "").trim().toLowerCase());
       return {
         ...t,
         product_name: getDisplayProductName(t),
@@ -544,7 +551,6 @@ export function getPendingTransferNotifications(staffName?: string, warehouseId?
     // Exclude tasks that are waiting approval, completed, or cancelled
     if (t.status === "WAITING_APPROVAL") return false;
     if (t.status && t.status !== "PENDING" && t.status !== "ACKNOWLEDGED") return false;
-    if (isTransferCompleted(t.id)) return false;
 
     // Filter by source warehouse if specified
     if (warehouseId && warehouseId !== "*") {
@@ -563,24 +569,22 @@ export function getPendingTransferNotifications(staffName?: string, warehouseId?
 
 const COMPLETED_KEY = "stockify_completed_transfers";
 
-export function isTransferCompleted(id?: string, docNo?: string, productId?: string): boolean {
-  if (typeof window === "undefined" || !id) return false;
+function readCompletedTransferIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
   try {
     const raw = localStorage.getItem(COMPLETED_KEY);
-    if (!raw) return false;
+    if (!raw) return new Set();
     const list: unknown = JSON.parse(raw);
-    if (!Array.isArray(list)) return false;
-    const idLower = String(id).trim().toLowerCase();
-    if (!idLower) return false;
-
-    return list.some((item) => {
-      if (!item) return false;
-      const lower = String(item).trim().toLowerCase();
-      return lower === idLower;
-    });
+    if (!Array.isArray(list)) return new Set();
+    return new Set(list.filter(Boolean).map((item) => String(item).trim().toLowerCase()).filter(Boolean));
   } catch {
-    return false;
+    return new Set();
   }
+}
+
+export function isTransferCompleted(id?: string, docNo?: string, productId?: string): boolean {
+  if (!id) return false;
+  return readCompletedTransferIds().has(String(id).trim().toLowerCase());
 }
 
 export function markTransferCompleted(id: string, docNo?: string, productId?: string) {
@@ -763,6 +767,8 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
     const serverDoneDocIds = new Set<string>();
     const serverActiveDocIds = new Set<string>();
     const serverMappedTasks: TransferNotification[] = [];
+    const completedIds = readCompletedTransferIds();
+    const completedCount = completedIds.size;
 
     for (const doc of serverDocs) {
       if (!doc) continue;
@@ -771,6 +777,23 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
 
       // Safely parse metadata stored inside doc.note
       const meta = parseTransferMetadata(doc.note);
+
+      // Posted transfers already affected stock; legacy references only link
+      // imported ledger history. Neither represents a task to execute again.
+      const isDone =
+        status === "COMPLETED" ||
+        status === "POSTED" ||
+        status === "CANCELLED" ||
+        status === "REJECTED" ||
+        meta.kind === "LEGACY_IMPORT_REFERENCE";
+      if (isDone) {
+        if (docId) {
+          serverActiveDocIds.add(docId);
+          serverDoneDocIds.add(docId);
+          completedIds.add(docId);
+        }
+        continue;
+      }
 
       const prodId = String(meta.product_id || doc.product_id || "").trim();
       const movedBy = String(
@@ -813,58 +836,51 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
 
       if (docId) serverActiveDocIds.add(docId);
 
-      // Fix: A transfer document is only done if status is COMPLETED, CANCELLED, or REJECTED
-      const isDone =
-        status === "COMPLETED" ||
-        status === "CANCELLED" ||
-        status === "REJECTED";
+      const fromWhName = getWarehouseName(fromWhId);
+      const toWhName = getWarehouseName(toWhId);
 
-      if (isDone) {
-        if (docId) {
-          serverDoneDocIds.add(docId);
-          markTransferCompleted(docId);
-        }
-      } else {
-        const fromWhName = getWarehouseName(fromWhId);
-        const toWhName = getWarehouseName(toWhId);
+      const notifStatus =
+        status === "WAITING_APPROVAL" ||
+        meta.status === "WAITING_APPROVAL"
+          ? ("WAITING_APPROVAL" as const)
+          : ("PENDING" as const);
 
-        const notifStatus =
-          status === "WAITING_APPROVAL" ||
-          meta.status === "WAITING_APPROVAL"
-            ? ("WAITING_APPROVAL" as const)
-            : ("PENDING" as const);
-
-        serverMappedTasks.push({
-          id: docId || String(`trf-${Date.now()}`),
-          doc_no: String(doc.document_no || doc.document_id || ""),
-          product_id: prodId || "trf-item",
-          product_name: productName || (sku ? `สินค้า ${sku}` : "รายการย้ายสินค้า"),
-          sku: sku,
-          barcode: barcode,
-          from_warehouse_id: fromWhId,
-          from_warehouse_name: fromWhName,
-          to_warehouse_id: toWhId,
-          to_warehouse_name: toWhName,
-          qty: qty,
-          moved_by: movedBy,
-          assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
-          assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
-          created_by: createdBy || "admin",
-          created_by_name: createdByName || "ผู้ดูแลระบบ (Admin)",
-          created_at: String(doc.created_at || new Date().toISOString()),
-          status: notifStatus,
-          current_step: serverStep ?? (notifStatus === "WAITING_APPROVAL" ? 4 : undefined),
-          current_step_text: serverStepText || (notifStatus === "WAITING_APPROVAL" ? "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)" : undefined),
-          last_active_at: serverLastActive,
-          from_location_id: meta.from_location_id,
-          to_location_id: meta.to_location_id,
-          source_allocations: meta.source_allocations,
-          note: String(meta.original_note || doc.note || ""),
-        });
-      }
+      serverMappedTasks.push({
+        id: docId || String(`trf-${Date.now()}`),
+        doc_no: String(doc.document_no || doc.document_id || ""),
+        product_id: prodId || "trf-item",
+        product_name: productName || (sku ? `สินค้า ${sku}` : "รายการย้ายสินค้า"),
+        sku: sku,
+        barcode: barcode,
+        from_warehouse_id: fromWhId,
+        from_warehouse_name: fromWhName,
+        to_warehouse_id: toWhId,
+        to_warehouse_name: toWhName,
+        qty: qty,
+        moved_by: movedBy,
+        assigned_to_user_id: String(meta.assigned_to_user_id || doc.assigned_to_user_id || "").trim(),
+        assigned_to_name: String(meta.assigned_to_name || doc.assigned_to_name || movedBy || "").trim(),
+        created_by: createdBy || "admin",
+        created_by_name: createdByName || "ผู้ดูแลระบบ (Admin)",
+        created_at: String(doc.created_at || new Date().toISOString()),
+        status: notifStatus,
+        current_step: serverStep ?? (notifStatus === "WAITING_APPROVAL" ? 4 : undefined),
+        current_step_text: serverStepText || (notifStatus === "WAITING_APPROVAL" ? "ย้ายสินค้าแล้ว (รอ Admin อนุมัติ)" : undefined),
+        last_active_at: serverLastActive,
+        from_location_id: meta.from_location_id,
+        to_location_id: meta.to_location_id,
+        source_allocations: meta.source_allocations,
+        note: String(meta.original_note || doc.note || ""),
+      });
     }
 
-    const existing = getTransferNotifications();
+    // Historical documents arrive on every poll. Persist completion history once,
+    // then notify subscribers after the entire batch instead of once per document.
+    const completedIdsChanged = completedIds.size !== completedCount;
+    if (completedIdsChanged) {
+      localStorage.setItem(COMPLETED_KEY, JSON.stringify(Array.from(completedIds)));
+    }
+    const existing = readTransferNotifications(completedIds);
     const updatedMap = new Map<string, TransferNotification>();
 
     // Seed with existing tasks
@@ -949,7 +965,7 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
     const mergedList = Array.from(updatedMap.values()).filter((item) => {
       const itemId = String(item.id || "").trim().toLowerCase();
       if (itemId && serverDoneDocIds.has(itemId)) return false;
-      if (isTransferCompleted(item.id)) return false;
+      if (completedIds.has(itemId)) return false;
 
       const isServerSynced = itemId && serverActiveDocIds.has(itemId);
       const createdAt = new Date(item.created_at || 0).getTime();
@@ -973,6 +989,8 @@ export function syncServerTransferNotifications(serverDocs: Array<Record<string,
     // ONLY write to localStorage and broadcast if data actually changed!
     if (rawExisting !== newJson) {
       localStorage.setItem(STORAGE_KEY, newJson);
+    }
+    if (rawExisting !== newJson || completedIdsChanged) {
       broadcastTransferChange();
     }
   } catch (e) {

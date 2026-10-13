@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -54,7 +55,7 @@ export async function GET(
 }
 
 /** PATCH /api/outbound/bills/[id] — action: activate | hold | resume | cancel | resolve-shortage */
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -111,3 +112,5 @@ export async function PATCH(
     return serverErrorResponse(e);
   }
 }
+
+export const PATCH = withStorageRequest(handlePATCH);

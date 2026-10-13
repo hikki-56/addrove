@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { getRepository } from "@/server/repositories";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -37,7 +38,7 @@ function checkPinMatch(user: User, inputPin: string): boolean {
   return false;
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const { token, card_code: cardCode, pin, section } = await req.json();
 
@@ -213,3 +214,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

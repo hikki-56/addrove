@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
@@ -7,7 +8,7 @@ import {
   notFoundResponse, serverErrorResponse,
 } from "@/server/api-response";
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -25,3 +26,5 @@ export async function POST(
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

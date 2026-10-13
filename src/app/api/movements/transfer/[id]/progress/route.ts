@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession } from "@/server/security";
@@ -51,7 +52,7 @@ function buildProgressUpdate(
   return { note: JSON.stringify(meta) };
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -104,9 +105,12 @@ export async function PATCH(
   }
 }
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   return PATCH(req, context);
 }
+
+export const PATCH = withStorageRequest(handlePATCH);
+export const POST = withStorageRequest(handlePOST);

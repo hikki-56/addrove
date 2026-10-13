@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
@@ -11,7 +12,7 @@ export const revalidate = 0;
 // POST /api/system/rebuild-stock-summary — ADMIN only
 // คำนวณยอดคงเหลือในชีต StockSummary ใหม่จาก StockMovements ทั้งหมด
 // (ปลอดภัย: เขียนยอดใหม่ก่อน ยืนยันแล้วจึงลบแถวเดิม — ไม่มีช่วงเวลาที่ชีตว่าง)
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
@@ -29,3 +30,5 @@ export async function POST(req: NextRequest) {
     return serverErrorResponse(e);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);

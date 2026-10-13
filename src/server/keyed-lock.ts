@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
+import { withStorageTransaction } from "@/server/storage-transaction";
 
 const lockTails = new Map<string, Promise<void>>();
 
@@ -18,6 +20,7 @@ const heldKeys = new AsyncLocalStorage<Set<string>>();
  * ให้รัน operation ต่อเลย — lock ตัวจริงถูกปล่อยโดยชั้นนอกสุดเท่านั้น
  */
 export async function withKeyedLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  if (getStorageDriver() === "postgres") return withStorageTransaction(operation);
   const store = heldKeys.getStore();
   if (store && store.has(key)) {
     return operation();

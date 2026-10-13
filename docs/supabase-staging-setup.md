@@ -1,6 +1,9 @@
 # Supabase Staging Setup - Stockify
 
-This runbook tracks the safe staging Supabase setup for Stockify. Do not put
+This runbook records the original staging setup for Stockify. The user authorized
+using this project for the complete application migration on 2026-10-13.
+The current implementation and cutover procedure are in [supabase-cutover.md](supabase-cutover.md).
+Do not put
 passwords, connection strings, API keys, access tokens, service role keys, or
 recovery codes in this file.
 
@@ -18,11 +21,11 @@ recovery codes in this file.
 
 ## Safety Rules
 
-- Use this project only for staging and migration validation.
-- Do not import production data into this project.
+- The original staging-only restriction was superseded by the user's explicit
+  authorization to migrate the entire application to this project.
 - Do not paste secrets into chat, issue trackers, docs, screenshots, or commits.
-- Keep `STORAGE_DRIVER=sheets` until the concrete Postgres repositories are
-  implemented and verified.
+- Concrete PostgreSQL repositories are implemented and tested. The maintenance
+  deployment keeps Sheets until the final snapshot is imported and verified.
 - Store any future `DATABASE_URL` only in local `.env.local` or the target
   deployment environment's secret manager.
 - Use the Supabase pooled connection string for serverless deployments when the
@@ -46,10 +49,9 @@ was applied to staging via the SQL Editor and verified against `pg_constraint` /
   `waste_percentage` between 0 and 100
 - Missing `updated_at` triggers on `bom_formulas` and `bom_formula_items`
 
-RLS status confirmed from the dashboard Policies page: **enabled on all 15
-tables, zero policies (deny-all via the Data API)**. Server-side access must go
-through the service role key; do not create permissive policies without a
-reviewed client-access design.
+The original 15-table schema now has 23 application tables. RLS is enabled on
+all tables. The approved `stockify_app` server login has scoped policies and
+privileges; public Data API roles have no application-table policies.
 
 ## Daily Backup (GitHub Actions)
 
@@ -104,7 +106,7 @@ Expected tables:
 
 ## Next Implementation Gate
 
-After the schema is applied, the next safe engineering step is to implement and
-test the Postgres repositories under `src/lib/repositories/postgres/` against
-staging or a local disposable database. Only after those tests pass should any
-environment switch from `STORAGE_DRIVER=sheets` to `STORAGE_DRIVER=postgres`.
+PostgreSQL repositories are implemented under `src/server/repositories/postgres/`.
+Real SQL integration tests cover rollback, stock limits, production reporting,
+idempotency, RLS, numbering, and credential preservation. Follow the current
+cutover runbook to validate the final snapshot before switching the driver.

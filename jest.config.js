@@ -2,6 +2,7 @@
 const config = {
   preset: "ts-jest",
   testEnvironment: "node",
+  modulePathIgnorePatterns: ["<rootDir>/\\.tmp", "<rootDir>/artifacts/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

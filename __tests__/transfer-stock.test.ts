@@ -37,6 +37,7 @@ import {
   createTransfer,
   completeTransfer,
   cancelTransfer,
+  submitTransferMove,
   CreateTransferSchema,
 } from "@/server/services/stock/transfer-stock";
 import {
@@ -245,6 +246,22 @@ describe("transferStock Use Cases & Authorization Rules", () => {
 
   beforeEach(() => {
     repo = new MockStockRepo();
+  });
+
+  test.each([false, true])("submission rejects an acknowledged write that did not persist (mutate=%s)", async (useMutate) => {
+    const doc: Document = {
+      document_id: "doc-unpersisted", document_no: "TRF-unpersisted", document_type: "TRANSFER",
+      document_date: "2026-10-12", reference_no: "", status: "PENDING", note: "{}", created_by: "test", created_at: "2026-10-12T00:00:00Z",
+    };
+    repo.documentsList.push(doc);
+    Object.assign(repo.documents, { updateNote: async () => {} });
+    repo.documents.updateStatus = async () => null;
+    if (useMutate) {
+      Object.assign(repo.documents, { mutate: async () => ({ ...doc, status: "WAITING_APPROVAL" }) });
+    }
+    await expect(submitTransferMove({ repo }, doc.document_id, { toLocationId: "B1", userId: "staff-1" })).rejects.toThrow("ยังบันทึกการส่งงานไม่สำเร็จ");
+    expect(repo.movementsList).toHaveLength(0);
+    expect(doc.status).toBe("PENDING");
   });
 
   test("1. Source staff can create transfer from source warehouse in PENDING status without immediate movements", async () => {

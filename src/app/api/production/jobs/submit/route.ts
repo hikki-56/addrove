@@ -1,3 +1,4 @@
+import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS } from "@/server/security";
 import {
@@ -12,7 +13,7 @@ import { successResponse } from "@/server/api-response";
 export const maxDuration = 60;
 
 // POST /api/production/jobs/submit — ยืนยันส่งงานผลิต (ADMIN) หลายงานพร้อมกัน: DRAFT → WAITING + แจ้ง APPROVER
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const guard = await guardProductionRoute(req, PERMISSIONS.PRODUCTION_MANAGE);
     if (!guard.ok) return guard.response;
@@ -36,3 +37,5 @@ export async function POST(req: NextRequest) {
     return productionErrorResponse(error);
   }
 }
+
+export const POST = withStorageRequest(handlePOST);
