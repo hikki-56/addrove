@@ -231,6 +231,31 @@ export class PostgresStockMovementRepository {
     }
 }
 export class PostgresStockSummaryRepository {
+    async allocateTransferSources(productId: string, warehouseId: string, qty: number, preferredLocation: string): Promise<Array<{ location_id: string; qty: number }>> {
+        const wh = await resolveWarehouseId(warehouseId);
+        const prod = await resolveProductId(productId);
+        const preferredIds: string[] = [];
+        for (const value of preferredLocation.split(",").map(value => value.trim()).filter(Boolean)) {
+            const loc = await resolveLocationId(wh, value);
+            if (loc && !preferredIds.includes(loc)) preferredIds.push(loc);
+        }
+        // Called inside the approval transaction. Allocate actual balances, never
+        // treat a display list of locations as one shelf or create negative stock.
+        const rows = await query<StockSummary>(`SELECT s.* FROM stock_summary s JOIN locations l USING(location_id)
+            WHERE s.product_id=$1 AND s.warehouse_id=$2 AND s.quantity>0 AND l.active=true
+            ORDER BY coalesce(array_position($3::text[],s.location_id),2147483647),
+                (l.location_code=''),l.location_code,s.source_row`, [prod, wh, preferredIds]);
+        const allocations: Array<{ location_id: string; qty: number }> = [];
+        let remaining = qty;
+        for (const row of rows) {
+            if (remaining <= 0) break;
+            const take = Math.min(Number(row.quantity), remaining);
+            allocations.push({ location_id: row.location_id, qty: take });
+            remaining = Math.round((remaining - take) * 1000) / 1000;
+        }
+        if (remaining > 0) throw new InsufficientStockError("สต็อกต้นทางไม่เพียงพอสำหรับใบเบิกนี้");
+        return allocations;
+    }
     async findAll(warehouseId?: string): Promise<StockSummary[]> { return query("SELECT * FROM stock_summary WHERE ($1::text IS NULL OR warehouse_id=$1) ORDER BY source_row", [warehouseId ? await resolveWarehouseId(warehouseId) : null]); }
     async findByProductAndLocation(productId: string, warehouseId: string, locationId: string): Promise<StockSummary | null> {
         const wh = await resolveWarehouseId(warehouseId);

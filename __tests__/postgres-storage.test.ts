@@ -8,7 +8,7 @@ import { appendRows, readSheet, updateRow } from "@/server/google-sheets/client"
 import { withStorageRequest } from "@/server/storage-transaction";
 import { createJobs, submitJobs, startJob, reportProduction, deleteDraft, getJobDetail } from "@/server/production/production-job.service";
 import { createProductWithStock } from "@/server/services/create-product";
-import { submitTransferMove } from "@/server/services/stock/transfer-stock";
+import { submitTransferMove, completeTransfer } from "@/server/services/stock/transfer-stock";
 let mockDb: PGlite;
 let mockConnectionTail = Promise.resolve();
 jest.mock("pg", () => {
@@ -37,6 +37,7 @@ const repo = new PostgresStockRepository();
 const root = path.join(__dirname, "..");
 const oldDriver = process.env.STORAGE_DRIVER;
 const oldUrl = process.env.DATABASE_URL;
+
 beforeAll(async () => {
     process.env.STORAGE_DRIVER = "postgres";
     process.env.DATABASE_URL = "postgresql://test:test@localhost/test";
@@ -191,4 +192,30 @@ test("new products post durable initial stock while staff additions await approv
     await createProductWithStock({ ...input, sku: "NEW-ZERO", barcode: "NEW-ZERO", initial_quantity: 0 }, { id: "test", name: "Admin", role: "ADMIN" });
     expect((await query("SELECT count(*)::int count FROM documents"))[0].count).toBe(before);
     expect((await repo.stockSummary.findAll("wh-1")).some(row => row.product_id === "prod-NEW-ZERO" && row.quantity === 0)).toBe(true);
+});
+
+test("approval allocates a warehouse-wide transfer across actual shelves and unassigned stock exactly once", async () => {
+    await query("INSERT INTO warehouses(warehouse_id,warehouse_code,warehouse_name) VALUES('wh-05','WHTRF','Transfer destination')");
+    await query("INSERT INTO locations(location_id,warehouse_id,location_code) VALUES('loc-transfer-dest','wh-05','DEST'),('loc-transfer-source-b','wh-1','B1')");
+    const product = await repo.products.create({ sku: "TRANSFER-MULTI", barcode: "TRANSFER-MULTI", product_name: "Transfer test", category: "test", base_unit: "ชิ้น", minimum_stock: 0, description: "" });
+    await repo.stockSummary.applyChanges([
+        { productId: product.product_id, warehouseId: "wh-1", locationId: "A1", delta: 3 },
+        { productId: product.product_id, warehouseId: "wh-1", locationId: "B1", delta: 2 },
+        { productId: product.product_id, warehouseId: "wh-1", locationId: "", delta: 1 },
+    ]);
+    const create = (qty: number) => repo.documents.create({ document_type: "TRANSFER", document_date: "2026-10-13", reference_no: "multi-location", status: "WAITING_APPROVAL", created_by: "test", note: JSON.stringify({ product_id: product.product_id, from_warehouse_id: "wh-1", to_warehouse_id: "wh-05", from_location_id: "A1, B1", to_location_id: "DEST", qty }) });
+    const insufficient = await create(7);
+    const approve = (id: string) => withStorageRequest(async () => Response.json(await completeTransfer({ repo }, id, "DEST", "A1, B1", "test", "ADMIN")))();
+    expect((await approve(insufficient.document_id)).status).toBe(503);
+    expect(await repo.movements.findByDocumentId(insufficient.document_id)).toEqual([]);
+    expect((await repo.documents.findById(insufficient.document_id))?.status).toBe("WAITING_APPROVAL");
+    const doc = await create(6);
+    expect((await approve(doc.document_id)).status).toBe(200);
+    expect((await repo.documents.findById(doc.document_id))?.status).toBe("COMPLETED");
+    const movements = await repo.movements.findByDocumentId(doc.document_id);
+    expect(movements.filter(m => m.movement_type === "TRANSFER_OUT").map(m => [m.location_id, m.qty_change])).toEqual([["loc-A1", -3], ["loc-transfer-source-b", -2], ["loc-wh-1-unassigned", -1]]);
+    expect(await repo.movements.getWarehouseBalance(product.product_id, "wh-1")).toBe(0);
+    expect(await repo.movements.getBalance(product.product_id, "wh-05", "DEST")).toBe(6);
+    expect((await approve(doc.document_id)).status).toBe(200);
+    expect(await repo.movements.findByDocumentId(doc.document_id)).toEqual(movements);
 });

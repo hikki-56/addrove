@@ -656,11 +656,17 @@ export async function completeTransfer(
       const hasIn = existingMovements.some((m: StockMovement) => m.movement_type === "TRANSFER_IN");
 
       // Check if multi-source location picking allocations are provided
-      const allocations = (Array.isArray(sourceAllocations) && sourceAllocations.length > 0)
+      let allocations = (Array.isArray(sourceAllocations) && sourceAllocations.length > 0)
         ? sourceAllocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
         : (Array.isArray(meta.source_allocations) && meta.source_allocations.length > 0)
         ? meta.source_allocations.filter((a) => a && a.location_id && Number(a.qty) > 0)
         : [];
+
+      if (!hasIn && allocations.length === 0 && repo.stockSummary.allocateTransferSources) {
+        allocations = await repo.stockSummary.allocateTransferSources(
+          prodObj.product_id, meta.from_warehouse_id, meta.qty, finalFromLocId
+        );
+      }
 
       if (!hasIn && allocations.length > 0) {
         const totalAllocatedQty = allocations.reduce((sum, a) => sum + Number(a.qty), 0);
@@ -806,6 +812,7 @@ export async function completeTransfer(
       }
 
       meta.from_location_id = finalFromLocId;
+      if (allocations.length > 0) meta.source_allocations = allocations;
       meta.to_location_id = finalToLocId;
       meta.completed_at = new Date().toISOString();
       meta.completed_by = executorId;
