@@ -218,7 +218,6 @@ export default function ReceiveWorkspace() {
           )}
           <ReceivingPlanCreateForm
             warehouses={warehouses}
-            products={products}
             defaultWarehouseId={activeWhId}
             isSubmitting={plansHook.isMutating}
             onSubmit={plansHook.createPlan}

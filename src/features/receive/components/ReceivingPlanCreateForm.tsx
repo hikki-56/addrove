@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Product, Warehouse } from "@/types/models";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
 import type { ReceivingPlanCreatePayload } from "@/features/receive/hooks/use-receiving-plans";
@@ -17,7 +17,6 @@ interface PlanLineDraft {
 
 interface ReceivingPlanCreateFormProps {
   warehouses: Warehouse[];
-  products: Product[];
   defaultWarehouseId: string;
   isSubmitting: boolean;
   onSubmit: (payload: ReceivingPlanCreatePayload) => Promise<boolean>;
@@ -26,7 +25,6 @@ interface ReceivingPlanCreateFormProps {
 
 export default function ReceivingPlanCreateForm({
   warehouses,
-  products,
   defaultWarehouseId,
   isSubmitting,
   onSubmit,
@@ -38,6 +36,39 @@ export default function ReceivingPlanCreateForm({
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<PlanLineDraft[]>([]);
   const [formError, setFormError] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
+  const [productsRetry, setProductsRetry] = useState(0);
+
+  // A receiving plan can include products with no stock in the destination warehouse.
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsError("");
+      try {
+        const response = await fetch("/api/products?master_only=true", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("โหลดรายการสินค้าทั้งหมดไม่สำเร็จ");
+        const json = await response.json();
+        if (!json.success) throw new Error(json.message || "โหลดรายการสินค้าทั้งหมดไม่สำเร็จ");
+        if (!controller.signal.aborted) {
+          setProducts(Array.isArray(json.data) ? json.data : json.data?.items || []);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setProductsError(error instanceof Error ? error.message : "โหลดรายการสินค้าทั้งหมดไม่สำเร็จ");
+        }
+      } finally {
+        if (!controller.signal.aborted) setProductsLoading(false);
+      }
+    };
+    void loadProducts();
+    return () => controller.abort();
+  }, [productsRetry]);
 
   const addProduct = (product: Product) => {
     if (lines.some((l) => l.product.product_id === product.product_id)) {
@@ -187,12 +218,24 @@ export default function ReceivingPlanCreateForm({
       <div className={`${cardClass} p-4 sm:p-6 space-y-4`}>
         <div className="space-y-1.5">
           <label className="block text-sm font-extrabold text-slate-800">เพิ่มสินค้าเข้าแผน</label>
-          <ProductSearchInput
-            products={products}
-            onSelectProduct={addProduct}
-            selectedProductIds={lines.map((l) => l.product.product_id)}
-            placeholder="พิมพ์ SKU / ชื่อสินค้า / บาร์โค้ด แล้วเลือกจากรายการ…"
-          />
+          <p className="text-xs text-slate-500 font-semibold">เลือกได้จากสินค้าทั้งหมดในระบบ แม้ยังไม่มีสต็อกในโกดังที่เลือก</p>
+          {productsLoading ? (
+            <p role="status" className="text-sm text-slate-500">กำลังโหลดรายการสินค้าทั้งหมด…</p>
+          ) : productsError ? (
+            <div role="alert" className="text-sm text-rose-700">
+              {productsError}
+              <button type="button" className="ml-3 underline" onClick={() => setProductsRetry((retry) => retry + 1)}>ลองโหลดใหม่</button>
+            </div>
+          ) : products.length === 0 ? (
+            <p className="text-sm text-slate-500">ยังไม่มีสินค้าในระบบ</p>
+          ) : (
+            <ProductSearchInput
+              products={products}
+              onSelectProduct={addProduct}
+              selectedProductIds={lines.map((l) => l.product.product_id)}
+              placeholder="พิมพ์ SKU / ชื่อสินค้า / บาร์โค้ด แล้วเลือกจากรายการ…"
+            />
+          )}
         </div>
 
         {formError && (
