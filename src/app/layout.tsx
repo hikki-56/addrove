@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { fontVariables } from "./fonts";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/server/auth";
 import { ThemeProvider } from "@/context/ThemeProvider";
@@ -31,7 +32,7 @@ export default async function RootLayout({
     session = null;
   }
   return (
-    <html lang="th" className="light" data-theme="light" suppressHydrationWarning>
+    <html lang="th" className={`light ${fontVariables}`} data-theme="light" suppressHydrationWarning>
       <body className="font-thai antialiased" suppressHydrationWarning>
         <SessionProvider session={session}>
           <TabAuthProvider>

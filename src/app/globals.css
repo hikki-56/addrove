@@ -230,8 +230,11 @@
 
 
 @theme {
-  --font-thai: var(--font-sarabun), "Leelawadee UI", sans-serif;
-  --font-disp: var(--font-grotesk), var(--font-sarabun), sans-serif;
+  /* Minimal UI v3b: Public Sans + Noto Sans Thai (ข้อความ) · Barlow + Noto Sans Thai (หัวข้อ/ตัวเลข)
+     ตัวแปร --font-public-sans / --font-barlow / --font-noto-thai มาจาก next/font (src/app/fonts.ts)
+     rollback: เปลี่ยนสองบรรทัดนี้กลับเป็น var(--font-sarabun) / var(--font-grotesk) */
+  --font-thai: var(--font-public-sans), var(--font-noto-thai), "Noto Sans Thai", "Leelawadee UI", sans-serif;
+  --font-disp: var(--font-barlow), var(--font-noto-thai), "Noto Sans Thai", sans-serif;
   --font-mono2: var(--font-plexmono), monospace;
 
   /* ── สเกลระบบแบบ Responsive ตามความกว้าง viewport (ไม่ผูกกับขนาดจอเป็นนิ้ว) ──
@@ -1265,4 +1268,161 @@ input[type="number"] {
   --accent: oklch(0.33 0.055 163);          /* #06402B เขียวเข้มแบรนด์ */
   --accent-foreground: oklch(100% 0 0);     /* ตัวอักษรบนปุ่ม primary = ขาว */
   --radius: 0.75rem;                        /* มุมมนกลาง ๆ ใกล้ rounded-2xl ของการ์ดเดิม */
+}
+
+/* ============================================================
+   Minimal UI v3b — design tokens (ที่มา: mockups-v3b/html/m3.css :root)
+   ใช้ผ่าน Tailwind utility ชื่อขึ้นต้น m3- เช่น bg-m3-primary, text-m3-grey-600,
+   shadow-m3-card, rounded-m3-card, font-m3-disp — แยก namespace จากโทเคน pine เดิม
+   เพื่อให้หน้าที่ยังไม่ได้ restyle (phase B/C) ไม่เปลี่ยนหน้าตา
+   ============================================================ */
+@theme {
+  --color-m3-primary: #00A76F;
+  --color-m3-primary-light: #5BE49B;
+  --color-m3-primary-lighter: #C8FAD6;
+  --color-m3-primary-dark: #007867;
+  --color-m3-primary-darker: #004B50;
+  --color-m3-info: #00B8D9;
+  --color-m3-info-dark: #006C9C;
+  --color-m3-warning: #FFAB00;
+  --color-m3-warning-dark: #B76E00;
+  --color-m3-error: #FF5630;
+  --color-m3-error-dark: #B71D18;
+  --color-m3-secondary: #8E33FF;
+  --color-m3-secondary-dark: #5119B7;
+  --color-m3-success: #22C55E;
+  --color-m3-success-dark: #118D57;
+  --color-m3-grey-100: #F9FAFB;
+  --color-m3-grey-200: #F4F6F8;
+  --color-m3-grey-300: #DFE3E8;
+  --color-m3-grey-400: #C4CDD5;
+  --color-m3-grey-500: #919EAB;
+  --color-m3-grey-600: #637381;
+  --color-m3-grey-700: #454F5B;
+  --color-m3-grey-800: #1C252E;
+  --color-m3-divider: rgba(145, 158, 171, 0.2);
+
+  --shadow-m3-card: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+  --shadow-m3-dropdown: 0 0 2px 0 rgba(145, 158, 171, 0.24), -20px 20px 40px -4px rgba(145, 158, 171, 0.24);
+  --radius-m3-card: 16px;
+
+  --font-m3: var(--font-public-sans), var(--font-noto-thai), "Noto Sans Thai", sans-serif;
+  --font-m3-disp: var(--font-barlow), var(--font-noto-thai), "Noto Sans Thai", sans-serif;
+}
+
+/* ── component classes (ขนาดเป็น px ตาม mockup 1440/390 — ไม่ผูกกับสเกล tier เดิม) ── */
+@layer components {
+  .m3-card {
+    position: relative;
+    background: #fff;
+    border-radius: var(--radius-m3-card);
+    box-shadow: var(--shadow-m3-card);
+  }
+
+  /* soft label (.lbl) */
+  .m3-label {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .m3-label-primary { color: var(--color-m3-primary-dark); background: rgba(0, 167, 111, 0.16); }
+  .m3-label-info { color: var(--color-m3-info-dark); background: rgba(0, 184, 217, 0.16); }
+  .m3-label-warning { color: var(--color-m3-warning-dark); background: rgba(255, 171, 0, 0.16); }
+  .m3-label-error { color: var(--color-m3-error-dark); background: rgba(255, 86, 48, 0.16); }
+  .m3-label-secondary { color: var(--color-m3-secondary-dark); background: rgba(142, 51, 255, 0.16); }
+  .m3-label-success { color: var(--color-m3-success-dark); background: rgba(34, 197, 94, 0.16); }
+  .m3-label-default { color: var(--color-m3-grey-600); background: rgba(145, 158, 171, 0.16); }
+
+  /* buttons (.btn) */
+  .m3-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .m3-btn:disabled { cursor: not-allowed; opacity: 0.48; }
+  .m3-btn-sm { height: 30px; padding: 0 10px; font-size: 13px; }
+  .m3-btn-dark { background: var(--color-m3-grey-800); color: #fff; }
+  .m3-btn-dark:not(:disabled):hover { background: var(--color-m3-grey-700); }
+  .m3-btn-primary { background: var(--color-m3-primary); color: #fff; }
+  .m3-btn-primary:not(:disabled):hover { background: var(--color-m3-primary-dark); }
+  .m3-btn-outline { border: 1px solid rgba(145, 158, 171, 0.32); color: var(--color-m3-grey-800); background: #fff; }
+  .m3-btn-outline:not(:disabled):hover { background: rgba(145, 158, 171, 0.08); border-color: var(--color-m3-grey-800); }
+  .m3-btn-text { padding: 0 8px; color: var(--color-m3-grey-800); }
+  .m3-btn-text:not(:disabled):hover { background: rgba(145, 158, 171, 0.08); }
+
+  /* segmented toggle (7/30/90 วัน) */
+  .m3-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 8px;
+    background: rgba(145, 158, 171, 0.12);
+  }
+  .m3-segment > button {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-m3-grey-600);
+    cursor: pointer;
+  }
+  .m3-segment > button[aria-pressed="true"] {
+    background: #fff;
+    color: var(--color-m3-grey-800);
+    box-shadow: 0 2px 4px rgba(145, 158, 171, 0.24);
+  }
+
+  .m3-dot {
+    display: inline-block;
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+  }
+}
+
+/* ── ตาราง (.tb) — วางนอก @layer และใช้ !important เพราะต้องชนะกฎตารางเดิม
+   (html.light table … !important ด้านบน: ลายสลับแถว/หัวตารางตัวพิมพ์ใหญ่) ── */
+html .m3-table { width: 100%; border-collapse: collapse; }
+html .m3-table thead tr,
+html .m3-table thead tr th {
+  background-color: var(--color-m3-grey-200) !important;
+  color: var(--color-m3-grey-600) !important;
+  border-bottom: 0 !important;
+  text-transform: none;
+  letter-spacing: 0;
+}
+html .m3-table thead th {
+  padding: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+html .m3-table tbody tr,
+html .m3-table tbody tr:nth-child(odd),
+html .m3-table tbody tr:nth-child(even) {
+  background-color: transparent !important;
+}
+html .m3-table tbody tr:hover { background-color: rgba(145, 158, 171, 0.08) !important; }
+html .m3-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px dashed rgba(145, 158, 171, 0.2) !important;
+  color: var(--color-m3-grey-800) !important;
+  white-space: nowrap;
 }
