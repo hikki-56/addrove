@@ -244,6 +244,7 @@ export class InMemoryProductRepository implements IProductRepository {
       category: input.category,
       supplier: input.supplier || "",
       base_unit: input.base_unit || "ชิ้น",
+      units_per_carton: input.units_per_carton ?? null,
       minimum_stock: input.minimum_stock || 0,
       description: input.description || "",
       active: true,

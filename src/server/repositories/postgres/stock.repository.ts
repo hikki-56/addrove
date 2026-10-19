@@ -84,7 +84,7 @@ export class PostgresProductRepository {
         const { warehouse_id: _warehouse, initial_quantity: _initial, ...master } = input;
         return insertRow("products", { product_id: `prod-${input.sku}`, ...master, barcode: input.barcode || input.sku });
     }
-    async update(value: string, input: UpdateProductInput): Promise<Product | null> { return updateRecord("products", "product_id", await resolveProductId(value), input, ["sku", "barcode", "product_name", "category", "base_unit", "minimum_stock", "description", "supplier", "location", "active", "created_by", "created_by_name"]); }
+    async update(value: string, input: UpdateProductInput): Promise<Product | null> { return updateRecord("products", "product_id", await resolveProductId(value), input, ["sku", "barcode", "product_name", "category", "base_unit", "units_per_carton", "minimum_stock", "description", "supplier", "location", "active", "created_by", "created_by_name"]); }
     async hasMovements(value: string): Promise<boolean> { return (await query("SELECT EXISTS(SELECT 1 FROM stock_movements WHERE product_id=$1) AS found", [await resolveProductId(value)]))[0].found; }
 }
 function documentFromRow(row: Record<string, unknown>): Document {

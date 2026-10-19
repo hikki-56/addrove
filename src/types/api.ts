@@ -82,6 +82,12 @@ export const CreateProductSchema = z.object({
   supplier: z.string().max(200).optional().default(""),
   warehouse_id: z.string().min(1, "กรุณาเลือกโกดัง").optional(),
   base_unit: z.string().min(1, "กรุณากรอกหน่วยนับ").max(20).optional().default("ชิ้น"),
+  units_per_carton: z.number()
+    .int("จำนวนบรรจุต่อลังต้องเป็นจำนวนเต็ม")
+    .positive("จำนวนบรรจุต่อลังต้องมากกว่า 0")
+    .max(2147483647, "จำนวนบรรจุต่อลังเกินขอบเขตที่รองรับ")
+    .nullable()
+    .optional(),
   minimum_stock: z
     .number()
     .min(0, "จำนวนขั้นต่ำต้องไม่ติดลบ")

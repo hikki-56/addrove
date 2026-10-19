@@ -62,6 +62,8 @@ export interface Product {
   product_name: string;
   category: string;
   base_unit: string;
+  /** Base units per carton; null/omitted means packaging is not configured. */
+  units_per_carton?: number | null;
   minimum_stock: number;
   quantity?: number;
   total_quantity?: number;

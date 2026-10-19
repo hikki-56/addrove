@@ -54,10 +54,10 @@ jest.mock('@/context/TabAuthContext', () => ({ useTabAuth: () => ({user: {id: 't
 jest.mock('uuid', () => ({v4: () => 'test-id'}));
 const products = [1,2,3].map(n => ({ product_id: `prod-test-${n}`,sku:`TEST-${n}`,barcode:`TEST00${n}`,product_name:`สินค้าทดสอบ ${n}` })) as Product[];
 const locations = [{location_id:'loc-a',location_code:'A1',location_name:'A1',warehouse_id:'wh-01'}] as Location[];
-function render() {
+function render(productList: Product[] = products) {
   mockCursor = 0;
   // eslint-disable-next-line react-hooks/rules-of-hooks -- React hooks are mocked by this state-transition harness.
-  return useReceiveMovement({activeWhId:'wh-01',setActiveWhId:jest.fn(),locations,products,setProducts:jest.fn(),refreshWarehouseData:jest.fn()});
+  return useReceiveMovement({activeWhId:'wh-01',setActiveWhId:jest.fn(),locations,products:productList,setProducts:jest.fn(),refreshWarehouseData:jest.fn()});
 }
 beforeEach(() => {mockCells=[]; mockData=undefined as unknown as Record<string,any>;mockFields=[];mockId=0;jest.useFakeTimers();});
 afterEach(() => {jest.clearAllTimers();jest.useRealTimers();});
@@ -80,4 +80,66 @@ test('inserting a location row in the middle carries later confirmed lines with 
   hook=render();await hook.handleScanBarcode('TEST002');hook=render();hook.handleAddLocationForProduct(0);hook=render();
   expect(mockData.lines.map((l: any)=>l.product_id)).toEqual(['prod-test-2','prod-test-2','prod-test-1']);
   expect(hook.confirmedLines[0]).not.toBe(true);expect(hook.confirmedLines[1]).not.toBe(true);expect(hook.confirmedLines[2]).toBe(true);expect(hook.locationInputs[2]).toBe('A1');
+});
+
+const packedProduct = { ...products[0], base_unit: 'ตัว', units_per_carton: 12 };
+const packedProducts = [packedProduct, ...products.slice(1)];
+
+test('receiving plans add packs and warn when a scan crosses the remaining target', async () => {
+  let hook = render(packedProducts);
+  hook.startPlanReceive({
+    document_id: 'plan-1', document_no: 'RP-1', warehouse_name: 'โกดัง 1',
+    lines: [{ product_id: packedProduct.product_id, sku: packedProduct.sku, expected_qty: 20, received_qty: 10 }],
+  } as Parameters<typeof hook.startPlanReceive>[0]);
+  hook = render(packedProducts);
+  await hook.handleScanBarcode('TEST001');
+  expect(mockData.lines[0].qty).toBe(12);
+  expect(render(packedProducts).scanFeedback?.title).toContain('ยอดรับรวม 22 ตัว เกินเป้าแผน 20 ตัว');
+  hook = render(packedProducts);
+  await hook.handleScanBarcode('TEST002');
+  expect(mockData.lines).toHaveLength(1);
+  expect(render(packedProducts).scanFeedback?.type).toBe('error');
+});
+
+test('each scan adds a pack in base units, including consecutive scans before a render', async () => {
+  const hook = render(packedProducts);
+  await hook.handleScanBarcode('TEST001');
+  expect(mockData.lines[0]).toMatchObject({ boxes: 1, qty: 12 });
+  await hook.handleScanBarcode('TEST001');
+  expect(mockData.lines[0]).toMatchObject({ boxes: 2, qty: 24, primary_qty: 24 });
+  expect(render(packedProducts).scanFeedback?.title).toContain('12 ตัว');
+});
+
+test('search selection uses the same pack quantity and preserves manual quantity edits', () => {
+  let hook = render(packedProducts);
+  hook.handleProductSelect(packedProduct);
+  hook.form.setValue('lines.0.qty', 5);
+  hook = render(packedProducts);
+  hook.handleProductSelect(packedProduct);
+  expect(mockData.lines[0]).toMatchObject({ boxes: 2, qty: 17, primary_qty: 17 });
+});
+
+test('rescanning adds to the primary location, keeps extra allocations and requires confirmation again', async () => {
+  let hook = render(packedProducts);
+  await hook.handleScanBarcode('TEST001');
+  mockData.lines[0] = { ...mockData.lines[0], location_id: 'A1', qty: 12, primary_qty: 8, extra_locations: ['A2'], extra_qtys: [4] };
+  hook = render(packedProducts);
+  hook.toggleConfirmLine(0);
+  hook = render(packedProducts);
+  expect(hook.confirmedLines[0]).toBe(true);
+  await hook.handleScanBarcode('TEST001');
+  hook = render(packedProducts);
+  expect(mockData.lines[0]).toMatchObject({ qty: 24, primary_qty: 20, extra_qtys: [4], extra_locations: ['A2'] });
+  expect(hook.confirmedLines[0]).toBe(false);
+});
+
+test('unknown pack sizes leave quantity manual and do not multiply it on rescan', async () => {
+  let hook = render();
+  await hook.handleScanBarcode('TEST001');
+  expect(mockData.lines[0].qty).toBe(0);
+  hook.form.setValue('lines.0.qty', 7);
+  hook = render();
+  await hook.handleScanBarcode('TEST001');
+  expect(mockData.lines[0]).toMatchObject({ boxes: 2, qty: 7 });
+  expect(render().scanFeedback?.title).toContain('กรุณากรอกจำนวนเอง');
 });

@@ -120,6 +120,7 @@ export async function GET(req: NextRequest) {
             product_name: nameVal,
             category: categoryVal,
             base_unit: unitVal,
+            units_per_carton: master?.units_per_carton ?? null,
             minimum_stock: minStockVal,
             quantity: minStockVal,
             location: locationVal,

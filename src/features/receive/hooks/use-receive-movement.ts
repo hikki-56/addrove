@@ -169,7 +169,7 @@ export function useReceiveMovement({
     },
   });
 
-  const { register, control, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = form;
+  const { register, control, handleSubmit, watch, getValues, setValue, reset, formState: { errors, isSubmitting } } = form;
   const { fields, insert, remove, move } = useFieldArray({ control, name: "lines" });
   const watchLines = watch("lines");
 
@@ -200,6 +200,42 @@ export function useReceiveMovement({
     setLocationInputs((prev) => remapIndexState(prev, toTop));
     setConfirmedLines((prev) => remapIndexState(prev, toTop));
   }, [move]);
+
+  // Both barcode scanning and search selection receive one pack. Quantities stay
+  // in the product's base unit, including manually entered and split quantities.
+  const addProductPack = useCallback((product: Product) => {
+    const pid = product.product_id || product.sku;
+    const size = product.units_per_carton;
+    const packSize = typeof size === "number" && Number.isInteger(size) && size > 0 ? size : 0;
+    const lines = getValues("lines") || [];
+    const index = lines.findIndex((line) => line.product_id === pid);
+    let boxes = 1;
+    let qty = packSize;
+    if (index >= 0) {
+      const line = lines[index];
+      boxes = (Number(line.boxes) || 1) + 1;
+      qty = (Number(line.qty) || 0) + packSize;
+      setValue(`lines.${index}.boxes`, boxes, { shouldValidate: true, shouldDirty: true });
+      if (packSize > 0) {
+        const extras = (line.extra_qtys || []).reduce((sum, value) => sum + (Number(value) || 1), 0);
+        const primary = typeof line.primary_qty === "number"
+          ? line.primary_qty : Math.max(0, (Number(line.qty) || 0) - extras);
+        setValue(`lines.${index}.qty`, qty, { shouldValidate: true, shouldDirty: true });
+        setValue(`lines.${index}.primary_qty`, primary + packSize, { shouldValidate: true, shouldDirty: true });
+        setConfirmedLines((prev) => ({ ...prev, [index]: false }));
+      }
+      moveLineToTop(index);
+    } else {
+      insertLine(0, {
+        product_id: pid, location_id: "", extra_locations: [], extra_qtys: [],
+        location_allocations: [], boxes, qty, barcode: product.barcode || product.sku || "",
+      });
+      setError("");
+    }
+    return packSize > 0
+      ? `เพิ่ม 1 แพ็ก (${packSize} ${product.base_unit}) — รวม ${qty} ${product.base_unit}`
+      : `รวม ${boxes} กล่อง — ยังไม่มีจำนวนบรรจุ กรุณากรอกจำนวนเอง`;
+  }, [getValues, setValue, moveLineToTop, insertLine]);
 
   // Keep warehouse_id in form in sync with active warehouse
   useEffect(() => {
@@ -483,7 +519,7 @@ export function useReceiveMovement({
       }
     }
 
-    // IF PRODUCT MATCHED -> ADD (duplicate scan adds one box only — จำนวนชิ้น is counted manually)
+    // A product scan adds one pack using the configured base-unit quantity.
     if (matched) {
       const pid = matched.product_id || matched.sku;
 
@@ -503,7 +539,7 @@ export function useReceiveMovement({
         return;
       }
 
-      const currentLines = watchLines || [];
+      const currentLines = getValues("lines") || [];
 
       // แสดงเป้าแผนใน feedback และเตือนเมื่อยอดรวมแตะ/เกินเป้า (ยังบันทึกได้ตามของจริง)
       let planSuffix = "";
@@ -511,41 +547,22 @@ export function useReceiveMovement({
         const inFormQty = currentLines
           .filter((l) => l.product_id === pid)
           .reduce((s, l) => s + (Number(l.qty) || 0), 0);
-        const alreadyCounted = (planLine.received_qty || 0) + inFormQty;
-        planSuffix = ` — เป้าแผน ${planLine.expected_qty} ชิ้น รับไปแล้ว ${planLine.received_qty || 0} ชิ้น`;
-        if (alreadyCounted >= planLine.expected_qty) {
-          planSuffix = ` — ยอดรวมแล้ว ${alreadyCounted} ชิ้นแตะเป้า ${planLine.expected_qty} ชิ้น การเพิ่มอีกจะบันทึกเกินจำนวนแผน`;
+        const alreadyCounted = (planLine.received_qty || 0) + inFormQty + (matched.units_per_carton || 0);
+        const unit = matched.base_unit || "ชิ้น";
+        planSuffix = ` — เป้าแผน ${planLine.expected_qty} ${unit} รับไปแล้ว ${planLine.received_qty || 0} ${unit}`;
+        if (alreadyCounted > planLine.expected_qty) {
+          planSuffix = ` — ยอดรับรวม ${alreadyCounted} ${unit} เกินเป้าแผน ${planLine.expected_qty} ${unit} กรุณาตรวจจำนวนจริง`;
+        } else if (alreadyCounted === planLine.expected_qty) {
+          planSuffix = ` — ยอดรับรวม ${alreadyCounted} ${unit} ครบเป้าแผน`;
         }
       }
 
-      const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
-      if (existingIdx !== -1) {
-        const currentBoxes = Number(currentLines[existingIdx].boxes) || 1;
-        setValue(`lines.${existingIdx}.boxes`, currentBoxes + 1, { shouldValidate: true, shouldDirty: true });
-        moveLineToTop(existingIdx);
-        setScanFeedback({
-          type: "success",
-          title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง${planSuffix}`,
-          message: `[${matched.sku}] ${shortName(matched.product_name)}`,
-        });
-      } else {
-        insertLine(0, {
-          product_id: pid,
-          location_id: "",
-          extra_locations: [],
-          extra_qtys: [],
-          location_allocations: [],
-          boxes: 1,
-          qty: 0,
-          barcode: matched.barcode || matched.sku || "",
-        });
-        setError("");
-        setScanFeedback({
-          type: "success",
-          title: `นำเข้าสำเร็จ${planSuffix}`,
-          message: `[${matched.sku}] ${shortName(matched.product_name)}`,
-        });
-      }
+      const feedback = addProductPack(matched);
+      setScanFeedback({
+        type: "success",
+        title: `${feedback}${planSuffix}`,
+        message: `[${matched.sku}] ${shortName(matched.product_name)}`,
+      });
 
       setLastScannedId(pid);
       setBarcodeInput("");
@@ -690,7 +707,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [locations, products, activeWhId, watchLines, confirmedLines, activePlan, setValue, insertLine, moveLineToTop, setLocations, setProducts, setActiveWhId]);
+  }, [locations, products, activeWhId, watchLines, confirmedLines, activePlan, getValues, setValue, addProductPack, setLocations, setProducts, setActiveWhId]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);
@@ -879,36 +896,12 @@ export function useReceiveMovement({
       return;
     }
 
-    const currentLines = watchLines || [];
-
-    const existingIdx = currentLines.findIndex((l) => l.product_id === pid);
-    if (existingIdx !== -1) {
-      const currentBoxes = Number(currentLines[existingIdx].boxes) || 1;
-      setValue(`lines.${existingIdx}.boxes`, currentBoxes + 1, { shouldValidate: true, shouldDirty: true });
-      moveLineToTop(existingIdx);
-      setScanFeedback({
-        type: "success",
-        title: `เพิ่ม 1 กล่อง — รวม ${currentBoxes + 1} กล่อง`,
-        message: `[${product.sku}] ${shortName(product.product_name)}`,
-      });
-      } else {
-        insertLine(0, {
-        product_id: pid,
-        location_id: "",
-        extra_locations: [],
-        extra_qtys: [],
-        location_allocations: [],
-        boxes: 1,
-        qty: 0,
-        barcode: product.barcode || product.sku || "",
-      });
-        setError("");
-        setScanFeedback({
-          type: "success",
-          title: "นำเข้าสำเร็จ",
-          message: `[${product.sku}] ${shortName(product.product_name)}`,
-        });
-      }
+    const feedback = addProductPack(product);
+    setScanFeedback({
+      type: "success",
+      title: feedback,
+      message: `[${product.sku}] ${shortName(product.product_name)}`,
+    });
 
     setLastScannedId(pid);
     setSearchOpen(false);

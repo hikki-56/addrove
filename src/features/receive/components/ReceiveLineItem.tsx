@@ -60,6 +60,8 @@ export default function ReceiveLineItem({
 
   const sku = matchedProd?.sku || line.product_id;
   const name = matchedProd?.product_name || "สินค้าใหม่";
+  const baseUnit = matchedProd?.base_unit || "ชิ้น";
+  const packSize = matchedProd?.units_per_carton;
   const barcode = matchedProd?.barcode && matchedProd.barcode.trim() !== "-" ? matchedProd.barcode.trim() : "";
 
   const currentBoxes = watch(`lines.${index}.boxes`) || 1;
@@ -310,7 +312,7 @@ export default function ReceiveLineItem({
               aria-label={`จำนวนของตำแหน่งที่ ${slotNo}`}
               className="w-full max-w-[90px] sm:max-w-[120px] text-center py-1.5 bg-transparent font-mono font-bold text-xl sm:text-2xl text-slate-900 focus:outline-none select-none [-webkit-touch-callout:none]"
             />
-            <span className="text-sm sm:text-base text-slate-700 font-bold shrink-0">ชิ้น</span>
+            <span className="text-sm sm:text-base text-slate-700 font-bold shrink-0">{baseUnit}</span>
           </div>
 
           <button
@@ -408,15 +410,15 @@ export default function ReceiveLineItem({
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div
               className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-baseline gap-1"
-              title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} กล่อง`}
+              title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} ${packSize ? "แพ็ก" : "กล่อง"}`}
             >
               <span className="disp num text-base sm:text-lg font-bold">{(currentBoxes || 0).toLocaleString()}</span>
-              <span className="text-xs sm:text-sm font-bold">กล่อง</span>
+              <span className="text-xs sm:text-sm font-bold">{packSize ? "แพ็ก" : "กล่อง"}</span>
             </div>
 
             <div className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#EAF2EE] border border-[#DFEDE6] text-[#052B1F] flex items-baseline gap-1">
               <span className="disp num text-lg font-bold">{(currentQty || 0).toLocaleString()}</span>
-              <span className="text-sm font-bold">ชิ้น</span>
+              <span className="text-sm font-bold">{baseUnit}</span>
             </div>
           </div>
 
@@ -431,6 +433,11 @@ export default function ReceiveLineItem({
 
       {isExpanded && (
         <div className="px-3.5 pb-4 sm:px-4 sm:pb-5 pt-3.5 border-t border-[#EEF1EF] space-y-3 fade-in">
+          <p className="text-sm text-slate-600">
+            {packSize
+              ? `สแกน 1 ครั้ง = 1 แพ็ก (${packSize.toLocaleString()} ${baseUnit}) · แก้จำนวนตามของจริงได้`
+              : "ยังไม่มีจำนวนบรรจุ — กรุณากรอกจำนวนตามของจริง"}
+          </p>
           {renderSlot({
             slotNo: 1,
             isPrimary: true,

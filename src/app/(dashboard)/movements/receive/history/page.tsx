@@ -41,7 +41,7 @@ export interface ReceiveHistoryRecord {
   note?: string;
 }
 
-export function formatCreatorName(name?: string, id?: string): string {
+function formatCreatorName(name?: string, id?: string): string {
   const val = String(name || id || "").trim();
   if (!val || val === "staff" || val === "unknown" || val === "-") return "พนักงานรับสินค้า";
   const lower = val.toLowerCase();

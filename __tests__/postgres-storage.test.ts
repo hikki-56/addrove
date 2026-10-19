@@ -79,6 +79,33 @@ test("document numbering is durable and unique under concurrent requests", async
     expect(new Set(docs.map(doc => doc.document_no)).size).toBe(12);
     expect((await repo.documents.findAll({ page: 1, limit: 100 })).total).toBe(12);
 });
+
+test("carton packaging survives creation, unrelated edits, migration replay and clearing without stock changes", async () => {
+    expect((await repo.products.findBySku("TEST"))?.units_per_carton).toBeNull();
+    const product = await repo.products.create({ sku: "CARTON", product_name: "Carton product", category: "test", barcode: "CARTON", base_unit: "ชิ้น", minimum_stock: 0, description: "", units_per_carton: 12 });
+    try {
+        await repo.stockSummary.applyChanges([{ productId: product.product_id, warehouseId: "wh-1", locationId: "A1", delta: 30 }]);
+        const balancesBefore = await query("SELECT * FROM stock_summary WHERE product_id=$1", [product.product_id]);
+        const movementsBefore = await repo.movements.findAll({ product_id: product.product_id });
+        expect((await repo.products.findByBarcode("CARTON"))?.units_per_carton).toBe(12);
+        await repo.products.update(product.product_id, { units_per_carton: 24 });
+        await repo.products.update(product.product_id, { product_name: "Renamed carton product" });
+        await mockDb.exec(fs.readFileSync(path.join(root, "supabase/migrations/20261015000000_product_carton_quantity.sql"), "utf8"));
+        expect((await repo.products.findById(product.product_id))?.units_per_carton).toBe(24);
+        await repo.products.update(product.product_id, { units_per_carton: null });
+        expect((await repo.products.findById(product.product_id))?.units_per_carton).toBeNull();
+        expect(await query("SELECT * FROM stock_summary WHERE product_id=$1", [product.product_id])).toEqual(balancesBefore);
+        expect(await repo.movements.findAll({ product_id: product.product_id })).toEqual(movementsBefore);
+    } finally {
+        await query("DELETE FROM stock_summary WHERE product_id=$1", [product.product_id]);
+        await query("DELETE FROM products WHERE product_id=$1", [product.product_id]);
+    }
+});
+
+test.each([0, -1])("database rejects invalid carton quantity %s", async units => {
+    await expect(query("UPDATE products SET units_per_carton=$1 WHERE sku='TEST'", [units])).rejects.toThrow("products_units_per_carton_positive");
+    expect((await repo.products.findBySku("TEST"))?.units_per_carton).toBeNull();
+});
 test("an insufficient-stock operation rolls back its document and all prior deltas", async () => {
     await repo.stockSummary.applyChanges([{ productId: "TEST", warehouseId: "wh-01", locationId: "A1", delta: 10 }]);
     await expect(withDatabaseTransaction(async () => {
