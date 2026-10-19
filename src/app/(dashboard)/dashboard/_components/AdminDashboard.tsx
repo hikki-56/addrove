@@ -36,6 +36,15 @@ import {
   filterActivitiesByActor,
   type ActivityActorOption,
 } from "../_lib/today-activities";
+import {
+  SolarAltArrowRight,
+  SolarBox,
+  SolarDangerCircle,
+  SolarInboxIn,
+  SolarMagnifier,
+  SolarOutboxHistory,
+} from "@/components/icons";
+import { avatarToneClass, userInitials } from "@/components/ui/user-initials";
 
 /* ── Inline SVG icons (lucide paths — ตามกติกา stockify-ui ไม่ติดตั้ง icon library) ── */
 function Icon({ children, className = "size-5" }: { children: React.ReactNode; className?: string }) {
@@ -45,22 +54,6 @@ function Icon({ children, className = "size-5" }: { children: React.ReactNode; c
     </svg>
   );
 }
-const PackageIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><path d="m3.3 7 8.7 5 8.7-5" /></Icon>
-);
-const ArrowDownIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></Icon>
-);
-const ArrowUpIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></Icon>
-);
-const TriangleAlertIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></Icon>
-);
-const ArrowRightIcon = ({ className }: { className?: string }) => (
-  <Icon className={className}><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></Icon>
-);
-
 type Timeframe = "7d" | "30d" | "90d";
 
 // รายการรออนุมัติที่แสดงในกล่อง — ดึงจาก /api/approvals?status=PENDING
@@ -83,26 +76,35 @@ const EMPTY_ACTIVITIES: TodayActivity[] = [];
 
 /* ── กราฟเคลื่อนไหว 2 ชุด: รับเข้า (เขียว) / เบิกสินค้า (แดง) ── */
 const CHART_SERIES_META = [
-  { key: "received", label: "รับเข้า", color: "#06402B" },
-  { key: "issued", label: "เบิกสินค้า", color: "#B42318" },
+  { key: "received", label: "รับเข้า", color: "#00A76F" },
+  { key: "issued", label: "เบิกสินค้า", color: "#FFAB00" },
 ] as const;
+
+// สีโดนัทโทนเขียว Minimal v3 ตามลำดับชิ้น (ข้อมูล/ลำดับมาจาก buildWarehouseDonut เหมือนเดิม)
+const DONUT_COLORS_V3 = ["#004B50", "#007867", "#00A76F", "#5BE49B", "#9EEEB4", "#C8FAD6"] as const;
+const donutColor = (index: number) => DONUT_COLORS_V3[index % DONUT_COLORS_V3.length];
+
+// จำนวนวันล่าสุดที่แสดงเป็นแท่งเล็กในการ์ด KPI รับเข้า/เบิก
+const KPI_SPARK_DAYS = 12;
 
 function badgeForActivity(actionType: TodayActivity["action_type"]): string {
   switch (actionType) {
     case "RECEIVE":
     case "RECEIVE_REQUEST":
+      return "m3-label-success";
     case "APPROVE_RECEIVE":
-      return "bg-[#EAF2EE] text-[#06402B]";
+      return "m3-label-primary";
     case "ISSUE":
     case "ISSUE_REQUEST":
+      return "m3-label-warning";
     case "APPROVE_ISSUE":
-      return "bg-[#FCEFED] text-[#B42318]";
+      return "m3-label-info";
     case "TRANSFER":
     case "TRANSFER_REQUEST":
     case "APPROVE_TRANSFER":
-      return "bg-[#EFF8FF] text-[#175CD3]";
+      return "m3-label-secondary";
     default:
-      return "bg-[#F3F6F4] text-[#475467]";
+      return "m3-label-default";
   }
 }
 
@@ -236,9 +238,9 @@ export default function AdminDashboard() {
   };
   const kpiCards = buildKpiCards(kpiNumbers);
   const kpiCardMeta = [
-    { icon: PackageIcon, hero: true, valueRef: kpiRemainingRef },
-    { icon: ArrowDownIcon, hero: false, valueRef: kpiReceivedRef },
-    { icon: ArrowUpIcon, hero: false, valueRef: kpiIssuedRef },
+    { icon: SolarBox, hero: true, valueRef: kpiRemainingRef },
+    { icon: SolarInboxIn, hero: false, valueRef: kpiReceivedRef },
+    { icon: SolarOutboxHistory, hero: false, valueRef: kpiIssuedRef },
   ];
   const kpis = kpiCards.map((card, i) => ({
     ...card,
@@ -263,6 +265,15 @@ export default function AdminDashboard() {
     }));
   }, [stats?.chart_data]);
   const visibleChart = chartData.slice(-TIMEFRAME_DAYS[timeframe]);
+
+  // ส่วนแสดงผล Minimal v3 (D01/M31): ยอดรวมของช่วงที่เลือกใต้หัวกราฟ + แท่งเล็กในการ์ด KPI
+  const seriesTotals = {
+    received: visibleChart.reduce((sum, c) => sum + c.received, 0),
+    issued: visibleChart.reduce((sum, c) => sum + c.issued, 0),
+  };
+  const showSeriesTotals = !loading && !dashError && visibleChart.length > 0;
+  const sparkReceived = chartData.slice(-KPI_SPARK_DAYS).map((c) => c.received);
+  const sparkIssued = chartData.slice(-KPI_SPARK_DAYS).map((c) => c.issued);
 
   // กิจกรรมวันนี้ + ตัวกรองผู้ทำรายการ (client กรองเองจากข้อมูลที่ server ส่งมา)
   const todayActivities = stats?.today_activities ?? EMPTY_ACTIVITIES;
@@ -289,18 +300,18 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="w-full max-w-full space-y-6 lg:space-y-8">
-      {/* สถานะโหลดข้อมูลไม่สำเร็จ — แจ้งผู้ใช้แทนการแสดง 0 ที่ทำให้เข้าใจผิด */}
+    <div className="w-full max-w-full space-y-3 md:space-y-6 md:pt-5">
+      {/* สถานะโหลดข้อมูลไม่สำเร็จ — แจ้งผู้ใช้แทนการแสดง 0 ที่ทำให้เข้าใจผิด (D52 notification · error) */}
       {!loading && dashError && (
         <div
           role="alert"
-          className="flex flex-col gap-3 rounded-2xl border border-[#F2C4BC] bg-[#FCEFED] p-5 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-xl bg-[rgba(255,86,48,0.12)] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-3">
-            <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-[#B42318]" />
+            <SolarDangerCircle size={20} className="mt-0.5 shrink-0 text-m3-error" />
             <div>
-              <p className="text-sm font-semibold text-[#B42318]">โหลดข้อมูล Dashboard ไม่สำเร็จ</p>
-              <p className="mt-0.5 text-sm text-[#912018]">
+              <p className="text-[14px] font-semibold text-m3-error-dark">โหลดข้อมูล Dashboard ไม่สำเร็จ</p>
+              <p className="mt-0.5 text-[13px] text-m3-error-dark/90">
                 {dashError} — ตัวเลขด้านล่างอาจไม่ครบถ้วน ไม่ใช่ข้อมูลจริงทั้งหมด
               </p>
             </div>
@@ -308,131 +319,155 @@ export default function AdminDashboard() {
           <button
             type="button"
             onClick={fetchData}
-            className="shrink-0 self-start rounded-lg bg-[#B42318] px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#912018] cursor-pointer sm:self-auto"
+            className="m3-btn m3-btn-sm m3-btn-outline shrink-0 self-start sm:self-auto"
           >
             ลองโหลดอีกครั้ง
           </button>
         </div>
       )}
 
-      {/* KPI — 4 ใบ/แถวเดียวตั้งแต่ lg ขึ้นไป · มือถือ 1 คอลัมน์ / แท็บเล็ตเล็ก 2 คอลัมน์
-          ช่วง lg–2xl ขนาดเลขไหล่ตาม viewport ด้วย clamp เพื่อให้ เลข+หน่วย+ไอคอน
-          อยู่บรรทัดเดียวกันพอดีไม่ทับกัน · จอใหญ่ ≥1536 คงขนาดเดิม (60px) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:gap-6">
-        {kpis.map((kpiItem) => {
+      {/* KPI — D01: 3 ใบแถวเดียว (สินค้าทั้งหมดเป็น hero สีเขียวอ่อน) · M31: hero เต็มแถว + รับเข้า/เบิก 2 คอลัมน์ */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6">
+        {kpis.map((kpiItem, index) => {
           const KpiIcon = kpiItem.icon;
+          const spark = index === 1 ? sparkReceived : index === 2 ? sparkIssued : null;
           return (
-            <div key={kpiItem.title} className={`min-w-0 rounded-2xl border p-4 lg:p-3 xl:p-4 2xl:p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05)] ${
-              kpiItem.hero ? "border-[#04301F] bg-[#06402B]" : "border-[#E8ECEA] bg-white"
-            }`}>
-              <div className="flex min-w-0 items-start justify-between gap-3 2xl:gap-4">
-                <div className="flex min-w-0 flex-col gap-2">
-                  <p className={`truncate text-sm 2xl:text-base font-medium ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`} title={kpiItem.title}>
-                    {kpiItem.title}
-                  </p>
+            <div
+              key={kpiItem.title}
+              className={`min-w-0 rounded-m3-card p-4 md:p-6 ${
+                kpiItem.hero
+                  ? "col-span-2 bg-[linear-gradient(135deg,rgba(200,250,214,0.56),rgba(91,228,155,0.18))] md:col-span-1 md:bg-[linear-gradient(135deg,rgba(200,250,214,0.48),rgba(91,228,155,0.16))]"
+                  : "m3-card"
+              }`}
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <p className="truncate text-[14px] font-semibold text-m3-grey-700 md:text-m3-grey-800" title={kpiItem.title}>
+                  {kpiItem.title}
+                </p>
+                {kpiItem.hero ? (
+                  <span className="hidden size-10 shrink-0 place-items-center rounded-[10px] bg-[rgba(0,167,111,0.16)] text-m3-primary md:grid">
+                    <KpiIcon size={24} />
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex min-w-0 items-end justify-between gap-3">
+                <div className="min-w-0">
                   {loading ? (
-                    <span className="inline-block h-9 w-24 rounded-lg skeleton opacity-50" />
+                    <span className="mt-2 inline-block h-9 w-24 rounded-lg skeleton opacity-50 md:mt-3" />
                   ) : dashError ? (
                     // โหลดไม่สำเร็จ → แสดง — แทนเลข 0 ที่ทำให้เข้าใจว่าไม่มีสินค้า/ไม่มีรายการจริง
-                    <p className="text-3xl font-semibold tracking-tight text-[#667085]">—</p>
+                    <p className="mt-0.5 font-m3-disp text-[30px] font-bold leading-[1.5] text-m3-grey-500 md:mt-3 md:text-[32px]">—</p>
                   ) : (
-                    <p className={`whitespace-nowrap text-3xl lg:[font-size:clamp(0.875rem,0.35rem+1vw,1.75rem)] 2xl:text-3xl font-semibold tracking-tight tabular-nums ${kpiItem.hero ? "text-white" : "text-[#111827]"}`}>
+                    <p
+                      className={`mt-0.5 whitespace-nowrap font-m3-disp text-[30px] font-bold leading-[1.5] tabular-nums md:mt-3 md:text-[32px] ${
+                        kpiItem.hero ? "text-m3-primary-darker" : "text-m3-grey-800"
+                      }`}
+                    >
                       <span ref={kpiItem.valueRef} />
                       {kpiItem.unit ? (
-                        <span className={`ml-1.5 text-xs font-medium lg:hidden xl:inline 2xl:text-base ${kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"}`}>
+                        <span className="ml-1.5 font-m3 text-[14px] font-semibold text-m3-grey-600 md:text-[16px]">
                           {kpiItem.unit}
                         </span>
                       ) : null}
                     </p>
                   )}
+                  <p
+                    className={`truncate text-[12px] md:mt-1.5 md:text-[14px] ${
+                      dashError
+                        ? "font-medium text-m3-warning-dark"
+                        : kpiItem.hero
+                          ? "text-m3-grey-500 md:text-[#1B806A]"
+                          : "text-m3-grey-500"
+                    }`}
+                    title={dashError ? undefined : kpiItem.caption}
+                  >
+                    {dashError ? "ไม่สามารถโหลดข้อมูลส่วนนี้ได้" : kpiItem.caption}
+                  </p>
                 </div>
-                <div className={`grid size-8 lg:size-6 xl:size-8 2xl:size-12 shrink-0 place-items-center rounded-lg ${
-                  kpiItem.hero
-                    ? "bg-[#0F5C3F] text-[#C9E5D6]"
-                    : "bg-[#EAF2EE] text-[#06402B]"
-                }`}>
-                  <KpiIcon className="size-5 2xl:size-8" />
-                </div>
+                {spark && !loading && !dashError ? (
+                  <KpiSparkline values={spark} color={index === 1 ? "#00B8D9" : "#FFAB00"} />
+                ) : null}
               </div>
-              <p className={`mt-3 truncate text-sm 2xl:text-base ${
-                dashError ? "font-medium text-[#B54708]" : kpiItem.hero ? "text-[#9FC0AF]" : "text-[#667085]"
-              }`} title={dashError ? undefined : kpiItem.caption}>
-                {dashError ? "ไม่สามารถโหลดข้อมูลส่วนนี้ได้" : kpiItem.caption}
-              </p>
             </div>
           );
         })}
       </div>
 
       {/* Analytics 2/3 + Warehouse donut 1/3 — มือถือเรียง: กราฟ → โดนัท → รออนุมัติ → กิจกรรมวันนี้ */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="flex flex-col rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] lg:col-span-2 lg:col-start-1 lg:row-start-1">
-            {/* หัวการ์ดบรรทัดเดียว: ชื่อ + ตัวอย่างสี + ปุ่มช่วงเวลา เรียงแนวนอนร่วมกัน
-                (ยัง flex-wrap เผื่อจอแคบมากจะได้ตกบรรทัดใหม่อย่างสวย ไม่ล้น) */}
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-6 pt-6">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-                <h2 className="text-sm 2xl:text-lg font-semibold tracking-tight text-[#111827]">ภาพรวมการเคลื่อนไหว</h2>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  {CHART_SERIES_META.map((series) => (
-                    <span key={series.key} className="flex items-center gap-1.5 text-xs 2xl:text-base text-[#667085]">
-                      <span className="size-2 rounded-full" style={{ backgroundColor: series.color }} />
-                      {series.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[#F3F6F4] p-1">
-                {([["7d", "7 วัน"], ["30d", "30 วัน"], ["90d", "90 วัน"]] as const).map(([key, label]) => (
+      <div className="grid grid-cols-1 gap-3 md:gap-6 lg:grid-cols-3">
+          <div className="m3-card flex min-w-0 flex-col lg:col-span-2 lg:col-start-1 lg:row-start-1">
+            <div className="flex min-w-0 items-center justify-between gap-3 px-4 pt-4 md:px-6 md:pt-6">
+              <h2 className="text-[16px] font-semibold text-m3-grey-800 md:text-[18px]">ภาพรวมการเคลื่อนไหว</h2>
+              <div className="m3-segment shrink-0" role="group" aria-label="ช่วงเวลา">
+                {([["7d", "7"], ["30d", "30"], ["90d", "90"]] as const).map(([key, days]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setTimeframe(key)}
                     aria-pressed={timeframe === key}
-                    className={`h-7 rounded-md px-2.5 text-xs 2xl:px-3 2xl:text-sm font-medium transition-colors duration-150 cursor-pointer ${
-                      timeframe === key
-                        ? "bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
-                        : "text-[#667085] hover:text-[#111827]"
-                    }`}
+                    className="transition-colors duration-150"
                   >
-                    {label}
+                    {days}<span className="hidden md:inline"> วัน</span>
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 px-2 pb-4 pt-2">
+            {/* ตัวอย่างสี + ยอดรวมของช่วงเวลาที่เลือก */}
+            <div className="flex flex-wrap items-start gap-x-5 gap-y-1 px-4 pt-2.5 md:gap-x-8 md:px-6 md:pt-5">
+              {CHART_SERIES_META.map((series) => (
+                <div key={series.key}>
+                  <div className="flex items-center gap-2 text-[12px] text-m3-grey-600 md:text-[13px]">
+                    <span className="m3-dot size-2.5 md:size-2" style={{ backgroundColor: series.color }} />
+                    {series.label}
+                    {showSeriesTotals ? (
+                      <b className="ml-1 font-bold text-m3-grey-800 tabular-nums md:hidden">
+                        {seriesTotals[series.key].toLocaleString()}
+                      </b>
+                    ) : null}
+                  </div>
+                  {showSeriesTotals ? (
+                    <p className="mt-0.5 hidden text-[18px] font-bold text-m3-grey-800 tabular-nums md:block">
+                      {seriesTotals[series.key].toLocaleString()}{" "}
+                      <span className="text-[13px] font-medium text-m3-grey-600">ชิ้น</span>
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 pb-3 pt-2 md:pb-5 md:pt-4">
               {loading ? (
-                <div className="mx-4 mb-2 h-[280px] rounded-xl skeleton opacity-40 sm:h-[320px]" />
+                <div className="mx-4 h-[200px] rounded-xl skeleton opacity-40 md:mx-6 md:h-[300px]" />
               ) : dashError ? (
-                <SectionStateBox tone="error" title="โหลดข้อมูลกราฟไม่สำเร็จ" />
+                <div className="px-4 md:px-6"><SectionStateBox tone="error" title="โหลดข้อมูลกราฟไม่สำเร็จ" /></div>
               ) : visibleChart.length === 0 ? (
-                <SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" />
+                <div className="px-4 md:px-6"><SectionStateBox title="ไม่มีข้อมูลการเคลื่อนไหวในช่วงเวลานี้" /></div>
               ) : (
-                <div className="h-[280px] w-full pr-4 sm:h-[320px]">
+                <div className="h-[200px] w-full pr-3 md:h-[300px] md:pr-6">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={visibleChart} margin={{ top: 16, right: 8, bottom: 0, left: 8 }}>
+                    <AreaChart data={visibleChart} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
                       <defs>
                         {CHART_SERIES_META.map((series) => (
                           <linearGradient key={series.key} id={`${series.key}Fill`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={series.color} stopOpacity={0.2} />
-                            <stop offset="100%" stopColor={series.color} stopOpacity={0.01} />
+                            <stop offset="0%" stopColor={series.color} stopOpacity={series.key === "received" ? 0.24 : 0.14} />
+                            <stop offset="100%" stopColor={series.color} stopOpacity={0} />
                           </linearGradient>
                         ))}
                       </defs>
-                      <CartesianGrid vertical={false} stroke="#E6EDE9" />
+                      <CartesianGrid vertical={false} stroke="rgba(145,158,171,0.2)" strokeDasharray="3 3" />
                       <XAxis
                         dataKey="label"
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fontSize: 18, fill: "#667085" }}
+                        tick={{ fontSize: 12, fill: "#919EAB" }}
                         dy={8}
                         interval="preserveStartEnd"
                         minTickGap={24}
                       />
                       <YAxis
-                        width={64}
+                        width={48}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fontSize: 18, fill: "#667085" }}
+                        tick={{ fontSize: 12, fill: "#919EAB" }}
                         tickFormatter={(val: number) => {
                           if (val >= 1000000) return `${(val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1)}M`;
                           if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
@@ -441,24 +476,8 @@ export default function AdminDashboard() {
                         allowDecimals={false}
                       />
                       <Tooltip
-                        cursor={{ stroke: "#D5DDD9", strokeWidth: 1 }}
-                        contentStyle={{
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #E8ECEA",
-                          borderRadius: "12px",
-                          fontSize: "18px",
-                          fontWeight: "600",
-                          boxShadow: "0 8px 24px rgba(16,24,40,0.12)",
-                          padding: "6px 10px",
-                        }}
-                        labelFormatter={(label: unknown) => `วันที่ ${String(label)}`}
-                        formatter={(val: unknown, name: unknown) => {
-                          const series = CHART_SERIES_META.find((s) => s.key === name);
-                          return [
-                            `${Number(val).toLocaleString()} ชิ้น`,
-                            series?.label ?? String(name),
-                          ];
-                        }}
+                        cursor={{ stroke: "rgba(145,158,171,0.4)", strokeWidth: 1, strokeDasharray: "3 3" }}
+                        content={<ChartTooltip />}
                       />
                       {CHART_SERIES_META.map((series) => (
                         <Area
@@ -466,10 +485,10 @@ export default function AdminDashboard() {
                           type="monotone"
                           dataKey={series.key}
                           stroke={series.color}
-                          strokeWidth={2}
+                          strokeWidth={2.5}
                           fill={`url(#${series.key}Fill)`}
                           dot={false}
-                          activeDot={{ r: 4, fill: series.color, stroke: "#ffffff", strokeWidth: 2 }}
+                          activeDot={{ r: 5, fill: series.color, stroke: "#ffffff", strokeWidth: 2 }}
                         />
                       ))}
                     </AreaChart>
@@ -480,88 +499,79 @@ export default function AdminDashboard() {
           </div>
 
           {/* Right column: warehouse donut + pending approvals — มือถือแสดงก่อนกิจกรรมวันนี้ */}
-          <div className="flex flex-col gap-6 lg:col-start-3 lg:row-start-1 lg:row-span-2">
-          <div className="rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
-            <div className="px-6 pt-6">
-              <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">สินค้าแยกตามโกดัง</h2>
+          <div className="flex flex-col gap-3 md:gap-6 lg:col-start-3 lg:row-start-1 lg:row-span-2">
+          <div className="m3-card">
+            <div className="px-4 pt-4 md:px-6 md:pt-6">
+              <h2 className="text-[16px] font-semibold text-m3-grey-800 md:text-[18px]">สินค้าแยกตามโกดัง</h2>
             </div>
-            <div className="flex flex-1 flex-col items-center gap-6 px-6 py-6">
-              {loading ? (
-                <>
-                  <div className="size-[320px] max-w-full rounded-full skeleton opacity-40" />
-                  <div className="w-full space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={`sk-donut-${i}`} className="h-6 rounded skeleton opacity-40" />
-                    ))}
+            {loading ? (
+              <div className="flex flex-col items-center gap-6 px-6 py-6">
+                <div className="size-[220px] max-w-full rounded-full skeleton opacity-40" />
+                <div className="w-full space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={`sk-donut-${i}`} className="h-6 rounded skeleton opacity-40" />
+                  ))}
+                </div>
+              </div>
+            ) : dashError ? (
+              <div className="px-4 py-5 md:px-6"><SectionStateBox tone="error" title="โหลดข้อมูลสต็อกแยกโกดังไม่สำเร็จ" /></div>
+            ) : !donut.hasData ? (
+              <div className="px-4 py-5 md:px-6"><SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" /></div>
+            ) : (
+              <>
+                <div className="relative mx-auto w-full max-w-[260px] py-2 md:py-3">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={donut.slices}
+                        dataKey="segmentValue"
+                        nameKey="warehouseName"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="72%"
+                        outerRadius="98%"
+                        paddingAngle={1}
+                        strokeWidth={0}
+                        startAngle={90}
+                        endAngle={-270}
+                        isAnimationActive={false}
+                      >
+                        {donut.slices.map((slice, i) => (
+                          <Cell key={slice.warehouseId} fill={donutColor(i)} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[12px] text-m3-grey-600">จำนวนคงเหลือ</span>
+                    <span className="max-w-[160px] truncate font-m3-disp text-[24px] font-bold leading-tight text-m3-grey-800 tabular-nums">
+                      {donut.total.toLocaleString()}
+                    </span>
                   </div>
-                </>
-              ) : dashError ? (
-                <SectionStateBox tone="error" title="โหลดข้อมูลสต็อกแยกโกดังไม่สำเร็จ" />
-              ) : !donut.hasData ? (
-                <SectionStateBox title="ไม่มีข้อมูลจำนวนคงเหลือ" />
-              ) : (
-                <>
-                  <div className="relative w-full max-w-[360px]">
-                    <ResponsiveContainer width="100%" height={320}>
-                      <PieChart>
-                        <Pie
-                          data={donut.slices}
-                          dataKey="segmentValue"
-                          nameKey="warehouseName"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius="70%"
-                          outerRadius="94%"
-                          paddingAngle={2}
-                          cornerRadius={2}
-                          strokeWidth={0}
-                          startAngle={90}
-                          endAngle={-270}
-                          isAnimationActive={false}
-                        >
-                          {donut.slices.map((slice) => (
-                            <Cell key={slice.warehouseId} fill={slice.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="max-w-[200px] truncate text-2xl font-semibold tracking-tight text-[#111827] tabular-nums">
-                        {donut.total.toLocaleString()}
-                      </span>
-                      <span className="text-xs 2xl:text-sm text-[#667085]">ชิ้น</span>
-                    </div>
-                  </div>
+                </div>
 
-                  <div className="w-full">
-                    {donut.slices.map((slice) => (
-                      <WarehouseLegendRow key={slice.warehouseId} slice={slice} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                <div className="border-t border-dashed border-m3-divider px-4 pb-3 pt-2 md:px-6 md:pb-4 md:pt-3">
+                  {donut.slices.map((slice, i) => (
+                    <WarehouseLegendRow key={slice.warehouseId} slice={slice} color={donutColor(i)} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* รออนุมัติด่วน (แอดมิน) */}
           {(loading || pendingTotal > 0) && (
-            <div className="rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
-              <div className="flex items-center justify-between px-6 pt-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">รออนุมัติ</h2>
-                  {/* badge = จำนวน PENDING ทั้งหมด ไม่ใช่แค่ 3 รายการที่แสดงในกล่อง */}
-                  <span className="rounded-full bg-[#F3F6F4] px-2 py-0.5 text-xs 2xl:text-sm font-medium text-[#667085] tabular-nums">
-                    {loading ? "…" : pendingTotal}
-                  </span>
-                </div>
-                <Link href="/approvals" className="inline-flex items-center gap-1 text-sm 2xl:text-base font-medium text-[#06402B] hover:text-[#0A5236]">
-                  ดูทั้งหมด
-                  <ArrowRightIcon className="size-3.5" />
-                </Link>
+            <div className="m3-card">
+              <div className="flex items-center gap-2.5 px-4 pt-4 md:px-6 md:pt-6">
+                <h2 className="text-[16px] font-semibold text-m3-grey-800 md:text-[18px]">รออนุมัติ</h2>
+                {/* badge = จำนวน PENDING ทั้งหมด ไม่ใช่แค่ 3 รายการที่แสดงในกล่อง */}
+                <span className="m3-label m3-label-warning tabular-nums">
+                  {loading ? "…" : pendingTotal}
+                </span>
               </div>
-              <div className="space-y-2.5 px-6 py-5">
+              <div className="px-4 pb-1 pt-1 md:px-6 md:pb-2">
                 {loading ? (
-                  <div className="h-12 rounded-xl skeleton opacity-40" />
+                  <div className="my-3 h-12 rounded-xl skeleton opacity-40" />
                 ) : (
                   oldestPending.map((doc) => {
                     const isLeaving = leavingId === doc.document_id;
@@ -572,21 +582,20 @@ export default function AdminDashboard() {
                     return (
                       <div
                         key={doc.document_id}
-                        className={`flex items-center gap-3 rounded-xl border border-[#E8ECEA] bg-white px-3.5 py-3 ${isLeaving ? "leave-up" : ""}`}
+                        className={`flex items-center gap-3 border-b border-dashed border-m3-divider py-3 ${isLeaving ? "leave-up" : ""}`}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm 2xl:text-base font-semibold text-[#111827]">{doc.document_no} · เป้าหมาย {doc.target_sheet || "-"}</p>
-                          <p className="mt-0.5 text-sm text-[#667085]">
-                            {ageHrs !== null ? `รอ ${ageHrs} ชม.` : "รอดำเนินการ"}
-                          </p>
+                          <p className="truncate text-[14px] font-semibold text-m3-grey-800">{doc.document_no}</p>
+                          <p className="truncate text-[13px] text-m3-grey-500">เป้าหมาย {doc.target_sheet || "-"}</p>
                         </div>
+                        <span className={`m3-label shrink-0 whitespace-nowrap ${ageHrs !== null && ageHrs >= 24 ? "m3-label-error" : "m3-label-default"}`}>
+                          {ageHrs !== null ? `รอ ${ageHrs} ชม.` : "รอดำเนินการ"}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleQuickAction(doc, "approve")}
                           disabled={approvingId === doc.document_id || isLeaving}
-                          className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm 2xl:text-base font-semibold text-white transition-colors duration-150 disabled:opacity-50 ${
-                            isLeaving ? "bg-[#06402B]" : "bg-[#06402B] hover:bg-[#0A5236]"
-                          } cursor-pointer`}
+                          className="m3-btn m3-btn-primary h-8 shrink-0 whitespace-nowrap px-3.5 text-[13px]"
                         >
                           {isLeaving ? "สำเร็จ ✓" : approvingId === doc.document_id ? "กำลังบันทึก…" : "อนุมัติ"}
                         </button>
@@ -594,6 +603,12 @@ export default function AdminDashboard() {
                     );
                   })
                 )}
+              </div>
+              <div className="flex justify-end px-3 pb-3.5 pt-1 md:px-4">
+                <Link href="/approvals" className="m3-btn m3-btn-text m3-btn-sm gap-0.5">
+                  ดูทั้งหมด
+                  <SolarAltArrowRight size={16} />
+                </Link>
               </div>
             </div>
           )}
@@ -618,23 +633,12 @@ export default function AdminDashboard() {
 /* ── การ์ดกิจกรรมวันนี้ — ใช้ TanStack Table (เรียงคอลัมน์ได้ + แบ่งหน้า) 5 แถว/หน้า ── */
 const ACTIVITY_PAGE_SIZE = 5;
 
-// class ของ td รายคอลัมน์ — จัด padding/การจัดวางให้เหมือนเดิมทุกจุด
-const ACTIVITY_TD_CLASS: Record<string, string> = {
-  actor_name: "min-w-[160px] py-3.5 pl-6 pr-3",
-  action_type: "px-3 py-3.5",
-  product_name: "max-w-[240px] px-3 py-3.5",
-  warehouse_name: "whitespace-nowrap px-3 py-3.5",
-  quantity: "px-3 py-3.5 text-right tabular-nums",
-  created_at: "py-3.5 pl-3 pr-6 text-right whitespace-nowrap",
-};
-
 // คอลัมน์ที่ชิดขวา (จำนวน / เวลา)
 const ACTIVITY_RIGHT_COLUMNS = new Set(["quantity", "created_at"]);
 
 function qtyColorClass(actionType: TodayActivity["action_type"]): string {
-  if (["RECEIVE", "RECEIVE_REQUEST", "APPROVE_RECEIVE"].includes(actionType)) return "text-[#06402B]";
-  if (["ISSUE", "ISSUE_REQUEST", "APPROVE_ISSUE"].includes(actionType)) return "text-[#B42318]";
-  return "text-[#111827]";
+  if (["ISSUE", "ISSUE_REQUEST", "APPROVE_ISSUE"].includes(actionType)) return "text-m3-error-dark";
+  return "text-m3-grey-800";
 }
 
 /* ── ลูกศรบอกทิศทางเรียงของคอลัมน์ (inline SVG ตามกติกา) ── */
@@ -678,8 +682,9 @@ function ActivityCard({
         accessorKey: "actor_name",
         header: "ผู้ทำรายการ",
         cell: ({ row }) => (
-          <div className="min-w-[130px]">
-            <span className="block font-medium text-[#111827]" title={row.original.actor_name}>
+          <div className="flex min-w-[150px] items-center gap-3">
+            <ActorAvatar name={row.original.actor_name} />
+            <span className="block font-semibold text-m3-grey-800" title={row.original.actor_name}>
               {row.original.actor_name}
             </span>
           </div>
@@ -690,7 +695,7 @@ function ActivityCard({
         header: "รายการ",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeForActivity(row.original.action_type)}`}>
+          <span className={`m3-label whitespace-nowrap ${badgeForActivity(row.original.action_type)}`}>
             {row.original.action_label}
           </span>
         ),
@@ -699,11 +704,11 @@ function ActivityCard({
         accessorKey: "product_name",
         header: "สินค้า / เอกสาร",
         cell: ({ row }) => (
-          <div className="min-w-[180px]">
-            <div className="truncate font-medium text-[#111827]" title={row.original.product_name}>
+          <div className="min-w-[180px] max-w-[260px]">
+            <div className="truncate font-semibold text-m3-grey-800" title={row.original.product_name}>
               {row.original.product_name || "-"}
             </div>
-            {row.original.document_no ? <div className="text-xs text-[#667085]">{row.original.document_no}</div> : null}
+            {row.original.document_no ? <div className="text-[12px] text-m3-grey-500">เอกสาร {row.original.document_no}</div> : null}
           </div>
         ),
       },
@@ -711,14 +716,14 @@ function ActivityCard({
         accessorKey: "warehouse_name",
         header: "โกดัง",
         cell: ({ row }) => (
-          <span className="text-[#667085]">{row.original.warehouse_name || "-"}</span>
+          <span className="text-m3-grey-600">{row.original.warehouse_name || "-"}</span>
         ),
       },
       {
         accessorKey: "quantity",
         header: "จำนวน",
         cell: ({ row }) => (
-          <span className={`text-sm font-medium ${qtyColorClass(row.original.action_type)}`}>
+          <span className={`font-semibold ${qtyColorClass(row.original.action_type)}`}>
             {row.original.quantity.toLocaleString()} {row.original.unit}
           </span>
         ),
@@ -729,7 +734,7 @@ function ActivityCard({
         cell: ({ row }) => {
           const d = parseDateSafe(row.original.created_at);
           return (
-            <span className="text-[#667085]" title={d ? formatDateThai(d) : undefined}>
+            <span className="text-m3-grey-600" title={d ? formatDateThai(d) : undefined}>
               {d ? formatTimeThai(d) : "-"}
             </span>
           );
@@ -754,15 +759,13 @@ function ActivityCard({
   const rows = table.getRowModel().rows;
 
   return (
-    <div className="min-w-0 rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] lg:col-span-2 lg:col-start-1 lg:row-start-2">
-      <div className="flex flex-col gap-3 px-6 pb-2 pt-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-base 2xl:text-lg font-semibold tracking-tight text-[#111827]">กิจกรรมวันนี้</h2>
-        </div>
-        <div className="flex flex-col gap-1">
+    <div className="m3-card min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">
+      <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 md:px-6 md:pb-5 md:pt-6">
+        <h2 className="text-[16px] font-semibold text-m3-grey-800 md:text-[18px]">กิจกรรมวันนี้</h2>
+        <div className="flex items-center gap-2.5">
           <label
             htmlFor="activity-actor-filter"
-            className="text-xs font-medium text-[#667085]"
+            className="text-[13px] font-semibold text-m3-grey-600"
           >
             ผู้ทำรายการ
           </label>
@@ -771,7 +774,7 @@ function ActivityCard({
             value={effectiveActorFilter}
             onChange={(e) => onActorFilterChange(e.target.value)}
             disabled={loading || !!dashError || todayActivities.length === 0}
-            className="h-9 cursor-pointer rounded-lg border border-[#E8ECEA] bg-white px-3 text-sm font-medium text-[#111827] transition-colors duration-150 hover:border-[#D5DDD9] focus:border-[#06402B] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-[30px] min-w-[120px] cursor-pointer rounded-lg border border-[rgba(145,158,171,0.32)] bg-white px-2.5 text-[13px] font-semibold text-m3-grey-800 transition-colors duration-150 hover:border-m3-grey-800 focus:border-m3-grey-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:min-w-[140px]"
           >
             <option value={ALL_ACTORS_VALUE}>ทุกคน</option>
             {actorOptions.map((option) => (
@@ -784,45 +787,43 @@ function ActivityCard({
       </div>
 
       {loading ? (
-        <div className="space-y-3 px-6 py-6">
+        <div className="space-y-3 px-4 pb-6 md:px-6">
           {[96, 88, 92, 84].map((w, i) => (
             <div key={i} className="h-12 skeleton" style={{ width: `${w}%` }} />
           ))}
         </div>
       ) : dashError ? (
-        <div className="px-6 pb-6 pt-2">
+        <div className="px-4 pb-5 md:px-6 md:pb-6">
           <SectionStateBox tone="error" title="โหลดกิจกรรมวันนี้ไม่สำเร็จ" />
         </div>
       ) : todayActivities.length === 0 ? (
-        <div className="px-6 pb-6 pt-2">
+        <div className="px-4 pb-5 md:px-6 md:pb-6">
           <SectionStateBox title="ยังไม่มีกิจกรรมวันนี้" />
         </div>
       ) : visibleActivities.length === 0 ? (
-        <div className="px-6 pb-6 pt-2">
+        <div className="px-4 pb-5 md:px-6 md:pb-6">
           <SectionStateBox
             title="ไม่พบกิจกรรมของผู้ทำรายการที่เลือก"
+            icon="search"
           />
         </div>
       ) : (
         <>
           {/* Desktop table — TanStack Table: กดหัวคอลัมน์เพื่อเรียงได้ · การ์ดแคบให้เลื่อนแนวนอนในการ์ด */}
           <div className="hidden md:block overflow-x-auto overscroll-x-contain">
-            <table className="w-full text-left text-sm 2xl:text-base">
+            <table className="m3-table text-[14px]">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id} className="text-xs 2xl:text-sm font-medium text-[#667085]">
+                  <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
                       const isRight = ACTIVITY_RIGHT_COLUMNS.has(header.column.id);
                       return (
-                        <th
-                          key={header.id}
-                          className={`whitespace-nowrap font-medium ${ACTIVITY_TD_CLASS[header.column.id] ?? "px-3 py-3"}`}
-                        >
+                        <th key={header.id} className={isRight ? "m3-num" : undefined}>
                           {header.column.getCanSort() ? (
                             <button
                               type="button"
                               onClick={header.column.getToggleSortingHandler()}
-                              className={`inline-flex cursor-pointer items-center gap-1 transition-colors duration-150 hover:text-[#111827] ${isRight ? "flex-row-reverse" : ""}`}
+                              className={`inline-flex cursor-pointer items-center gap-1 transition-colors duration-150 hover:text-m3-grey-800 ${isRight ? "flex-row-reverse" : ""}`}
                             >
                               {flexRender(header.column.columnDef.header, header.getContext())}
                               <SortIcon dir={header.column.getIsSorted()} />
@@ -838,9 +839,9 @@ function ActivityCard({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-[#E8ECEA] transition-colors duration-150 hover:bg-[#FAFBFA]">
+                  <tr key={row.id} className="transition-colors duration-150">
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className={ACTIVITY_TD_CLASS[cell.column.id] ?? "px-3 py-3.5"}>
+                      <td key={cell.id} className={ACTIVITY_RIGHT_COLUMNS.has(cell.column.id) ? "m3-num tabular-nums" : undefined}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -850,39 +851,34 @@ function ActivityCard({
             </table>
           </div>
 
-          {/* Mobile stacked cards — ใช้ลำดับเดียวกับตาราง (ตามการเรียงปัจจุบัน) */}
-          <div className="flex flex-col divide-y divide-[#E8ECEA] px-4 pb-2 md:hidden">
+          {/* Mobile stacked cards (M31b) — ใช้ลำดับเดียวกับตาราง (ตามการเรียงปัจจุบัน) */}
+          <div className="flex flex-col divide-y divide-dashed divide-m3-divider px-4 md:hidden">
             {rows.map((row) => {
               const item = row.original;
               const d = parseDateSafe(item.created_at);
               return (
-                <div key={item.id} className="flex flex-col gap-3 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="line-clamp-1 text-sm font-medium text-[#111827]">{item.actor_name}</span>
-                    </div>
-                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeForActivity(item.action_type)}`}>
+                <div key={item.id} className="py-3.5">
+                  <div className="flex items-center gap-3">
+                    <ActorAvatar name={item.actor_name} className="size-8 text-[12px]" />
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-m3-grey-800">{item.actor_name}</span>
+                    <span className={`m3-label shrink-0 whitespace-nowrap ${badgeForActivity(item.action_type)}`}>
                       {item.action_label}
                     </span>
                   </div>
-                  {item.product_name ? (
-                    <p className="text-sm text-[#111827]">{item.product_name}</p>
-                  ) : null}
-                  {item.document_no ? <p className="text-xs text-[#667085]">เอกสาร {item.document_no}</p> : null}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-[#667085]">โกดัง</span>
-                      <span className="text-sm text-[#111827]">{item.warehouse_name || "-"}</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-[#667085]">จำนวน</span>
-                      <span className={`text-sm font-medium tabular-nums ${qtyColorClass(item.action_type)}`}>
-                        {item.quantity.toLocaleString()} {item.unit}
+                  <div className="pl-11">
+                    {item.product_name ? (
+                      <p className="mt-2 text-[14px] font-semibold text-m3-grey-800">{item.product_name}</p>
+                    ) : null}
+                    {item.document_no ? <p className="text-[12px] text-m3-grey-500">เอกสาร {item.document_no}</p> : null}
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[12px] text-m3-grey-600">
+                      <span className="truncate">โกดัง {item.warehouse_name || "-"}</span>
+                      <span className="whitespace-nowrap">
+                        จำนวน{" "}
+                        <b className={`text-[13px] font-bold tabular-nums ${qtyColorClass(item.action_type)}`}>
+                          {item.quantity.toLocaleString()} {item.unit}
+                        </b>
                       </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-[#667085]">เวลา</span>
-                      <span className="text-sm text-[#667085]">{d ? formatTimeThai(d) : "-"}</span>
+                      <span className="whitespace-nowrap">{d ? formatTimeThai(d) : "-"}</span>
                     </div>
                   </div>
                 </div>
@@ -892,8 +888,8 @@ function ActivityCard({
 
           {/* แบ่งหน้าโดย TanStack Table — แสดงพอดีการ์ด ที่เหลือดูต่อผ่านปุ่ม */}
           {table.getPageCount() > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E8ECEA] px-6 py-3">
-              <p className="text-xs 2xl:text-sm text-[#667085] tabular-nums">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-m3-divider px-4 py-3.5 md:border-0 md:px-6">
+              <p className="text-[12px] text-m3-grey-600 tabular-nums md:text-[13px]">
                 หน้า {table.getState().pagination.pageIndex + 1} / {table.getPageCount()} · รวม {visibleActivities.length.toLocaleString()} รายการ
               </p>
               <div className="flex items-center gap-2">
@@ -902,7 +898,7 @@ function ActivityCard({
                   onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
                   aria-label="ดูกิจกรรมวันนี้หน้าก่อนหน้า"
-                  className="h-8 cursor-pointer rounded-lg border border-[#E8ECEA] bg-white px-3 text-sm 2xl:text-base font-medium text-[#111827] transition-colors duration-150 hover:border-[#D5DDD9] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="m3-btn m3-btn-outline m3-btn-sm"
                 >
                   ก่อนหน้า
                 </button>
@@ -911,7 +907,7 @@ function ActivityCard({
                   onClick={() => table.nextPage()}
                   disabled={!table.getCanNextPage()}
                   aria-label="ดูกิจกรรมวันนี้หน้าถัดไป"
-                  className="h-8 cursor-pointer rounded-lg border border-[#E8ECEA] bg-white px-3 text-sm 2xl:text-base font-medium text-[#111827] transition-colors duration-150 hover:border-[#D5DDD9] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="m3-btn m3-btn-outline m3-btn-sm"
                 >
                   ถัดไป
                 </button>
@@ -924,42 +920,114 @@ function ActivityCard({
   );
 }
 
-/* ── แถวชื่อโกดังใต้กราฟโดนัท ── */
-function WarehouseLegendRow({ slice }: { slice: WarehouseDonutSlice }) {
+/* ── อวาตาร์อักษรย่อผู้ทำรายการ (D01 / M31b) ── */
+function ActorAvatar({ name, className = "size-9 text-[13px]" }: { name: string; className?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#E8ECEA] py-3 last:border-0">
+    <span
+      aria-hidden="true"
+      className={`grid shrink-0 place-items-center rounded-full font-semibold ${avatarToneClass(name)} ${className}`}
+    >
+      {userInitials(name)}
+    </span>
+  );
+}
+
+/* ── แท่งกราฟเล็กในการ์ด KPI (D01) — ยอดรายวันช่วงล่าสุดจาก chart_data ชุดเดียวกับกราฟ ── */
+function KpiSparkline({ values, color }: { values: number[]; color: string }) {
+  if (values.length === 0) return null;
+  const max = Math.max(1, ...values);
+  const barW = 5;
+  const gap = 3.5;
+  const h = 40;
+  return (
+    <svg
+      aria-hidden="true"
+      className="mb-1.5 hidden shrink-0 md:block"
+      width={values.length * (barW + gap) - gap}
+      height={h}
+    >
+      {values.map((v, i) => {
+        const bh = Math.max(3, Math.round((v / max) * h));
+        return <rect key={i} x={i * (barW + gap)} y={h - bh} width={barW} height={bh} rx={2.5} fill={color} />;
+      })}
+    </svg>
+  );
+}
+
+/* ── tooltip กราฟเคลื่อนไหว (D01) — หัววันที่ + เส้นประ + ยอดแต่ละชุด ── */
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{ dataKey?: unknown; value?: unknown }>;
+  label?: unknown;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="rounded-[10px] bg-white px-3 py-2 text-[12px] shadow-m3-dropdown">
+      <p className="mb-1 border-b border-dashed border-m3-divider pb-1 font-bold text-m3-grey-800">วันที่ {String(label)}</p>
+      {CHART_SERIES_META.map((series) => {
+        const item = payload.find((p) => p.dataKey === series.key);
+        if (!item) return null;
+        return (
+          <p key={series.key} className="flex items-center gap-1.5 text-m3-grey-600">
+            <span className="m3-dot size-2" style={{ backgroundColor: series.color }} />
+            {series.label}
+            <b className="ml-auto pl-3 font-bold text-m3-grey-800 tabular-nums">{Number(item.value).toLocaleString()} ชิ้น</b>
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── แถวชื่อโกดังใต้กราฟโดนัท ── */
+function WarehouseLegendRow({ slice, color }: { slice: WarehouseDonutSlice; color: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-[5px] md:py-[7px]">
       <div className="flex min-w-0 items-center gap-2.5">
-        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
-        <span className="truncate text-sm 2xl:text-base text-[#667085]">{slice.warehouseName}</span>
+        <span className="m3-dot size-2.5" style={{ backgroundColor: color }} />
+        <span className="truncate text-[13px] text-m3-grey-600 md:text-[14px]">{slice.warehouseName}</span>
         {slice.isNegative ? (
-          <span className="shrink-0 rounded-full bg-[#FCEFED] px-1.5 py-0.5 text-xs font-semibold text-[#B42318]">
-            ยอดติดลบ
-          </span>
+          <span className="m3-label m3-label-error shrink-0">ยอดติดลบ</span>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-baseline gap-2">
-        <span className="text-xs 2xl:text-sm text-[#667085] tabular-nums">{slice.quantity.toLocaleString()} ชิ้น</span>
-        <span className="text-sm 2xl:text-base font-medium text-[#111827] tabular-nums">{slice.percent}%</span>
+      <div className="flex shrink-0 items-baseline gap-2 text-[13px] text-m3-grey-600 tabular-nums">
+        <span>
+          <b className="font-semibold text-m3-grey-800">{slice.quantity.toLocaleString()}</b> ชิ้น
+        </span>
+        <span className="w-9 text-right text-[12px] text-m3-grey-500">{slice.percent}%</span>
       </div>
     </div>
   );
 }
 
-/* ── กล่องสถานะว่าง/ผิดพลาดของแต่ละส่วน ── */
+/* ── กล่องสถานะว่าง/ผิดพลาดของแต่ละส่วน (D52 · SectionStateBox) ── */
 function SectionStateBox({
   title,
   tone = "empty",
+  icon = "inbox",
 }: {
   title: string;
   tone?: "empty" | "error";
+  icon?: "inbox" | "search";
 }) {
+  const isError = tone === "error";
+  const EmptyIcon = icon === "search" ? SolarMagnifier : SolarInboxIn;
   return (
     <div
-      className={`flex w-full flex-col items-center justify-center rounded-2xl border border-dashed py-12 text-center ${
-        tone === "error" ? "border-[#F2C4BC] bg-[#FCEFED]" : "border-[#E8ECEA] bg-[#EFF3F1]"
+      className={`flex w-full flex-col items-center justify-center gap-2.5 rounded-xl py-10 text-center ${
+        isError ? "bg-[rgba(255,86,48,0.08)]" : "border border-dashed border-[rgba(145,158,171,0.32)]"
       }`}
     >
-      <p className={`text-sm font-semibold ${tone === "error" ? "text-[#B42318]" : "text-[#344054]"}`}>{title}</p>
+      {isError ? (
+        <SolarDangerCircle size={32} className="text-m3-error" />
+      ) : (
+        <EmptyIcon size={32} className="text-m3-grey-400" />
+      )}
+      <p className={`text-[14px] font-semibold ${isError ? "text-m3-error-dark" : "text-m3-grey-600"}`}>{title}</p>
     </div>
   );
 }

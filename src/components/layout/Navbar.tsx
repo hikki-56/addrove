@@ -1,5 +1,6 @@
 "use client";
 
+import { userInitials } from "@/components/ui/user-initials";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -402,19 +403,4 @@ export default function DashboardHeader({
       </div>
     </>
   );
-}
-
-// สระหน้า (เ แ โ ใ ไ) และวรรณยุกต์/สระบนล่างของไทย — ข้ามเมื่อหาตัวอักษรแรกของชื่อ
-const THAI_NON_INITIAL = /[\u0E31\u0E33-\u0E3A\u0E40-\u0E44\u0E47-\u0E4E]/;
-
-function firstLetter(word: string): string {
-  return Array.from(word).find((ch) => !THAI_NON_INITIAL.test(ch)) ?? "";
-}
-
-/** อักษรย่อชื่อสำหรับอวาตาร์ (สูงสุด 2 ตัว) — ชื่อ 2 คำ = ตัวอักษรแรกของแต่ละคำ เช่น "สมชาย ใจดี" → "สจ" */
-function userInitials(name?: string | null): string {
-  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "U";
-  const initials = firstLetter(parts[0]) + (parts.length > 1 ? firstLetter(parts[1]) : "");
-  return initials.toUpperCase() || "U";
 }

@@ -16,6 +16,13 @@ import {
   type TransferNotification,
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
+import {
+  SolarBox,
+  SolarBuildings,
+  SolarInboxIn,
+  SolarNavigationArrow,
+  SolarTransferHorizontal,
+} from "@/components/icons";
 
 export default function StaffDashboard() {
   const { user: tabUser } = useTabAuth();
@@ -59,42 +66,45 @@ export default function StaffDashboard() {
   const whName = getWarehouseName(activeWh);
   const pendingCount = pendingTransfers.length;
 
+  // ไทล์ Minimal v3 (M03) — ลิงก์/ลำดับ/เงื่อนไขเหมือนเดิม เปลี่ยนเฉพาะหน้าตา
+  const tileClass =
+    "rise-in group relative aspect-square w-full h-full rounded-3xl bg-white border border-[rgba(145,158,171,0.12)] shadow-[0_8px_24px_rgba(145,158,171,0.2)] hover:shadow-m3-dropdown transition-all duration-200 active:scale-95 flex flex-col items-center justify-center gap-3.5 p-3.5 sm:p-5 text-center cursor-pointer";
+  const iconTileClass =
+    "size-16 rounded-[18px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-110";
+  const labelClass = "text-[16px] font-extrabold leading-[1.25] text-m3-grey-800 text-center";
+
   return (
-    <div className="min-h-[75vh] flex flex-col items-center justify-center py-4 sm:py-8 w-full">
-      <div className="w-full max-w-md space-y-6 text-center">
+    <div className="min-h-[75vh] flex flex-col items-center justify-start py-2 sm:py-8 w-full">
+      <div className="w-full max-w-md text-center">
 
         {/* Warehouse Header Title */}
-        <div className="rise-in flex items-center justify-center gap-3 py-1">
-          <img
-            src="/warehouse-icon.png"
-            alt="Warehouse Icon"
-            className="w-10 h-10 sm:w-11 sm:h-11 object-contain flex-shrink-0 drop-shadow-sm"
-          />
-          <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-wide leading-none">
+        <div className="rise-in flex items-center justify-center gap-3 pt-1.5 pb-[18px]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[rgba(0,167,111,0.12)] text-m3-primary">
+            <SolarBuildings size={26} />
+          </span>
+          <span className="text-[32px] font-extrabold leading-none tracking-[0.01em] text-m3-grey-800">
             {whName}
           </span>
         </div>
 
         {/* 4 Centered Square Buttons (2x2 Grid) */}
-        <div className="grid grid-cols-2 auto-rows-fr gap-3.5 sm:gap-4 w-full pt-2">
+        <div className="grid grid-cols-2 auto-rows-fr gap-3.5 sm:gap-4 w-full">
 
           {/* Square 1: รับสินค้าเข้าโกดัง */}
           <Link
             href={`/movements/receive?warehouse_id=${activeWh}`}
             prefetch={true}
             id="staff-btn-receive"
-            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className={tileClass}
             style={{ animationDelay: "90ms" }}
           >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
-              <img src="/receive-stock-icon.png" alt="รับสินค้าเข้าโกดัง" className="w-full h-full object-contain" />
-            </div>
-            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors leading-tight text-center">
-                <span>รับสินค้าเข้า</span>
-                <span className="block">โกดัง</span>
-              </h2>
-            </div>
+            <span className={`${iconTileClass} bg-[#EAF2EE] text-m3-primary`}>
+              <SolarInboxIn size={36} />
+            </span>
+            <h2 className={labelClass}>
+              <span>รับสินค้าเข้า</span>
+              <span className="block">โกดัง</span>
+            </h2>
             <StaffNavigationPending />
           </Link>
 
@@ -103,18 +113,16 @@ export default function StaffDashboard() {
             href={`/movements/move?warehouse_id=${activeWh}`}
             prefetch={true}
             id="staff-btn-move"
-            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-[#0F5C3F]/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className={tileClass}
             style={{ animationDelay: "180ms" }}
           >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
-              <img src="/move-location-icon.png" alt="จัดตำแหน่งสินค้า" className="w-full h-full object-contain" />
-            </div>
-            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-[#06402B] transition-colors leading-tight text-center">
-                <span>จัดตำแหน่ง</span>
-                <span className="block">สินค้า</span>
-              </h2>
-            </div>
+            <span className={`${iconTileClass} bg-[#EAF2EE] text-m3-primary`}>
+              <SolarNavigationArrow size={36} />
+            </span>
+            <h2 className={labelClass}>
+              <span>จัดตำแหน่ง</span>
+              <span className="block">สินค้า</span>
+            </h2>
             <StaffNavigationPending />
           </Link>
 
@@ -123,22 +131,20 @@ export default function StaffDashboard() {
             href={`/staff/transfer?warehouse_id=${activeWh}`}
             prefetch={true}
             id="staff-btn-transfer"
-            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-sky-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className={tileClass}
             style={{ animationDelay: "270ms" }}
           >
-            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-sky-50 border border-sky-100 p-2 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
-              <img src="/transfer-stock-icon.png" alt="ย้ายสินค้า" className="w-full h-full object-contain" />
-              {pendingCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-red-500 text-[10px] sm:text-xs font-black text-white shadow-md animate-pulse">
-                  {pendingCount}
-                </span>
-              )}
-            </div>
-            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors leading-tight text-center">
-                ย้ายสินค้า
-              </h2>
-            </div>
+            {pendingCount > 0 && (
+              <span className="absolute top-3 right-3 inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-m3-error px-1.5 text-[12px] font-bold text-white">
+                {pendingCount}
+              </span>
+            )}
+            <span className={`${iconTileClass} bg-[rgba(0,184,217,0.12)] text-m3-info`}>
+              <SolarTransferHorizontal size={36} />
+            </span>
+            <h2 className={labelClass}>
+              ย้ายสินค้า
+            </h2>
             <StaffNavigationPending />
           </Link>
 
@@ -147,20 +153,16 @@ export default function StaffDashboard() {
             href="/products"
             prefetch={true}
             id="staff-btn-products"
-            className="rise-in group relative aspect-square w-full h-full rounded-3xl p-3.5 sm:p-5 bg-white border border-[#E8ECEA]/90 hover:border-amber-500/50 shadow-md hover:shadow-xl transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer"
+            className={tileClass}
             style={{ animationDelay: "360ms" }}
           >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 border border-amber-100 p-2 sm:p-2.5 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform mb-2 sm:mb-2.5">
-              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <div className="h-10 sm:h-12 flex flex-col items-center justify-center w-full">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors leading-tight text-center">
-                <span>สินค้า</span>
-                <span className="block">ทั้งหมด</span>
-              </h2>
-            </div>
+            <span className={`${iconTileClass} bg-[rgba(142,51,255,0.12)] text-m3-secondary`}>
+              <SolarBox size={36} />
+            </span>
+            <h2 className={labelClass}>
+              <span>สินค้า</span>
+              <span className="block">ทั้งหมด</span>
+            </h2>
             <StaffNavigationPending />
           </Link>
 
