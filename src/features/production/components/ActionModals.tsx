@@ -3,7 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
-import { formatQty } from "./ui";
+import { formatQty, PriorityBadge } from "./ui";
+import { M3Dialog, M3ErrorBanner, M3NumberTile, M3SubmitLabel, m3Cls, type M3IconTone } from "@/components/ui/m3";
+import { SolarCheckCircle, SolarDangerTriangle, SolarPen } from "@/components/icons";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 
 // Modal ยืนยันพร้อมเหตุผลบังคับ (ยกเลิกงาน / เปิดงานผลิตต่อ) + Modal ยืนยันทั่วไป (เช่น เริ่มผลิต)
@@ -45,60 +47,42 @@ export function ReasonModal({
   const isDanger = tone === "danger";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
-      <div className="relative flex max-h-[88dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-md sm:rounded-xl">
-        <div className="border-b border-[#EEF1EF] px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">{hint}</p>
-        </div>
-        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-              <p className="text-sm font-bold text-rose-800">{error}</p>
-            </div>
-          )}
-          <label className="block">
-            <span className={`text-xs font-bold ${isDanger ? "text-rose-600" : "text-slate-500"}`}>{reasonLabel} (จำเป็น)</span>
-            <textarea
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={submitting}
-              className={`mt-1 w-full resize-none rounded-lg border px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none ${
-                isDanger
-                  ? "border-rose-200 bg-rose-50/50 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20"
-                  : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
-              }`}
-            />
-          </label>
-        </div>
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-          >
+    <M3Dialog
+      title={title}
+      hint={hint}
+      icon={isDanger ? <SolarDangerTriangle size={26} /> : <SolarPen size={26} />}
+      iconTone={isDanger ? "error" : "primary"}
+      onBackdrop={() => !submitting && onClose()}
+      footer={
+        <>
+          <button type="button" disabled={submitting} onClick={onClose} className={m3Cls.btnCancel}>
             ยกเลิก
           </button>
           <button
             type="button"
             disabled={!reason.trim() || submitting}
             onClick={() => onSubmit(reason.trim())}
-            className={`flex-[1.4] rounded-lg py-3 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 ${
-              isDanger ? "bg-[#B42318] hover:bg-[#912018]" : "bg-[#06402B] hover:bg-[#0A5C4E]"
-            }`}
+            className={isDanger ? m3Cls.btnDanger : m3Cls.btnPrimary}
           >
-            {submitting ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              confirmLabel
-            )}
+            <M3SubmitLabel submitting={submitting}>{confirmLabel}</M3SubmitLabel>
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <M3ErrorBanner message={error} />}
+      <label className="block">
+        <span className={m3Cls.label}>
+          {reasonLabel} <span className="text-m3-error">*</span>
+        </span>
+        <textarea
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={submitting}
+          className={`mt-1.5 resize-none ${m3Cls.input}`}
+        />
+      </label>
+    </M3Dialog>
   );
 }
 
@@ -110,8 +94,13 @@ interface ConfirmModalProps {
   hint?: string;
   /** รายละเอียดที่ต้องตรวจก่อนยืนยัน (เช่น สินค้า เป้าหมาย หมายเหตุ) */
   children?: ReactNode;
-  confirmLabel: string;
+  confirmLabel: ReactNode;
   tone?: "danger" | "primary";
+  /** ไอคอนหัว dialog (D29/D31) — ไม่ระบุ = ตาม tone */
+  icon?: ReactNode;
+  iconTone?: M3IconTone;
+  /** ความกว้าง dialog บนจอ ≥sm (D29 = 560px) */
+  widthClass?: string;
   submitting: boolean;
   error: string | null;
   onClose: () => void;
@@ -125,6 +114,9 @@ export function ConfirmModal({
   children,
   confirmLabel,
   tone = "primary",
+  icon,
+  iconTone,
+  widthClass,
   submitting,
   error,
   onClose,
@@ -135,80 +127,63 @@ export function ConfirmModal({
   const isDanger = tone === "danger";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative flex max-h-[88dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-md sm:rounded-xl"
-      >
-        <div className="border-b border-[#EEF1EF] px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          {hint && <p className="mt-1 text-sm font-medium text-slate-500">{hint}</p>}
-        </div>
-        {(error || children) && (
-          <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-            {error && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-                <p className="text-sm font-bold text-rose-800">{error}</p>
-              </div>
-            )}
-            {children}
-          </div>
-        )}
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-          >
+    <M3Dialog
+      title={title}
+      hint={hint}
+      icon={icon ?? (isDanger ? <SolarDangerTriangle size={26} /> : <SolarCheckCircle size={26} />)}
+      iconTone={iconTone ?? (isDanger ? "error" : "primary")}
+      widthClass={widthClass}
+      onBackdrop={() => !submitting && onClose()}
+      footer={
+        <>
+          <button type="button" disabled={submitting} onClick={onClose} className={m3Cls.btnCancel}>
             ยกเลิก
           </button>
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onConfirm}
-            className={`flex-[1.4] rounded-lg py-3 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 ${
-              isDanger ? "bg-[#B42318] hover:bg-[#912018]" : "bg-[#06402B] hover:bg-[#0A5C4E]"
-            }`}
-          >
-            {submitting ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              confirmLabel
-            )}
+          <button type="button" disabled={submitting} onClick={onConfirm} className={isDanger ? m3Cls.btnDanger : m3Cls.btnPrimary}>
+            <M3SubmitLabel submitting={submitting}>{confirmLabel}</M3SubmitLabel>
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {(error || children) && (
+        <>
+          {error && <M3ErrorBanner message={error} />}
+          {children}
+        </>
+      )}
+    </M3Dialog>
   );
 }
 
 /** สรุปงานในการ์ดยืนยันเริ่มผลิต — สินค้า โต๊ะ เป้าหมาย หมายเหตุ */
 export function StartJobSummary({ job }: { job: ProductionJob }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-xl border border-[#E8ECEA] bg-slate-50 p-4 text-sm">
-      <dt className="font-semibold text-slate-400">เลขใบสั่งผลิต</dt>
-      <dd className="font-mono font-bold text-slate-900">{job.job_no}</dd>
-      <dt className="font-semibold text-slate-400">สินค้า</dt>
-      <dd className="font-bold text-slate-900">
-        {job.product_name} <span className="font-mono text-xs font-semibold text-slate-400">({job.sku})</span>
-      </dd>
-      <dt className="font-semibold text-slate-400">โต๊ะ</dt>
-      <dd className="font-bold text-slate-900">โต๊ะ {job.table_no}</dd>
-      <dt className="font-semibold text-slate-400">เป้าหมาย</dt>
-      <dd className="font-mono font-bold tabular-nums text-[#06402B]">
-        {formatQty(job.target_qty)} {job.unit}
-      </dd>
-      {job.note && (
-        <>
-          <dt className="font-semibold text-slate-400">หมายเหตุ</dt>
-          <dd className="font-semibold text-slate-700">{job.note}</dd>
-        </>
-      )}
-    </dl>
+    <div className="rounded-xl bg-m3-grey-100 p-4">
+      <div className="flex items-start gap-3">
+        <M3NumberTile className="size-9 text-lg">{job.table_no}</M3NumberTile>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-bold text-m3-grey-800">{job.product_name}</p>
+            <PriorityBadge priority={job.priority} />
+          </div>
+          <p className="mt-0.5 text-xs tabular-nums text-m3-grey-600">
+            {job.job_no} · {job.sku} · โต๊ะ {job.table_no}
+          </p>
+        </div>
+      </div>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-3 text-sm">
+        <dt className="text-m3-grey-600">เป้าหมาย</dt>
+        <dd className="text-right font-m3-disp text-base font-bold tabular-nums text-m3-grey-800">
+          {formatQty(job.target_qty)} <span className="font-m3 text-xs font-semibold text-m3-grey-600">{job.unit}</span>
+        </dd>
+        {job.note && (
+          <>
+            <dt className="text-m3-grey-600">หมายเหตุ</dt>
+            <dd className="text-right font-medium text-m3-grey-800">{job.note}</dd>
+          </>
+        )}
+      </dl>
+    </div>
   );
 }
 
@@ -261,104 +236,92 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
   const invalid = !!qtyError || (goodDelta === 0 && defectDelta === 0) || !reason.trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
-      <div className="relative flex max-h-[92dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-lg sm:rounded-xl">
-        <div className="border-b border-[#EEF1EF] px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">ปรับปรุงยอดผลผลิต</h2>
-          <p className="mt-0.5 font-mono text-xs font-semibold text-slate-500">
-            {job.job_no} · {job.product_name} ({job.sku})
-          </p>
-        </div>
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-              <p className="text-sm font-bold text-rose-800">{error}</p>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-bold text-[#06402B]">ผลิตดีสะสมใหม่ (เดิม {formatQty(job.produced_good)})</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={goodText}
-                disabled={submitting}
-                onChange={(e) => setGoodText(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-3 text-center font-mono text-xl font-black text-[#06402B] focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold text-rose-600">ของเสียสะสมใหม่ (เดิม {formatQty(job.defect_total)})</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={defectText}
-                disabled={submitting}
-                onChange={(e) => setDefectText(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-3 text-center font-mono text-xl font-black text-rose-700 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
-              />
-            </label>
-          </div>
-          {qtyError && <p className="-mt-2 text-xs font-bold text-rose-700">{qtyError}</p>}
-          <label className="block">
-            <span className="text-xs font-bold text-rose-600">เหตุผลการปรับปรุง (จำเป็น)</span>
-            <textarea
-              rows={2}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={submitting}
-              placeholder="เช่น นับซ้ำจริง ต้องลดยอดผลิตดี 5 ชิ้น"
-              className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
-            />
-          </label>
-          <div className="rounded-xl border border-[#C9DFD4] bg-[#EAF2EE] p-4 font-mono text-sm font-bold text-[#031B14]">
-            <div className="flex justify-between">
-              <span>ส่วนต่างผลิตดี</span>
-              <span className={goodDelta > 0 ? "text-[#06402B]" : goodDelta < 0 ? "text-rose-700" : ""}>
-                {goodDelta > 0 ? "+" : ""}{formatQty(goodDelta)} {job.unit}
-              </span>
-            </div>
-            <div className="mt-1 flex justify-between">
-              <span>ส่วนต่างของเสีย</span>
-              <span className={defectDelta !== 0 ? "text-rose-700" : ""}>
-                {defectDelta > 0 ? "+" : ""}{formatQty(defectDelta)} {job.unit}
-              </span>
-            </div>
-            {goodDelta !== 0 && (
-              <p className="mt-2 text-[11px] font-semibold text-[#4A7A66]">
-                สต็อกโกดัง 2: {goodDelta > 0 ? "เพิ่ม" : "ลด"} {formatQty(Math.abs(goodDelta))} {job.unit}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-          >
+    <M3Dialog
+      title="ปรับปรุงยอดผลผลิต"
+      subtitle={`${job.job_no} · ${job.product_name} (${job.sku})`}
+      hint="ไม่เขียนทับยอดเดิม — ระบบสร้างรายการปรับ บันทึกประวัติก่อน–หลัง และปรับสต็อกตามส่วนต่าง"
+      icon={<SolarPen size={26} />}
+      iconTone="warning"
+      widthClass="sm:max-w-[560px]"
+      onBackdrop={() => !submitting && onClose()}
+      footer={
+        <>
+          <button type="button" disabled={submitting} onClick={onClose} className={m3Cls.btnCancel}>
             ยกเลิก
           </button>
           <button
             type="button"
             disabled={invalid || submitting}
             onClick={() => onSubmit({ new_good_qty: newGood, new_defect_qty: newDefect, reason: reason.trim() })}
-            className="flex-[1.4] rounded-lg bg-[#06402B] py-3 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"
+            className={m3Cls.btnPrimary}
           >
-            {submitting ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              "ยืนยันการปรับปรุง"
-            )}
+            <M3SubmitLabel submitting={submitting}>ยืนยันการปรับปรุง</M3SubmitLabel>
           </button>
-        </div>
+        </>
+      }
+    >
+      {error && <M3ErrorBanner message={error} />}
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className={m3Cls.label}>ผลิตดีสะสมใหม่ (เดิม {formatQty(job.produced_good)})</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={goodText}
+            disabled={submitting}
+            onChange={(e) => setGoodText(e.target.value)}
+            className={`mt-1.5 text-center font-m3-disp text-xl font-bold tabular-nums ${m3Cls.input}`}
+          />
+        </label>
+        <label className="block">
+          <span className={m3Cls.label}>ของเสียสะสมใหม่ (เดิม {formatQty(job.defect_total)})</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={defectText}
+            disabled={submitting}
+            onChange={(e) => setDefectText(e.target.value)}
+            className={`mt-1.5 text-center font-m3-disp text-xl font-bold tabular-nums ${m3Cls.input}`}
+          />
+        </label>
       </div>
-    </div>
+      {qtyError && <p className="-mt-2 text-xs font-semibold text-m3-error-dark">{qtyError}</p>}
+      <label className="block">
+        <span className={m3Cls.label}>
+          เหตุผลการปรับปรุง <span className="text-m3-error">*</span>
+        </span>
+        <textarea
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={submitting}
+          placeholder="เช่น นับซ้ำจริง ต้องลดยอดผลิตดี 5 ชิ้น"
+          className={`mt-1.5 resize-none ${m3Cls.input}`}
+        />
+      </label>
+      <div className="rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] p-4 text-sm tabular-nums">
+        <div className="flex justify-between">
+          <span className="text-m3-grey-600">ส่วนต่างผลิตดี</span>
+          <span className={`font-bold ${goodDelta > 0 ? "text-m3-primary-dark" : goodDelta < 0 ? "text-m3-error-dark" : "text-m3-grey-800"}`}>
+            {goodDelta > 0 ? "+" : ""}{formatQty(goodDelta)} {job.unit}
+          </span>
+        </div>
+        <div className="mt-1.5 flex justify-between">
+          <span className="text-m3-grey-600">ส่วนต่างของเสีย</span>
+          <span className={`font-bold ${defectDelta !== 0 ? "text-m3-error-dark" : "text-m3-grey-800"}`}>
+            {defectDelta > 0 ? "+" : ""}{formatQty(defectDelta)} {job.unit}
+          </span>
+        </div>
+        {goodDelta !== 0 && (
+          <p className="mt-2.5 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-2.5 text-xs font-semibold text-m3-primary-dark">
+            สต็อกโกดัง 2: {goodDelta > 0 ? "เพิ่ม" : "ลด"} {formatQty(Math.abs(goodDelta))} {job.unit}
+          </p>
+        )}
+      </div>
+    </M3Dialog>
   );
 }

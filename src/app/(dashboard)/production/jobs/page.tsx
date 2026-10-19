@@ -13,15 +13,21 @@ import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
 import { getAllowedActions } from "@/features/production/lib/permissions";
 import { ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
-import { StatusBadge, PriorityBadge, JobNumbers, formatQty } from "@/features/production/components/ui";
+import {
+  StatusBadge,
+  PriorityBadge,
+  JobNumbers,
+  JobSignalBadges,
+  formatQty,
+  priorityEdgeClass,
+} from "@/features/production/components/ui";
+import { M3Banner, M3Empty, M3ErrorBanner, M3Field, M3Loading, M3NumberTile, m3Cls } from "@/components/ui/m3";
+import { SolarArrowRight, SolarFactory, SolarMagnifier, SolarPlayCircle } from "@/components/icons";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
 // หน้างานผลิตทั้ง 5 โต๊ะ (§3) — workspace ของ APPROVER (เริ่มผลิต / รายงานผล) และ ADMIN ดูได้
 // อัปเดตอัตโนมัติทุก 30 วิขณะเปิดอยู่ (เห็นงานใหม่ที่ ADMIN ส่งเข้ามา)
-
-const filterInputClass =
-  "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
 
 type DatePreset = "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "ALL";
 
@@ -113,168 +119,194 @@ export default function ProductionJobsPage() {
       }
     }, `start:${job.job_no}`);
 
+  const STATUS_TABS = ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DRAFT"] as const;
+  const STATUS_COUNT_TONE: Record<(typeof STATUS_TABS)[number], string> = {
+    WAITING: "m3-label-warning",
+    IN_PROGRESS: "m3-label-info",
+    COMPLETED: "m3-label-success",
+    CANCELLED: "m3-label-default",
+    DRAFT: "m3-label-default",
+  };
+
   return (
     <div className="w-full max-w-full pb-10">
-      <div className="mb-5">
-        <h1 className="text-2xl font-extrabold text-slate-900">งานผลิต</h1>
-      </div>
+      <h1 className="sr-only">งานผลิต</h1>
 
       {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 ${
-            toast.tone === "ok"
-              ? "border-[#C9DFD4] bg-[#EAF2EE] text-[#053425]"
-              : "border-rose-200 bg-rose-50 text-rose-800"
-          }`}
-        >
-          <p className="text-sm font-bold">{toast.message}</p>
+        <div className="mb-4">
+          {toast.tone === "ok" ? (
+            <M3Banner tone="success" role="status">
+              {toast.message}
+            </M3Banner>
+          ) : (
+            <M3ErrorBanner message={toast.message} />
+          )}
         </div>
       )}
       {error && !loading && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
-          <p className="text-sm font-bold text-rose-800">{error}</p>
-          <button onClick={() => reload()} className="rounded-lg px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100">
-            ลองใหม่
-          </button>
+        <div className="mb-4">
+          <M3ErrorBanner
+            message={error}
+            action={
+              <button type="button" onClick={() => reload()} className="m3-btn m3-btn-sm m3-btn-text">
+                ลองใหม่
+              </button>
+            }
+          />
         </div>
       )}
 
-      {/* สรุปสถานะ */}
-      <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-        {(["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DRAFT"] as const).map((s) => (
-          <div key={s} className="rounded-xl border border-[#E8ECEA] bg-white px-3.5 py-3 shadow-xs">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{PRODUCTION_JOB_STATUS_LABELS[s]}</div>
-            <div className="mt-0.5 font-mono text-2xl font-black text-slate-900">{counts[s] || 0}</div>
-          </div>
-        ))}
-      </div>
-
       {/* ตัวกรอง */}
-      <div className="mb-5 rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">ช่วงวันที่ผลิต</span>
-            <select value={preset} onChange={(e) => setPreset(e.target.value as DatePreset)} className={`mt-1 ${filterInputClass}`}>
+      <div className="m3-card p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-[150px_150px_150px_minmax(0,1fr)]">
+          <M3Field label="ช่วงวันที่ผลิต">
+            <select value={preset} onChange={(e) => setPreset(e.target.value as DatePreset)} className={`h-12 ${m3Cls.input}`}>
               <option value="TODAY">วันนี้</option>
               <option value="YESTERDAY">เมื่อวาน</option>
               <option value="LAST_7_DAYS">7 วันล่าสุด</option>
               <option value="ALL">ทั้งหมด</option>
             </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">โต๊ะผลิต</span>
+          </M3Field>
+          <M3Field label="โต๊ะผลิต">
             <select
               value={String(tableFilter)}
               onChange={(e) => setTableFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-              className={`mt-1 ${filterInputClass}`}
+              className={`h-12 ${m3Cls.input}`}
             >
               <option value="ALL">ทุกโต๊ะ</option>
               {PRODUCTION_TABLES.map((t) => (
                 <option key={t} value={t}>โต๊ะ {t}</option>
               ))}
             </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">สถานะ</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`mt-1 ${filterInputClass}`}>
+          </M3Field>
+          <M3Field label="สถานะ">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`h-12 ${m3Cls.input}`}>
               <option value="ALL">ทุกสถานะ</option>
-              {(["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DRAFT"] as const).map((s) => (
+              {STATUS_TABS.map((s) => (
                 <option key={s} value={s}>{PRODUCTION_JOB_STATUS_LABELS[s]}</option>
               ))}
             </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">ค้นหา</span>
+          </M3Field>
+          <label className="relative block sm:col-span-3 lg:col-span-1">
+            <span className="sr-only">ค้นหา</span>
+            <SolarMagnifier size={20} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-m3-grey-500" />
             <input
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="SKU, ชื่อสินค้า, PRD-..."
-              className={`mt-1 ${filterInputClass}`}
+              className={`h-12 pl-11 ${m3Cls.input}`}
             />
           </label>
         </div>
-        <p className="mt-2.5 text-xs font-semibold text-slate-400">พบ {filtered.length} งาน</p>
+      </div>
+
+      {/* สรุปสถานะ (แสดงผลอย่างเดียว — นับจากรายการที่กรองแล้ว) */}
+      <div className="m3-card mt-4 flex items-center gap-x-6 gap-y-2 overflow-x-auto px-4 sm:px-5">
+        <span className="flex h-12 shrink-0 items-center gap-2 border-b-2 border-m3-grey-800 text-sm font-bold text-m3-grey-800">
+          ทั้งหมด
+          <span className="m3-label h-5 bg-m3-grey-800 px-1.5 text-[11px] text-white">{filtered.length}</span>
+        </span>
+        {STATUS_TABS.filter((s) => (counts[s] || 0) > 0 || s === "WAITING" || s === "IN_PROGRESS").map((s) => (
+          <span key={s} className="flex h-12 shrink-0 items-center gap-2 text-sm font-semibold text-m3-grey-600">
+            {PRODUCTION_JOB_STATUS_LABELS[s]}
+            <span className={`m3-label h-5 px-1.5 text-[11px] ${STATUS_COUNT_TONE[s]}`}>{counts[s] || 0}</span>
+          </span>
+        ))}
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-[#E8ECEA] bg-white p-16 text-center shadow-xs">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#0F5C3F] border-t-transparent" />
-          <p className="mt-3 text-sm font-semibold text-slate-500">กำลังดึงข้อมูลงานผลิต...</p>
+        <div className="mt-5">
+          <M3Loading label="กำลังดึงข้อมูลงานผลิต..." />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#C9DFD4] bg-[#EAF2EE] text-2xl">🏭</div>
-          <h2 className="mt-4 text-lg font-extrabold text-slate-900">ไม่พบงานผลิตตามตัวกรอง</h2>
-          {isAdmin && (
-            <Link href="/production" className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]">
-              ไปหน้าวางแผนผลิต
-            </Link>
-          )}
+        <div className="m3-card mt-5 p-6">
+          <M3Empty title="ไม่พบงานผลิตตามตัวกรอง" icon={<SolarFactory size={40} />}>
+            {isAdmin && (
+              <Link href="/production" className="m3-btn m3-btn-primary mt-3 h-11 px-5">
+                ไปหน้าวางแผนผลิต
+              </Link>
+            )}
+          </M3Empty>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((job) => (
-            <div key={job.job_no} className="rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#06402B] font-mono text-xs font-black text-white">
-                      {job.table_no}
-                    </span>
-                    <StatusBadge status={job.status} />
-                    <PriorityBadge priority={job.priority} />
-                    <span className="font-mono text-xs font-semibold text-slate-400">{job.job_no}</span>
-                  </div>
-                  <div className="mt-1.5 text-base font-extrabold text-slate-900">{job.product_name}</div>
-                  <div className="font-mono text-xs font-semibold text-slate-400">
-                    {job.sku}
-                    {job.note ? ` · ${job.note}` : ""}
-                  </div>
+        <div className="mt-5 grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((job) => {
+            const actions = getAllowedActions(job, user?.role);
+            return (
+              <div
+                key={job.job_no}
+                className={`m3-card relative flex flex-col overflow-hidden p-4 before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-5 ${priorityEdgeClass(job.priority)}`}
+              >
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <M3NumberTile>{job.table_no}</M3NumberTile>
+                  <span className="mr-1 text-sm font-bold text-m3-grey-800">โต๊ะ {job.table_no}</span>
+                  <StatusBadge status={job.status} />
+                  <PriorityBadge priority={job.priority} />
+                  <JobSignalBadges job={job} />
                 </div>
-                <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                  {getAllowedActions(job, user?.role).start && (
+                <div className="mt-3 text-base leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
+                <div className="mt-0.5 truncate text-xs tabular-nums text-m3-grey-500">
+                  {job.job_no} · {job.sku}
+                  {job.note ? ` · ${job.note}` : ""}
+                </div>
+                <div className="mt-3">
+                  <JobNumbers job={job} compact />
+                </div>
+                {job.status === "COMPLETED" && job.remaining_qty > 0 && (
+                  <M3Banner tone="warning" className="mt-3 px-3 py-2">
+                    <span className="text-xs">
+                      จบงานต่ำกว่าเป้าหมาย — ขาด {formatQty(job.remaining_qty)} {job.unit}
+                      {job.close_reason ? ` · เหตุผล: ${job.close_reason}` : ""}
+                    </span>
+                  </M3Banner>
+                )}
+                <div className="mt-4 flex flex-col gap-2">
+                  {actions.start && (
                     <button
                       onClick={() => {
                         setStartError(null);
                         setStartJob(job);
                       }}
                       disabled={guard.pending}
-                      className="rounded-lg bg-[#06402B] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-95 disabled:opacity-50"
+                      className="m3-btn m3-btn-primary h-11 w-full"
                     >
                       {guard.isPending(`start:${job.job_no}`) ? (
-                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span className={m3Cls.spinner} />
                       ) : (
-                        "▶ เริ่มผลิต"
+                        <>
+                          <SolarPlayCircle size={18} />
+                          เริ่มผลิต
+                        </>
                       )}
                     </button>
                   )}
                   <Link
                     href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                    className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-center text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
+                    className={`m3-btn h-11 w-full ${actions.report && !actions.start ? "m3-btn-primary" : "m3-btn-outline"}`}
                   >
-                    {getAllowedActions(job, user?.role).report ? "รายงานผล →" : "รายละเอียด →"}
+                    {actions.report ? "รายงานผล" : "รายละเอียด"}
+                    <SolarArrowRight size={18} />
                   </Link>
                 </div>
               </div>
-              <div className="mt-3">
-                <JobNumbers job={job} />
-              </div>
-              {job.status === "COMPLETED" && job.remaining_qty > 0 && (
-                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-                  ⚠️ จบงานต่ำกว่าเป้าหมาย — ขาด {formatQty(job.remaining_qty)} {job.unit}
-                  {job.close_reason ? ` · เหตุผล: ${job.close_reason}` : ""}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       <ConfirmModal
         open={!!startJob}
         title="ยืนยันเริ่มผลิต"
-        confirmLabel="ยืนยันเริ่มผลิต"
+        hint="เมื่อเริ่มแล้ว ระบบจะแจ้ง Admin ว่างานนี้เริ่มผลิตแล้ว"
+        icon={<SolarPlayCircle size={28} />}
+        iconTone="info"
+        confirmLabel={
+          <>
+            <SolarPlayCircle size={18} />
+            ยืนยันเริ่มผลิต
+          </>
+        }
         submitting={guard.pending}
         error={startError}
         onClose={() => {

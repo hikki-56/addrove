@@ -19,7 +19,25 @@ import { formatHistoryDetail, historyActionLabel } from "@/features/production/l
 import ReportModal from "@/features/production/components/ReportModal";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ReasonModal, AdjustModal, ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
-import { StatusBadge, PriorityBadge, formatQty, formatDateTime } from "@/features/production/components/ui";
+import { StatusBadge, PriorityBadge, JobSignalBadges, formatQty, formatDateTime } from "@/features/production/components/ui";
+import {
+  M3Banner,
+  M3ErrorBanner,
+  M3IconCircle,
+  M3Loading,
+  M3NumberTile,
+  M3StatTile,
+  type M3StatTone,
+} from "@/components/ui/m3";
+import {
+  SolarArrowRight,
+  SolarCloseCircle,
+  SolarDangerCircle,
+  SolarHistory,
+  SolarPen,
+  SolarPlayCircle,
+  SolarTuning,
+} from "@/components/icons";
 import type { ProductionJob } from "@/types/production";
 
 // รายละเอียดงานผลิต (§3, §6) — APPROVER: เริ่มผลิต/รายงานผล · ADMIN: แก้ไข/ยกเลิก/เปิดใหม่/ปรับปรุงยอด
@@ -72,10 +90,7 @@ export default function ProductionJobDetailPage() {
   if (loading) {
     return (
       <div className="w-full max-w-full pb-8">
-        <div className="rounded-xl border border-[#E8ECEA] bg-white p-16 text-center shadow-xs">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#0F5C3F] border-t-transparent" />
-          <p className="mt-3 text-sm font-semibold text-slate-500">กำลังดึงข้อมูลงานผลิต...</p>
-        </div>
+        <M3Loading label="กำลังดึงข้อมูลงานผลิต..." />
       </div>
     );
   }
@@ -83,10 +98,12 @@ export default function ProductionJobDetailPage() {
   if (error || !detail) {
     return (
       <div className="w-full max-w-full pb-8">
-        <div className="rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-xl">❓</div>
-          <h2 className="mt-3.5 text-base font-extrabold text-slate-900">{error || "ไม่พบใบสั่งผลิตนี้"}</h2>
-          <Link href="/production/jobs" className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]">
+        <div className="m3-card flex flex-col items-center px-6 py-16 text-center">
+          <M3IconCircle tone="error">
+            <SolarDangerCircle size={26} />
+          </M3IconCircle>
+          <h2 className="mt-4 text-base font-bold text-m3-grey-800">{error || "ไม่พบใบสั่งผลิตนี้"}</h2>
+          <Link href="/production/jobs" className="m3-btn m3-btn-primary mt-5 h-11 px-5">
             กลับหน้างานผลิต
           </Link>
         </div>
@@ -119,157 +136,323 @@ export default function ProductionJobDetailPage() {
       }
     }, key);
 
+  const hasActions = canStart || canReport || canEdit || canCancel || canReopen || canAdjust;
+
+  // ปุ่ม action ตามสิทธิ์และสถานะ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำเสมอ)
+  // ≥md: อยู่ในการ์ดหัวงาน (D31/D32) · มือถือ: แถบล่าง ปุ่มหลักเต็มความกว้าง (M42)
+  const primaryActions = (
+    <>
+      {canStart && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setStartOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-primary h-11 w-full px-5 md:h-9 md:w-auto md:px-4"
+        >
+          <SolarPlayCircle size={18} />
+          เริ่มผลิต
+        </button>
+      )}
+      {canReport && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setReportOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-primary h-11 w-full px-5 md:h-9 md:w-auto md:px-4"
+        >
+          รายงานผลผลิต
+          <SolarArrowRight size={18} />
+        </button>
+      )}
+    </>
+  );
+  const secondaryActions = (
+    <>
+      {canEdit && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setModalJob(job);
+            setEditOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-outline m3-btn-sm md:h-9 md:px-3.5 md:text-sm"
+        >
+          <SolarPen size={16} />
+          แก้ไขงาน
+        </button>
+      )}
+      {canAdjust && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setModalJob(job);
+            setAdjustOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-outline m3-btn-sm md:h-9 md:px-3.5 md:text-sm"
+        >
+          <SolarTuning size={16} />
+          ปรับปรุงยอด
+        </button>
+      )}
+      {canReopen && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setReopenOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-outline m3-btn-sm md:h-9 md:px-3.5 md:text-sm"
+        >
+          <SolarHistory size={16} />
+          เปิดผลิตต่อ
+        </button>
+      )}
+      {canCancel && (
+        <button
+          onClick={() => {
+            setModalError(null);
+            setCancelOpen(true);
+          }}
+          disabled={submitting}
+          className="m3-btn m3-btn-sm border border-[rgba(255,86,48,0.48)] bg-white text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)] md:h-9 md:px-3.5 md:text-sm"
+        >
+          <SolarCloseCircle size={16} />
+          ยกเลิกงาน
+        </button>
+      )}
+    </>
+  );
+
+  const stats: { label: string; value: number; tone: M3StatTone }[] = [
+    { label: "เป้าหมาย", value: job.target_qty, tone: "grey" },
+    { label: "ผลิตดีสะสม", value: job.produced_good, tone: "primary" },
+    { label: "ของเสียสะสม", value: job.defect_total, tone: "error" },
+    { label: "ยังขาด", value: job.remaining_qty, tone: "warning" },
+    { label: "ผลิตเกิน", value: job.over_qty, tone: "info" },
+  ];
+
   return (
-    <div className="w-full max-w-full pb-28">
+    <div className={`w-full max-w-full ${hasActions ? "pb-40 md:pb-10" : "pb-10"}`}>
+      {/* breadcrumb (D31) */}
+      <nav aria-label="breadcrumb" className="mb-4 flex items-center gap-2 text-sm">
+        <Link href="/production/jobs" className="text-m3-grey-600 hover:underline">
+          งานผลิต
+        </Link>
+        <span className="text-m3-grey-400">/</span>
+        <span className="font-semibold tabular-nums text-m3-grey-800">{job.job_no}</span>
+      </nav>
+
       {/* หัวงาน */}
-      <div className="mb-5 rounded-xl border border-[#E8ECEA] bg-white p-5 shadow-xs">
+      <div className="m3-card mb-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#06402B] font-mono text-sm font-black text-white">
-                {job.table_no}
-              </span>
+              <M3NumberTile>{job.table_no}</M3NumberTile>
+              <span className="text-sm font-bold text-m3-grey-800">โต๊ะ {job.table_no}</span>
               <StatusBadge status={job.status} />
               <PriorityBadge priority={job.priority} />
-              <span className="font-mono text-sm font-black text-slate-900">{job.job_no}</span>
+              <JobSignalBadges job={job} />
+              <span className="hidden text-xs tabular-nums text-m3-grey-500 sm:inline">{job.job_no}</span>
             </div>
-            <h1 className="mt-2 text-xl font-extrabold text-slate-900">{job.product_name}</h1>
-            <p className="mt-0.5 font-mono text-xs font-semibold text-slate-400">
-              {job.sku} · วันที่ผลิต {job.production_date}
+            <p className="mt-2 text-xs tabular-nums text-m3-grey-500 sm:hidden">{job.job_no}</p>
+            <h1 className="mt-1 text-xl font-bold text-m3-grey-800 sm:mt-3 sm:text-2xl">{job.product_name}</h1>
+            <p className="mt-1 text-sm tabular-nums text-m3-grey-600">
+              {job.sku} · หน่วย {job.unit} · วันที่ผลิต {job.production_date}
               {job.location ? ` · ตำแหน่งรับเข้า ${job.location}` : ""}
             </p>
-            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500">
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-m3-grey-500">
               <span>สร้างโดย {job.created_by_name} · {formatDateTime(job.created_at)}</span>
               {job.submitted_at && <span>ส่งงาน {formatDateTime(job.submitted_at)}</span>}
               {job.started_at && <span>เริ่มผลิตโดย {job.started_by_name || "-"} · {formatDateTime(job.started_at)}</span>}
               {job.completed_at && <span>จบงาน {formatDateTime(job.completed_at)}</span>}
-              {job.cancelled_at && <span className="text-rose-600">ยกเลิกโดย {job.cancelled_by_name} · {formatDateTime(job.cancelled_at)}</span>}
+              {job.cancelled_at && <span className="text-m3-error-dark">ยกเลิกโดย {job.cancelled_by_name} · {formatDateTime(job.cancelled_at)}</span>}
             </div>
-            {job.note && (
-              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">📝 {job.note}</p>
-            )}
-            {job.cancel_reason && (
-              <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">เหตุผลยกเลิก: {job.cancel_reason}</p>
-            )}
-            {job.close_reason && (
-              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">เหตุผลจบงาน: {job.close_reason}</p>
-            )}
           </div>
+          {hasActions && (
+            <div className="hidden flex-wrap items-center justify-end gap-2 md:flex">
+              {secondaryActions}
+              {primaryActions}
+            </div>
+          )}
         </div>
 
+        {(job.note || job.cancel_reason || job.close_reason) && (
+          <div className="mt-4 space-y-2">
+            {job.note && (
+              <p className="rounded-lg bg-m3-grey-100 px-4 py-2.5 text-sm text-m3-grey-600">
+                หมายเหตุ: <span className="font-semibold text-m3-grey-800">{job.note}</span>
+              </p>
+            )}
+            {job.cancel_reason && (
+              <M3Banner tone="error">เหตุผลยกเลิก: {job.cancel_reason}</M3Banner>
+            )}
+            {job.close_reason && (
+              <M3Banner tone="warning">เหตุผลจบงาน: {job.close_reason}</M3Banner>
+            )}
+          </div>
+        )}
+
         {/* ตัวเลขหลัก */}
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-          {[
-            { label: "เป้าหมาย", value: job.target_qty, cls: "bg-slate-50 text-slate-900" },
-            { label: "ผลิตดีสะสม", value: job.produced_good, cls: "bg-[#EAF2EE] text-[#06402B]" },
-            { label: "ของเสียสะสม", value: job.defect_total, cls: "bg-rose-50 text-rose-700" },
-            { label: "ยังขาด", value: job.remaining_qty, cls: "bg-amber-50 text-amber-800" },
-            { label: "ผลิตเกิน", value: job.over_qty, cls: "bg-sky-50 text-sky-800" },
-          ].map((s) => (
-            <div key={s.label} className={`rounded-lg px-3.5 py-2.5 ${s.cls}`}>
-              <div className="text-[11px] font-bold uppercase tracking-wide opacity-70">{s.label}</div>
-              <div className="mt-0.5 font-mono text-xl font-black">
-                {formatQty(s.value)} <span className="text-[10px] font-bold opacity-60">{job.unit}</span>
-              </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {stats.map((st) => (
+            // มือถือ: ซ่อนช่อง "ผลิตเกิน" เมื่อเป็น 0 (M42 แสดง 4 ช่อง)
+            <div key={st.label} className={st.tone === "info" && !(st.value > 0) ? "hidden lg:block" : undefined}>
+              <M3StatTile size="lg" tone={st.tone} label={st.label} value={formatQty(st.value)} unit={job.unit} />
             </div>
           ))}
         </div>
         {job.status === "COMPLETED" && job.remaining_qty > 0 && (
-          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-            ⚠️ งานนี้จบโดยผลิตได้ต่ำกว่าเป้าหมาย (ขาด {formatQty(job.remaining_qty)} {job.unit})
-          </p>
+          <M3Banner tone="warning" className="mt-3">
+            งานนี้จบโดยผลิตได้ต่ำกว่าเป้าหมาย (ขาด {formatQty(job.remaining_qty)} {job.unit})
+          </M3Banner>
         )}
       </div>
 
       {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 ${
-            toast.tone === "ok" ? "border-[#C9DFD4] bg-[#EAF2EE] text-[#053425]" : "border-rose-200 bg-rose-50 text-rose-800"
-          }`}
-        >
-          <p className="text-sm font-bold">{toast.message}</p>
+        <div className="mb-4">
+          {toast.tone === "ok" ? (
+            <M3Banner tone="success" role="status">
+              {toast.message}
+            </M3Banner>
+          ) : (
+            <M3ErrorBanner
+              message={toast.message}
+              action={
+                <button type="button" onClick={() => reload()} className="m3-btn m3-btn-sm m3-btn-text">
+                  รีเฟรช
+                </button>
+              }
+            />
+          )}
         </div>
       )}
 
       {/* ประวัติรายงาน */}
-      <div className="mb-5 overflow-hidden rounded-xl border border-[#E8ECEA] bg-white shadow-xs">
-        <div className="border-b border-[#EEF1EF] px-5 py-3.5">
-          <h2 className="text-sm font-extrabold text-slate-900">ประวัติรายงานผล ({reports.length} รายการ)</h2>
+      <div className="m3-card mb-5 overflow-hidden">
+        <div className="px-5 pt-5 pb-3 sm:px-6">
+          <h2 className="text-lg font-bold text-m3-grey-800">ประวัติรายงาน ({reports.length})</h2>
         </div>
         {reports.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm font-semibold text-slate-300">ยังไม่มีรายงานผล</p>
+          <p className="px-5 pt-4 pb-10 text-center text-sm text-m3-grey-500">ยังไม่มีรายงานผล</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead>
-                <tr className="bg-slate-50 font-bold text-slate-500">
-                  <th className="px-4 py-2.5">รอบที่</th>
-                  <th className="px-4 py-2.5">เมื่อ</th>
-                  <th className="px-4 py-2.5">ผู้รายงาน</th>
-                  <th className="px-4 py-2.5 text-right">ดีรอบนี้</th>
-                  <th className="px-4 py-2.5 text-right">เสียรอบนี้</th>
-                  <th className="px-4 py-2.5 text-right">ดีสะสม</th>
-                  <th className="px-4 py-2.5">สาเหตุ/เหตุผล</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EEF1EF]">
-                {reports.map((r) => (
-                  <tr key={r.report_id} className={r.kind === "ADJUSTMENT" ? "bg-amber-50/40" : ""}>
-                    <td className="px-4 py-2.5 font-mono font-bold text-slate-700">
-                      {r.kind === "ADJUSTMENT" ? "ปรับปรุง" : r.report_no}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-slate-500">{formatDateTime(r.reported_at)}</td>
-                    <td className="px-4 py-2.5 font-semibold text-slate-700">{r.reported_by_name}</td>
-                    <td className={`px-4 py-2.5 text-right font-mono font-bold tabular-nums ${r.good_qty < 0 ? "text-rose-700" : "text-[#06402B]"}`}>
-                      {r.good_qty > 0 ? "+" : ""}{formatQty(r.good_qty)}
-                    </td>
-                    <td className={`px-4 py-2.5 text-right font-mono font-bold tabular-nums ${r.defect_qty !== 0 ? "text-rose-700" : "text-slate-400"}`}>
-                      {r.defect_qty > 0 ? "+" : ""}{formatQty(r.defect_qty)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-black tabular-nums text-slate-900">{formatQty(r.cumulative_good)}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-slate-500">
-                      {r.kind === "ADJUSTMENT" ? `⚖️ ${r.reason}` : r.defect_cause || r.reason || r.note || "-"}
-                    </td>
+          <>
+            {/* มือถือ: การ์ดต่อรอบ (M42) */}
+            <ul className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)] px-5 pb-3 md:hidden">
+              {reports.map((r) => (
+                <li key={r.report_id} className="py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[15px] font-bold text-m3-grey-800">
+                      {r.kind === "ADJUSTMENT" ? "ปรับปรุงยอด" : `รอบที่ ${r.report_no}`}
+                    </span>
+                    <span className="text-xs text-m3-grey-500">{formatDateTime(r.reported_at)}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-m3-grey-500">
+                    {r.reported_by_name}
+                    {r.kind === "ADJUSTMENT" ? ` · ${r.reason}` : r.defect_cause || r.reason || r.note ? ` · ${r.defect_cause || r.reason || r.note}` : ""}
+                  </p>
+                  <p className="mt-1.5 flex flex-wrap gap-x-4 text-sm tabular-nums text-m3-grey-600">
+                    <span>
+                      ดีรอบนี้{" "}
+                      <b className={r.good_qty < 0 ? "text-m3-error-dark" : "text-m3-primary-dark"}>
+                        {r.good_qty > 0 ? "+" : ""}{formatQty(r.good_qty)}
+                      </b>
+                    </span>
+                    <span>
+                      เสียรอบนี้{" "}
+                      <b className={r.defect_qty !== 0 ? "text-m3-error-dark" : "text-m3-grey-500"}>
+                        {r.defect_qty > 0 ? "+" : ""}{formatQty(r.defect_qty)}
+                      </b>
+                    </span>
+                    <span>
+                      สะสม {formatQty(r.cumulative_good)}/{formatQty(r.cumulative_defect)}
+                    </span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {/* ≥md: ตาราง (D32) */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="m3-table w-full min-w-[760px] text-left text-sm">
+                <thead>
+                  <tr>
+                    <th>รอบที่</th>
+                    <th>เมื่อ</th>
+                    <th>ผู้รายงาน</th>
+                    <th className="m3-num">ดีรอบนี้</th>
+                    <th className="m3-num">เสียรอบนี้</th>
+                    <th className="m3-num">ดีสะสม</th>
+                    <th>สาเหตุ/เหตุผล</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {reports.map((r) => (
+                    <tr key={r.report_id} className={r.kind === "ADJUSTMENT" ? "bg-[rgba(255,171,0,0.08)]" : ""}>
+                      <td className="font-semibold tabular-nums">
+                        {r.kind === "ADJUSTMENT" ? <span className="m3-label m3-label-warning">ปรับปรุง</span> : r.report_no}
+                      </td>
+                      <td className="text-xs">{formatDateTime(r.reported_at)}</td>
+                      <td>{r.reported_by_name}</td>
+                      <td className="m3-num font-semibold tabular-nums">
+                        <span className={r.good_qty < 0 ? "text-m3-error-dark" : "text-m3-primary-dark"}>
+                          {r.good_qty > 0 ? "+" : ""}{formatQty(r.good_qty)}
+                        </span>
+                      </td>
+                      <td className="m3-num font-semibold tabular-nums">
+                        <span className={r.defect_qty !== 0 ? "text-m3-error-dark" : "text-m3-grey-500"}>
+                          {r.defect_qty > 0 ? "+" : ""}{formatQty(r.defect_qty)}
+                        </span>
+                      </td>
+                      <td className="m3-num font-bold tabular-nums">{formatQty(r.cumulative_good)}</td>
+                      <td className="text-xs">
+                        {r.kind === "ADJUSTMENT" ? r.reason : r.defect_cause || r.reason || r.note || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* ประวัติการเปลี่ยนแปลง */}
-      <div className="overflow-hidden rounded-xl border border-[#E8ECEA] bg-white shadow-xs">
-        <div className="border-b border-[#EEF1EF] px-5 py-3.5">
-          <h2 className="text-sm font-extrabold text-slate-900">ประวัติการดำเนินการ</h2>
+      <div className="m3-card overflow-hidden">
+        <div className="px-5 pt-5 pb-2 sm:px-6">
+          <h2 className="text-lg font-bold text-m3-grey-800">ประวัติการดำเนินการ</h2>
         </div>
         {history.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm font-semibold text-slate-300">ยังไม่มีประวัติ</p>
+          <p className="px-5 pt-4 pb-8 text-center text-sm text-m3-grey-500">ยังไม่มีประวัติ</p>
         ) : (
-          <ol className="divide-y divide-[#EEF1EF]">
+          <ol className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)] px-5 pb-2 sm:px-6">
             {history.map((h) => {
               const detailView = formatHistoryDetail(h.action, h.detail);
               return (
-                <li key={h.history_id} className="px-5 py-3">
+                <li key={h.history_id} className="py-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-slate-800">{historyActionLabel(h.action)}</span>
-                    <span className="text-xs font-semibold text-slate-400">
+                    <span className="text-sm font-semibold text-m3-grey-800">{historyActionLabel(h.action)}</span>
+                    <span className="text-xs text-m3-grey-500">
                       {h.actor_name} · {formatDateTime(h.at)}
                     </span>
                   </div>
-                  {h.reason && <p className="mt-0.5 text-xs font-semibold text-slate-500">เหตุผล: {h.reason}</p>}
+                  {h.reason && <p className="mt-0.5 text-xs text-m3-grey-600">เหตุผล: {h.reason}</p>}
                   {detailView.lines.length > 0 && (
                     <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
                       {detailView.lines.map((line, idx) => (
                         <div key={`${line.label}-${idx}`} className="contents">
-                          <dt className="font-semibold text-slate-400">{line.label}</dt>
-                          <dd className="font-semibold tabular-nums text-slate-600">{line.value}</dd>
+                          <dt className="text-m3-grey-500">{line.label}</dt>
+                          <dd className="font-medium tabular-nums text-m3-grey-600">{line.value}</dd>
                         </div>
                       ))}
                     </dl>
                   )}
                   {detailView.raw && (
-                    <p className="mt-0.5 break-all font-mono text-[11px] text-slate-400">{detailView.raw}</p>
+                    <p className="mt-0.5 break-all tabular-nums text-[11px] text-m3-grey-500">{detailView.raw}</p>
                   )}
                 </li>
               );
@@ -278,85 +461,11 @@ export default function ProductionJobDetailPage() {
         )}
       </div>
 
-      {/* ปุ่ม action ตามสิทธิ์และสถานะ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำเสมอ) */}
-      {(canStart || canReport || canEdit || canCancel || canReopen || canAdjust) && (
-        <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex w-full max-w-2xl flex-wrap items-center justify-center gap-2 rounded-xl bg-[#06402B] px-4 py-3 shadow-2xl">
-            {canStart && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setStartOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
-              >
-                ▶ เริ่มผลิต
-              </button>
-            )}
-            {canReport && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setReportOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
-              >
-                📊 รายงานผลผลิต
-              </button>
-            )}
-            {canEdit && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setModalJob(job);
-                  setEditOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
-              >
-                ✏️ แก้ไขงาน
-              </button>
-            )}
-            {canAdjust && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setModalJob(job);
-                  setAdjustOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
-              >
-                ⚖️ ปรับปรุงยอด
-              </button>
-            )}
-            {canReopen && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setReopenOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50"
-              >
-                🔁 เปิดผลิตต่อ
-              </button>
-            )}
-            {canCancel && (
-              <button
-                onClick={() => {
-                  setModalError(null);
-                  setCancelOpen(true);
-                }}
-                disabled={submitting}
-                className="rounded-lg bg-[#B42318] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#912018] active:scale-95 disabled:opacity-50"
-              >
-                🚫 ยกเลิกงาน
-              </button>
-            )}
-          </div>
+      {/* มือถือ: แถบ action ด้านล่าง (M42) */}
+      {hasActions && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[rgba(145,158,171,0.2)] bg-white/96 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+          {(canEdit || canAdjust || canReopen || canCancel) && <div className="mb-2.5 flex flex-wrap gap-2">{secondaryActions}</div>}
+          {(canStart || canReport) && <div className="flex flex-col gap-2">{primaryActions}</div>}
         </div>
       )}
 
@@ -364,7 +473,15 @@ export default function ProductionJobDetailPage() {
       <ConfirmModal
         open={startOpen}
         title="ยืนยันเริ่มผลิต"
-        confirmLabel="ยืนยันเริ่มผลิต"
+        hint="เมื่อเริ่มแล้ว ระบบจะแจ้ง Admin ว่างานนี้เริ่มผลิตแล้ว"
+        icon={<SolarPlayCircle size={28} />}
+        iconTone="info"
+        confirmLabel={
+          <>
+            <SolarPlayCircle size={18} />
+            ยืนยันเริ่มผลิต
+          </>
+        }
         submitting={submitting}
         error={modalError}
         onClose={clearModal}
@@ -467,7 +584,7 @@ export default function ProductionJobDetailPage() {
       />
 
       <div className="mt-5 text-center">
-        <button onClick={() => reload()} className="text-xs font-bold text-slate-400 hover:text-[#0F5C3F]">
+        <button onClick={() => reload()} className="m3-btn m3-btn-sm m3-btn-text text-m3-grey-600">
           รีเฟรชข้อมูล
         </button>
       </div>

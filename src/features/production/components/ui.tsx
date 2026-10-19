@@ -3,6 +3,19 @@
 // องค์ประกอบ UI ใช้ร่วมกันของระบบผลิต — badge สถานะ/ความสำคัญ, ฟอร์แมตตัวเลข/วันที่
 import type { ProductionJob, ProductionJobStatus, ProductionPriority } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_PRIORITY_LABELS } from "@/types/production";
+import type { ReactElement } from "react";
+import {
+  SolarArrowUp,
+  SolarCheckCircle,
+  SolarClockCircle,
+  SolarDangerTriangle,
+  SolarCloseCircle,
+  SolarFlag,
+  SolarPen,
+  SolarPlayCircle,
+  type SolarIconProps,
+} from "@/components/icons";
+import { M3StatTile } from "@/components/ui/m3";
 
 export function formatQty(n: number | undefined | null): string {
   const v = Number(n) || 0;
@@ -28,17 +41,19 @@ export function todayYMD(): string {
   return bangkok.toISOString().slice(0, 10);
 }
 
+const STATUS_LABEL: Record<ProductionJobStatus, { cls: string; Icon: (p: SolarIconProps) => ReactElement }> = {
+  DRAFT: { cls: "m3-label-default", Icon: SolarPen },
+  WAITING: { cls: "m3-label-warning", Icon: SolarClockCircle },
+  IN_PROGRESS: { cls: "m3-label-info", Icon: SolarPlayCircle },
+  COMPLETED: { cls: "m3-label-success", Icon: SolarCheckCircle },
+  CANCELLED: { cls: "m3-label-default", Icon: SolarCloseCircle },
+};
+
 export function StatusBadge({ status }: { status: ProductionJobStatus }) {
-  const styles: Record<ProductionJobStatus, string> = {
-    DRAFT: "bg-slate-100 text-slate-600 border border-slate-200",
-    WAITING: "bg-amber-50 text-amber-800 border border-amber-200",
-    IN_PROGRESS: "bg-sky-50 text-sky-800 border border-sky-200",
-    COMPLETED: "bg-[#EAF2EE] text-[#053425] border border-[#C9DFD4]",
-    CANCELLED: "bg-rose-50 text-rose-700 border border-rose-200",
-  };
+  const { cls, Icon } = STATUS_LABEL[status];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap ${styles[status]}`}>
-      {status === "IN_PROGRESS" && <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sky-500" />}
+    <span className={`m3-label gap-1 px-2 ${cls}`}>
+      <Icon size={14} className={status === "IN_PROGRESS" ? "animate-pulse" : undefined} />
       {PRODUCTION_JOB_STATUS_LABELS[status]}
     </span>
   );
@@ -48,42 +63,56 @@ export function PriorityBadge({ priority }: { priority: ProductionPriority }) {
   if (priority === "NORMAL") return null;
   const isCritical = priority === "CRITICAL";
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-extrabold text-white whitespace-nowrap ${
-        isCritical ? "bg-[#B42318]" : "bg-[#B54708]"
-      }`}
-    >
-      {isCritical ? "🔴" : "🟠"} {PRODUCTION_PRIORITY_LABELS[priority]}
+    <span className={`m3-label gap-1 px-2 ${isCritical ? "m3-label-error" : "m3-label-warning"}`}>
+      <SolarFlag size={13} />
+      {PRODUCTION_PRIORITY_LABELS[priority]}
     </span>
   );
 }
 
-/** แถบตัวเลขยอดของงาน: เป้าหมาย / ดีสะสม / เสียสะสม / ยังขาด */
+/** แถบสีซ้ายของการ์ดตามความสำคัญ (D26/D30 — ด่วน = เหลือง, ด่วนมาก = แดง) */
+export function priorityEdgeClass(priority: ProductionPriority): string {
+  if (priority === "CRITICAL") return "before:bg-m3-error";
+  if (priority === "URGENT") return "before:bg-m3-warning";
+  return "before:bg-transparent";
+}
+
+/** แถบตัวเลขยอดของงาน: เป้าหมาย / ดีสะสม / เสียสะสม / ยังขาด (ผลิตเกิน → ช่องสุดท้ายเป็น "เกิน") */
 export function JobNumbers({ job, compact = false }: { job: ProductionJob; compact?: boolean }) {
-  const cell = "rounded-lg px-2.5 py-1.5 min-w-0";
-  const label = "text-[10px] font-bold uppercase tracking-wide";
-  const value = "mt-0.5 font-mono text-sm font-black tabular-nums";
+  const over = (job.over_qty ?? 0) > 0;
   return (
     <div className={`grid gap-1.5 ${compact ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-4"}`}>
-      <div className={`${cell} bg-slate-50`}>
-        <div className={`${label} text-slate-400`}>เป้าหมาย</div>
-        <div className={`${value} text-slate-900`}>
-          {formatQty(job.target_qty)} <span className="text-[10px] font-bold text-slate-400">{job.unit}</span>
-        </div>
-      </div>
-      <div className={`${cell} bg-[#EAF2EE]`}>
-        <div className={`${label} text-[#4A7A66]`}>ผลิตดีสะสม</div>
-        <div className={`${value} text-[#06402B]`}>{formatQty(job.produced_good)}</div>
-      </div>
-      <div className={`${cell} bg-rose-50`}>
-        <div className={`${label} text-rose-400`}>ของเสียสะสม</div>
-        <div className={`${value} text-rose-700`}>{formatQty(job.defect_total)}</div>
-      </div>
-      <div className={`${cell} bg-amber-50`}>
-        <div className={`${label} text-amber-500`}>ยังขาด</div>
-        <div className={`${value} text-amber-800`}>{formatQty(job.remaining_qty)}</div>
-      </div>
+      <M3StatTile tone="grey" label={compact ? "เป้า" : "เป้าหมาย"} value={formatQty(job.target_qty)} unit={compact ? undefined : job.unit} />
+      <M3StatTile tone="primary" label={compact ? "ดี" : "ผลิตดีสะสม"} value={formatQty(job.produced_good)} />
+      <M3StatTile tone="error" label={compact ? "เสีย" : "ของเสียสะสม"} value={formatQty(job.defect_total)} />
+      {over ? (
+        <M3StatTile tone="info" label={compact ? "เกิน" : "ผลิตเกิน"} value={formatQty(job.over_qty)} />
+      ) : (
+        <M3StatTile tone="warning" label={compact ? "ขาด" : "ยังขาด"} value={formatQty(job.remaining_qty)} />
+      )}
     </div>
+  );
+}
+
+/** ป้ายสัญญาณเพิ่มเติม (D26): จบต่ำกว่าเป้า / ผลิตเกิน — คำนวณจากยอดที่มีอยู่แล้ว */
+export function JobSignalBadges({ job }: { job: ProductionJob }) {
+  const under = job.status === "COMPLETED" && job.remaining_qty > 0;
+  const over = (job.over_qty ?? 0) > 0;
+  return (
+    <>
+      {under && (
+        <span className="m3-label m3-label-error gap-1 px-2">
+          <SolarDangerTriangle size={13} />
+          จบต่ำกว่าเป้า
+        </span>
+      )}
+      {over && (
+        <span className="m3-label m3-label-info gap-1 px-2">
+          <SolarArrowUp size={13} />
+          ผลิตเกิน
+        </span>
+      )}
+    </>
   );
 }
 

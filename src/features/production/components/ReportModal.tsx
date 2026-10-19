@@ -5,6 +5,8 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty } from "./ui";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
+import { M3Banner, M3ErrorBanner, M3Field, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
+import { SolarClipboardList, SolarClose, SolarDangerCircle, SolarFlag } from "@/components/icons";
 
 // Modal รายงานผลผลิต (APPROVER) — ยอดเฉพาะรอบนี้ ระบบคำนวณยอดสะสมเอง
 // ก่อนยืนยันมีสรุปยอดรอบนี้ + สะสมเทียบเป้าเสมอ · มีของเสีย → บังคับสาเหตุ
@@ -29,9 +31,6 @@ interface ReportModalProps {
   onClose: () => void;
   onSubmit: (payload: ReportPayload) => void;
 }
-
-const inputClass =
-  "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
 
 export default function ReportModal({ open, job, submitting, error, onClose, onSubmit }: ReportModalProps) {
   useEscapeKey(open && !submitting, onClose);
@@ -85,190 +84,234 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
   if (!open || !job) return null;
 
+  const qtyBox = (invalid: boolean, strong: boolean) =>
+    `flex h-14 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 transition-colors focus-within:border-m3-grey-800 focus-within:ring-1 focus-within:ring-m3-grey-800 ${
+      invalid ? "border-m3-error" : strong ? "border-m3-grey-800 border-2" : "border-[rgba(145,158,171,0.32)]"
+    }`;
+  const qtyInput =
+    "w-full min-w-0 bg-transparent text-right font-m3-disp text-2xl font-bold tabular-nums text-m3-grey-800 placeholder:text-m3-grey-400 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+  const intentText = !isFinal
+    ? "งานยังไม่จบ"
+    : remainingAfter > 0
+      ? `จบงานที่ยังขาด ${formatQty(remainingAfter)} ${job.unit}`
+      : overAfter > 0
+        ? `จบงาน — ผลิตเกินเป้า ${formatQty(overAfter)} ${job.unit}`
+        : "จบงาน — ครบเป้าหมาย";
+  const submitText = (
+    <span>
+      {isFinal ? "ยืนยันและจบงาน" : "ยืนยันรายงาน"} (ดี {formatQty(good)} · เสีย {formatQty(defect)})
+    </span>
+  );
+  const handleSubmit = () =>
+    onSubmit({
+      good_qty: good,
+      defect_qty: defect,
+      defect_cause: defectCause.trim(),
+      note: note.trim(),
+      report_kind: reportKind,
+      close_reason: closeReason.trim(),
+    });
+
+  // มือถือ = เต็มจอ (M44–46: ปุ่ม X ซ้ายบน + ปุ่มยืนยันใหญ่ด้านล่าง) · ≥sm = dialog 560px (D32–34)
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
-      <div className="relative flex max-h-[92dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-lg sm:rounded-xl">
-        <div className="border-b border-[#EEF1EF] px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">รายงานผลผลิต</h2>
-          <p className="mt-0.5 font-mono text-xs font-semibold text-slate-500">
-            {job.job_no} · โต๊ะ {job.table_no} · {job.product_name} ({job.sku})
-          </p>
+    <div className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-6">
+      <div className={`${m3Cls.overlay} hidden sm:block`} onClick={() => !submitting && onClose()} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="รายงานผลผลิต"
+        className="relative flex h-dvh w-full flex-col bg-white animate-in fade-in duration-150 sm:h-auto sm:max-h-[92dvh] sm:max-w-[560px] sm:rounded-2xl sm:shadow-m3-dropdown sm:zoom-in-95"
+      >
+        <div className="flex items-start gap-3 border-b border-[rgba(145,158,171,0.2)] px-4 py-3 sm:border-0 sm:px-7 sm:pt-6 sm:pb-1">
+          <button
+            type="button"
+            aria-label="ปิด"
+            disabled={submitting}
+            onClick={onClose}
+            className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-m3-grey-800 hover:bg-[rgba(145,158,171,0.08)] sm:order-last sm:-mr-2 sm:ml-0 sm:size-9 sm:text-m3-grey-600"
+          >
+            <SolarClose size={22} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-m3-grey-800 sm:text-xl">รายงานผลผลิต</h2>
+            <p className="mt-0.5 truncate text-xs font-medium tabular-nums text-m3-grey-500">
+              โต๊ะ {job.table_no} · {job.job_no}
+              <span className="hidden sm:inline">
+                {" "}· {job.product_name} ({job.sku})
+              </span>{" "}
+              · รอบที่ {formatQty((job.report_count ?? 0) + 1)}
+            </p>
+          </div>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-              <p className="text-sm font-bold text-rose-800">{error}</p>
-            </div>
-          )}
+        <div className="flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-6 sm:px-7 sm:pb-2">
+          {error && <M3ErrorBanner message={error} />}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
             <label className="block">
-              <span className="text-xs font-bold text-[#06402B]">ผลิตดีรอบนี้ ({job.unit})</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={goodText}
-                onChange={(e) => setGoodText(e.target.value)}
-                placeholder="0"
-                disabled={submitting}
-                className={`mt-1 w-full rounded-lg border px-3 py-3 text-center font-mono text-xl font-black text-[#06402B] focus:outline-none ${
-                  !goodParse.ok
-                    ? "border-[#F04438] bg-[#FEF3F2]"
-                    : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
-                }`}
-              />
+              <span className="text-sm font-semibold text-m3-grey-800">ผลิตดีรอบนี้</span>
+              <div className={`mt-2 ${qtyBox(!goodParse.ok, true)}`}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={goodText}
+                  onChange={(e) => setGoodText(e.target.value)}
+                  placeholder="0"
+                  disabled={submitting}
+                  className={qtyInput}
+                />
+                <span className="w-1/2 shrink-0 text-sm font-semibold text-m3-grey-600">{job.unit}</span>
+              </div>
             </label>
             <label className="block">
-              <span className="text-xs font-bold text-rose-600">ของเสียรอบนี้ ({job.unit})</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={defectText}
-                onChange={(e) => setDefectText(e.target.value)}
-                placeholder="0"
-                disabled={submitting}
-                className={`mt-1 w-full rounded-lg border px-3 py-3 text-center font-mono text-xl font-black text-rose-700 focus:outline-none ${
-                  !defectParse.ok
-                    ? "border-[#F04438] bg-[#FEF3F2]"
-                    : "border-[#E8ECEA] bg-slate-50 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20"
-                }`}
-              />
+              <span className="text-sm font-semibold text-m3-grey-800">ของเสียรอบนี้</span>
+              <div className={`mt-2 ${qtyBox(!defectParse.ok, false)}`}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={defectText}
+                  onChange={(e) => setDefectText(e.target.value)}
+                  placeholder="0"
+                  disabled={submitting}
+                  className={qtyInput}
+                />
+                <span className="w-1/2 shrink-0 text-sm font-semibold text-m3-grey-600">{job.unit}</span>
+              </div>
             </label>
           </div>
-          {qtyError && <p className="-mt-2 text-xs font-bold text-rose-700">{qtyError}</p>}
+          {qtyError && <p className="-mt-3 text-xs font-semibold text-m3-error-dark">{qtyError}</p>}
 
           {defect > 0 && (
-            <label className="block">
-              <span className="text-xs font-bold text-rose-600">สาเหตุของเสีย (จำเป็น)</span>
+            <M3Field label="สาเหตุของเสีย (จำเป็น)" error={!defectCause.trim()}>
               <input
                 type="text"
                 value={defectCause}
                 onChange={(e) => setDefectCause(e.target.value)}
                 placeholder="เช่น วัตถุดิบแตกหัก พิมพ์เพี้ยน"
-                className={`mt-1 ${inputClass} border-rose-200 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-400/20`}
+                className={`h-12 ${!defectCause.trim() ? m3Cls.inputError : m3Cls.input}`}
               />
-            </label>
+            </M3Field>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
+          <M3Field label="หมายเหตุ (ถ้ามี)">
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="เช่น เครื่องหยุด 15 นาทีช่วงบ่าย"
+              className={`h-12 ${m3Cls.input}`}
+            />
+          </M3Field>
+
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="ประเภทรายงาน">
             {(["PARTIAL", "FINAL"] as const).map((k) => (
               <button
                 key={k}
                 type="button"
+                aria-pressed={reportKind === k}
                 disabled={submitting}
                 onClick={() => setReportKind(k)}
-                className={`rounded-lg border-2 px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
-                  reportKind === k
-                    ? k === "FINAL"
-                      ? "border-[#06402B] bg-[#06402B] text-white"
-                      : "border-[#0F5C3F] bg-[#EAF2EE] text-[#053425]"
-                    : "border-[#E8ECEA] bg-white text-slate-500 hover:border-[#C8DBD1]"
-                }`}
+                className={`m3-btn h-12 ${reportKind === k ? "m3-btn-dark" : "m3-btn-outline"}`}
               >
-                {k === "PARTIAL" ? "📋 รายงานบางส่วน" : "🏁 จบงาน"}
+                {k === "PARTIAL" ? <SolarClipboardList size={18} /> : <SolarFlag size={18} />}
+                {k === "PARTIAL" ? "รายงานบางส่วน" : "จบงาน"}
               </button>
             ))}
           </div>
-          <p className="-mt-2 text-xs font-semibold text-slate-400">
-            {isFinal ? "จบงานแล้วจะรายงานเพิ่มไม่ได้" : "งานยังไม่จบ"}
-          </p>
+
+          {/* สรุปยอดก่อนยืนยัน — กันกรอกผิด */}
+          <div className="rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] p-4">
+            <p className="text-sm font-bold text-m3-grey-800">สรุปรอบนี้</p>
+            <div className="mt-2.5 space-y-2 text-sm tabular-nums">
+              <div className="flex justify-between gap-3">
+                <span className="text-m3-grey-600">ดีรอบนี้ / เสียรอบนี้</span>
+                <span className="shrink-0 font-bold whitespace-nowrap text-m3-grey-800">
+                  +{formatQty(good)} / +{formatQty(defect)} {job.unit}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-m3-grey-600">ผลิตดีสะสมหลังรอบนี้ <span className="text-m3-grey-500">(เดิม {formatQty(job.produced_good)})</span></span>
+                <span className="shrink-0 font-bold whitespace-nowrap text-m3-primary-dark">
+                  {formatQty(cumGood)} / {formatQty(target)} {job.unit}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-m3-grey-600">ของเสียสะสม <span className="text-m3-grey-500">(เดิม {formatQty(job.defect_total)})</span></span>
+                <span className="shrink-0 font-bold whitespace-nowrap text-m3-error-dark">
+                  {formatQty(cumDefect)} {job.unit}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-m3-grey-600">สต็อกเข้าโกดัง 2</span>
+                <span className="shrink-0 font-bold whitespace-nowrap text-m3-grey-800">
+                  +{formatQty(good)} {job.unit}
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-m3-grey-600">
+              <SolarDangerCircle size={16} className="shrink-0 text-m3-grey-500" />
+              <span>
+                <b className="font-bold text-m3-grey-800">การส่งที่ตั้งใจ:</b> {intentText}
+              </span>
+            </p>
+            <div className="mt-3 space-y-2">
+              {remainingAfter > 0 && (
+                <M3Banner tone="warning">
+                  {isFinal
+                    ? `จบงานโดยยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job.unit} — ต้องระบุเหตุผล`
+                    : `ยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job.unit}`}
+                </M3Banner>
+              )}
+              {overAfter > 0 && (
+                <M3Banner tone={isFinal ? "warning" : "info"}>
+                  {isFinal
+                    ? `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit} — ต้องระบุเหตุผล`
+                    : `ผลิตเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit}`}
+                </M3Banner>
+              )}
+              {defect > 0 && (
+                <M3Banner tone="info">
+                  มีของเสีย — ต้องระบุสาเหตุของเสีย{defectCause.trim() ? " (กรอกแล้ว)" : ""}
+                </M3Banner>
+              )}
+              {isFinal && <M3Banner tone="info">จบงานแล้วจะรายงานเพิ่มไม่ได้</M3Banner>}
+            </div>
+          </div>
 
           {isFinal && (remainingAfter > 0 || overAfter > 0) && (
             <label className="block">
-              <span className="text-xs font-bold text-rose-600">
-                เหตุผล{remainingAfter > 0 ? `จบงานที่ยังขาด ${formatQty(remainingAfter)} ${job.unit}` : `ผลิตเกินเป้า ${formatQty(overAfter)} ${job.unit}`} (จำเป็น)
+              <span className={m3Cls.label}>
+                เหตุผล{remainingAfter > 0 ? `จบงานที่ยังขาด ${formatQty(remainingAfter)} ${job.unit}` : `ผลิตเกินเป้า ${formatQty(overAfter)} ${job.unit}`}{" "}
+                <span className="text-m3-error">(จำเป็น)</span>
               </span>
               <textarea
                 rows={2}
                 value={closeReason}
                 onChange={(e) => setCloseReason(e.target.value)}
                 placeholder={remainingAfter > 0 ? "เช่น วัตถุดิบไม่พอ ต้องปิดงานก่อน" : "เช่น ทำเกินตามคำขอของ ADMIN"}
-                className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
+                className={`mt-1.5 resize-none ${!closeReason.trim() ? m3Cls.inputError : m3Cls.input}`}
               />
+              {!closeReason.trim() && <p className="mt-1 text-xs font-semibold text-m3-error-dark">ต้องระบุเหตุผลก่อนยืนยัน</p>}
             </label>
           )}
-
-          <label className="block">
-            <span className="text-xs font-bold text-slate-500">หมายเหตุ (ถ้ามี)</span>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น เครื่องหยุด 15 นาทีช่วงบ่าย"
-              className={`mt-1 ${inputClass}`}
-            />
-          </label>
-
-          {/* สรุปยอดก่อนยืนยัน — กันกรอกผิด */}
-          <div className="rounded-xl border border-[#C9DFD4] bg-[#EAF2EE] p-4">
-            <p className="text-xs font-extrabold uppercase tracking-wide text-[#4A7A66]">สรุปรอบนี้</p>
-            <div className="mt-2 space-y-1.5 font-mono text-sm font-bold text-[#031B14]">
-              <div className="flex justify-between">
-                <span>ผลิตดีรอบนี้</span>
-                <span>+{formatQty(good)} {job.unit}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ของเสียรอบนี้</span>
-                <span className="text-rose-700">+{formatQty(defect)} {job.unit}</span>
-              </div>
-              <div className="flex justify-between border-t border-[#C9DFD4] pt-1.5">
-                <span>ดีสะสมใหม่ (เดิม {formatQty(job.produced_good)})</span>
-                <span className="text-[#06402B]">{formatQty(cumGood)} / {formatQty(target)} {job.unit}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>เสียสะสมใหม่ (เดิม {formatQty(job.defect_total)})</span>
-                <span className="text-rose-700">{formatQty(cumDefect)} {job.unit}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{remainingAfter > 0 ? "ยังขาดจากเป้าหมาย" : "ผลิตเกินเป้าหมาย"}</span>
-                <span className={remainingAfter > 0 ? "text-amber-700" : "text-[#06402B]"}>
-                  {remainingAfter > 0 ? formatQty(remainingAfter) : formatQty(overAfter)} {job.unit}
-                </span>
-              </div>
-            </div>
-            <p className="mt-2 text-[11px] font-semibold text-[#4A7A66]">
-              เพิ่มสต็อก {formatQty(good)} {job.unit} เข้าโกดัง 2
-            </p>
-          </div>
         </div>
 
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-          >
+        {/* มือถือ: ปุ่มยืนยันใหญ่เต็มความกว้าง (ปิดด้วย X ด้านบน) · ≥sm: ยกเลิก + ยืนยัน ชิดขวา */}
+        <div className="border-t border-[rgba(145,158,171,0.2)] px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex sm:justify-end sm:gap-3 sm:border-0 sm:px-7 sm:pt-4 sm:pb-7">
+          <button type="button" disabled={submitting} onClick={onClose} className={`hidden sm:inline-flex ${m3Cls.btnCancel}`}>
             ยกเลิก
           </button>
           <button
             type="button"
             disabled={!!formError || submitting}
-            onClick={() =>
-              onSubmit({
-                good_qty: good,
-                defect_qty: defect,
-                defect_cause: defectCause.trim(),
-                note: note.trim(),
-                report_kind: reportKind,
-                close_reason: closeReason.trim(),
-              })
-            }
-            className="flex-[1.4] rounded-lg bg-[#06402B] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"
+            onClick={handleSubmit}
+            className="m3-btn m3-btn-primary h-14 w-full text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)] disabled:shadow-none sm:h-11 sm:w-auto sm:px-5 sm:text-sm sm:shadow-none"
           >
-            {submitting ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <span>
-                {isFinal ? "ยืนยันและจบงาน" : "ยืนยันรายงาน"} (ดี {formatQty(good)} · เสีย {formatQty(defect)})
-              </span>
-            )}
+            <M3SubmitLabel submitting={submitting}>{submitText}</M3SubmitLabel>
           </button>
         </div>
       </div>

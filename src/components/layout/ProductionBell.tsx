@@ -136,7 +136,7 @@ function ProductionBellInner() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-[min(92vw,23rem)] overflow-hidden rounded-xl bg-white shadow-m3-dropdown animate-in fade-in duration-150">
+        <div className="fixed inset-x-3.5 top-[60px] z-50 overflow-hidden rounded-2xl bg-white shadow-m3-dropdown animate-in fade-in duration-150 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[min(92vw,23rem)] sm:rounded-xl">
           <div className="flex items-center justify-between px-4 py-3.5">
             <span className="text-[14px] font-bold text-m3-grey-800">การแจ้งเตือนผลิต</span>
             {unread > 0 && (
@@ -163,7 +163,7 @@ function ProductionBellInner() {
                       n.is_read ? "" : "bg-[rgba(0,167,111,0.06)]"
                     }`}
                   >
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-[10px] ${tone.tile}`}>
+                    <span className={`hidden size-9 shrink-0 place-items-center rounded-[10px] sm:grid ${tone.tile}`}>
                       <ToneIcon size={20} />
                     </span>
                     <span className="min-w-0 flex-1">

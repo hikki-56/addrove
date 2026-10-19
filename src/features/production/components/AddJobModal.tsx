@@ -5,10 +5,12 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
 import type { Product } from "@/types/models";
 import type { ProductionJob, ProductionPriority } from "@/types/production";
-import { PRODUCTION_TABLES } from "@/types/production";
+import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 import { editRuleHint, formatQty } from "./ui";
 import { parseQtyInput } from "@/features/production/lib/quantity";
 import { canEditField } from "@/features/production/lib/job-form";
+import { M3Banner, M3Dialog, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
+import { SolarCheckCircle, SolarFactory, SolarFlag } from "@/components/icons";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
 // — เลือกสินค้าจากรายการสินค้าจริงในระบบ (ProductSearchInput → /api/products)
@@ -39,9 +41,6 @@ interface AddJobModalProps {
   onClose: () => void;
   onSubmit: (value: AddJobFormValue) => void;
 }
-
-const inputClass =
-  "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
 
 export default function AddJobModal({
   open,
@@ -150,187 +149,184 @@ export default function AddJobModal({
 
   if (!open) return null;
 
+  // ปุ่มเลือกแบบแบ่งช่อง (D27): ตัวที่เลือก = เข้ม / ความสำคัญที่เลือก = เหลืองอ่อน
+  const segBtn = (selected: boolean, selectedCls = "border-m3-grey-800 bg-m3-grey-800 text-white") =>
+    `h-11 min-w-0 flex-1 rounded-lg border text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-48 ${
+      selected ? selectedCls : "border-[rgba(145,158,171,0.32)] bg-white text-m3-grey-800 hover:bg-[rgba(145,158,171,0.08)]"
+    }`;
+  const PRIORITY_OPTIONS: { value: ProductionPriority; label: string; selectedCls: string }[] = [
+    { value: "NORMAL", label: "ปกติ", selectedCls: "border-m3-grey-800 bg-m3-grey-800 text-white" },
+    { value: "URGENT", label: "ด่วน", selectedCls: "border-m3-warning bg-[rgba(255,171,0,0.16)] text-m3-warning-dark" },
+    { value: "CRITICAL", label: "ด่วนมาก", selectedCls: "border-m3-error bg-[rgba(255,86,48,0.12)] text-m3-error-dark" },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      <div className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]" onClick={() => !submitting && onClose()} />
-      <div className="relative flex max-h-[92dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-lg sm:rounded-xl">
-        <div className="border-b border-[#EEF1EF] px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">{isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต (ฉบับร่าง)"}</h2>
-          {isEdit && job && (
-            <p className="mt-0.5 font-mono text-xs font-semibold text-slate-500">
-              {job.job_no} · {editRuleHint(job.status)}
-            </p>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-              <p className="text-sm font-bold text-rose-800">{error}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-bold text-slate-500">วันที่ผลิต</span>
-              <input
-                type="date"
-                value={form.production_date}
-                max="2100-12-31"
-                disabled={!canEditDate}
-                onChange={(e) => setForm((f) => ({ ...f, production_date: e.target.value }))}
-                className={`mt-1 ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold text-slate-500">โต๊ะผลิต (1–5)</span>
-              <select
-                value={form.table_no}
-                disabled={!canEditPlanFields}
-                onChange={(e) => setForm((f) => ({ ...f, table_no: Number(e.target.value) }))}
-                className={`mt-1 ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
-              >
-                {PRODUCTION_TABLES.map((t) => (
-                  <option key={t} value={t}>โต๊ะ {t}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div>
-            <span className="text-xs font-bold text-slate-500">
-              สินค้า (โกดัง 2)
-            </span>
-            <div className="mt-1">
-              {canEditProduct ? (
-                <ProductSearchInput
-                  products={products}
-                  placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
-                  onSelectProduct={(p) =>
-                    setForm((f) => ({
-                      ...f,
-                      product_id: p.product_id,
-                      product_name: p.product_name,
-                      sku: p.sku,
-                      unit: p.base_unit || "ชิ้น",
-                    }))
-                  }
-                />
-              ) : (
-                <input
-                  disabled
-                  value={`${form.product_name} (${form.sku})`}
-                  className={`${inputClass} bg-slate-100 text-slate-500`}
-                />
-              )}
-              {form.product_id ? (
-                <p className="mt-1 font-mono text-xs font-semibold text-slate-400">
-                  {form.product_name} · {form.sku} · หน่วย: {form.unit}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="block truncate text-xs font-bold text-[#06402B]">เป้าหมายสินค้าดี</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={form.target_qty}
-                disabled={!canEditTarget}
-                onChange={(e) => setForm((f) => ({ ...f, target_qty: e.target.value }))}
-                placeholder="0"
-                className={`mt-1 w-full rounded-lg border px-3.5 py-2.5 text-center font-mono text-lg font-bold text-[#06402B] focus:outline-none ${
-                  qtyInvalid
-                    ? "border-[#F04438] bg-[#FEF3F2] focus:ring-2 focus:ring-[#F04438]/20"
-                    : "border-[#E8ECEA] bg-slate-50 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
-                } disabled:bg-slate-100 disabled:text-slate-400`}
-              />
-              {qtyInvalid && !qtyParse.ok && (
-                <p className="mt-1 text-[11px] font-semibold text-rose-700">{qtyParse.error}</p>
-              )}
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold text-slate-500">ลำดับความสำคัญ</span>
-              <select
-                value={form.priority}
-                disabled={!canEditPriority}
-                onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value as ProductionPriority }))}
-                className={`mt-1 ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
-              >
-                <option value="NORMAL">ปกติ</option>
-                <option value="URGENT">ด่วน</option>
-                <option value="CRITICAL">ด่วนมาก</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-xs font-bold text-slate-500">หมายเหตุ (ถ้ามี)</span>
-            <textarea
-              rows={2}
-              value={form.note}
-              disabled={false}
-              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              placeholder="เช่น เตรียมวัตถุดิบให้ก่อน 10:00"
-              className={`mt-1 ${inputClass} resize-none`}
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-xs font-bold text-slate-500">ตำแหน่งเก็บตอนรับเข้าโกดัง 2 (ไม่บังคับ)</span>
-            <input
-              type="text"
-              value={form.location}
-              disabled={!canEditLocation}
-              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-              placeholder="เช่น 2A-05"
-              className={`mt-1 font-mono ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
-            />
-          </label>
-
-          {needReason && (
-            <label className="block">
-              <span className="text-xs font-bold text-rose-600">เหตุผลการแก้ไข</span>
-              <textarea
-                rows={2}
-                value={form.reason}
-                onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-                placeholder="เช่น ลูกค้าเพิ่มออเดอร์ ต้องเพิ่มเป้าหมาย"
-                className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
-              />
-            </label>
-          )}
-        </div>
-
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[#E8ECEA] bg-slate-100 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-          >
+    <M3Dialog
+      title={isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต (ฉบับร่าง)"}
+      subtitle={isEdit && job ? `${job.job_no} · ${PRODUCTION_JOB_STATUS_LABELS[job.status]}` : undefined}
+      hint={isEdit ? undefined : "เฉพาะผู้ดูแลระบบ (Admin)"}
+      icon={<SolarFactory size={26} />}
+      widthClass="sm:max-w-[560px]"
+      onBackdrop={() => !submitting && onClose()}
+      footer={
+        <>
+          <button type="button" disabled={submitting} onClick={onClose} className={m3Cls.btnCancel}>
             ยกเลิก
           </button>
           <button
             type="button"
             disabled={!!formError || submitting}
             onClick={() => onSubmit({ ...form, target_qty: form.target_qty })}
-            className="flex-[1.4] rounded-lg bg-[#06402B] py-3 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"
+            className={m3Cls.btnPrimary}
           >
-            {submitting ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : isEdit ? (
-              "บันทึกการแก้ไข"
-            ) : (
-              "เพิ่มงาน (ฉบับร่าง)"
-            )}
+            <M3SubmitLabel submitting={submitting}>{isEdit ? "บันทึกการแก้ไข" : "เพิ่มงาน (ฉบับร่าง)"}</M3SubmitLabel>
           </button>
+        </>
+      }
+    >
+      {error && <M3ErrorBanner message={error} />}
+      {isEdit && job && job.status !== "DRAFT" && <M3Banner tone="info">{editRuleHint(job.status)}</M3Banner>}
+
+      <div>
+        <span className={m3Cls.label}>โต๊ะผลิต (1–5)</span>
+        <div className="mt-1.5 flex gap-2" role="group" aria-label="โต๊ะผลิต">
+          {PRODUCTION_TABLES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={form.table_no === t}
+              disabled={!canEditPlanFields}
+              onClick={() => setForm((f) => ({ ...f, table_no: Number(t) }))}
+              className={`font-m3-disp ${segBtn(form.table_no === t)}`}
+            >
+              {t}
+            </button>
+          ))}
         </div>
       </div>
-    </div>
+
+      <label className="block">
+        <span className={m3Cls.label}>วันที่ผลิต</span>
+        <input
+          type="date"
+          value={form.production_date}
+          max="2100-12-31"
+          disabled={!canEditDate}
+          onChange={(e) => setForm((f) => ({ ...f, production_date: e.target.value }))}
+          className={`mt-1.5 ${m3Cls.input}`}
+        />
+      </label>
+
+      <div>
+        <span className={m3Cls.label}>สินค้า (โกดัง 2)</span>
+        <div className="mt-1.5">
+          {canEditProduct ? (
+            <ProductSearchInput
+              products={products}
+              placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
+              onSelectProduct={(p) =>
+                setForm((f) => ({
+                  ...f,
+                  product_id: p.product_id,
+                  product_name: p.product_name,
+                  sku: p.sku,
+                  unit: p.base_unit || "ชิ้น",
+                }))
+              }
+            />
+          ) : (
+            <input disabled value={`${form.product_name} (${form.sku})`} className={m3Cls.input} />
+          )}
+          {form.product_id ? (
+            <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-lg bg-[rgba(0,167,111,0.08)] px-3 py-1.5 text-xs">
+              <SolarCheckCircle size={16} className="shrink-0 text-m3-primary" />
+              <span className="truncate font-semibold text-m3-grey-800">{form.product_name}</span>
+              <span className="shrink-0 tabular-nums text-m3-grey-600">
+                {form.sku} · หน่วย: {form.unit}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <label className="block">
+        <span className={m3Cls.label}>เป้าหมายสินค้าดี</span>
+        <div className="relative mt-1.5">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={form.target_qty}
+            disabled={!canEditTarget}
+            onChange={(e) => setForm((f) => ({ ...f, target_qty: e.target.value }))}
+            placeholder="0"
+            className={`pr-14 font-m3-disp text-lg font-bold tabular-nums ${qtyInvalid ? m3Cls.inputError : m3Cls.input}`}
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm font-semibold text-m3-grey-500">
+            {form.unit}
+          </span>
+        </div>
+        {qtyInvalid && !qtyParse.ok && <p className="mt-1 text-xs font-semibold text-m3-error-dark">{qtyParse.error}</p>}
+      </label>
+
+      <div>
+        <span className={m3Cls.label}>ลำดับความสำคัญ</span>
+        <div className="mt-1.5 flex gap-2" role="group" aria-label="ลำดับความสำคัญ">
+          {PRIORITY_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={form.priority === o.value}
+              disabled={!canEditPriority}
+              onClick={() => setForm((f) => ({ ...f, priority: o.value }))}
+              className={`inline-flex items-center justify-center gap-1.5 ${segBtn(form.priority === o.value, o.selectedCls)}`}
+            >
+              {o.value !== "NORMAL" && <SolarFlag size={14} />}
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="block">
+        <span className={m3Cls.label}>ตำแหน่งเก็บตอนรับเข้าโกดัง 2 (ไม่บังคับ)</span>
+        <input
+          type="text"
+          value={form.location}
+          disabled={!canEditLocation}
+          onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+          placeholder="เช่น 2A-05"
+          className={`mt-1.5 tabular-nums ${m3Cls.input}`}
+        />
+      </label>
+
+      <label className="block">
+        <span className={m3Cls.label}>หมายเหตุ (ถ้ามี)</span>
+        <textarea
+          rows={2}
+          value={form.note}
+          disabled={false}
+          onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+          placeholder="เช่น เตรียมวัตถุดิบให้ก่อน 10:00"
+          className={`mt-1.5 resize-none ${m3Cls.input}`}
+        />
+      </label>
+
+      {needReason && (
+        <label className="block">
+          <span className={m3Cls.label}>
+            เหตุผลการแก้ไข <span className="text-m3-error">*</span>
+          </span>
+          <textarea
+            rows={2}
+            value={form.reason}
+            onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+            placeholder="เช่น ลูกค้าเพิ่มออเดอร์ ต้องเพิ่มเป้าหมาย"
+            className={`mt-1.5 resize-none ${m3Cls.input}`}
+          />
+        </label>
+      )}
+    </M3Dialog>
   );
 }

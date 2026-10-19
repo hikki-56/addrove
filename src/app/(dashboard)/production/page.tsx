@@ -14,8 +14,35 @@ import { productionApi, isConflict } from "@/features/production/lib/api";
 import { getAllowedActions, showCancelOnPlanningCard } from "@/features/production/lib/permissions";
 import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
-import { ReasonModal } from "@/features/production/components/ActionModals";
-import { StatusBadge, PriorityBadge, JobNumbers, formatQty, todayYMD } from "@/features/production/components/ui";
+import { ConfirmModal, ReasonModal } from "@/features/production/components/ActionModals";
+import {
+  StatusBadge,
+  PriorityBadge,
+  JobNumbers,
+  JobSignalBadges,
+  formatQty,
+  priorityEdgeClass,
+  todayYMD,
+} from "@/features/production/components/ui";
+import {
+  M3Banner,
+  M3ErrorBanner,
+  M3Field,
+  M3IconCircle,
+  M3Loading,
+  M3NumberTile,
+  isStaleDataMessage,
+  m3Cls,
+} from "@/components/ui/m3";
+import {
+  SolarAddLine,
+  SolarArrowRight,
+  SolarChartBars,
+  SolarCheckCircle,
+  SolarDangerCircle,
+  SolarFlag,
+  SolarMagnifier,
+} from "@/components/icons";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
@@ -23,9 +50,6 @@ import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/product
 // เลือกหลายงานแล้ว "ยืนยันส่งงานผลิต" (DRAFT → WAITING + แจ้ง APPROVER)
 
 const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
-
-const filterInputClass =
-  "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
 
 export default function ProductionPlanningPage() {
   const { user } = useTabAuth();
@@ -141,11 +165,21 @@ export default function ProductionPlanningPage() {
       }
     }, "edit");
 
+  // ยืนยันลบฉบับร่าง/ส่งงานผลิตด้วย ConfirmModal แทน window.confirm (D29) — ขั้นตอนเรียก API เหมือนเดิม
+  const [deleteDraftJob, setDeleteDraftJob] = useState<ProductionJob | null>(null);
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
+
   const handleDeleteDraft = (job: ProductionJob) => {
     if (guard.pending) return;
-    if (!window.confirm(`ลบงานฉบับร่าง ${job.job_no} (${job.product_name}) ?`)) return;
+    setDeleteDraftJob(job);
+  };
+
+  const confirmDeleteDraft = () => {
+    const job = deleteDraftJob;
+    if (!job) return;
     return guard.run(async () => {
       const res = await productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}`, "DELETE");
+      setDeleteDraftJob(null);
       if (res.success) {
         setToast("ลบฉบับร่างเรียบร้อย");
         emitProductionUpdated();
@@ -177,12 +211,16 @@ export default function ProductionPlanningPage() {
 
   const handleSubmitJobs = () => {
     if (selectedJobs.length === 0 || guard.pending) return;
-    const names = selectedJobs.map((j) => j.job_no).join(", ");
-    if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}`)) return;
+    setSubmitConfirmOpen(true);
+  };
+
+  const confirmSubmitJobs = () => {
+    if (selectedJobs.length === 0) return;
     return guard.run(async () => {
       const res = await productionApi("/api/production/jobs/submit", "POST", {
         job_nos: selectedJobs.map((j) => j.job_no),
       });
+      setSubmitConfirmOpen(false);
       if (res.success) {
         setSelected(new Set());
         setToast(res.message);
@@ -194,17 +232,32 @@ export default function ProductionPlanningPage() {
     }, "submit");
   };
 
+  // ตัวนับสถานะ (D26 — แสดงผลอย่างเดียว คำนวณจากรายการที่กรองแล้ว)
+  const statusCounts = useMemo(() => {
+    const c = { DRAFT: 0, WAITING: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0, under: 0, urgent: 0 };
+    for (const j of filtered) {
+      c[j.status] += 1;
+      if (j.status === "COMPLETED" && j.remaining_qty > 0) c.under += 1;
+      if (j.priority !== "NORMAL" && j.status !== "CANCELLED" && j.status !== "COMPLETED") c.urgent += 1;
+    }
+    return c;
+  }, [filtered]);
+  const selectedTables = useMemo(
+    () => Array.from(new Set(selectedJobs.map((j) => j.table_no))).sort((x, y) => x - y),
+    [selectedJobs]
+  );
+  const selectedTargetTotal = selectedJobs.reduce((s, j) => s + j.target_qty, 0);
+
   if (!isAdmin) {
     return (
       <div className="w-full max-w-full pb-8">
-        <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
-        <div className="mt-6 rounded-xl border border-[#E8ECEA] bg-white px-6 py-16 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-xl">🔒</div>
-          <h2 className="mt-3.5 text-base font-extrabold text-slate-900">เฉพาะผู้ดูแลระบบ (Admin)</h2>
-          <Link
-            href="/production/jobs"
-            className="mt-5 inline-block rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0A5C4E]"
-          >
+        <h1 className="sr-only">วางแผนผลิต</h1>
+        <div className="m3-card flex flex-col items-center px-6 py-16 text-center">
+          <M3IconCircle tone="error">
+            <SolarDangerCircle size={26} />
+          </M3IconCircle>
+          <h2 className="mt-4 text-base font-bold text-m3-grey-800">เฉพาะผู้ดูแลระบบ (Admin)</h2>
+          <Link href="/production/jobs" className="m3-btn m3-btn-primary mt-5 h-11 px-5">
             ไปหน้างานผลิต
           </Link>
         </div>
@@ -212,94 +265,101 @@ export default function ProductionPlanningPage() {
     );
   }
 
+  const chip = "m3-label h-7 px-2.5 text-[13px]";
+
   return (
-    <div className="w-full max-w-full pb-28">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/production/summary"
-            className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
-          >
-            สรุปผลผลิต
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setAddTable(typeof tableFilter === "number" ? tableFilter : 1);
-              setAddOpen(true);
-            }}
-            className="rounded-lg bg-[#06402B] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-95"
-          >
-            + เพิ่มงานผลิต
-          </button>
-        </div>
+    <div className="w-full max-w-full pb-32">
+      <h1 className="sr-only">วางแผนผลิต</h1>
+      <div className="mb-5 flex flex-wrap items-center justify-end gap-3 sm:mb-6">
+        <Link href="/production/summary" className="m3-btn m3-btn-outline">
+          <SolarChartBars size={18} />
+          สรุปผลผลิต
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setAddTable(typeof tableFilter === "number" ? tableFilter : 1);
+            setAddOpen(true);
+          }}
+          className="m3-btn m3-btn-dark"
+        >
+          <SolarAddLine size={18} />
+          เพิ่มงานผลิต
+        </button>
       </div>
 
       {toast && (
-        <div className="mb-4 rounded-lg border border-[#C9DFD4] bg-[#EAF2EE] px-4 py-3">
-          <p className="text-sm font-bold text-[#053425]">{toast}</p>
+        <div className="mb-4">
+          {isStaleDataMessage(toast) ? (
+            <M3ErrorBanner
+              message={toast}
+              action={
+                <button type="button" onClick={() => reload()} className="m3-btn m3-btn-sm m3-btn-text">
+                  รีเฟรช
+                </button>
+              }
+            />
+          ) : (
+            <M3Banner tone="success" role="status">
+              {toast}
+            </M3Banner>
+          )}
         </div>
       )}
       {error && !loading && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
-          <p className="text-sm font-bold text-rose-800">{error}</p>
-          <button onClick={() => reload()} className="rounded-lg px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100">
-            ลองใหม่
-          </button>
+        <div className="mb-4">
+          <M3ErrorBanner
+            message={error}
+            action={
+              <button type="button" onClick={() => reload()} className="m3-btn m3-btn-sm m3-btn-text">
+                ลองใหม่
+              </button>
+            }
+          />
         </div>
       )}
 
       {/* ตัวกรอง */}
-      <div className="mb-5 rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">วันที่ผลิต</span>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className={`mt-1 ${filterInputClass}`}
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">โต๊ะผลิต</span>
+      <div className="m3-card p-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-[200px_170px_minmax(0,1fr)_190px]">
+          <M3Field label="วันที่ผลิต">
+            <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className={`h-12 ${m3Cls.input}`} />
+          </M3Field>
+          <M3Field label="โต๊ะผลิต">
             <select
               value={String(tableFilter)}
               onChange={(e) => setTableFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-              className={`mt-1 ${filterInputClass}`}
+              className={`h-12 ${m3Cls.input}`}
             >
               <option value="ALL">ทุกโต๊ะ</option>
               {PRODUCTION_TABLES.map((t) => (
                 <option key={t} value={t}>โต๊ะ {t}</option>
               ))}
             </select>
+          </M3Field>
+          <label className="relative col-span-2 block lg:col-span-1">
+            <span className="sr-only">ค้นหาสินค้า / เลขใบ</span>
+            <SolarMagnifier size={20} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-m3-grey-500" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="SKU, ชื่อสินค้า, PRD-..."
+              className={`h-12 pl-11 ${m3Cls.input}`}
+            />
           </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">สถานะ</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`mt-1 ${filterInputClass}`}>
+          <M3Field label="สถานะ" className="col-span-2 lg:col-span-1">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`h-12 ${m3Cls.input}`}>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s === "ALL" ? "ทุกสถานะ" : PRODUCTION_JOB_STATUS_LABELS[s]}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-slate-400">ค้นหาสินค้า / เลขใบ</span>
-            <input
-              type="text"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="SKU, ชื่อสินค้า, PRD-..."
-              className={`mt-1 ${filterInputClass}`}
-            />
-          </label>
+          </M3Field>
         </div>
-        <div className="mt-2.5 flex items-center justify-between">
-          <p className="text-xs font-semibold text-slate-400">
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-xs text-m3-grey-600">
             พบ {filtered.length} งาน · ฉบับร่าง {drafts.length} งาน
           </p>
           {(dateFilter !== today || tableFilter !== "ALL" || statusFilter !== "ALL" || q) && (
@@ -310,7 +370,7 @@ export default function ProductionPlanningPage() {
                 setStatusFilter("ALL");
                 setQ("");
               }}
-              className="text-xs font-bold text-[#0F5C3F] hover:underline"
+              className="m3-btn m3-btn-sm m3-btn-text"
             >
               ล้างตัวกรอง
             </button>
@@ -318,135 +378,164 @@ export default function ProductionPlanningPage() {
         </div>
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2" aria-label="จำนวนงานตามสถานะ">
+        <span className={`${chip} m3-label-default`}>ฉบับร่าง {statusCounts.DRAFT}</span>
+        <span className={`${chip} m3-label-warning`}>รอผลิต {statusCounts.WAITING}</span>
+        <span className={`${chip} m3-label-info`}>กำลังผลิต {statusCounts.IN_PROGRESS}</span>
+        <span className={`${chip} m3-label-success`}>จบงาน {statusCounts.COMPLETED}</span>
+        <span className={`${chip} m3-label-default`}>ยกเลิก {statusCounts.CANCELLED}</span>
+        {statusCounts.under > 0 && <span className={`${chip} m3-label-error`}>จบต่ำกว่าเป้า {statusCounts.under}</span>}
+        {statusCounts.urgent > 0 && <span className={`${chip} m3-label-warning`}>ด่วน {statusCounts.urgent}</span>}
+      </div>
+
       {loading ? (
-        <div className="rounded-xl border border-[#E8ECEA] bg-white p-16 text-center shadow-xs">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#0F5C3F] border-t-transparent" />
-          <p className="mt-3 text-sm font-semibold text-slate-500">กำลังดึงข้อมูลงานผลิต...</p>
+        <div className="mt-5">
+          <M3Loading label="กำลังดึงข้อมูลงานผลิต..." />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
           {PRODUCTION_TABLES.map((tableNo) => {
             const tableJobs = filtered.filter((j) => j.table_no === tableNo);
             const tableDrafts = tableJobs.filter((j) => j.status === "DRAFT").length;
             const allSelected = tableDrafts > 0 && tableJobs.every((j) => j.status !== "DRAFT" || selected.has(j.job_no));
+            const tableUrgent = tableJobs.filter((j) => j.priority !== "NORMAL" && j.status !== "CANCELLED" && j.status !== "COMPLETED").length;
             return (
-              <div key={tableNo} className="rounded-xl border border-[#E8ECEA] bg-white p-4 shadow-xs">
-                <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#EEF1EF] pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#06402B] font-mono text-base font-black text-white">
-                      {tableNo}
-                    </span>
-                    <div>
-                      <div className="text-sm font-extrabold text-slate-900">โต๊ะผลิต {tableNo}</div>
-                      <div className="text-[11px] font-semibold text-slate-400">
-                        {tableJobs.length} งาน{tableDrafts > 0 ? ` · ฉบับร่าง ${tableDrafts}` : ""}
-                      </div>
+              <div key={tableNo} className="m3-card overflow-hidden">
+                <div className="px-4 pt-4 pb-3 sm:px-[18px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <M3NumberTile>{tableNo}</M3NumberTile>
+                      <span className="text-base font-bold whitespace-nowrap text-m3-grey-800">โต๊ะผลิต {tableNo}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      {tableDrafts > 0 && (
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-m3-grey-600">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={() =>
+                              setSelected((prev) => {
+                                const next = new Set(prev);
+                                const tJobs = tableJobs.filter((j) => j.status === "DRAFT");
+                                if (allSelected) tJobs.forEach((j) => next.delete(j.job_no));
+                                else tJobs.forEach((j) => next.add(j.job_no));
+                                return next;
+                              })
+                            }
+                            className="size-4 accent-m3-primary"
+                          />
+                          เลือกร่าง
+                        </label>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`เพิ่มงานในโต๊ะ ${tableNo}`}
+                        title="เพิ่มงาน"
+                        onClick={() => {
+                          setAddTable(tableNo);
+                          setAddOpen(true);
+                        }}
+                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[rgba(145,158,171,0.32)] text-m3-grey-800 transition-colors hover:bg-[rgba(145,158,171,0.08)]"
+                      >
+                        <SolarAddLine size={18} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {tableDrafts > 0 && (
-                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={() =>
-                            setSelected((prev) => {
-                              const next = new Set(prev);
-                              const tJobs = tableJobs.filter((j) => j.status === "DRAFT");
-                              if (allSelected) tJobs.forEach((j) => next.delete(j.job_no));
-                              else tJobs.forEach((j) => next.add(j.job_no));
-                              return next;
-                            })
-                          }
-                          className="h-4 w-4 accent-[#06402B]"
-                        />
-                        เลือกทั้งโต๊ะ
-                      </label>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddTable(tableNo);
-                        setAddOpen(true);
-                      }}
-                      className="rounded-lg border border-[#C9DFD4] bg-[#EAF2EE] px-2.5 py-1.5 text-xs font-bold text-[#053425] transition-all hover:bg-[#D9EAE1] active:scale-95"
-                    >
-                      + งาน
-                    </button>
-                  </div>
+                  {(tableDrafts > 0 || tableUrgent > 0) && (
+                    <div className="mt-2 ml-[38px] flex flex-wrap gap-1.5">
+                      {tableDrafts > 0 && <span className="m3-label m3-label-default h-[22px]">ฉบับร่าง {tableDrafts}</span>}
+                      {tableUrgent > 0 && (
+                        <span className="m3-label m3-label-error h-[22px] gap-1">
+                          <SolarFlag size={12} />
+                          ด่วน {tableUrgent}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {tableJobs.length === 0 ? (
-                  <p className="py-8 text-center text-sm font-semibold text-slate-300">ยังไม่มีงานในโต๊ะนี้</p>
+                  <p className="border-t border-dashed border-[rgba(145,158,171,0.2)] px-4 py-8 text-center text-sm text-m3-grey-500">
+                    ยังไม่มีงานในโต๊ะนี้
+                  </p>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div>
                     {tableJobs.map((job) => {
                       const actions = getAllowedActions(job, user?.role);
+                      const isSelected = selected.has(job.job_no);
                       return (
-                        <div key={job.job_no} className="rounded-lg border border-[#EEF1EF] bg-[#F7FAF8] p-3">
+                        <div
+                          key={job.job_no}
+                          className={`relative px-4 py-4 before:absolute before:inset-y-0 before:left-0 before:w-1 sm:px-[18px] ${priorityEdgeClass(job.priority)} border-t border-dashed border-[rgba(145,158,171,0.2)] ${
+                            isSelected ? "bg-[rgba(0,167,111,0.04)]" : ""
+                          } ${job.status === "CANCELLED" ? "opacity-56" : ""}`}
+                        >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 items-start gap-2.5">
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                               {actions.submit && (
                                 <input
                                   type="checkbox"
+                                  aria-label={`เลือก ${job.job_no}`}
                                   checked={selected.has(job.job_no)}
                                   onChange={() => toggleSelect(job.job_no)}
-                                  className="mt-1 h-4.5 w-4.5 shrink-0 accent-[#06402B]"
+                                  className="mr-2 size-4.5 shrink-0 accent-m3-primary"
                                 />
                               )}
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <StatusBadge status={job.status} />
-                                  <PriorityBadge priority={job.priority} />
-                                </div>
-                                <div className="mt-1 truncate text-sm font-bold text-slate-900">{job.product_name}</div>
-                                <div className="font-mono text-[11px] font-semibold text-slate-400">
-                                  {job.job_no} · {job.sku}
-                                </div>
-                              </div>
+                              <StatusBadge status={job.status} />
+                              <PriorityBadge priority={job.priority} />
+                              <JobSignalBadges job={job} />
                             </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1">
-                              <Link
-                                href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                                className="rounded-lg px-2 py-1 text-[11px] font-bold text-[#0F5C3F] hover:bg-[#EAF2EE]"
-                              >
-                                รายละเอียด →
-                              </Link>
+                            <div className="flex shrink-0 items-center gap-0.5">
                               {actions.edit ? (
-                                <button
-                                  onClick={() => setEditJob(job)}
-                                  className="rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
-                                >
+                                <button onClick={() => setEditJob(job)} className="m3-btn m3-btn-sm m3-btn-text text-m3-grey-600">
                                   แก้ไข
                                 </button>
                               ) : null}
+                              <Link
+                                href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
+                                className="m3-btn m3-btn-sm m3-btn-text"
+                              >
+                                รายละเอียด
+                              </Link>
                             </div>
                           </div>
 
-                          <div className="mt-2.5">
-                            <JobNumbers job={job} compact />
+                          <div className="mt-2.5 text-[15px] leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
+                          <div className="mt-0.5 text-xs tabular-nums text-m3-grey-500">
+                            {job.job_no} · {job.sku}
                           </div>
 
-                          {actions.deleteDraft && (
-                            <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
-                              <button
-                                onClick={() => handleDeleteDraft(job)}
-                                disabled={submitting}
-                                className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                              >
-                                ลบฉบับร่าง
-                              </button>
+                          {job.status === "DRAFT" ? (
+                            <div className="mt-2.5 flex items-baseline justify-between">
+                              <span className="text-[13px] text-m3-grey-600">เป้าหมาย</span>
+                              <span>
+                                <b className="font-m3-disp text-[22px] font-bold tabular-nums text-m3-grey-800">{formatQty(job.target_qty)}</b>{" "}
+                                <span className="text-[13px] text-m3-grey-600">{job.unit}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="mt-2.5">
+                              <JobNumbers job={job} compact />
                             </div>
                           )}
-                          {/* เดิมแสดงบนงาน "จบงาน" ด้วย — ตอนนี้ใช้กติกาเดียวกับหน้ารายละเอียด */}
-                          {showCancelOnPlanningCard(actions) && (
-                            <div className="mt-2 flex justify-end gap-1.5 border-t border-[#EEF1EF] pt-2">
-                              <button
-                                onClick={() => setCancelJob(job)}
-                                className="rounded-lg px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50"
-                              >
-                                ยกเลิกงาน
-                              </button>
+
+                          {(actions.deleteDraft || showCancelOnPlanningCard(actions)) && (
+                            <div className="mt-2.5 flex justify-end gap-1.5">
+                              {actions.deleteDraft && (
+                                <button
+                                  onClick={() => handleDeleteDraft(job)}
+                                  disabled={submitting}
+                                  className="m3-btn m3-btn-sm m3-btn-text text-m3-error-dark"
+                                >
+                                  ลบฉบับร่าง
+                                </button>
+                              )}
+                              {/* เดิมแสดงบนงาน "จบงาน" ด้วย — ตอนนี้ใช้กติกาเดียวกับหน้ารายละเอียด */}
+                              {showCancelOnPlanningCard(actions) && (
+                                <button onClick={() => setCancelJob(job)} className="m3-btn m3-btn-sm m3-btn-text text-m3-error-dark">
+                                  ยกเลิกงาน
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -460,38 +549,99 @@ export default function ProductionPlanningPage() {
         </div>
       )}
 
-      {/* แถบล่าง: ยืนยันส่งงานผลิตหลายงานพร้อมกัน */}
+      {/* แถบล่าง: ยืนยันส่งงานผลิตหลายงานพร้อมกัน (D26/M38 — แถบเข้ม) */}
       {selectedJobs.length > 0 && (
-        <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-xl bg-[#06402B] px-5 py-3.5 shadow-2xl">
-            <div className="text-sm font-bold text-white">
-              เลือก {selectedJobs.length} งานฉบับร่าง
-              <span className="ml-2 font-mono text-xs font-semibold text-[#9CC7B4]">
-                เป้ารวม {formatQty(selectedJobs.reduce((s, j) => s + j.target_qty, 0))} ชิ้น
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-3 sm:px-4">
+          <div className="pointer-events-auto flex w-full max-w-3xl flex-col gap-3 rounded-2xl bg-m3-grey-800 px-4 py-3.5 shadow-m3-dropdown sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-center gap-2.5 text-white">
+              <SolarCheckCircle size={20} className="hidden shrink-0 text-m3-primary sm:block" />
+              <span className="text-sm font-bold whitespace-nowrap">เลือกฉบับร่าง {selectedJobs.length} งาน</span>
+              <span className="truncate text-xs tabular-nums text-white/64">
+                โต๊ะ {selectedTables.join(", ")} · เป้ารวม {formatQty(selectedTargetTotal)} ชิ้น
               </span>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="ml-auto rounded-lg px-2 py-1 text-xs font-bold text-white/80 hover:bg-white/10 sm:hidden"
+              >
+                ล้าง
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelected(new Set())}
-                className="rounded-lg px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
+                className="hidden rounded-lg px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 sm:block"
               >
                 ล้าง
               </button>
               <button
                 onClick={handleSubmitJobs}
                 disabled={submitting}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#06402B] transition-all hover:bg-[#EAF2EE] active:scale-95 disabled:opacity-50"
+                className="m3-btn h-11 w-full bg-white px-4 text-m3-grey-800 hover:bg-m3-grey-100 sm:w-auto"
               >
                 {guard.isPending("submit") ? (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#06402B] border-t-transparent" />
+                  <span className={`${m3Cls.spinner} text-m3-primary`} />
                 ) : (
-                  "ยืนยันส่งงานผลิต"
+                  <>
+                    <SolarArrowRight size={18} />
+                    ยืนยันส่งงานผลิต ({selectedJobs.length})
+                  </>
                 )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={submitConfirmOpen && selectedJobs.length > 0}
+        title={`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?`}
+        hint="แจ้งผู้ผลิต (APPROVER) ให้เริ่มงาน"
+        icon={<SolarArrowRight size={26} />}
+        widthClass="sm:max-w-[560px]"
+        confirmLabel="ยืนยันส่งงานผลิต"
+        submitting={guard.isPending("submit")}
+        error={null}
+        onClose={() => setSubmitConfirmOpen(false)}
+        onConfirm={confirmSubmitJobs}
+      >
+        <ul className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)] rounded-xl border border-[rgba(145,158,171,0.2)]">
+          {selectedJobs.map((j) => (
+            <li key={j.job_no} className="flex items-center gap-3 px-4 py-3">
+              <M3NumberTile>{j.table_no}</M3NumberTile>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-m3-grey-800">{j.product_name}</p>
+                <p className="text-xs tabular-nums text-m3-grey-500">
+                  {j.job_no} · {j.sku}
+                </p>
+              </div>
+              <PriorityBadge priority={j.priority} />
+              <span className="shrink-0 text-right">
+                <b className="font-m3-disp text-base font-bold tabular-nums text-m3-grey-800">{formatQty(j.target_qty)}</b>{" "}
+                <span className="text-xs text-m3-grey-600">{j.unit}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-baseline justify-between px-1 text-sm">
+          <span className="text-m3-grey-600">รวมเป้าหมาย</span>
+          <span>
+            <b className="font-m3-disp text-lg font-bold tabular-nums text-m3-grey-800">{formatQty(selectedTargetTotal)}</b>{" "}
+            <span className="text-xs text-m3-grey-600">ชิ้น</span>
+          </span>
+        </div>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={!!deleteDraftJob}
+        title="ลบงานฉบับร่าง?"
+        hint={deleteDraftJob ? `${deleteDraftJob.job_no} (${deleteDraftJob.product_name})` : undefined}
+        tone="danger"
+        confirmLabel="ลบฉบับร่าง"
+        submitting={!!deleteDraftJob && guard.isPending(`delete:${deleteDraftJob.job_no}`)}
+        error={null}
+        onClose={() => setDeleteDraftJob(null)}
+        onConfirm={confirmDeleteDraft}
+      />
 
       <AddJobModal
         open={addOpen}
