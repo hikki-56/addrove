@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+import { useWatch, type Control } from "react-hook-form";
 import type { ReceiveDocumentInput } from "@/types/api";
 import type { ReceivingPlanView } from "@/features/receive/hooks/use-receiving-plans";
 import { PLAN_STATUS_LABEL } from "@/features/receive/hooks/use-receiving-plans";
@@ -9,12 +11,14 @@ const cardClass =
 
 interface PlanProgressPanelProps {
   plan: ReceivingPlanView;
-  /** lines ปัจจุบันในฟอร์ม — รวมยอด "รอบนี้" ให้เห็นสด ๆ ขณะกรอกจำนวน */
-  formLines?: ReceiveDocumentInput["lines"];
+  control: Control<ReceiveDocumentInput>;
   onExitPlan?: () => void;
 }
 
-export default function PlanProgressPanel({ plan, formLines = [], onExitPlan }: PlanProgressPanelProps) {
+export default function PlanProgressPanel({ plan, control, onExitPlan }: PlanProgressPanelProps) {
+  // Subscribe here so quantity-only scans/edits update the plan even when the
+  // parent props and field-array rows have not changed. Confirmation is separate.
+  const formLines = useWatch({ control, name: "lines" }) || [];
   const sessionQtyByProduct = new Map<string, number>();
   for (const line of formLines || []) {
     if (!line?.product_id) continue;
@@ -24,8 +28,19 @@ export default function PlanProgressPanel({ plan, formLines = [], onExitPlan }: 
     );
   }
 
-  const fulfilledCount = plan.lines.filter((l) => l.fulfilled).length;
-  const hasAnyTarget = plan.lines.some((l) => typeof l.expected_qty === "number");
+  const progressLines = plan.lines.map((line) => {
+    const sessionQty = sessionQtyByProduct.get(line.product_id) || 0;
+    const totalIncludingSession = line.received_qty + sessionQty;
+    const hasTarget = typeof line.expected_qty === "number";
+    return {
+      line, sessionQty, totalIncludingSession, hasTarget,
+      overTarget: hasTarget && totalIncludingSession > (line.expected_qty as number),
+      reachedTarget: hasTarget && totalIncludingSession >= (line.expected_qty as number),
+    };
+  });
+  const targetCount = progressLines.filter((line) => line.hasTarget).length;
+  const fulfilledCount = progressLines.filter((line) => line.reachedTarget).length;
+  const hasAnyTarget = targetCount > 0;
 
   return (
     <section className={`${cardClass} overflow-hidden`}>
@@ -49,12 +64,15 @@ export default function PlanProgressPanel({ plan, formLines = [], onExitPlan }: 
             {hasAnyTarget && (
               <>
                 <span className="text-slate-400">•</span>
-                <span>
-                  ครบแล้ว {fulfilledCount}/{plan.progress.lines_with_target} รายการที่ตั้งเป้าไว้
+                <span aria-live="polite" aria-atomic="true">
+                  ครบตามจำนวน {fulfilledCount}/{targetCount} รายการ (รวมรอบนี้)
                 </span>
               </>
             )}
           </div>
+          <p className="mt-1.5 text-xs text-slate-500">
+            ยอดรอบนี้แสดงทันทีเมื่อสแกน และจะบันทึกเมื่อกดบันทึกรับสินค้า
+          </p>
         </div>
         {onExitPlan && (
           <button
@@ -68,18 +86,12 @@ export default function PlanProgressPanel({ plan, formLines = [], onExitPlan }: 
       </div>
 
       <ul className="divide-y divide-[#EEF1EF]">
-        {plan.lines.map((line) => {
-          const sessionQty = sessionQtyByProduct.get(line.product_id) || 0;
-          const totalIncludingSession = line.received_qty + sessionQty;
-          const hasTarget = typeof line.expected_qty === "number";
-          const overTarget = hasTarget && totalIncludingSession > (line.expected_qty as number);
-          const reachedTarget = hasTarget && totalIncludingSession >= (line.expected_qty as number);
-
+        {progressLines.map(({ line, sessionQty, totalIncludingSession, hasTarget, overTarget, reachedTarget }) => {
           return (
             <li key={line.product_id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 min-w-0">
-                  {line.fulfilled || reachedTarget ? (
+                  {reachedTarget ? (
                     <span className="w-5 h-5 rounded-full bg-[#0F5C3F] text-white grid place-items-center shrink-0">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -93,9 +105,7 @@ export default function PlanProgressPanel({ plan, formLines = [], onExitPlan }: 
                 </div>
                 <div className="mt-1 ml-7 text-xs text-slate-600 font-semibold">
                   รับไปแล้ว {line.received_qty} {line.base_unit}
-                  {sessionQty > 0 && (
-                    <span className="text-[#0F5C3F] font-extrabold"> + รอบนี้ {sessionQty}</span>
-                  )}
+                  <span className="text-[#0F5C3F] font-extrabold"> + สแกนรอบนี้ {sessionQty} {line.base_unit}</span>
                   {overTarget && (
                     <span className="ml-1.5 text-amber-700 font-extrabold">
                       (เกินเป้าที่คาดไว้ {(line.expected_qty as number)} — บันทึกตามของจริงได้)

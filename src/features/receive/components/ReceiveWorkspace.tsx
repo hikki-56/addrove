@@ -296,7 +296,7 @@ export default function ReceiveWorkspace() {
           {activePlan && (
             <PlanProgressPanel
               plan={activePlan}
-              formLines={watchLines}
+              control={form.control}
               onExitPlan={handleExitPlan}
             />
           )}
