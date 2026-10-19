@@ -19,9 +19,12 @@ import ReceivingPlanAllList from "./ReceivingPlanAllList";
 import PlanProgressPanel from "./PlanProgressPanel";
 import ReceiveRestoreBanner from "./ReceiveRestoreBanner";
 import PlanExitConfirmModal from "./PlanExitConfirmModal";
+import { ReceiveSummaryCard } from "./ReceiveLinesTable";
+import { M3Banner } from "@/components/ui/m3";
+import { SolarCalendarPlan, SolarHome, SolarRefresh } from "@/components/icons";
 
 const cardClass =
-  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
+  "m3-card";
 
 type ReceiveMode = "INBOX" | "SCAN" | "PLAN_CREATE" | "PLAN_ALL";
 
@@ -134,7 +137,7 @@ export default function ReceiveWorkspace() {
       <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-24 sm:pb-10">
         <ReceiveSuccessCard onReset={resetForm} />
         {activePlan && (
-          <p className="mt-3 text-center text-sm text-slate-500 font-semibold">
+          <p className="mt-3 text-center text-sm text-m3-grey-600 font-semibold">
             แผน {activePlan.document_no}
           </p>
         )}
@@ -153,43 +156,52 @@ export default function ReceiveWorkspace() {
   return (
     <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-24 sm:pb-10 space-y-4 sm:space-y-5">
       {warehouseError && (
-        <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
+        <M3Banner
+          tone="error"
+          role="alert"
+          action={
+            <button type="button" className="m3-btn m3-btn-sm m3-btn-outline" onClick={() => void refreshData()}>
+              ลองโหลดใหม่
+            </button>
+          }
+        >
           {warehouseError}
-          <button type="button" className="ml-3 underline" onClick={() => void refreshData()}>ลองโหลดใหม่</button>
-        </div>
+        </M3Banner>
       )}
-      {/* Segmented switch: รายการที่ต้องรับ / รับเข้า / (แอดมิน) สร้างแผน + แผนทั้งหมด */}
-      <div
-        className="p-1.5 bg-slate-100 border border-[#E8ECEA] rounded-2xl gap-1.5 sm:gap-2 shadow-xs items-stretch grid"
-        style={{ gridTemplateColumns: `repeat(${visibleModeButtons.length}, minmax(0, 1fr))` }}
+      {/* แท็บ: รายการที่ต้องรับ / รับเข้า / (แอดมิน) สร้างแผน + แผนทั้งหมด — มือถือเป็นปุ่มเม็ดยา, จอใหญ่เป็นแท็บขีดเส้นใต้ (D14/M05) */}
+      <nav
+        aria-label="โหมดรับสินค้า"
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:gap-8 sm:overflow-visible sm:rounded-2xl sm:bg-white sm:px-6 sm:pb-0 sm:shadow-m3-card"
       >
-        {visibleModeButtons.map((btn) => (
-          <button
-            key={btn.value}
-            type="button"
-            onClick={() => setMode(btn.value)}
-            className={`relative w-full h-full min-h-[58px] sm:min-h-[46px] py-2 px-2 sm:px-3 rounded-xl font-bold text-sm transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer border text-center ${
-              mode === btn.value
-                ? "bg-white text-slate-900 shadow-xs border-[#E8ECEA]"
-                : "text-slate-600 hover:text-slate-900 border-transparent hover:bg-white/60"
-            }`}
-          >
-            <span className="leading-tight">{btn.label}</span>
-            {!!btn.badge && btn.badge > 0 && (
-              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto px-2 py-0.5 rounded-full text-sm font-black bg-rose-600 text-white shadow-xs">
-                {btn.badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+        {visibleModeButtons.map((btn) => {
+          const active = mode === btn.value;
+          return (
+            <button
+              key={btn.value}
+              type="button"
+              onClick={() => setMode(btn.value)}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors sm:h-14 sm:rounded-none sm:px-0 sm:after:absolute sm:after:inset-x-0 sm:after:bottom-0 sm:after:h-0.5 sm:after:rounded-full ${
+                active
+                  ? "text-m3-grey-800 max-sm:bg-m3-grey-800 max-sm:text-white sm:after:bg-m3-grey-800"
+                  : "text-m3-grey-600 hover:text-m3-grey-800 max-sm:bg-m3-grey-200"
+              }`}
+            >
+              <span>{btn.label}</span>
+              {!!btn.badge && btn.badge > 0 && (
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-m3-warning px-1.5 text-xs font-bold text-m3-grey-800 tabular-nums">
+                  {btn.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {mode === "INBOX" && (
         <>
           {(plansHook.actionError || plansHook.error) && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
-              {plansHook.actionError || plansHook.error}
-            </div>
+            <M3Banner tone="error" role="alert">{plansHook.actionError || plansHook.error}</M3Banner>
           )}
           <ReceivingPlanInbox
             plans={openPlans}
@@ -204,17 +216,10 @@ export default function ReceiveWorkspace() {
       {mode === "PLAN_CREATE" && isAdmin && (
         <>
           {(plansHook.actionError || plansHook.error) && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
-              {plansHook.actionError || plansHook.error}
-            </div>
+            <M3Banner tone="error" role="alert">{plansHook.actionError || plansHook.error}</M3Banner>
           )}
           {plansHook.actionSuccess && (
-            <div className="p-4 rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-bold flex items-center gap-2.5 shadow-xs">
-              <svg className="w-5 h-5 text-[#053425] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{plansHook.actionSuccess}</span>
-            </div>
+            <M3Banner tone="success" role="status">{plansHook.actionSuccess}</M3Banner>
           )}
           <ReceivingPlanCreateForm
             warehouses={warehouses}
@@ -228,17 +233,10 @@ export default function ReceiveWorkspace() {
       {mode === "PLAN_ALL" && isAdmin && (
         <>
           {(plansHook.actionError || plansHook.error) && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
-              {plansHook.actionError || plansHook.error}
-            </div>
+            <M3Banner tone="error" role="alert">{plansHook.actionError || plansHook.error}</M3Banner>
           )}
           {plansHook.actionSuccess && (
-            <div className="p-4 rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-bold flex items-center gap-2.5 shadow-xs">
-              <svg className="w-5 h-5 text-[#053425] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{plansHook.actionSuccess}</span>
-            </div>
+            <M3Banner tone="success" role="status">{plansHook.actionSuccess}</M3Banner>
           )}
           <ReceivingPlanAllList
             plans={plansHook.plans}
@@ -253,17 +251,16 @@ export default function ReceiveWorkspace() {
 
       {mode === "SCAN" && (
         <>
-          <section className={`${cardClass} p-3.5 sm:p-4 flex items-center justify-between gap-4`}>
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 bg-[#EAF2EE] px-3 py-1.5 rounded-full border border-[#DFEDE6] text-sm font-bold text-[#052B1F] shrink-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F] shrink-0" />
+          <div className="grid grid-cols-1 items-start gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-4 sm:space-y-5">
+          <section className={`${cardClass} flex items-center justify-between gap-4 p-4`}>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="m3-label m3-label-primary shrink-0 gap-1.5">
+                <SolarHome size={14} />
                 {activeWhName}
               </span>
-
-              <span className="inline-flex items-center gap-1.5 text-sm text-slate-600 font-semibold shrink-0">
-                <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-m3-grey-600">
+                <SolarCalendarPlan size={16} className="shrink-0 text-m3-grey-500" />
                 {form.watch("document_date")
                   ? new Date(form.watch("document_date") + "T00:00:00").toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
                   : new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
@@ -276,11 +273,9 @@ export default function ReceiveWorkspace() {
                 refreshData();
                 plansHook.refresh();
               }}
-              className="min-h-11 px-3.5 rounded-xl bg-black/[.04] hover:bg-black/[.07] text-slate-700 font-bold text-sm transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="m3-btn m3-btn-outline shrink-0 gap-1.5"
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <SolarRefresh size={16} className="shrink-0" />
               <span>รีเฟรช</span>
             </button>
           </section>
@@ -325,9 +320,7 @@ export default function ReceiveWorkspace() {
           )}
 
           {error && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold fade-in">
-              {error}
-            </div>
+            <M3Banner tone="error" role="alert" className="fade-in">{error}</M3Banner>
           )}
 
           <ReceiveLinesTable
@@ -344,6 +337,17 @@ export default function ReceiveWorkspace() {
             onScanFeedback={setScanFeedback}
             onOpenConfirmModal={() => setConfirmModalOpen(true)}
           />
+          </div>
+
+          <div className="hidden lg:sticky lg:top-24 lg:block">
+            <ReceiveSummaryCard
+              form={form}
+              fields={fields}
+              confirmedLines={confirmedLines}
+              onOpenConfirmModal={() => setConfirmModalOpen(true)}
+            />
+          </div>
+          </div>
 
           <ReceiveConfirmModal
             isOpen={confirmModalOpen}
@@ -353,6 +357,7 @@ export default function ReceiveWorkspace() {
             products={products}
             activeWhName={activeWhName}
             onSubmit={onSubmit}
+            planNo={activePlan?.document_no}
           />
 
           <CameraBarcodeScannerModal

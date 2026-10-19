@@ -1,6 +1,6 @@
 // ชิ้นส่วน UI ใช้ร่วมกันของ Minimal UI v3b (เฉพาะหน้าตา — ไม่มี state/logic)
 // ใช้คู่กับ token/คลาสใน globals.css (m3-card, m3-btn, m3-label …)
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { SolarCheckCircle, SolarDangerCircle, SolarDangerTriangle, SolarInboxIn } from "@/components/icons";
 
 /** คลาสมาตรฐาน: modal / bottom sheet, ฟอร์ม, ปุ่ม */

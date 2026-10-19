@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import type { ReceivingPlanView } from "@/features/receive/hooks/use-receiving-plans";
 import { PLAN_STATUS_LABEL } from "@/features/receive/hooks/use-receiving-plans";
+import { M3Banner, M3Empty, M3Loading } from "@/components/ui/m3";
+import { SolarAltArrowRight } from "@/components/icons";
 
 const cardClass =
-  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
+  "m3-card";
 
 const STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: "ALL", label: "ทั้งหมด" },
@@ -17,15 +19,15 @@ const STATUS_FILTERS: Array<{ value: string; label: string }> = [
 function statusChipClass(status: string): string {
   switch (status) {
     case "PENDING":
-      return "bg-[#EAF2EE] border-[#DFEDE6] text-[#052B1F]";
+      return "m3-label-warning";
     case "PROCESSING":
-      return "bg-amber-50 border-amber-200 text-amber-800";
+      return "m3-label-info";
     case "COMPLETED":
-      return "bg-slate-100 border-[#E8ECEA] text-slate-600";
+      return "m3-label-success";
     case "CANCELLED":
-      return "bg-rose-50 border-rose-200 text-rose-700";
+      return "m3-label-error";
     default:
-      return "bg-slate-100 border-[#E8ECEA] text-slate-600";
+      return "m3-label-default";
   }
 }
 
@@ -71,24 +73,25 @@ export default function ReceivingPlanAllList({
 
   if (!loading && !error && plans.length === 0) {
     return (
-      <div className={`${cardClass} p-8 text-center text-slate-500 font-semibold`}>
-        ยังไม่มีแผนรับสินค้า
+      <div className={`${cardClass} p-6`}>
+        <M3Empty title="ยังไม่มีแผนรับสินค้า" />
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
             type="button"
             onClick={() => setStatusFilter(f.value)}
-            className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition-colors cursor-pointer ${
+            aria-pressed={statusFilter === f.value}
+            className={`h-9 cursor-pointer rounded-full px-4 text-sm font-semibold transition-colors ${
               statusFilter === f.value
-                ? "bg-[#0F5C3F] text-white border-[#0F5C3F]"
-                : "bg-white text-slate-600 border-[#E8ECEA] hover:bg-slate-50"
+                ? "bg-m3-grey-800 text-white"
+                : "bg-white text-m3-grey-600 shadow-[inset_0_0_0_1px_rgba(145,158,171,0.32)] hover:bg-[rgba(145,158,171,0.08)]"
             }`}
           >
             {f.label}
@@ -97,13 +100,11 @@ export default function ReceivingPlanAllList({
       </div>
 
       {loading && plans.length === 0 && (
-        <div className={`${cardClass} p-8 text-center text-slate-500 font-semibold`}>กำลังโหลด…</div>
+        <M3Loading label="กำลังโหลด…" />
       )}
 
       {error && plans.length === 0 && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
-          {error}
-        </div>
+        <M3Banner tone="error" role="alert">{error}</M3Banner>
       )}
 
       {filtered.map((plan) => {
@@ -114,23 +115,23 @@ export default function ReceivingPlanAllList({
         const cancelConfirming = confirming?.id === plan.document_id && confirming.action === "cancel";
 
         return (
-          <article key={plan.document_id} className={`${cardClass} p-4 sm:p-5 space-y-3`}>
+          <article key={plan.document_id} className={`${cardClass} space-y-3 p-5`}>
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-extrabold text-slate-900 text-sm sm:text-base font-mono">
+                  <span className="text-base font-bold tabular-nums text-m3-grey-800">
                     {plan.document_no}
                   </span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusChipClass(plan.status)}`}>
+                  <span className={`m3-label ${statusChipClass(plan.status)}`}>
                     {PLAN_STATUS_LABEL[plan.status] || plan.status}
                   </span>
-                  <span className="text-xs text-slate-500 font-semibold">{plan.warehouse_name}</span>
+                  <span className="text-sm text-m3-grey-600">{plan.warehouse_name}</span>
                 </div>
-                <div className="mt-1 text-sm text-slate-600 font-semibold flex items-center gap-2 flex-wrap">
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-m3-grey-600">
                   {plan.reference_no && <span>อ้างอิง: {plan.reference_no}</span>}
                   {plan.expected_date && (
                     <>
-                      <span className="text-slate-400">•</span>
+                      <span className="text-m3-grey-400">·</span>
                       <span>
                         คาดมาถึง{" "}
                         {new Date(plan.expected_date + "T00:00:00").toLocaleDateString("th-TH", {
@@ -141,16 +142,16 @@ export default function ReceivingPlanAllList({
                       </span>
                     </>
                   )}
-                  <span className="text-slate-400">•</span>
+                  <span className="text-m3-grey-400">·</span>
                   <span>สร้าง {new Date(plan.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</span>
                   {plan.receipts.length > 0 && (
                     <>
-                      <span className="text-slate-400">•</span>
+                      <span className="text-m3-grey-400">·</span>
                       <span>รับแล้ว {plan.receipts.length} รอบ</span>
                     </>
                   )}
                 </div>
-                {plan.note && <p className="mt-1 text-xs text-slate-500 font-semibold">{plan.note}</p>}
+                {plan.note && <p className="mt-1 text-xs text-m3-grey-500">{plan.note}</p>}
               </div>
 
               {isOpen && (
@@ -159,11 +160,7 @@ export default function ReceivingPlanAllList({
                     type="button"
                     disabled={isMutating}
                     onClick={() => handleConfirmable(plan, "close")}
-                    className={`min-h-10 px-3.5 rounded-xl font-bold text-sm transition-colors cursor-pointer border ${
-                      closeConfirming
-                        ? "bg-[#0F5C3F] text-white border-[#0F5C3F]"
-                        : "bg-white text-slate-700 border-[#E8ECEA] hover:bg-slate-50"
-                    } disabled:opacity-60`}
+                    className={`m3-btn disabled:opacity-48 ${closeConfirming ? "m3-btn-dark" : "m3-btn-outline"}`}
                   >
                     {closeConfirming ? "ยืนยันปิดแผน?" : "ปิดแผน"}
                   </button>
@@ -171,11 +168,11 @@ export default function ReceivingPlanAllList({
                     type="button"
                     disabled={isMutating}
                     onClick={() => handleConfirmable(plan, "cancel")}
-                    className={`min-h-10 px-3.5 rounded-xl font-bold text-sm transition-colors cursor-pointer border ${
+                    className={`m3-btn disabled:opacity-48 ${
                       cancelConfirming
-                        ? "bg-rose-600 text-white border-rose-600"
-                        : "bg-white text-rose-600 border-rose-200 hover:bg-rose-50"
-                    } disabled:opacity-60`}
+                        ? "bg-m3-error text-white hover:bg-m3-error-dark"
+                        : "m3-btn-text text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)]"
+                    }`}
                   >
                     {cancelConfirming ? "ยืนยันยกเลิก?" : "ยกเลิก"}
                   </button>
@@ -184,23 +181,23 @@ export default function ReceivingPlanAllList({
             </div>
 
             <details className="group">
-              <summary className="cursor-pointer text-sm font-bold text-slate-600 hover:text-slate-900 select-none">
+              <summary className="flex cursor-pointer list-none items-center gap-1 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-3 text-sm font-semibold text-m3-grey-600 select-none hover:text-m3-grey-800 [&::-webkit-details-marker]:hidden">
                 {targetLines.length > 0
                   ? `รายการ ${plan.lines.length} รายการ — ครบแล้ว ${fulfilledLines}/${targetLines.length} ที่ตั้งเป้า`
                   : `รายการ ${plan.lines.length} รายการ (เช็คลิสต์)`}
-                <span className="ml-1.5 inline-block transition-transform group-open:rotate-90">▸</span>
+                <SolarAltArrowRight size={16} className="transition-transform group-open:rotate-90" />
               </summary>
               <ul className="mt-2 grid gap-1.5">
                 {plan.lines.map((line) => (
                   <li
                     key={line.product_id}
-                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#F7F9F8] border border-[#EEF1EF] min-w-0"
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-m3-grey-100 px-3 py-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-bold text-slate-800 truncate">{line.product_name}</span>
-                      <span className="text-xs font-mono text-slate-500 truncate">{line.sku}</span>
+                      <span className="truncate text-sm font-medium text-m3-grey-800">{line.product_name}</span>
+                      <span className="truncate text-xs tabular-nums text-m3-grey-500">{line.sku}</span>
                     </div>
-                    <span className="text-xs font-extrabold text-slate-700 shrink-0">
+                    <span className="shrink-0 text-xs tabular-nums text-m3-grey-600">
                       {typeof line.expected_qty === "number"
                         ? `${line.received_qty}/${line.expected_qty} ${line.base_unit}`
                         : `รับแล้ว ${line.received_qty} ${line.base_unit}`}
@@ -208,17 +205,17 @@ export default function ReceivingPlanAllList({
                   </li>
                 ))}
                 {plan.receipts.length > 0 && (
-                  <li className="px-3 py-2 rounded-xl bg-slate-50 border border-[#E8ECEA] text-xs text-slate-600 font-semibold space-y-1">
+                  <li className="space-y-1 rounded-lg border border-dashed border-[rgba(145,158,171,0.32)] px-3 py-2 text-xs text-m3-grey-600">
                     {plan.receipts.map((r) => (
                       <div key={r.document_id} className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold">{r.document_no}</span>
-                        <span className="text-slate-400">•</span>
+                        <span className="tabular-nums font-bold">{r.document_no}</span>
+                        <span className="text-m3-grey-400">·</span>
                         <span>{r.received_by_name || "พนักงาน"}</span>
-                        <span className="text-slate-400">•</span>
+                        <span className="text-m3-grey-400">·</span>
                         <span>
                           {new Date(r.received_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
                         </span>
-                        <span className="text-slate-400">•</span>
+                        <span className="text-m3-grey-400">·</span>
                         <span>
                           {r.lines.map((l) => `${l.qty}`).join(" + ")} ชิ้น
                         </span>
@@ -233,8 +230,8 @@ export default function ReceivingPlanAllList({
       })}
 
       {!loading && filtered.length === 0 && plans.length > 0 && (
-        <div className={`${cardClass} p-6 text-center text-slate-500 font-semibold`}>
-          ไม่มีแผนที่ตรงกับตัวกรองนี้
+        <div className={`${cardClass} p-6`}>
+          <M3Empty title="ไม่มีแผนที่ตรงกับตัวกรองนี้" />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { SolarCheckCircle, SolarClose, SolarDangerCircle } from "@/components/icons";
 
 export interface ScanFeedback {
   type: "success" | "error";
@@ -26,33 +27,20 @@ export default function ScanFeedbackBanner({
 
   return (
     <div
-      className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300 flex items-start gap-2.5 sm:gap-3 shadow-xs ${
-        isSuccess
-          ? "bg-[#EAF2EE] border-[#C9DFD4] text-[#052B1F]"
-          : "bg-rose-50 border-rose-200 text-rose-800"
+      role={isSuccess ? "status" : "alert"}
+      className={`flex items-start gap-3 rounded-xl p-4 transition-all duration-300 ${
+        isSuccess ? "bg-[rgba(34,197,94,0.12)] text-m3-success-dark" : "bg-[rgba(255,86,48,0.12)] text-m3-error-dark"
       } ${className}`}
     >
-      <div
-        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
-          isSuccess ? "bg-[#DFEDE6] text-[#053425]" : "bg-rose-100 text-rose-700"
-        }`}
-      >
-        {isSuccess ? (
-          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )}
-      </div>
+      <span className={`mt-px shrink-0 ${isSuccess ? "text-m3-success" : "text-m3-error"}`}>
+        {isSuccess ? <SolarCheckCircle size={22} /> : <SolarDangerCircle size={22} />}
+      </span>
 
-      <div className="flex-1 min-w-0">
-        {feedback.title && <div className="font-bold text-sm mb-0.5">{feedback.title}</div>}
-        <div className="text-xs sm:text-sm text-slate-700 leading-relaxed break-words">{feedback.message}</div>
+      <div className="min-w-0 flex-1">
+        {feedback.title && <div className="mb-0.5 text-sm font-bold">{feedback.title}</div>}
+        <div className="text-sm leading-relaxed break-words text-m3-grey-700">{feedback.message}</div>
         {feedback.scannedCode && (
-          <div className="mt-1 inline-block px-2 py-0.5 rounded-md bg-white text-xs font-mono font-bold text-slate-700 border border-[#E8ECEA] shadow-2xs">
+          <div className="mt-1.5 inline-flex h-6 items-center rounded-md bg-white/72 px-2 text-xs font-semibold tabular-nums text-m3-grey-700">
             Code: {feedback.scannedCode}
           </div>
         )}
@@ -63,12 +51,10 @@ export default function ScanFeedbackBanner({
           type="button"
           onClick={onDismiss}
           aria-label="ปิด"
-          className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+          className="-mt-1 -mr-1 cursor-pointer rounded-lg p-1.5 text-current opacity-64 transition-opacity hover:opacity-100"
           title="ปิด"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <SolarClose size={18} />
         </button>
       )}
     </div>

@@ -5,9 +5,9 @@ import { useWatch, type Control } from "react-hook-form";
 import type { ReceiveDocumentInput } from "@/types/api";
 import type { ReceivingPlanView } from "@/features/receive/hooks/use-receiving-plans";
 import { PLAN_STATUS_LABEL } from "@/features/receive/hooks/use-receiving-plans";
+import { SolarCheckCircle } from "@/components/icons";
 
-const cardClass =
-  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
+const cardClass = "m3-card";
 
 interface PlanProgressPanelProps {
   plan: ReceivingPlanView;
@@ -44,70 +44,54 @@ export default function PlanProgressPanel({ plan, control, onExitPlan }: PlanPro
 
   return (
     <section className={`${cardClass} overflow-hidden`}>
-      <div className="px-4 sm:px-5 py-3.5 flex items-start justify-between gap-3 border-b border-[#EEF1EF] bg-[#F7FAF8]">
+      <div className="flex flex-col gap-3 bg-[rgba(0,167,111,0.08)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#0F5C3F] text-white">
-              กำลังรับตามแผน
-            </span>
-            <span className="font-extrabold text-slate-900 text-sm sm:text-base font-mono">{plan.document_no}</span>
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#EAF2EE] border border-[#DFEDE6] text-[#052B1F]">
-              {PLAN_STATUS_LABEL[plan.status] || plan.status}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="m3-label bg-m3-primary text-white">กำลังรับตามแผน</span>
+            <span className="text-base font-bold tabular-nums text-m3-grey-800">{plan.document_no}</span>
+            <span className="m3-label m3-label-info">{PLAN_STATUS_LABEL[plan.status] || plan.status}</span>
           </div>
-          <div className="mt-1.5 text-sm text-slate-600 font-semibold flex items-center gap-2 flex-wrap">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-sm text-m3-grey-600">
             <span>{plan.warehouse_name}</span>
-            {plan.reference_no && (
-              <span className="text-slate-400">•</span>
-            )}
+            {plan.reference_no && <span className="text-m3-grey-400">·</span>}
             {plan.reference_no && <span>อ้างอิง: {plan.reference_no}</span>}
             {hasAnyTarget && (
               <>
-                <span className="text-slate-400">•</span>
+                <span className="text-m3-grey-400">·</span>
                 <span aria-live="polite" aria-atomic="true">
                   ครบตามจำนวน {fulfilledCount}/{targetCount} รายการ (รวมรอบนี้)
                 </span>
               </>
             )}
           </div>
-          <p className="mt-1.5 text-xs text-slate-500">
-            ยอดรอบนี้แสดงทันทีเมื่อสแกน และจะบันทึกเมื่อกดบันทึกรับสินค้า
-          </p>
+          <p className="mt-1 text-xs text-m3-grey-500">ยอดรอบนี้แสดงทันทีเมื่อสแกน และจะบันทึกเมื่อกดบันทึกรับสินค้า</p>
         </div>
         {onExitPlan && (
-          <button
-            type="button"
-            onClick={onExitPlan}
-            className="shrink-0 min-h-10 px-3.5 rounded-xl bg-black/[.04] hover:bg-black/[.07] text-slate-700 font-bold text-sm transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onExitPlan} className="m3-btn m3-btn-outline shrink-0 self-start bg-white">
             ออกจากโหมดแผน
           </button>
         )}
       </div>
 
-      <ul className="divide-y divide-[#EEF1EF]">
+      <ul className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)]">
         {progressLines.map(({ line, sessionQty, totalIncludingSession, hasTarget, overTarget, reachedTarget }) => {
           return (
-            <li key={line.product_id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+            <li key={line.product_id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex min-w-0 items-center gap-2.5">
                   {reachedTarget ? (
-                    <span className="w-5 h-5 rounded-full bg-[#0F5C3F] text-white grid place-items-center shrink-0">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </span>
+                    <SolarCheckCircle size={20} className="shrink-0 text-m3-primary" />
                   ) : (
-                    <span className="w-5 h-5 rounded-full border-2 border-[#CBD5D0] shrink-0" />
+                    <span className="size-5 shrink-0 rounded-full border-2 border-[rgba(145,158,171,0.32)]" />
                   )}
-                  <span className="font-bold text-slate-900 text-sm truncate">{line.product_name}</span>
-                  <span className="text-xs font-mono text-slate-500 truncate">{line.sku}</span>
+                  <span className="truncate text-sm font-semibold text-m3-grey-800">{line.product_name}</span>
+                  <span className="hidden truncate text-xs tabular-nums text-m3-grey-500 sm:inline">{line.sku}</span>
                 </div>
-                <div className="mt-1 ml-7 text-xs text-slate-600 font-semibold">
+                <div className="mt-1 ml-[30px] text-xs text-m3-grey-600">
                   รับไปแล้ว {line.received_qty} {line.base_unit}
-                  <span className="text-[#0F5C3F] font-extrabold"> + สแกนรอบนี้ {sessionQty} {line.base_unit}</span>
+                  <span className="font-bold text-m3-primary-dark"> + สแกนรอบนี้ {sessionQty} {line.base_unit}</span>
                   {overTarget && (
-                    <span className="ml-1.5 text-amber-700 font-extrabold">
+                    <span className="ml-1.5 font-bold text-m3-warning-dark">
                       (เกินเป้าที่คาดไว้ {(line.expected_qty as number)} — บันทึกตามของจริงได้)
                     </span>
                   )}
@@ -115,19 +99,11 @@ export default function PlanProgressPanel({ plan, control, onExitPlan }: PlanPro
               </div>
               <div className="shrink-0 text-right">
                 {hasTarget ? (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold ${
-                      reachedTarget
-                        ? "bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F]"
-                        : "bg-slate-100 border border-[#E8ECEA] text-slate-700"
-                    }`}
-                  >
+                  <span className={`m3-label tabular-nums ${reachedTarget ? "m3-label-success" : "m3-label-default"}`}>
                     {totalIncludingSession}/{line.expected_qty} {line.base_unit}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 border border-[#E8ECEA] text-slate-500">
-                    เช็คลิสต์ (ไม่ตั้งเป้า)
-                  </span>
+                  <span className="m3-label m3-label-default">เช็คลิสต์ (ไม่ตั้งเป้า)</span>
                 )}
               </div>
             </li>

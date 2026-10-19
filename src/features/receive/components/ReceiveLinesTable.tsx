@@ -6,6 +6,8 @@ import type { ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import ReceiveLineItem from "./ReceiveLineItem";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
+import { M3Banner, M3Empty } from "@/components/ui/m3";
+import { SolarBox, SolarCheckCircle } from "@/components/icons";
 
 export interface ReceiveLinesTableProps {
   form: UseFormReturn<ReceiveDocumentInput, any, any>;
@@ -22,8 +24,79 @@ export interface ReceiveLinesTableProps {
   onOpenConfirmModal: () => void;
 }
 
-const cardClass =
-  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
+const cardClass = "m3-card";
+
+/** ยอดสรุปรอบนี้ (คำนวณจากฟอร์มเพื่อแสดงผลเท่านั้น — สูตรเดียวกับรายการด้านล่าง) */
+function useReceiveTotals(
+  form: ReceiveLinesTableProps["form"],
+  fields: ReceiveLinesTableProps["fields"],
+  confirmedLines: Record<number, boolean>
+) {
+  const watchLines = form.watch("lines") || [];
+  const totalLines = fields.length;
+  const totalBoxes = watchLines.reduce((acc, curr) => acc + (Number(curr.boxes) || 1), 0);
+  const totalQty = watchLines.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
+  const confirmedCount = fields.filter((_, idx) => Boolean(confirmedLines[idx])).length;
+  const hasZeroQty = watchLines.some((l) => (Number(l.qty) || 0) <= 0);
+  const allConfirmed = totalLines > 0 && confirmedCount === totalLines && !hasZeroQty;
+  return { totalLines, totalBoxes, totalQty, confirmedCount, hasZeroQty, allConfirmed };
+}
+
+function SummaryStats({ totalLines, totalBoxes, totalQty }: { totalLines: number; totalBoxes: number; totalQty: number }) {
+  const tile = "rounded-lg bg-m3-grey-100 px-3 py-2.5 text-center";
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <div className={tile}>
+        <div className="text-xs text-m3-grey-600">รายการ</div>
+        <div className="mt-0.5 font-m3-disp text-xl font-bold tabular-nums text-m3-grey-800">{totalLines.toLocaleString()}</div>
+      </div>
+      <div className={tile}>
+        <div className="text-xs text-m3-grey-600">กล่องรวม</div>
+        <div className="mt-0.5 font-m3-disp text-xl font-bold tabular-nums text-m3-grey-800">{totalBoxes.toLocaleString()}</div>
+      </div>
+      <div className={tile}>
+        <div className="text-xs text-m3-grey-600">จำนวนรวม</div>
+        <div className="mt-0.5 font-m3-disp text-xl font-bold tabular-nums text-m3-grey-800">{totalQty.toLocaleString()}</div>
+      </div>
+    </div>
+  );
+}
+
+/** การ์ด "สรุปรอบนี้" ด้านขวา (D13 — จอ ≥lg) */
+export function ReceiveSummaryCard({
+  form,
+  fields,
+  confirmedLines,
+  onOpenConfirmModal,
+}: Pick<ReceiveLinesTableProps, "form" | "fields" | "confirmedLines" | "onOpenConfirmModal">) {
+  const { totalLines, totalBoxes, totalQty, confirmedCount, hasZeroQty, allConfirmed } = useReceiveTotals(form, fields, confirmedLines);
+  return (
+    <aside className="m3-card space-y-4 p-5">
+      <h2 className="text-base font-bold text-m3-grey-800">สรุปรอบนี้</h2>
+      <SummaryStats totalLines={totalLines} totalBoxes={totalBoxes} totalQty={totalQty} />
+      {totalLines > 0 && confirmedCount === totalLines && hasZeroQty && (
+        <M3Banner tone="warning">มีรายการที่จำนวนเป็น 0 — ระบุจำนวนก่อนบันทึก</M3Banner>
+      )}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-m3-grey-600">ยืนยันแล้ว</span>
+          <span className={`font-bold tabular-nums ${allConfirmed ? "text-m3-primary-dark" : "text-m3-grey-800"}`}>
+            {confirmedCount.toLocaleString()}/{totalLines.toLocaleString()} รายการ
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(145,158,171,0.2)]">
+          <div
+            className="h-full rounded-full bg-m3-primary transition-[width] duration-300"
+            style={{ width: `${totalLines > 0 ? (confirmedCount / totalLines) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
+      <button type="button" onClick={onOpenConfirmModal} disabled={!allConfirmed} className="m3-btn m3-btn-primary h-12 w-full">
+        บันทึกรับสินค้า {totalQty.toLocaleString()} ชิ้น
+      </button>
+    </aside>
+  );
+}
 
 export default function ReceiveLinesTable({
   form,
@@ -83,59 +156,36 @@ export default function ReceiveLinesTable({
 
   if (totalLines === 0) {
     return (
-      <div className={`${cardClass} p-8 text-center space-y-3`}>
-        <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] border border-[#DFEDE6] flex items-center justify-center mx-auto text-[#053425]">
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        </div>
-        <h3 className="text-base font-bold text-slate-900">ยังไม่มีรายการสินค้า</h3>
+      <div className={`${cardClass} p-6`}>
+        <M3Empty title="ยังไม่มีรายการสินค้า" icon={<SolarBox size={36} />} />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-        <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-sm text-[#667085] font-semibold leading-tight">รายการ</div>
-          <div className="disp num text-xl sm:text-2xl font-bold text-[#111827] leading-tight">
-            {totalLines.toLocaleString()}
+      {/* มือถือ/แท็บเล็ต: สรุปด้านบน · ≥lg ใช้การ์ดสรุปด้านขวา (ReceiveSummaryCard) */}
+      <div className="space-y-3 lg:hidden">
+        <SummaryStats totalLines={totalLines} totalBoxes={totalBoxes} totalQty={totalQty} />
+        <div className="space-y-1.5 px-1">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-m3-grey-600">ยืนยันแล้ว</span>
+            <span className={`shrink-0 font-bold ${allConfirmed ? "text-m3-primary-dark" : "text-m3-grey-800"}`}>
+              {confirmedCount.toLocaleString()}/{totalLines.toLocaleString()}
+            </span>
           </div>
-        </div>
-
-        <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-sm text-[#667085] font-semibold leading-tight">กล่องรวม</div>
-          <div className="disp num text-xl sm:text-2xl font-bold text-[#111827] leading-tight">
-            {totalBoxes.toLocaleString()}
+          <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(145,158,171,0.2)]">
+            <div
+              className="h-full rounded-full bg-m3-primary transition-[width] duration-300"
+              style={{ width: `${totalLines > 0 ? (confirmedCount / totalLines) * 100 : 0}%` }}
+            />
           </div>
+          {confirmedCount === totalLines && hasZeroQty && (
+            <M3Banner tone="warning" className="mt-2">
+              มีรายการที่จำนวนเป็น 0 — ระบุจำนวนก่อนบันทึก
+            </M3Banner>
+          )}
         </div>
-
-        <div className={`${cardClass} p-3 sm:p-4`}>
-          <div className="text-sm text-[#667085] font-semibold leading-tight">จำนวนรวม</div>
-          <div className="disp num text-xl sm:text-2xl font-bold text-[#053425] leading-tight">
-            {totalQty.toLocaleString()}
-            <span className="text-sm font-bold text-[#667085] ml-1">ชิ้น</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-1 space-y-1.5">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-[#667085] font-semibold">ยืนยันแล้ว</span>
-          <span className={`font-bold shrink-0 ${allConfirmed ? "text-[#053425]" : "text-slate-900"}`}>
-            {confirmedCount.toLocaleString()}/{totalLines.toLocaleString()}
-          </span>
-        </div>
-        <div className="h-1.5 rounded-full bg-black/[.06] overflow-hidden">
-          <div
-            className="h-full rounded-full bg-[#06402B] transition-[width] duration-300"
-            style={{ width: `${totalLines > 0 ? (confirmedCount / totalLines) * 100 : 0}%` }}
-          />
-        </div>
-        {confirmedCount === totalLines && hasZeroQty && (
-          <p className="text-sm font-bold text-amber-700 pt-0.5">มีรายการที่จำนวนเป็น 0 — ระบุจำนวนก่อนบันทึก</p>
-        )}
       </div>
 
       {activeIdxs.length > 0 && (
@@ -148,14 +198,10 @@ export default function ReceiveLinesTable({
             type="button"
             onClick={() => setShowDone((prev) => !prev)}
             aria-expanded={showDone}
-            className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-[#EAF2EE] hover:bg-[#DFEDE6] border border-[#C9DFD4] text-[#053425] font-bold text-sm cursor-pointer transition-colors"
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-[rgba(145,158,171,0.32)] bg-white px-4 py-3 text-sm font-bold text-m3-grey-800 transition-colors hover:bg-[rgba(145,158,171,0.08)]"
           >
             <span className="flex items-center gap-2 min-w-0">
-              <span className="w-5 h-5 rounded-full bg-[#06402B] text-white flex items-center justify-center shrink-0">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
+              <SolarCheckCircle size={20} className="shrink-0 text-m3-primary" />
               ยืนยันแล้ว {doneIdxs.length.toLocaleString()} รายการ
             </span>
             <svg
@@ -173,16 +219,13 @@ export default function ReceiveLinesTable({
       )}
 
       {allConfirmed && (
-        <div className="pt-2 fade-in">
+        <div className="fade-in pt-2 lg:hidden">
           <button
             type="button"
             onClick={onOpenConfirmModal}
-            className="w-full py-4 px-6 rounded-xl font-bold text-base sm:text-lg bg-[#06402B] hover:bg-[#053425] text-white shadow-lg shadow-[#06402B]/25 active:scale-[.98] cursor-pointer transition-transform flex items-center justify-center gap-2.5"
+            className="m3-btn m3-btn-primary h-14 w-full text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)]"
           >
-            <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>บันทึกรับสินค้า {totalQty.toLocaleString()} ชิ้น</span>
+            บันทึกรับสินค้า {totalQty.toLocaleString()} ชิ้น
           </button>
         </div>
       )}

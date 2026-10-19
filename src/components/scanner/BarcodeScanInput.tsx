@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import { SolarClose, SolarTagBarcode } from "@/components/icons";
 
 export interface BarcodeScanInputProps {
   value: string;
@@ -52,13 +53,9 @@ export default function BarcodeScanInput({
 
   return (
     <div className={`relative flex items-center gap-2 ${className}`}>
-      <div className="relative flex-1 bg-white rounded-2xl sm:rounded-3xl border border-[#E8ECEA]/90 shadow-sm transition-all focus-within:border-[#0F5C3F] focus-within:ring-2 focus-within:ring-[#0F5C3F]/20 overflow-hidden">
-        <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4.5 flex items-center pointer-events-none text-[#06402B]">
-          {/* Green QR/Barcode Viewfinder Icon */}
-          <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7V5a2 2 0 012-2h2m12 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8v8m3-8v8m4-8v8m3-8v8" />
-          </svg>
+      <div className="relative flex-1 overflow-hidden rounded-xl border border-[rgba(145,158,171,0.32)] bg-white shadow-m3-card transition-colors focus-within:border-m3-grey-800 focus-within:ring-1 focus-within:ring-m3-grey-800">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-m3-grey-600">
+          <SolarTagBarcode size={24} />
         </div>
 
         <input
@@ -71,12 +68,12 @@ export default function BarcodeScanInput({
           placeholder={placeholder}
           readOnly={disabled || isProcessing}
           aria-busy={isProcessing}
-          className={`w-full pl-10 sm:pl-13 pr-10 sm:pr-12 py-3 sm:py-4 bg-transparent text-slate-900 font-bold placeholder-slate-500 text-sm sm:text-base outline-none read-only:cursor-default disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`h-14 w-full bg-transparent pr-12 pl-13 text-sm font-semibold text-m3-grey-800 placeholder:font-normal placeholder:text-m3-grey-500 outline-none sm:h-16 sm:pr-28 sm:text-base read-only:cursor-default disabled:opacity-50 disabled:cursor-not-allowed ${
             isProcessing ? "opacity-50" : ""
           }`}
         />
 
-        <div className="absolute inset-y-0 right-1.5 sm:right-2 flex items-center pr-1 gap-1">
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1.5 pr-1">
           {value && (
             <button
               type="button"
@@ -85,14 +82,15 @@ export default function BarcodeScanInput({
                 if (refToUse.current) refToUse.current.focus();
               }}
               aria-label="ล้างข้อมูล"
-              className="p-1 sm:p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              className="cursor-pointer rounded-lg p-1.5 text-m3-grey-500 transition-colors hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-700"
               title="ล้างข้อมูล"
             >
-              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <SolarClose size={18} />
             </button>
           )}
+          <kbd aria-hidden className="hidden h-7 items-center rounded-md bg-m3-grey-200 px-2 font-sans text-xs font-semibold text-m3-grey-600 sm:inline-flex">
+            Enter
+          </kbd>
 
           {onOpenScannerModal && (
             <button
@@ -100,7 +98,7 @@ export default function BarcodeScanInput({
               onClick={onOpenScannerModal}
               disabled={disabled || isProcessing}
               aria-label="เปิดกล้องสแกน"
-              className="p-1.5 sm:p-2 bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] rounded-xl border border-[#C9DFD4] text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-m3-grey-800 text-white transition-transform hover:bg-m3-grey-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-48"
               title="เปิดกล้องสแกน"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

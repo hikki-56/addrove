@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import type { Product, Warehouse } from "@/types/models";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
+import { M3Banner, M3Field, M3NumberTile, m3Cls } from "@/components/ui/m3";
+import { SolarAltArrowDown, SolarClose } from "@/components/icons";
 import type { ReceivingPlanCreatePayload } from "@/features/receive/hooks/use-receiving-plans";
 
 const cardClass =
-  "bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]";
+  "m3-card";
 
 interface PlanLineDraft {
   product: Product;
@@ -136,25 +138,18 @@ export default function ReceivingPlanCreateForm({
   };
 
   return (
-    <div className="space-y-4">
-      <div className={`${cardClass} p-4 sm:p-6 space-y-4 sm:space-y-5`}>
-        <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#EEF1EF]">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">สร้างแผนรับสินค้า</h3>
-          </div>
-        </div>
+    <div className="space-y-4 sm:space-y-5">
+      <div className={`${cardClass} space-y-5 p-5 sm:p-6`}>
+        <h2 className="text-lg font-bold text-m3-grey-800">สร้างแผนรับสินค้า</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <div className="space-y-1.5">
-            <label htmlFor="plan-warehouse" className="block text-sm font-extrabold text-slate-800">
-              รับเข้าโกดัง <span className="text-rose-600">*</span>
-            </label>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-4">
+          <M3Field label={<>รับเข้าโกดัง <span className="text-m3-error-dark">*</span></>}>
             <div className="relative">
               <select
                 id="plan-warehouse"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#D5DDD9] text-slate-900 text-base font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-4 focus:ring-[#0F5C3F]/20 shadow-sm transition-colors cursor-pointer appearance-none pr-10"
+                className={`${m3Cls.input} h-12 cursor-pointer appearance-none pr-10 text-base`}
               >
                 {warehouses.map((w) => (
                   <option key={w.warehouse_id} value={w.warehouse_id}>
@@ -162,18 +157,11 @@ export default function ReceivingPlanCreateForm({
                   </option>
                 ))}
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+              <SolarAltArrowDown size={18} className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-m3-grey-500" />
             </div>
-          </div>
+          </M3Field>
 
-          <div className="space-y-1.5">
-            <label htmlFor="plan-reference" className="block text-sm font-extrabold text-slate-800">
-              เลขที่อ้างอิง (เช่น PO)
-            </label>
+          <M3Field label="เลขที่อ้างอิง (เช่น PO)">
             <input
               id="plan-reference"
               type="text"
@@ -181,28 +169,22 @@ export default function ReceivingPlanCreateForm({
               onChange={(e) => setReferenceNo(e.target.value)}
               maxLength={100}
               placeholder="เลขที่ใบสั่งซื้อ / ใบกำกับ"
-              className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#D5DDD9] text-slate-900 text-base font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-4 focus:ring-[#0F5C3F]/20 shadow-sm transition-colors"
+              className={`${m3Cls.input} h-12 text-base`}
             />
-          </div>
+          </M3Field>
 
-          <div className="space-y-1.5">
-            <label htmlFor="plan-expected-date" className="block text-sm font-extrabold text-slate-800">
-              คาดว่าจะมาถึง
-            </label>
+          <M3Field label="คาดว่าจะมาถึง">
             <input
               id="plan-expected-date"
               type="date"
               value={expectedDate}
               onChange={(e) => setExpectedDate(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#D5DDD9] text-slate-900 text-base font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-4 focus:ring-[#0F5C3F]/20 shadow-sm transition-colors"
+              className={`${m3Cls.input} h-12 text-base`}
             />
-          </div>
+          </M3Field>
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="plan-note" className="block text-sm font-extrabold text-slate-800">
-            หมายเหตุ
-          </label>
+        <M3Field label="หมายเหตุ">
           <input
             id="plan-note"
             type="text"
@@ -210,24 +192,31 @@ export default function ReceivingPlanCreateForm({
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
             placeholder="เช่น รถบรรทุกทะเบียน… / ผู้ส่ง…"
-            className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#D5DDD9] text-slate-900 text-base font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-4 focus:ring-[#0F5C3F]/20 shadow-sm transition-colors"
+            className={`${m3Cls.input} h-12 text-base`}
           />
-        </div>
+        </M3Field>
       </div>
 
-      <div className={`${cardClass} p-4 sm:p-6 space-y-4`}>
-        <div className="space-y-1.5">
-          <label className="block text-sm font-extrabold text-slate-800">เพิ่มสินค้าเข้าแผน</label>
-          <p className="text-xs text-slate-500 font-semibold">เลือกได้จากสินค้าทั้งหมดในระบบ แม้ยังไม่มีสต็อกในโกดังที่เลือก</p>
+      <div className={`${cardClass} space-y-4 p-5 sm:p-6`}>
+        <div className="space-y-2">
+          <h3 className="text-base font-bold text-m3-grey-800">เพิ่มสินค้าเข้าแผน</h3>
+          <p className="text-sm text-m3-grey-600">เลือกได้จากสินค้าทั้งหมดในระบบ แม้ยังไม่มีสต็อกในโกดังที่เลือก</p>
           {productsLoading ? (
-            <p role="status" className="text-sm text-slate-500">กำลังโหลดรายการสินค้าทั้งหมด…</p>
+            <p role="status" className="text-sm text-m3-grey-600">กำลังโหลดรายการสินค้าทั้งหมด…</p>
           ) : productsError ? (
-            <div role="alert" className="text-sm text-rose-700">
+            <M3Banner
+              tone="error"
+              role="alert"
+              action={
+                <button type="button" className="m3-btn m3-btn-sm m3-btn-outline" onClick={() => setProductsRetry((retry) => retry + 1)}>
+                  ลองโหลดใหม่
+                </button>
+              }
+            >
               {productsError}
-              <button type="button" className="ml-3 underline" onClick={() => setProductsRetry((retry) => retry + 1)}>ลองโหลดใหม่</button>
-            </div>
+            </M3Banner>
           ) : products.length === 0 ? (
-            <p className="text-sm text-slate-500">ยังไม่มีสินค้าในระบบ</p>
+            <p className="text-sm text-m3-grey-600">ยังไม่มีสินค้าในระบบ</p>
           ) : (
             <ProductSearchInput
               products={products}
@@ -239,22 +228,21 @@ export default function ReceivingPlanCreateForm({
         </div>
 
         {formError && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
-            {formError}
-          </div>
+          <M3Banner tone="error" role="alert">{formError}</M3Banner>
         )}
 
         {lines.length > 0 && (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {lines.map((line, index) => (
               <li
                 key={line.product.product_id}
-                className="p-3.5 rounded-2xl bg-[#F7F9F8] border border-[#EEF1EF] space-y-2.5"
+                className="space-y-4 rounded-xl border border-[rgba(145,158,171,0.2)] p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-900 text-sm truncate">{line.product.product_name}</p>
-                    <p className="text-xs font-mono text-slate-500">
+                  <M3NumberTile>{index + 1}</M3NumberTile>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-m3-grey-800">{line.product.product_name}</p>
+                    <p className="text-xs tabular-nums text-m3-grey-500">
                       {line.product.sku}
                       {line.product.barcode && line.product.barcode !== "-" ? ` • ${line.product.barcode}` : ""}
                     </p>
@@ -262,19 +250,14 @@ export default function ReceivingPlanCreateForm({
                   <button
                     type="button"
                     onClick={() => removeLine(index)}
-                    className="shrink-0 p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-m3-grey-500 transition-colors hover:bg-[rgba(255,86,48,0.08)] hover:text-m3-error-dark"
                     aria-label={`ลบ ${line.product.product_name} ออกจากแผน`}
                   >
-                    <svg className="w-4.5 h-4.5 w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <SolarClose size={18} />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-600">
-                      จำนวนที่คาดหวัง ({line.product.base_unit || "ชิ้น"})
-                    </label>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
+                  <M3Field label={`จำนวนที่คาดหวัง (${line.product.base_unit || "ชิ้น"})`}>
                     <input
                       type="number"
                       min={1}
@@ -282,11 +265,10 @@ export default function ReceivingPlanCreateForm({
                       value={line.expectedQty}
                       onChange={(e) => updateLine(index, { expectedQty: e.target.value })}
                       placeholder="ไม่ตั้งเป้า"
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#D5DDD9] text-slate-900 text-sm font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 transition-colors"
+                      className={`${m3Cls.input} h-11`}
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-600">จำนวนกล่องที่คาดหวัง</label>
+                  </M3Field>
+                  <M3Field label="จำนวนกล่องที่คาดหวัง">
                     <input
                       type="number"
                       min={1}
@@ -294,35 +276,34 @@ export default function ReceivingPlanCreateForm({
                       value={line.expectedBoxes}
                       onChange={(e) => updateLine(index, { expectedBoxes: e.target.value })}
                       placeholder="ไม่ระบุ"
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#D5DDD9] text-slate-900 text-sm font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 transition-colors"
+                      className={`${m3Cls.input} h-11`}
                     />
-                  </div>
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <label className="block text-xs font-bold text-slate-600">หมายเหตุรายการ</label>
+                  </M3Field>
+                  <M3Field label="หมายเหตุรายการ" className="col-span-2 sm:col-span-1">
                     <input
                       type="text"
                       value={line.note}
                       onChange={(e) => updateLine(index, { note: e.target.value })}
                       maxLength={200}
                       placeholder="เช่น แยกโซน A"
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#D5DDD9] text-slate-900 text-sm font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 transition-colors"
+                      className={`${m3Cls.input} h-11`}
                     />
-                  </div>
+                  </M3Field>
                 </div>
               </li>
             ))}
           </ul>
         )}
 
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-xs text-slate-500 font-semibold">
+        <div className="flex flex-col gap-3 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-m3-grey-500">
             ไม่ระบุจำนวน = ไม่ตั้งเป้ารับ
           </p>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="shrink-0 min-h-12 px-5 rounded-xl bg-[#0F5C3F] hover:bg-[#0B4A31] disabled:opacity-60 text-white font-extrabold text-sm transition-colors cursor-pointer"
+            className="m3-btn m3-btn-primary h-12 shrink-0 px-6 text-[15px] disabled:opacity-48"
           >
             {isSubmitting ? "กำลังบันทึก…" : `สร้างแผน (${lines.length} รายการ)`}
           </button>

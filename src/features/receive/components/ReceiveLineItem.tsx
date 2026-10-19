@@ -7,6 +7,8 @@ import type { ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
+import { M3Dialog, M3NumberTile, m3Cls } from "@/components/ui/m3";
+import { SolarAddLine, SolarAltArrowDown, SolarCheckCircle, SolarClockCircle, SolarDangerTriangle, SolarMapPoint, SolarMinusLine, SolarQrCode } from "@/components/icons";
 
 export interface ReceiveLineItemProps {
   index: number;
@@ -188,7 +190,7 @@ export default function ReceiveLineItem({
   useEscapeKey(showCancelModal, () => setShowCancelModal(false));
 
   const slotScanInputClass =
-    "w-full pl-11 pr-14 py-3.5 bg-white text-base font-mono font-bold text-slate-900 outline-none border border-[#E8ECEA] rounded-xl placeholder:text-slate-500 placeholder:font-normal placeholder:font-sans focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 transition-colors";
+    "h-13 w-full rounded-lg border border-[rgba(145,158,171,0.32)] bg-white pr-14 pl-11 text-base font-semibold tabular-nums text-m3-grey-800 outline-none transition-colors placeholder:font-normal placeholder:text-m3-grey-500 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800";
 
   const renderSlot = (opts: {
     slotNo: number;
@@ -209,12 +211,10 @@ export default function ReceiveLineItem({
     };
 
     return (
-      <div className="bg-black/[.015] border border-[#E8ECEA] rounded-2xl p-3.5 space-y-3">
+      <div className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-3.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-bold text-slate-900 flex items-center gap-2 min-w-0">
-            <span className="px-2 py-0.5 rounded-lg bg-[#111827] text-white font-mono text-sm font-bold shrink-0">
-              {slotNo}
-            </span>
+          <span className="text-sm font-bold text-m3-grey-800 flex items-center gap-2 min-w-0">
+            <M3NumberTile className="size-6 text-xs">{slotNo}</M3NumberTile>
             <span className="truncate">
               ตำแหน่ง {slotNo}
               {isPrimary && extraLocations.length > 0 ? " (หลัก)" : ""}
@@ -223,11 +223,9 @@ export default function ReceiveLineItem({
 
           <div className="flex items-center gap-2 shrink-0">
             {isScanned && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#DFEDE6] text-[#053425] text-sm font-bold border border-[#C9DFD4] max-w-[180px] sm:max-w-none">
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="font-mono truncate">{getLocationDisplay(scannedLoc!)}</span>
+              <span className="m3-label m3-label-success max-w-[180px] gap-1 sm:max-w-none">
+                <SolarMapPoint size={14} className="shrink-0" />
+                <span className="tabular-nums truncate">{getLocationDisplay(scannedLoc!)}</span>
               </span>
             )}
 
@@ -236,7 +234,7 @@ export default function ReceiveLineItem({
                 type="button"
                 onClick={() => handleRemoveExtraSlot(extraIdx!)}
                 aria-label={`ลบตำแหน่ง ${slotNo}`}
-                className="min-h-11 px-3 rounded-xl border border-rose-200 text-rose-700 text-sm font-bold hover:bg-rose-50 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="m3-btn m3-btn-sm m3-btn-text gap-1.5 text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -248,9 +246,7 @@ export default function ReceiveLineItem({
         </div>
 
         <div className="relative">
-          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <SolarQrCode size={20} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-m3-grey-500" />
           <input
             type="text"
             value={scanValue}
@@ -270,7 +266,7 @@ export default function ReceiveLineItem({
             onClick={() => setCameraSlot({ isPrimary, extraIdx })}
             aria-label={`เปิดกล้องสแกนตำแหน่งที่ ${slotNo}`}
             title="เปิดกล้องสแกน"
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] rounded-xl border border-[#C9DFD4] cursor-pointer transition-colors active:scale-95"
+            className="absolute top-1/2 right-1.5 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-m3-grey-700 transition-colors hover:bg-[rgba(145,158,171,0.08)] active:scale-95"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -279,7 +275,7 @@ export default function ReceiveLineItem({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-2 sm:gap-3 bg-white p-1.5 sm:p-2 rounded-xl border border-[#E8ECEA] w-full min-w-0">
+        <div className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-[rgba(145,158,171,0.2)] bg-white p-1.5 sm:gap-3 sm:p-2">
           <button
             type="button"
             aria-label="ลดจำนวน"
@@ -288,8 +284,8 @@ export default function ReceiveLineItem({
                 ? handleUpdatePrimaryQty(Math.max(0, (currentPrimaryQty ?? 0) - 1))
                 : handleUpdateExtraQty(extraIdx!, Math.max(1, (extraQtys[extraIdx!] || 1) - 1))
             }
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xl sm:text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
-          >−</button>
+            className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-m3-grey-200 text-m3-grey-800 transition-transform hover:bg-m3-grey-300 active:scale-95 sm:size-12"
+          ><SolarMinusLine size={20} /></button>
 
           <div className="flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-1">
             <input
@@ -310,9 +306,9 @@ export default function ReceiveLineItem({
                 }
               }}
               aria-label={`จำนวนของตำแหน่งที่ ${slotNo}`}
-              className="w-full max-w-[90px] sm:max-w-[120px] text-center py-1.5 bg-transparent font-mono font-bold text-xl sm:text-2xl text-slate-900 focus:outline-none select-none [-webkit-touch-callout:none]"
+              className="w-full max-w-[90px] bg-transparent py-1.5 text-center font-m3-disp text-2xl font-bold tabular-nums text-m3-grey-800 select-none focus:outline-none [-webkit-touch-callout:none] sm:max-w-[120px] sm:text-[28px]"
             />
-            <span className="text-sm sm:text-base text-slate-700 font-bold shrink-0">{baseUnit}</span>
+            <span className="text-sm sm:text-base text-m3-grey-700 font-bold shrink-0">{baseUnit}</span>
           </div>
 
           <button
@@ -323,8 +319,8 @@ export default function ReceiveLineItem({
                 ? handleUpdatePrimaryQty((currentPrimaryQty || 0) + 1)
                 : handleUpdateExtraQty(extraIdx!, (extraQtys[extraIdx!] || 0) + 1)
             }
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xl sm:text-2xl flex items-center justify-center cursor-pointer transition-transform active:scale-95 shrink-0"
-          >+</button>
+            className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-m3-grey-800 text-white transition-transform hover:bg-m3-grey-700 active:scale-95 sm:size-12"
+          ><SolarAddLine size={20} /></button>
         </div>
       </div>
     );
@@ -333,12 +329,12 @@ export default function ReceiveLineItem({
   return (
     <div
       key={fieldId}
-      className={`rounded-[20px] border transition-colors duration-200 ${
+      className={`rounded-2xl transition-colors duration-200 ${
         isLocked
-          ? "bg-black/[.03] border-[#E8ECEA] opacity-70"
+          ? "border border-dashed border-[rgba(145,158,171,0.32)] bg-m3-grey-100 opacity-72"
           : isConfirmed
-          ? "bg-[#EAF2EE]/70 border-[#C9DFD4]"
-          : "bg-white border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)]"
+          ? "border border-[rgba(0,167,111,0.24)] bg-[rgba(0,167,111,0.04)]"
+          : "m3-card"
       }`}
     >
       <button
@@ -351,89 +347,78 @@ export default function ReceiveLineItem({
       >
         <div className="min-w-0 flex-1 flex items-center gap-3">
           <span
-            className={`px-2.5 py-1 rounded-lg font-mono text-sm font-bold shrink-0 ${
-              isLocked ? "bg-white border border-black/10 text-slate-600" : "bg-[#111827] text-white"
+            className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-bold tabular-nums ${
+              isLocked ? "bg-white text-m3-grey-500" : isConfirmed ? "bg-m3-primary text-white" : "bg-m3-grey-200 text-m3-grey-800"
             }`}
           >
-            #{index + 1}
+            {isConfirmed && !isLocked ? <SolarCheckCircle size={20} /> : `#${index + 1}`}
           </span>
 
           <div className="flex flex-col min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              {barcode ? (
-                <>
-                  <span className="font-mono font-bold text-base sm:text-lg text-[#111827] tracking-wide">
-                    {barcode}
-                  </span>
-                  <span className="font-mono font-semibold text-sm text-[#667085]">
-                    {sku}
-                  </span>
-                </>
-              ) : (
-                <span className="font-mono font-bold text-base sm:text-lg text-[#111827]">{sku}</span>
-              )}
-            </div>
-            <span className="text-base font-bold text-slate-900 truncate mt-0.5" title={name}>
+            <span className="truncate text-base font-bold text-m3-grey-800" title={name}>
               {name}
             </span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5">
+              {barcode ? (
+                <>
+                  <span className="text-xs tabular-nums text-m3-grey-500">บาร์โค้ด {barcode}</span>
+                  <span className="hidden text-xs tabular-nums text-m3-grey-500 sm:inline">· {sku}</span>
+                </>
+              ) : (
+                <span className="text-xs tabular-nums text-m3-grey-500">{sku}</span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {isLocked && (
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200 shrink-0">
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+            <span className="m3-label m3-label-warning shrink-0 gap-1">
+              <SolarClockCircle size={14} className="shrink-0" />
               <span>รอคิว</span>
             </span>
           )}
           {isConfirmed && !isLocked && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-[#053425] bg-[#DFEDE6] px-2.5 py-1 rounded-full border border-[#C9DFD4] shrink-0">
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
+            <span className="m3-label m3-label-success hidden shrink-0 gap-1 sm:inline-flex">
               <span>ยืนยันแล้ว</span>
             </span>
           )}
 
           {!isExpanded && locationBreakdowns.length > 0 && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAF2EE] text-[#053425] font-semibold border border-[#DFEDE6] text-sm max-w-[260px]">
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="font-mono truncate">{locationBreakdowns.map((item) => getLocationDisplay(item.loc)).join(", ")}</span>
+            <span className="m3-label m3-label-default hidden max-w-[260px] gap-1 sm:inline-flex">
+              <SolarMapPoint size={14} className="shrink-0" />
+              <span className="tabular-nums truncate">{locationBreakdowns.map((item) => getLocationDisplay(item.loc)).join(", ")}</span>
             </span>
           )}
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-baseline gap-1"
+              className="hidden items-baseline gap-1 rounded-lg bg-m3-grey-100 px-2.5 py-1.5 text-m3-grey-600 sm:flex"
               title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} ${packSize ? "แพ็ก" : "กล่อง"}`}
             >
-              <span className="disp num text-base sm:text-lg font-bold">{(currentBoxes || 0).toLocaleString()}</span>
-              <span className="text-xs sm:text-sm font-bold">{packSize ? "แพ็ก" : "กล่อง"}</span>
+              <span className="font-m3-disp text-base font-bold tabular-nums">{(currentBoxes || 0).toLocaleString()}</span>
+              <span className="text-xs">{packSize ? "แพ็ก" : "กล่อง"}</span>
             </div>
 
-            <div className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#EAF2EE] border border-[#DFEDE6] text-[#052B1F] flex items-baseline gap-1">
-              <span className="disp num text-lg font-bold">{(currentQty || 0).toLocaleString()}</span>
-              <span className="text-sm font-bold">{baseUnit}</span>
+            <div className="flex items-baseline gap-1 text-m3-grey-800">
+              <span className="font-m3-disp text-xl font-bold tabular-nums">{(currentQty || 0).toLocaleString()}</span>
+              <span className="text-sm text-m3-grey-600">{baseUnit}</span>
             </div>
           </div>
 
-          <svg
-            className={`w-5 h-5 text-slate-600 transition-transform duration-200 ${isExpanded ? "rotate-180" : "rotate-0"}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <SolarAltArrowDown
+            size={20}
+            className={`text-m3-grey-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : "rotate-0"}`}
+          />
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-3.5 pb-4 sm:px-4 sm:pb-5 pt-3.5 border-t border-[#EEF1EF] space-y-3 fade-in">
-          <p className="text-sm text-slate-600">
+        <div className="fade-in space-y-3 border-t border-dashed border-[rgba(145,158,171,0.32)] px-4 pt-4 pb-4 sm:px-5 sm:pb-5">
+          {packSize ? (
+            <span className="m3-label m3-label-info">แพ็ก {packSize.toLocaleString()} {baseUnit}</span>
+          ) : null}
+          <p className="text-sm text-m3-grey-600">
             {packSize
               ? `สแกน 1 ครั้ง = 1 แพ็ก (${packSize.toLocaleString()} ${baseUnit}) · แก้จำนวนตามของจริงได้`
               : "ยังไม่มีจำนวนบรรจุ — กรุณากรอกจำนวนตามของจริง"}
@@ -457,20 +442,18 @@ export default function ReceiveLineItem({
             <button
               type="button"
               onClick={handleAddExtraSlot}
-              className="min-h-11 px-4 rounded-xl bg-[#EAF2EE] hover:bg-[#DFEDE6] border border-[#C9DFD4] text-[#053425] text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors shrink-0"
+              className="m3-btn m3-btn-text shrink-0 gap-1.5 px-1 text-m3-primary-dark"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
+              <SolarAddLine size={18} />
               <span>เพิ่มตำแหน่ง</span>
             </button>
           </div>
 
-          <div className="flex items-stretch gap-2.5">
+          <div className="flex flex-col-reverse items-stretch gap-2.5 sm:flex-row">
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}
-              className="flex-1 px-4 py-3.5 rounded-xl bg-white text-rose-700 text-base font-bold flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors cursor-pointer"
+              className="m3-btn h-12 flex-1 gap-2 bg-[rgba(255,86,48,0.16)] text-base text-m3-error-dark hover:bg-[rgba(255,86,48,0.24)] sm:flex-none sm:px-6"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -486,20 +469,16 @@ export default function ReceiveLineItem({
                 onToggleConfirm(index);
                 setIsExpanded(false);
               }}
-              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed ${
+              className={`m3-btn h-12 flex-1 gap-2 text-base disabled:cursor-not-allowed ${
                 hasUnscannedSlot || hasNoQty
-                  ? "bg-amber-50 border border-amber-200 text-amber-800"
-                  : "bg-[#06402B] hover:bg-[#053425] text-white shadow-lg shadow-[#06402B]/20 active:scale-[.98] transition-transform cursor-pointer"
+                  ? "bg-[rgba(255,171,0,0.16)] text-m3-warning-dark"
+                  : "m3-btn-dark active:scale-[.98]"
               }`}
             >
               {hasUnscannedSlot ? (
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <SolarDangerTriangle size={20} className="shrink-0" />
               ) : (
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
+                <SolarCheckCircle size={20} className="shrink-0" />
               )}
               <span>{hasUnscannedSlot ? "สแกนตำแหน่งก่อน" : hasNoQty ? "ระบุจำนวนก่อน" : "ยืนยันรายการนี้"}</span>
             </button>
@@ -508,33 +487,31 @@ export default function ReceiveLineItem({
       )}
 
       {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs fade-in">
-          <div className="w-full max-w-sm bg-white rounded-[20px] border border-[#E8ECEA] shadow-xl p-5 space-y-4 scale-in">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <h4 className="text-lg font-extrabold text-[#111827]">ลบรายการนี้?</h4>
-              <p className="text-sm text-slate-600">
-                ลบ <strong className="text-slate-900">{name}</strong> (#{index + 1}){barcode ? ` บาร์โค้ด ${barcode}` : ""} ออกจากใบรับ?
-              </p>
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 min-h-11 rounded-xl bg-white border border-black/10 text-slate-700 font-bold text-sm hover:bg-black/[.04] transition-colors cursor-pointer"
-              >ย้อนกลับ</button>
+        <M3Dialog
+          title="ลบรายการนี้?"
+          icon={<SolarDangerTriangle size={28} />}
+          iconTone="error"
+          widthClass="sm:max-w-[400px]"
+          hint={
+            <>
+              ลบ <strong className="text-m3-grey-800">{name}</strong> (#{index + 1}){barcode ? ` บาร์โค้ด ${barcode}` : ""} ออกจากใบรับ?
+            </>
+          }
+          footer={
+            <>
+              <button type="button" onClick={() => setShowCancelModal(false)} className={m3Cls.btnCancel}>
+                ย้อนกลับ
+              </button>
               <button
                 type="button"
                 onClick={() => { setShowCancelModal(false); onRemove(index); }}
-                className="flex-1 min-h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm cursor-pointer transition-colors active:scale-95"
-              >ยืนยันลบ</button>
-            </div>
-          </div>
-        </div>
+                className={m3Cls.btnDanger}
+              >
+                ยืนยันลบ
+              </button>
+            </>
+          }
+        />
       )}
 
       <CameraBarcodeScannerModal

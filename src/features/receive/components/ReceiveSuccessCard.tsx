@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { M3Banner } from "@/components/ui/m3";
+import { SolarCheckCircle, SolarRefresh } from "@/components/icons";
 
 export interface ReceiveSuccessCardProps {
   onReset: () => void;
@@ -8,38 +10,27 @@ export interface ReceiveSuccessCardProps {
 
 export default function ReceiveSuccessCard({ onReset }: ReceiveSuccessCardProps) {
   return (
-    <div className="max-w-md mx-auto py-6 sm:py-12 px-4">
-      <div className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] p-8 sm:p-10 text-center space-y-6 scale-in">
-        <div className="w-28 h-28 mx-auto rounded-full bg-[#EAF2EE] border border-[#DFEDE6] flex items-center justify-center">
-          <div className="w-20 h-20 rounded-full bg-[#06402B] flex items-center justify-center shadow-lg shadow-[#06402B]/25">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
+    <div className="mx-auto max-w-md px-4 py-6 sm:py-12">
+      <div className="m3-card scale-in space-y-6 p-8 text-center sm:p-10">
+        <div className="mx-auto flex size-28 items-center justify-center rounded-full bg-[rgba(0,167,111,0.12)]">
+          <div className="flex size-16 items-center justify-center rounded-full bg-m3-primary text-white">
+            <SolarCheckCircle size={36} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
-            ส่งรายการรับสินค้าแล้ว
-          </h2>
-          <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-left">
-            <p className="text-amber-800 text-sm font-semibold flex items-start gap-2">
-              <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>รออนุมัติ — ยังไม่เพิ่มสต็อก</span>
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold text-m3-grey-800">ส่งรายการรับสินค้าแล้ว</h2>
+          <M3Banner tone="warning" className="mt-3 text-left">
+            รออนุมัติ — ยังไม่เพิ่มสต็อก
+          </M3Banner>
         </div>
 
         <button
           type="button"
           onClick={onReset}
-          className="w-full py-4 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base shadow-lg shadow-[#06402B]/20 cursor-pointer transition-all active:scale-[.98] flex items-center justify-center gap-2"
+          className="m3-btn m3-btn-primary h-12 w-full gap-2 text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)] active:scale-[.98]"
         >
-          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <SolarRefresh size={20} className="shrink-0" />
           <span>เริ่มรับรายการใหม่</span>
         </button>
       </div>

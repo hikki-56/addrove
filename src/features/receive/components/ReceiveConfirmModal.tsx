@@ -5,6 +5,8 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { UseFormReturn } from "react-hook-form";
 import type { ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
+import { m3Cls } from "@/components/ui/m3";
+import { SolarClose, SolarHome, SolarMapPoint } from "@/components/icons";
 
 export interface ReceiveConfirmModalProps {
   isOpen: boolean;
@@ -14,6 +16,8 @@ export interface ReceiveConfirmModalProps {
   products: Product[];
   activeWhName: string;
   onSubmit: (data: ReceiveDocumentInput) => void;
+  /** เลขแผนที่กำลังรับ (แสดงผลเท่านั้น) */
+  planNo?: string;
 }
 
 export default function ReceiveConfirmModal({
@@ -24,6 +28,7 @@ export default function ReceiveConfirmModal({
   products,
   activeWhName,
   onSubmit,
+  planNo,
 }: ReceiveConfirmModalProps) {
   useEscapeKey(isOpen, onClose);
 
@@ -34,31 +39,33 @@ export default function ReceiveConfirmModal({
   const totalQty = watchLines.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs fade-in">
-      <div className="w-full max-w-lg bg-white rounded-[20px] border border-[#E8ECEA] shadow-xl p-4 sm:p-6 space-y-4 max-h-[90dvh] flex flex-col scale-in">
-        <div className="flex items-center justify-between border-b border-[#EEF1EF] pb-3 shrink-0">
-          <h3 className="font-extrabold text-[#111827] text-lg sm:text-xl leading-tight">ยืนยันการรับสินค้าเข้า</h3>
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+      <div className={m3Cls.overlay} />
+      <div role="dialog" aria-modal="true" aria-label="ยืนยันการรับสินค้าเข้า" className={`${m3Cls.sheet} max-h-[92dvh] sm:max-w-[560px]`}>
+        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-6 sm:px-7 sm:pt-7">
+          <h2 className="min-w-0 text-xl font-bold text-m3-grey-800">ยืนยันการรับสินค้าเข้า</h2>
           <button
             type="button"
             aria-label="ปิดหน้าต่าง"
             onClick={onClose}
-            className="w-11 h-11 shrink-0 flex items-center justify-center text-slate-500 hover:text-slate-800 rounded-xl hover:bg-black/[.04] cursor-pointer transition-colors"
+            className="-mt-1 -mr-2 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-m3-grey-500 transition-colors hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <SolarClose size={22} />
           </button>
         </div>
 
         <div
-          className="space-y-3 flex-1 overflow-y-auto overscroll-y-contain pr-0.5"
+          className="flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-5 pt-5 pb-2 sm:px-7"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <div className="flex justify-between items-center p-3.5 rounded-2xl bg-black/[.015] border border-[#E8ECEA]">
-            <span className="text-slate-700 font-bold text-sm">โกดังปลายทาง</span>
-            <span className="inline-flex items-center gap-1.5 font-extrabold text-[#052B1F] text-base">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
-              {activeWhName}
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-m3-grey-100 px-4 py-3.5">
+            <span className="shrink-0 text-sm whitespace-nowrap text-m3-grey-600">โกดังปลายทาง</span>
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              <span className="m3-label m3-label-primary gap-1.5 text-sm">
+                <SolarHome size={14} />
+                {activeWhName}
+              </span>
+              {planNo ? <span className="m3-label m3-label-info tabular-nums">{planNo}</span> : null}
             </span>
           </div>
 
@@ -115,33 +122,30 @@ export default function ReceiveConfirmModal({
               }
 
               return (
-                <div key={`confirm-row-${idx}`} className="p-3.5 rounded-2xl bg-black/[.015] border border-[#E8ECEA] flex items-start justify-between gap-3">
+                <div key={`confirm-row-${idx}`} className="flex items-start justify-between gap-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
                   <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-sm font-bold text-m3-grey-800 sm:text-base">{matched?.product_name || "สินค้า"}</div>
+                    <div className="flex flex-wrap items-center gap-x-1.5">
                       {(matched?.barcode && matched.barcode.trim() !== "-") ? (
-                        <span className="font-mono text-sm sm:text-base font-bold text-[#111827] tracking-wide">
+                        <span className="text-xs tabular-nums text-m3-grey-500">
                           {matched.barcode}
                         </span>
                       ) : (line as any).barcode ? (
-                        <span className="font-mono text-sm sm:text-base font-bold text-[#111827] tracking-wide">
+                        <span className="text-xs tabular-nums text-m3-grey-500">
                           {(line as any).barcode}
                         </span>
                       ) : null}
-                      <span className="font-mono font-semibold text-sm text-[#667085] truncate">
+                      <span className="truncate text-xs tabular-nums text-m3-grey-500">
                         {matched?.sku || line.product_id}
                       </span>
                     </div>
-                    <div className="text-slate-900 font-bold text-sm sm:text-base">{matched?.product_name || "สินค้า"}</div>
                     <div className="flex items-start gap-1.5 flex-wrap">
                       {locBreakdowns.map((bd, bdIdx) => (
                         <span
                           key={`loc-${idx}-${bdIdx}`}
-                          className="inline-flex items-center gap-1 text-sm font-bold text-[#053425] bg-[#EAF2EE] border border-[#DFEDE6] px-2 py-0.5 rounded-lg font-mono"
+                          className="m3-label m3-label-default gap-1 tabular-nums"
                         >
-                          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
+                          <SolarMapPoint size={14} className="shrink-0" />
                           <span>{bd}</span>
                         </span>
                       ))}
@@ -149,53 +153,43 @@ export default function ReceiveConfirmModal({
                   </div>
                   <div className="text-right shrink-0">
                     <div className="flex items-baseline gap-1 justify-end">
-                      <span className="disp num font-bold text-[#053425] text-lg sm:text-xl">{(Number(line.qty) || 0).toLocaleString()}</span>
-                      <span className="text-sm font-bold text-slate-700">ชิ้น</span>
+                      <span className="font-m3-disp text-xl font-bold tabular-nums text-m3-grey-800">{(Number(line.qty) || 0).toLocaleString()}</span>
+                      <span className="text-sm text-m3-grey-600">ชิ้น</span>
                     </div>
-                    <div className="text-sm text-[#667085] font-semibold">{(Number(line.boxes) || 1).toLocaleString()} กล่อง</div>
+                    <div className="text-xs text-m3-grey-500">{(Number(line.boxes) || 1).toLocaleString()} กล่อง</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] flex justify-between items-center">
-            <span className="font-extrabold text-[#04231A] text-base sm:text-lg">รวมทั้งหมด</span>
+          <div className="flex items-center justify-between border-t border-dashed border-[rgba(145,158,171,0.32)] pt-4">
+            <span className="text-base font-bold text-m3-grey-800">รวมทั้งหมด</span>
             <span className="flex items-baseline gap-1.5">
-              <span className="disp num font-bold text-[#052B1F] text-2xl">{(totalQty || 0).toLocaleString()}</span>
-              <span className="font-bold text-[#052B1F] text-base">ชิ้น</span>
+              <span className="font-m3-disp text-2xl font-bold tabular-nums text-m3-primary-dark">{(totalQty || 0).toLocaleString()}</span>
+              <span className="text-base text-m3-grey-600">ชิ้น</span>
             </span>
           </div>
         </div>
 
-        <div className="space-y-2.5 pt-1 shrink-0">
+        <div className="flex shrink-0 flex-col-reverse gap-3 px-5 pt-4 pb-5 sm:flex-row sm:justify-end sm:px-7 sm:pb-7">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className={`${m3Cls.btnCancel} disabled:opacity-48`}>
+            ปิดหน้าต่าง
+          </button>
           <button
             type="button"
             disabled={isSubmitting}
             onClick={() => handleSubmit(onSubmit)()}
-            className="w-full py-4 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base shadow-lg shadow-[#06402B]/25 cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98] flex items-center justify-center gap-2"
+            className={`${m3Cls.btnPrimary} gap-2`}
           >
             {isSubmitting ? (
               <>
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+                <span className={m3Cls.spinner} />
                 <span>กำลังบันทึก...</span>
               </>
             ) : (
-              <>
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>ยืนยันและสร้างเอกสาร</span>
-              </>
+              <span>ยืนยันและสร้างเอกสาร</span>
             )}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="w-full min-h-11 rounded-xl bg-white border border-black/10 text-slate-700 font-bold text-sm hover:bg-black/[.04] transition-colors cursor-pointer disabled:opacity-50"
-          >
-            ยกเลิก
           </button>
         </div>
       </div>
