@@ -12,6 +12,16 @@ import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import ProductionBell from "@/components/layout/ProductionBell";
+import {
+  NavIcon,
+  SolarAltArrowDown,
+  SolarBell,
+  SolarClose,
+  SolarDocumentCheck,
+  SolarHamburger,
+  SolarLogout,
+  StockifyLogo,
+} from "@/components/icons";
 
 const roleLabel: Record<UserRole, string> = {
   ADMIN: "ผู้ดูแลระบบ",
@@ -126,67 +136,97 @@ export default function DashboardHeader({
 
   const headerNotificationCount = isAdmin ? pendingApprovalCount : pendingTransferCount;
 
+  const initials = userInitials(user.name);
+
+  // ปุ่มไอคอนวงกลม 40px (.ib) + badge มุมขวาบน (.badge) ตาม mockup D01/M31
+  const iconButton =
+    "relative grid size-10 shrink-0 place-items-center rounded-full text-m3-grey-600 transition-colors duration-150 hover:bg-[rgba(145,158,171,0.08)] cursor-pointer";
+  const countBadge =
+    "absolute right-0.5 top-1 flex h-5 min-w-5 items-center justify-center rounded-[10px] border-2 border-white px-1.5 text-[12px] font-semibold leading-none tabular-nums";
+
+  const approvalsButton = (
+    <Link
+      href="/approvals"
+      aria-label="รายการรออนุมัติ"
+      title="รายการรออนุมัติ"
+      className={iconButton}
+    >
+      <SolarDocumentCheck size={24} />
+      {headerNotificationCount > 0 && (
+        <span className={`${countBadge} bg-m3-warning text-m3-grey-800`}>
+          {headerNotificationCount > 99 ? "99+" : headerNotificationCount}
+        </span>
+      )}
+    </Link>
+  );
+
+  const transferBellButton = (
+    <button
+      type="button"
+      onClick={() => {
+        setNotificationsOpen(!notificationsOpen);
+        setUserMenuOpen(false);
+      }}
+      aria-label="การแจ้งเตือนงานเบิกสินค้า"
+      className={iconButton}
+    >
+      <SolarBell size={24} />
+      {pendingTransferCount > 0 && (
+        <span className={`${countBadge} bg-m3-error text-white`}>{pendingTransferCount}</span>
+      )}
+    </button>
+  );
+
+  const userMenu = (
+    <div className="absolute right-0 z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-m3-dropdown animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex items-center gap-3 px-2 pb-3 pt-2">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-m3-primary-lighter text-[14px] font-semibold text-m3-primary-darker">
+          {initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-semibold text-m3-grey-800">{user.name}</p>
+          <p className="truncate text-[13px] text-m3-grey-600">{user.email || "user@stockify.com"}</p>
+        </div>
+      </div>
+      <div className="px-2 pb-2">
+        <span className="m3-label m3-label-primary">{roleLabel[user.role]}</span>
+      </div>
+      <div className="border-t border-dashed border-m3-divider pt-2">
+        <button
+          type="button"
+          onClick={() => tabLogout()}
+          className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-[14px] font-semibold text-m3-error-dark transition-colors duration-150 hover:bg-[rgba(255,86,48,0.08)]"
+        >
+          <SolarLogout size={20} />
+          ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <header className="bg-white border-b border-[#E8ECEA] flex-shrink-0 z-20 md:h-(--header-height)">
-        {/* Mobile */}
-        <div className="flex h-(--header-height) items-center justify-between gap-3 px-4 md:hidden">
+      <header className="z-20 flex-shrink-0 bg-white/90 backdrop-blur-[6px] md:h-[76px]">
+        {/* Mobile (M31) */}
+        <div className="flex h-16 items-center justify-between gap-3 px-4 md:hidden">
           <div className="flex min-w-0 items-center gap-2">
             <button
               id="btn-mobile-menu"
               type="button"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 -ml-2 rounded-xl text-[#344054] hover:text-[#111827] hover:bg-[#F3F6F4] border border-transparent hover:border-[#E8ECEA] transition-colors duration-150 flex items-center justify-center cursor-pointer"
+              className="-ml-2 grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-m3-grey-800 transition-colors duration-150 hover:bg-[rgba(145,158,171,0.08)]"
               aria-label="เปิดเมนู"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <SolarHamburger size={26} />
             </button>
-            <h1 className="text-[#111827] truncate text-lg font-semibold tracking-tight">
+            <h1 className="truncate text-[18px] font-bold leading-tight text-m3-grey-800">
               {breadcrumb.title}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — mount จริงเฉพาะช่องที่ตรง breakpoint */}
             <ProductionBell placement="mobile" />
-            {/* Notification */}
-            <div className="relative">
-              {isAdmin ? (
-                <Link
-                  href="/approvals"
-                  aria-label="รายการรออนุมัติ"
-                  title="รายการรออนุมัติ"
-                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
-                >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {headerNotificationCount > 0 && (
-                    <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-[#06402B]" />
-                  )}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotificationsOpen(!notificationsOpen);
-                    setUserMenuOpen(false);
-                  }}
-                  aria-label="การแจ้งเตือนงานเบิกสินค้า"
-                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150 cursor-pointer"
-                >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
-                      {pendingTransferCount}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
+            <div className="relative">{isAdmin ? approvalsButton : transferBellButton}</div>
             {/* Avatar */}
             <div className="relative">
               <button
@@ -196,130 +236,70 @@ export default function DashboardHeader({
                   setNotificationsOpen(false);
                 }}
                 aria-label="เมนูผู้ใช้"
-                className="grid size-9 place-items-center rounded-full bg-[#EAF2EE] border border-[#DFEDE6] text-sm font-bold text-[#06402B] cursor-pointer"
+                className="grid size-9 cursor-pointer place-items-center rounded-full bg-m3-primary-lighter text-[13px] font-semibold text-m3-primary-darker"
               >
-                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                {initials}
               </button>
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center gap-3 border-b border-[#EEF1EF] pb-3">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#06402B] text-sm font-bold text-white">
-                      {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-small) font-semibold text-[#053425]">
-                        {roleLabel[user.role]}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => tabLogout()}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#E8ECEA] bg-white px-3 py-2 text-xs font-semibold text-[#344054] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
-                  >
-                    <svg className="h-4 w-4 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    ออกจากระบบ
-                  </button>
-                </div>
-              )}
+              {userMenuOpen && userMenu}
             </div>
           </div>
         </div>
 
-        {/* Tablet / Desktop */}
-        <div className="hidden h-(--header-height) items-center justify-between gap-6 px-6 md:flex xl:px-8">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h1 className="truncate text-lg 2xl:text-xl font-semibold tracking-tight text-[#111827]">
+        {/* Tablet / Desktop (D01) */}
+        <div className="hidden h-[76px] items-center justify-between gap-6 px-6 md:flex xl:px-10">
+          <div className="flex min-w-0 flex-col">
+            <h1 className="truncate text-[20px] font-bold leading-[1.3] text-m3-grey-800">
               {breadcrumb.title}
             </h1>
-            <p className="truncate text-xs 2xl:text-sm text-[#667085]">{breadcrumb.parent}</p>
+            <p className="mt-px truncate text-[13px] text-m3-grey-600">{breadcrumb.parent}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — mount จริงเฉพาะช่องที่ตรง breakpoint */}
             <ProductionBell placement="desktop" />
-            {/* Notification */}
             <div className="relative">
-              {isAdmin ? (
-                <Link
-                  href="/approvals"
-                  aria-label="รายการรออนุมัติ"
-                  title="รายการรออนุมัติ"
-                  className="relative grid size-9 place-items-center rounded-xl border border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827] transition-colors duration-150"
-                >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {headerNotificationCount > 0 && (
-                    <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-[#06402B]" />
-                  )}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotificationsOpen(!notificationsOpen);
-                    setUserMenuOpen(false);
-                  }}
-                  aria-label="การแจ้งเตือนงานเบิกสินค้า"
-                  className={`relative grid size-9 place-items-center rounded-xl border transition-colors duration-150 cursor-pointer ${
-                    pendingTransferCount > 0
-                      ? "border-[#F1DECB] bg-[#FDF4EC] text-[#B54708] hover:bg-[#FCEFDD]"
-                      : "border-[#E8ECEA] bg-white text-[#667085] hover:bg-[#F3F6F4] hover:text-[#111827]"
-                  }`}
-                >
-                  <svg className="size-(--nav-icon)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {pendingTransferCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B42318] px-1 text-(length:--nav-fine) font-bold text-white">
-                      {pendingTransferCount}
-                    </span>
-                  )}
-                </button>
-              )}
+              {isAdmin ? approvalsButton : transferBellButton}
 
               {/* Staff notification dropdown */}
               {notificationsOpen && !isAdmin && (
-                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between border-b border-[#EEF1EF] pb-2">
-                    <span className="text-xs font-bold text-[#111827]">การแจ้งเตือนงานเบิกสินค้า</span>
+                <div className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl bg-white shadow-m3-dropdown animate-in fade-in zoom-in-95 duration-150 sm:w-80">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-[14px] font-bold text-m3-grey-800">การแจ้งเตือนงานเบิกสินค้า</span>
                     <button
+                      type="button"
                       onClick={() => setNotificationsOpen(false)}
-                      className="cursor-pointer p-0.5 text-xs font-bold text-[#98A2B3] hover:text-[#344054]"
+                      aria-label="ปิด"
+                      className="grid size-7 cursor-pointer place-items-center rounded-full text-m3-grey-500 hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
                     >
-                      ✕
+                      <SolarClose size={16} />
                     </button>
                   </div>
                   {notificationsList.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-[#667085]">
-                      <p className="font-medium text-[#344054]">ไม่มีรายการแจ้งเตือนค้างอยู่</p>
+                    <div className="border-t border-dashed border-m3-divider px-4 py-8 text-center text-[13px] font-medium text-m3-grey-500">
+                      ไม่มีรายการแจ้งเตือนค้างอยู่
                     </div>
                   ) : (
-                    <div className="max-h-60 space-y-1.5 overflow-y-auto pr-0.5">
+                    <div className="max-h-72 overflow-y-auto border-t border-dashed border-m3-divider">
                       {notificationsList.map((t) => (
                         <Link
                           key={t.id}
                           href="/movements/transfer"
                           onClick={() => setNotificationsOpen(false)}
-                          className="block space-y-1 rounded-xl border border-[#E8ECEA] bg-white p-2.5 text-xs transition-colors duration-150 hover:border-[#D5DDD9] hover:bg-[#F3F6F4]"
+                          className="block space-y-1 border-b border-dashed border-m3-divider px-4 py-3 text-[13px] transition-colors duration-150 last:border-b-0 hover:bg-[rgba(145,158,171,0.08)]"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-bold text-[#111827]">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[13px] font-semibold text-m3-grey-800">
                               {t.doc_no || "TRF"}
                             </span>
-                            <span className="rounded bg-[#FDF4EC] px-1.5 py-0.2 text-xs font-bold text-[#B54708]">
+                            <span className="m3-label m3-label-warning">
                               {Number(t.qty || 0).toLocaleString()} ชิ้น
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 text-xs">
-                            <span className="flex-1 truncate font-medium text-[#344054]">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex-1 truncate text-m3-grey-700">
                               {getDisplayProductName(t)}
                             </span>
-                            <span className="shrink-0 text-xs text-[#667085]">
-                              {t.from_warehouse_name} ➔ <strong className="text-[#06402B]">{t.to_warehouse_name}</strong>
+                            <span className="shrink-0 text-[12px] text-m3-grey-500">
+                              {t.from_warehouse_name} → <strong className="font-semibold text-m3-primary-dark">{t.to_warehouse_name}</strong>
                             </span>
                           </div>
                         </Link>
@@ -330,8 +310,8 @@ export default function DashboardHeader({
               )}
             </div>
 
-            {/* Avatar */}
-            <div className="relative">
+            {/* User chip (.chip-u) */}
+            <div className="relative ml-2">
               <button
                 type="button"
                 onClick={() => {
@@ -339,74 +319,46 @@ export default function DashboardHeader({
                   setNotificationsOpen(false);
                 }}
                 aria-label="เมนูผู้ใช้"
-                className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#E8ECEA] bg-white py-1 pl-1.5 pr-2.5 transition-colors duration-150 hover:bg-[#F3F6F4]"
+                className="relative flex cursor-pointer items-center gap-1 rounded-3xl border border-m3-divider py-1 pl-1 pr-2 transition-colors duration-150 hover:bg-[rgba(145,158,171,0.08)]"
               >
-                <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-[#06402B] text-xs font-bold text-white">
-                  {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                  <span className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full bg-[#12B76A] ring-2 ring-white" />
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-m3-primary-lighter text-[13px] font-semibold text-m3-primary-darker">
+                  {initials}
                 </span>
-                <svg className="size-3.5 text-[#98A2B3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <span className="absolute left-[30px] top-[30px] box-content size-[9px] rounded-full border-2 border-white bg-m3-success" />
+                <SolarAltArrowDown size={16} className="text-m3-grey-500" />
               </button>
 
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 max-w-xs rounded-2xl bg-white border border-[#E8ECEA] shadow-[0_8px_24px_rgba(16,24,40,0.12)] z-50 p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center gap-3 border-b border-[#EEF1EF] pb-3">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#06402B] text-sm font-bold text-white">
-                      {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h6 className="truncate text-xs font-bold text-[#111827]">{user.name}</h6>
-                      <p className="truncate text-(length:--nav-small) font-medium text-[#667085]">{user.email || "user@stockify.com"}</p>
-                      <span className="mt-1 inline-block rounded-full border border-[#DFEDE6] bg-[#EAF2EE] px-2 py-0.5 text-(length:--nav-small) font-semibold text-[#053425]">
-                        {roleLabel[user.role]}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => tabLogout()}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#E8ECEA] bg-white px-3 py-2 text-xs font-semibold text-[#344054] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
-                  >
-                    <svg className="h-4 w-4 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    ออกจากระบบ
-                  </button>
-                </div>
-              )}
+              {userMenuOpen && userMenu}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile Drawer (ซ้าย) */}
+      {/* Mobile Drawer (M01) */}
       <div
         className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
-        <div className="fixed inset-0 bg-[#101828]/40" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 bg-[rgba(28,37,46,0.48)]" onClick={() => setMobileOpen(false)} />
         <div
-          className={`absolute left-0 top-0 h-full w-(--nav-drawer) max-w-[85vw] bg-(--sidebar-surface) text-(--sidebar-text) shadow-[0_8px_32px_rgba(16,24,40,0.24)] border-r border-(--sidebar-edge) flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
+          className={`absolute left-0 top-0 z-10 flex h-full w-(--nav-drawer) max-w-[85vw] transform flex-col bg-white shadow-[8px_0_32px_rgba(0,0,0,0.2)] transition-transform duration-300 ease-in-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex h-(--header-height) items-center justify-between border-b border-(--sidebar-divider) px-4">
-            <img src="/logo.png" alt="Stockify" className="h-10 w-auto object-contain max-w-[180px]" />
+          <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-[rgba(145,158,171,0.16)] pl-5 pr-3">
+            <StockifyLogo />
             <button
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg p-1.5 text-(--sidebar-text) transition-colors duration-150 hover:bg-(--sidebar-item-bg-hover) hover:text-(--sidebar-text-hover)"
+              className="grid size-10 cursor-pointer place-items-center rounded-full text-m3-grey-600 transition-colors duration-150 hover:bg-[rgba(145,158,171,0.08)]"
               aria-label="ปิดเมนู"
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <SolarClose size={24} />
             </button>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <p className="mb-2 px-3 text-(length:--nav-small) font-medium uppercase tracking-wider text-(--sidebar-text-muted)">เมนู</p>
+          <nav className="flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <p className="px-3.5 pb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-m3-grey-500">เมนู</p>
             {/* สว่างเฉพาะเมนูที่ตรง path ยาวที่สุด กันหลายเมนู active พร้อมกัน (เช่น /production/formula) */}
             {(() => {
               const activeHref = visibleItems
@@ -420,12 +372,15 @@ export default function DashboardHeader({
                   href={item.href}
                   prefetch={mobileOpen ? null : false}
                   onClick={() => setMobileOpen(false)}
-                  className={`sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 ${
-                    isActive ? "is-active font-semibold" : "font-medium"
+                  aria-current={isActive ? "page" : undefined}
+                  className={`mb-1 flex h-[52px] items-center gap-3.5 rounded-[10px] px-3.5 text-[15px] transition-colors duration-150 ${
+                    isActive
+                      ? "bg-[rgba(0,167,111,0.1)] font-bold text-m3-primary-dark"
+                      : "font-semibold text-m3-grey-700 hover:bg-[rgba(145,158,171,0.08)]"
                   }`}
                 >
-                  <span className="nav-icon shrink-0">
-                    {item.icon}
+                  <span className={`flex shrink-0 ${isActive ? "text-m3-primary" : "text-m3-grey-500"}`}>
+                    <NavIcon href={item.href} fallback={item.icon} size={24} />
                   </span>
                   <span className="truncate">{item.label}</span>
                 </Link>
@@ -434,14 +389,12 @@ export default function DashboardHeader({
             })()}
           </nav>
 
-          <div className="border-t border-(--sidebar-divider) p-3">
+          <div className="border-t border-[rgba(145,158,171,0.16)] p-4">
             <button
               onClick={() => tabLogout()}
-              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#DFEDE6] bg-[#EAF2EE] py-2.5 text-sm font-semibold text-[#06402B] transition-colors duration-150 hover:border-[#F5D6D2] hover:bg-[#FCEFED] hover:text-[#B42318]"
+              className="flex h-[52px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-[rgba(0,167,111,0.08)] text-[15px] font-bold text-m3-primary-dark transition-colors duration-150 hover:bg-[rgba(255,86,48,0.08)] hover:text-m3-error-dark"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <SolarLogout size={22} />
               ออกจากระบบ
             </button>
           </div>
@@ -449,4 +402,19 @@ export default function DashboardHeader({
       </div>
     </>
   );
+}
+
+// สระหน้า (เ แ โ ใ ไ) และวรรณยุกต์/สระบนล่างของไทย — ข้ามเมื่อหาตัวอักษรแรกของชื่อ
+const THAI_NON_INITIAL = /[\u0E31\u0E33-\u0E3A\u0E40-\u0E44\u0E47-\u0E4E]/;
+
+function firstLetter(word: string): string {
+  return Array.from(word).find((ch) => !THAI_NON_INITIAL.test(ch)) ?? "";
+}
+
+/** อักษรย่อชื่อสำหรับอวาตาร์ (สูงสุด 2 ตัว) — ชื่อ 2 คำ = ตัวอักษรแรกของแต่ละคำ เช่น "สมชาย ใจดี" → "สจ" */
+function userInitials(name?: string | null): string {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "U";
+  const initials = firstLetter(parts[0]) + (parts.length > 1 ? firstLetter(parts[1]) : "");
+  return initials.toUpperCase() || "U";
 }

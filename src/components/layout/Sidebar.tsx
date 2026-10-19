@@ -15,6 +15,7 @@ import {
 } from "@/lib/transfer-notification-utils";
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
+import { NavIcon, SolarAltArrowDown, StockifyLogo, StockifyMark } from "@/components/icons";
 
 // ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
 const OPERATION_ORDER = [
@@ -35,6 +36,8 @@ const byOperationOrder = (a: NavItem, b: NavItem) => {
 
 const COLLAPSED_STORAGE_KEY = "stockify-sidebar-collapsed";
 
+// Minimal UI v3b (D01/D02): หัวกลุ่มตัวเล็กสีเทา 11px · ไอคอน Solar duotone · เมนู active พื้นเขียวอ่อน
+// ช่วง md–lg (768–1023px) เป็นแถบไอคอน (rail) เหมือนเดิม — ป้ายกลุ่ม/ชื่อเมนูแสดงตั้งแต่ lg
 function GroupLabel({
   label,
   collapsed,
@@ -49,20 +52,13 @@ function GroupLabel({
       type="button"
       onClick={onToggle}
       aria-expanded={!collapsed}
-      className="hidden lg:flex w-full items-center justify-between gap-2 px-3 pt-5 pb-1.5 text-[12px] 2xl:text-xs font-medium uppercase tracking-wider text-(--sidebar-text-muted) hover:text-(--sidebar-text-hover) cursor-pointer transition-colors duration-150"
+      className="hidden lg:flex w-full items-center justify-between gap-2 rounded-md px-3 pt-3.5 pb-1.5 text-[11px] font-bold uppercase tracking-[0.02em] text-m3-grey-500 hover:text-m3-grey-700 cursor-pointer transition-colors duration-150"
     >
       {label}
-      <svg
-        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="m9 18 6-6-6-6" />
-      </svg>
+      <SolarAltArrowDown
+        size={16}
+        className={`shrink-0 text-m3-grey-500 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+      />
     </button>
   );
 }
@@ -82,18 +78,18 @@ function NavRow({
       href={item.href}
       title={item.label}
       aria-current={active ? "page" : undefined}
-      className={`sidebar-link relative flex h-10 2xl:h-12 items-center gap-3 rounded-xl px-3 text-sm 2xl:text-base cursor-pointer transition-colors duration-150 justify-center lg:justify-start ${
-        active ? "is-active font-semibold" : "font-medium"
+      className={`relative mb-0.5 flex h-10 items-center gap-3.5 rounded-lg px-3 lg:pr-2.5 text-[14px] leading-none cursor-pointer transition-colors duration-150 justify-center lg:justify-start focus-visible:outline-m3-primary ${
+        active
+          ? "bg-[rgba(0,167,111,0.08)] font-semibold text-m3-primary hover:bg-[rgba(0,167,111,0.16)]"
+          : "font-medium text-m3-grey-600 hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
       }`}
     >
-      <span className="nav-icon shrink-0 2xl:[&_svg]:size-5">
-        {item.icon}
+      <span className={`flex shrink-0 ${active ? "text-m3-primary" : ""}`}>
+        <NavIcon href={item.href} fallback={item.icon} />
       </span>
-      <span className="truncate opacity-0 w-0 lg:opacity-100 lg:w-auto transition-all duration-200">
-        {item.label}
-      </span>
+      <span className="hidden min-w-0 flex-1 truncate lg:block">{item.label}</span>
       {showBadge && (
-        <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 grid place-items-center rounded-full bg-(--sidebar-active-bg) text-(--sidebar-active-text) font-semibold text-xs num lg:static lg:ml-auto lg:h-5 lg:min-w-5 lg:px-1.5 2xl:h-6 2xl:min-w-6 2xl:px-2">
+        <span className="m3-label m3-label-error absolute right-1 top-0.5 h-[18px] min-w-[18px] justify-center px-1 text-[11px] tabular-nums lg:static lg:h-6 lg:min-w-6 lg:px-1.5 lg:text-[12px]">
           {badge}
         </span>
       )}
@@ -293,7 +289,7 @@ export default function Sidebar({
             collapsed ? "grid-rows-[1fr] opacity-100 lg:grid-rows-[0fr] lg:opacity-0" : "grid-rows-[1fr]"
           }`}
         >
-          <div className="min-h-0 overflow-hidden flex flex-col gap-1">
+          <div className="min-h-0 overflow-hidden flex flex-col">
             {renderRows(items)}
           </div>
         </div>
@@ -302,23 +298,15 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="relative hidden md:flex flex-col bg-(--sidebar-surface) text-(--sidebar-text) select-none overflow-x-visible w-[100px] lg:w-64 2xl:w-80 shrink-0 transition-[width] duration-300 ease-in-out border-r border-(--sidebar-edge)">
-      {/* Brand — ความสูงผูกกับ --header-height เพื่อให้เส้นขอบล่างตรงกับ Top Navbar */}
-      <div className="flex h-(--header-height) items-center justify-center border-b border-(--sidebar-divider) shrink-0 overflow-hidden">
-        <img
-          src="/logo.png"
-          alt="Stockify"
-          className="hidden lg:block h-12 2xl:h-14 w-auto object-contain max-w-[220px]"
-        />
-        <img
-          src="/logo-vertical.png"
-          alt="Stockify"
-          className="lg:hidden h-11 w-auto object-contain"
-        />
+    <aside className="relative hidden md:flex flex-col bg-white text-m3-grey-600 select-none overflow-x-visible w-[88px] lg:w-[280px] shrink-0 transition-[width] duration-300 ease-in-out border-r border-[rgba(145,158,171,0.12)]">
+      {/* Brand — สูง 72px ตาม mockup (.logo) */}
+      <div className="flex h-[72px] shrink-0 items-center justify-center px-4 lg:justify-start lg:px-6">
+        <StockifyLogo className="hidden lg:inline-flex" />
+        <StockifyMark className="lg:hidden" />
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2.5 lg:px-3.5 py-3">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-3 lg:px-4 pb-3">
         {renderGroup("overview", "ภาพรวม", mainNav)}
         {renderGroup("inventory", "คลังสินค้า", inventoryNav)}
         {renderGroup("operations", "การทำรายการ", movementNav)}
@@ -326,10 +314,12 @@ export default function Sidebar({
         {role === "ADMIN" && renderGroup("express", "นำเข้า Express", expressNav)}
       </nav>
 
-      {/* Bottom: ระบบ */}
-      <div className="border-t border-(--sidebar-divider) shrink-0 px-2.5 lg:px-3.5 py-3">
-        {renderGroup("system", "ระบบ", systemNav)}
-      </div>
+      {/* Bottom: ระบบ (.nav-sys) */}
+      {systemNav.length > 0 && (
+        <div className="shrink-0 border-t border-[rgba(145,158,171,0.16)] px-3 lg:px-4 pt-0.5 pb-5">
+          {renderGroup("system", "ระบบ", systemNav)}
+        </div>
+      )}
     </aside>
   );
 }

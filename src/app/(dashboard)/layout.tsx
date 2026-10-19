@@ -38,8 +38,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!mounted || status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#EFF3F1]">
-        <div className="w-10 h-10 border-3 border-[#06402B] border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="size-10 animate-spin rounded-full border-[3px] border-m3-primary border-r-transparent" />
       </div>
     );
   }
@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <MenuVisibilityProvider>
-    <div className={`flex h-[100dvh] max-h-[100dvh] bg-[#EFF3F1] text-[#111827] overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
+    <div className={`flex h-[100dvh] max-h-[100dvh] bg-white text-m3-grey-800 overflow-hidden w-full max-w-full ${user.role === "ADMIN" ? "admin-shell" : ""}`}>
       <Sidebar
         role={user.role}
         userName={user.name ?? undefined}
@@ -58,12 +58,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden w-full max-w-full">
         <DashboardHeader user={user} />
         <main
-          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain w-full max-w-full bg-[#EFF3F1]"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain w-full max-w-full m3-main"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {/* จอกว้างมาก (≥1536) จำกัดความกว้างเนื้อหาแล้วจัดกึ่งกลาง — การ์ด/ตารางไม่ถูกยืด
               จนดูโหว่ สัดส่วนคงกระชับ (cap 2200px ให้การ์ด 3 คอลัมน์กว้างขึ้นพอดีจอใหญ่) */}
-          <div className="mx-auto w-full max-w-full px-4 py-6 md:px-6 md:py-8 xl:px-8 2xl:max-w-[2200px]">
+          {/* Minimal UI v3b: เนื้อหาเว้นขอบ 40px บนเดสก์ท็อป (.main) · มือถือพื้นเทาอ่อน 16px */}
+          <div className="mx-auto w-full max-w-full px-4 pt-4 pb-10 md:px-6 md:pt-2 xl:px-10 xl:pb-16 2xl:max-w-[2200px]">
             {children}
           </div>
         </main>

@@ -1398,6 +1398,13 @@ input[type="number"] {
 
 /* ── ตาราง (.tb) — วางนอก @layer และใช้ !important เพราะต้องชนะกฎตารางเดิม
    (html.light table … !important ด้านบน: ลายสลับแถว/หัวตารางตัวพิมพ์ใหญ่) ── */
+/* Minimal v3 canvas — beats the legacy `html.light main { #EFF3F1 !important }` rule.
+   Mobile: grey-100 canvas with white cards; md+: white canvas (D01/M31). */
+html.light main.m3-main { background-color: var(--color-m3-grey-100) !important; }
+@media (min-width: 48rem) {
+  html.light main.m3-main { background-color: #ffffff !important; }
+}
+
 html .m3-table { width: 100%; border-collapse: collapse; }
 html .m3-table thead tr,
 html .m3-table thead tr th {

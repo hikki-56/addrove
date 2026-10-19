@@ -9,6 +9,14 @@ import { subscribeProductionUpdated } from "@/features/production/lib/events";
 import { productionApi } from "@/features/production/lib/api";
 import { canViewProductionNotifications } from "@/features/production/lib/permissions";
 import type { ProductionNotification } from "@/types/production";
+import {
+  SolarBell,
+  SolarDangerTriangle,
+  SolarDocumentCheck,
+  SolarFactory,
+  SolarTuning,
+  type SolarIconProps,
+} from "@/components/icons";
 
 // กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — อ่าน/ยังไม่อ่านเก็บฝั่งเซิร์ฟเวอร์ (ข้ามอุปกรณ์ได้)
 // โพลล์ทุก 30 วิขณะเปิดหน้า + รีเฟรชทันทีเมื่อมี action ในระบบผลิต · กดรายการ = ทำเครื่องหมายอ่าน + เปิดงาน
@@ -117,51 +125,52 @@ function ProductionBellInner() {
         type="button"
         aria-label="การแจ้งเตือนระบบผลิต"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+        className="relative grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-m3-grey-600 transition-colors duration-150 hover:bg-[rgba(145,158,171,0.08)]"
       >
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
+        <SolarBell size={24} />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#B42318] px-1 font-mono text-[10px] font-black leading-none text-white">
+          <span className="absolute right-0.5 top-1 flex h-5 min-w-5 items-center justify-center rounded-[10px] border-2 border-white bg-m3-error px-1.5 text-[12px] font-semibold leading-none text-white tabular-nums">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-[min(92vw,22rem)] overflow-hidden rounded-2xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in duration-150">
-          <div className="flex items-center justify-between border-b border-[#EEF1EF] px-4 py-3">
-            <span className="text-sm font-extrabold text-slate-900">การแจ้งเตือนผลิต</span>
+        <div className="absolute right-0 top-12 z-50 w-[min(92vw,23rem)] overflow-hidden rounded-xl bg-white shadow-m3-dropdown animate-in fade-in duration-150">
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <span className="text-[14px] font-bold text-m3-grey-800">การแจ้งเตือนผลิต</span>
             {unread > 0 && (
               <button
                 onClick={() => markRead("all")}
-                className="text-xs font-bold text-[#0F5C3F] hover:underline"
+                className="cursor-pointer text-[12px] font-bold text-m3-primary-dark hover:underline"
               >
                 อ่านทั้งหมด
               </button>
             )}
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto border-t border-dashed border-m3-divider">
             {items.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm font-semibold text-slate-300">ยังไม่มีการแจ้งเตือน</p>
+              <p className="px-4 py-10 text-center text-[13px] font-medium text-m3-grey-500">ยังไม่มีการแจ้งเตือน</p>
             ) : (
-              items.slice(0, 30).map((n) => (
-                <button
-                  key={n.notif_id}
-                  onClick={() => openJob(n)}
-                  className={`block w-full border-b border-[#EEF1EF] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-slate-50 ${
-                    n.is_read ? "" : "bg-[#F0F7F3]"
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#06402B]" />}
-                    <div className="min-w-0">
-                      <p className={`text-xs leading-5 ${n.is_read ? "font-medium text-slate-500" : "font-bold text-slate-800"}`}>
+              items.slice(0, 30).map((n) => {
+                const tone = notificationTone(n.message);
+                const ToneIcon = tone.icon;
+                return (
+                  <button
+                    key={n.notif_id}
+                    onClick={() => openJob(n)}
+                    className={`flex w-full cursor-pointer items-start gap-3 border-b border-dashed border-m3-divider px-4 py-3 text-left transition-colors duration-150 last:border-b-0 hover:bg-[rgba(145,158,171,0.08)] ${
+                      n.is_read ? "" : "bg-[rgba(0,167,111,0.06)]"
+                    }`}
+                  >
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-[10px] ${tone.tile}`}>
+                      <ToneIcon size={20} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-[13px] leading-5 ${n.is_read ? "font-medium text-m3-grey-600" : "font-semibold text-m3-grey-800"}`}>
                         {n.message}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[10px] text-slate-400">
+                      </span>
+                      <span className="mt-0.5 block text-[12px] text-m3-grey-500">
                         {n.created_by_name} ·{" "}
                         {(() => {
                           const d = new Date(n.created_at);
@@ -169,15 +178,27 @@ function ProductionBellInner() {
                             ? ""
                             : d.toLocaleString("th-TH", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
                         })()}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))
+                      </span>
+                    </span>
+                    {!n.is_read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-m3-primary" aria-label="ยังไม่อ่าน" />}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+// ไอคอน/สีของรายการแจ้งเตือน (D03) — เดาจากคำขึ้นต้นข้อความ เพราะ API ยังไม่ส่งชนิดแจ้งเตือนมา
+// (เป็นการตกแต่งเท่านั้น: ข้อความที่ไม่ตรงรูปแบบใช้ไอคอนกระดิ่งสีเทา)
+function notificationTone(message: string): { icon: (p: SolarIconProps) => React.ReactNode; tile: string } {
+  const text = (message || "").trim();
+  if (text.startsWith("เริ่มผลิต")) return { icon: SolarFactory, tile: "bg-[rgba(0,184,217,0.16)] text-m3-info-dark" };
+  if (/ต่ำกว่าเป้า|เกินเป้า|ยกเลิก/.test(text)) return { icon: SolarDangerTriangle, tile: "bg-[rgba(255,171,0,0.16)] text-m3-warning-dark" };
+  if (text.startsWith("รายงาน")) return { icon: SolarDocumentCheck, tile: "bg-[rgba(34,197,94,0.16)] text-m3-success-dark" };
+  if (text.startsWith("ปรับปรุง")) return { icon: SolarTuning, tile: "bg-[rgba(142,51,255,0.16)] text-m3-secondary-dark" };
+  return { icon: SolarBell, tile: "bg-[rgba(145,158,171,0.16)] text-m3-grey-600" };
 }
