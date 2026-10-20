@@ -48,7 +48,7 @@ export default function QPickingPanel() {
   };
 
   // ---------- สแกนกล่อง Q → เปิดรายการ ----------
-  const startQ = useCallback(async (code: string) => {
+  const startQ = useCallback(async (code: string, playSound = false) => {
     setQScanValue("");
     if (lockRef.current) return;
     lockRef.current = true;
@@ -59,11 +59,11 @@ export default function QPickingPanel() {
       setQData(data as unknown as QPickViewData);
       setView("picking");
       setItemScanValue("");
-      feedbackSuccess();
+      if (playSound) feedbackSuccess();
       doFlash("ok");
       setFeedback(null);
     } catch (e) {
-      feedbackError();
+      if (playSound) feedbackError();
       doFlash("bad");
       setFeedback({ tone: "error", message: e instanceof Error ? e.message : "✗ ไม่พบงานของกล่องนี้" });
     } finally {
@@ -80,7 +80,7 @@ export default function QPickingPanel() {
 
   // ---------- สแกนสินค้ายืนยัน 1 ชิ้น (Optimistic Instant Update — 0ms ทันที) ----------
   const handleItemScan = useCallback(
-    (code: string) => {
+    (code: string, playSound = false) => {
       setItemScanValue("");
       const currentQData = qDataRef.current;
       if (!currentQData) return;
@@ -98,14 +98,14 @@ export default function QPickingPanel() {
       });
 
       if (!item) {
-        feedbackError();
+        if (playSound) feedbackError();
         doFlash("bad");
         setFeedback({ tone: "error", message: `✗ ไม่อยู่ในกล่อง ${currentQData.q_code} (${code})` });
         return;
       }
 
       if (item.qty_picked >= item.qty_required) {
-        feedbackWarn();
+        if (playSound) feedbackWarn();
         doFlash("bad");
         setFeedback({ tone: "error", message: `✗ ${item.product_name || item.sku} หยิบครบแล้ว` });
         return;
@@ -123,7 +123,7 @@ export default function QPickingPanel() {
         ...currentQData,
         items: [...currentQData.items],
       });
-      feedbackSuccess();
+      if (playSound) feedbackSuccess();
       doFlash("ok");
       setFeedback({
         tone: "success",
@@ -133,7 +133,7 @@ export default function QPickingPanel() {
       });
 
       if (isBoxDone) {
-        feedbackDone();
+        if (playSound) feedbackDone();
         setDoneMessage(`กล่อง ${currentQData.q_code} หยิบเสร็จสมบูรณ์`);
         setView("done");
       }
@@ -179,7 +179,7 @@ export default function QPickingPanel() {
               setQData({ ...qDataRef.current, items: [...qDataRef.current.items] });
             }
           }
-          feedbackError();
+          if (playSound) feedbackError();
           doFlash("bad");
           setFeedback({
             tone: "error",
@@ -284,11 +284,12 @@ export default function QPickingPanel() {
           />
         )}
         <CameraBarcodeScannerModal
+          feedbackHandledByCaller
           isOpen={cameraMode === "q"}
           onClose={() => setCameraMode(null)}
-          onScanSuccess={(code) => {
+          onScanSuccess={(code, playSound) => {
             setCameraMode(null);
-            void startQ(code);
+            return startQ(code, playSound);
           }}
         />
       </div>
@@ -493,11 +494,12 @@ export default function QPickingPanel() {
       )}
 
       <CameraBarcodeScannerModal
+        feedbackHandledByCaller
         isOpen={cameraMode === "item"}
         onClose={() => setCameraMode(null)}
-        onScanSuccess={(code) => {
+        onScanSuccess={(code, playSound) => {
           setCameraMode(null);
-          void handleItemScan(code);
+          handleItemScan(code, playSound);
         }}
       />
 

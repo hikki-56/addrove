@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import { prepareFeedbackAudio } from "@/client/feedback";
 
 export interface BarcodeScanInputProps {
   value: string;
@@ -97,7 +98,10 @@ export default function BarcodeScanInput({
           {onOpenScannerModal && (
             <button
               type="button"
-              onClick={onOpenScannerModal}
+              onClick={() => {
+                prepareFeedbackAudio();
+                onOpenScannerModal();
+              }}
               disabled={disabled || isProcessing}
               aria-label="เปิดกล้องสแกน"
               className="p-1.5 sm:p-2 bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] rounded-xl border border-[#C9DFD4] text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

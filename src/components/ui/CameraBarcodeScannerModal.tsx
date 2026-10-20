@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { feedbackError, feedbackSuccess, prepareFeedbackAudio } from "@/client/feedback";
+import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
+
+interface DetectedBarcode { rawValue: string }
+type BarcodeDetectorConstructor = new (options: { formats: string[] }) => {
+  detect: (image: HTMLImageElement) => Promise<DetectedBarcode[]>;
+};
 
 interface CameraBarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onScan?: (code: string) => void;
-  onScanSuccess?: (code: string) => void;
+  onScan?: (code: string, playSound: boolean) => void | Promise<void>;
+  onScanSuccess?: (code: string, playSound: boolean) => void | Promise<void>;
+  /** Validation handlers already play the accepted/rejected result. */
+  feedbackHandledByCaller?: boolean;
+  feedback?: ScanFeedback | null;
 }
 
 export default function CameraBarcodeScannerModal({
@@ -16,6 +26,8 @@ export default function CameraBarcodeScannerModal({
   onClose,
   onScan,
   onScanSuccess,
+  feedbackHandledByCaller = false,
+  feedback,
 }: CameraBarcodeScannerModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -24,6 +36,15 @@ export default function CameraBarcodeScannerModal({
   const [manualCode, setManualCode] = useState<string>("");
   const [isScanningLive, setIsScanningLive] = useState<boolean>(false);
   const [isContinuous, setIsContinuous] = useState<boolean>(true);
+  const [scanError, setScanError] = useState<ScanFeedback | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = useRef(false);
+  const fileScanRef = useRef(false);
+  const callbacksRef = useRef({ onScan, onScanSuccess, onClose, feedbackHandledByCaller });
+
+  useEffect(() => {
+    callbacksRef.current = { onScan, onScanSuccess, onClose, feedbackHandledByCaller };
+  }, [onScan, onScanSuccess, onClose, feedbackHandledByCaller]);
 
   useEscapeKey(isOpen, onClose);
 
@@ -50,25 +71,24 @@ export default function CameraBarcodeScannerModal({
     setIsScanningLive(false);
   };
 
-  const playSuccessBeep = useCallback(() => {
+  const submitScan = useCallback(async (rawCode: string, closeAfterScan = false, playSound = true) => {
+    const code = rawCode.trim();
+    if (!code || processingRef.current) return;
+    processingRef.current = true;
+    setIsProcessing(true);
+    setScanError(null);
+    const callbacks = callbacksRef.current;
     try {
-      if (typeof window !== "undefined" && "AudioContext" in window) {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = 1000;
-        gain.gain.value = 0.15;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.18);
-      }
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(120);
-      }
+      await callbacks.onScan?.(code, playSound);
+      await callbacks.onScanSuccess?.(code, playSound);
+      if (playSound && !callbacks.feedbackHandledByCaller) feedbackSuccess();
+      if (closeAfterScan || !isContinuousRef.current) callbacks.onClose();
     } catch {
-      // Audio fallback
+      if (playSound) feedbackError();
+      setScanError({ type: "error", message: "สแกนไม่สำเร็จ กรุณาลองอีกครั้ง" });
+    } finally {
+      processingRef.current = false;
+      setIsProcessing(false);
     }
   }, []);
 
@@ -79,6 +99,9 @@ export default function CameraBarcodeScannerModal({
     }
 
     let isSubscribed = true;
+    setCameraError("");
+    setScanError(null);
+    lastScannedCodeRef.current = { code: "", time: 0 };
 
     async function initLiveScanner() {
       await stopLiveCamera();
@@ -119,7 +142,7 @@ export default function CameraBarcodeScannerModal({
             aspectRatio: 1.777778,
           },
           (decodedText) => {
-            if (isSubscribed && decodedText) {
+            if (isSubscribed && decodedText && !processingRef.current && !fileScanRef.current) {
               const now = Date.now();
               // Prevent duplicate camera triggers for same code within 1.5 seconds in continuous mode
               if (
@@ -130,13 +153,7 @@ export default function CameraBarcodeScannerModal({
               }
               lastScannedCodeRef.current = { code: decodedText, time: now };
 
-              playSuccessBeep();
-              if (onScan) onScan(decodedText);
-              if (onScanSuccess) onScanSuccess(decodedText);
-
-              if (!isContinuousRef.current) {
-                onClose();
-              }
+              void submitScan(decodedText);
             }
           },
           () => {
@@ -166,60 +183,72 @@ export default function CameraBarcodeScannerModal({
       clearTimeout(timer);
       void stopLiveCamera();
     };
-  }, [isOpen, onScan, onScanSuccess, onClose, playSuccessBeep]);
+  }, [isOpen, submitScan]);
 
   // Decode barcode from captured photo file using Html5Qrcode scanFile
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    const input = e.currentTarget;
+    if (!file || processingRef.current || fileScanRef.current) return;
+    prepareFeedbackAudio();
+    fileScanRef.current = true;
+    setIsProcessing(true);
+    setScanError(null);
+    let decodedText = "";
+    let tempScanner: Html5Qrcode | null = null;
 
     try {
-      // Create temporary Html5Qrcode instance for photo scanning
       const { Html5Qrcode } = await import("html5-qrcode");
-      const tempScanner = new Html5Qrcode("html5qr-temp-file-reader");
-      const decodedText = await tempScanner.scanFile(file, false);
-
-      if (decodedText) {
-        playSuccessBeep();
-        onScan?.(decodedText);
-        onClose();
-        return;
-      }
+      tempScanner = new Html5Qrcode("html5qr-temp-file-reader");
+      decodedText = await tempScanner.scanFile(file, false);
     } catch (err) {
       console.warn("Html5Qrcode scanFile error:", err);
     } finally {
-      e.target.value = "";
+      try {
+        tempScanner?.clear();
+      } catch (err) {
+        console.warn("Photo scanner cleanup error:", err);
+      }
     }
 
     // Secondary fallback using BarcodeDetector API if available
+    let objectUrl: string | undefined;
     try {
-      const file = e.target.files?.[0];
-      if (file && typeof window !== "undefined" && "BarcodeDetector" in window) {
+      const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
+      if (!decodedText && Detector) {
         const img = new Image();
-        img.src = URL.createObjectURL(file);
+        objectUrl = URL.createObjectURL(file);
+        img.src = objectUrl;
         await img.decode();
         const formats = ["qr_code", "ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e"];
-        const detector = new (window as any).BarcodeDetector({ formats });
+        const detector = new Detector({ formats });
         const barcodes = await detector.detect(img);
 
         if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-          playSuccessBeep();
-          onScan?.(barcodes[0].rawValue);
-          onClose();
-          return;
+          decodedText = barcodes[0].rawValue;
         }
       }
     } catch (err) {
       console.warn("BarcodeDetector fallback error:", err);
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      input.value = "";
+      fileScanRef.current = false;
+      setIsProcessing(false);
     }
 
-    alert("ไม่พบรหัสบาร์โค้ดในรูปภาพที่ถ่าย โปรดลองถ่ายใหม่อีกครั้งโดยวางรูปบาร์โค้ดให้สว่างและชัดเจน หรือพิมพ์รหัสในช่องด้านล่าง");
+    if (decodedText) {
+      await submitScan(decodedText, true);
+    } else {
+      feedbackError();
+      setScanError({ type: "error", message: "สแกนไม่เข้า: ไม่พบบาร์โค้ดในรูป กรุณาถ่ายใหม่ให้รหัสสว่างและชัดเจน หรือพิมพ์รหัสด้านล่าง" });
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-xs fade-in">
+    <div onPointerDownCapture={prepareFeedbackAudio} onKeyDownCapture={prepareFeedbackAudio} className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-xs fade-in">
       {/* Hidden container required by Html5Qrcode.scanFile */}
       <div id="html5qr-temp-file-reader" className="hidden" />
 
@@ -294,12 +323,20 @@ export default function CameraBarcodeScannerModal({
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-[#E8ECEA] bg-slate-50 space-y-3">
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
+            <span>{isProcessing ? "กำลังตรวจสอบรหัส..." : isScanningLive ? "พร้อมสแกน • สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง" : "สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง"}</span>
+            <button type="button" onClick={feedbackSuccess} className="shrink-0 rounded-lg border border-[#C9DFD4] px-2 py-1 font-semibold text-[#06402B] cursor-pointer">ทดสอบเสียง</button>
+          </div>
+          <div role="status" aria-live="polite">
+            <ScanFeedbackBanner feedback={scanError || feedback || null} />
+          </div>
           {/* Native camera file input */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            disabled={isProcessing}
             onChange={handleFileUpload}
             className="hidden"
           />
@@ -323,11 +360,11 @@ export default function CameraBarcodeScannerModal({
               type="text"
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
+              disabled={isProcessing}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && manualCode.trim()) {
                   e.preventDefault();
-                  onScan?.(manualCode.trim());
-                  onClose();
+                  void submitScan(manualCode, true, false);
                 }
               }}
               placeholder="หรือพิมพ์รหัสบาร์โค้ดตรงนี้..."
@@ -335,10 +372,10 @@ export default function CameraBarcodeScannerModal({
             />
             <button
               type="button"
+              disabled={isProcessing || !manualCode.trim()}
               onClick={() => {
                 if (manualCode.trim()) {
-                  onScan?.(manualCode.trim());
-                  onClose();
+                  void submitScan(manualCode, true, false);
                 }
               }}
               className="px-4 py-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"

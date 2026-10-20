@@ -106,7 +106,7 @@ export default function OutboundLoadingPage() {
   // ---------- สแกนกล่อง ----------
   const offlineQueue = useOfflineScanQueue();
   const handleScan = useCallback(
-    async (code: string) => {
+    async (code: string, playSound = false) => {
       setScanValue("");
       if (!active) return;
       try {
@@ -116,19 +116,19 @@ export default function OutboundLoadingPage() {
           label: `กล่อง ${code} ขึ้นรถ (${activeNo})`,
         });
         if (result.status === "queued") {
-          feedbackWarn();
+          if (playSound) feedbackWarn();
           setFeedback({ tone: "success", message: `🟠 ออฟไลน์ — บันทึกกล่อง ${code} ไว้ในเครื่องแล้ว จะส่งเองเมื่อเน็ตกลับ` });
           offlineQueue.refreshCounts();
           return;
         }
-        feedbackSuccess();
+        if (playSound) feedbackSuccess();
         doFlash("ok");
         const done = loaded + 1 >= expected;
-        if (done) feedbackDone();
+        if (done && playSound) feedbackDone();
         setFeedback({ tone: "success", message: result.message });
         await loadActive(activeNo);
       } catch (e) {
-        feedbackError();
+        if (playSound) feedbackError();
         doFlash("bad");
         setFeedback({ tone: "error", message: e instanceof Error ? e.message : "✗ สแกนไม่สำเร็จ" });
         await loadActive(activeNo).catch(() => {});
@@ -310,11 +310,12 @@ export default function OutboundLoadingPage() {
         )}
 
         <CameraBarcodeScannerModal
+          feedbackHandledByCaller
           isOpen={cameraOpen}
           onClose={() => setCameraOpen(false)}
-          onScanSuccess={(code) => {
+          onScanSuccess={(code, playSound) => {
             setCameraOpen(false);
-            void handleScan(code);
+            return handleScan(code, playSound);
           }}
         />
 

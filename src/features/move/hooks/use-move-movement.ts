@@ -7,6 +7,7 @@ import { MoveDocumentSchema, type MoveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import { v4 as uuidv4 } from "uuid";
 import { normalizeWarehouseId, detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
+import { useScanFeedback } from "@/hooks/use-scan-feedback";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 export const MOVE_DRAFT_KEY = "stockify_move_draft_v1";
@@ -48,7 +49,7 @@ export function useMoveMovement({
   const [error, setError] = useState("");
   const [sourceBalance, setSourceBalance] = useState<number | null>(null);
   const [barcodeInput, setBarcodeInput] = useState("");
-  const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
+  const [scanFeedback, setScanFeedback] = useScanFeedback();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const form = useForm<MoveDocumentInput>({
@@ -165,7 +166,8 @@ export function useMoveMovement({
 
   const lastStepTransitionRef = useRef<number>(0);
 
-  const handleScanBarcode = useCallback(async (code: string) => {
+  const handleScanBarcode = useCallback(async (code: string, playSound = false) => {
+    const reportFeedback = (result: ScanFeedback) => setScanFeedback(result, playSound);
     const trimmed = code.trim().toLowerCase();
     if (!trimmed) return;
 
@@ -180,7 +182,7 @@ export function useMoveMovement({
       if (setActiveWhId) {
         setActiveWhId(detectedWh);
       }
-      setScanFeedback({
+      reportFeedback({
         type: "success",
         message: `✓ สลับโกดัง: ${getWarehouseName(detectedWh)}`,
       });
@@ -221,7 +223,7 @@ export function useMoveMovement({
             if (list.length === 1) {
               matched = list[0];
             } else if (list.length > 1) {
-              setScanFeedback({
+              reportFeedback({
                 type: "error",
                 message: `⚠ พบสินค้าที่ตรงกัน ${list.length} รายการ กรุณาค้นหาและเลือกเอง`,
                 scannedCode: code.trim(),
@@ -246,7 +248,7 @@ export function useMoveMovement({
           setValue("qty", matched.quantity, { shouldValidate: true });
         }
         const locText = matched.location && matched.location !== "-" ? ` (ตำแหน่งเดิม: ${matched.location})` : "";
-        setScanFeedback({
+        reportFeedback({
           type: "success",
           message: `✓ สแกนสำเร็จ: ${matched.sku || matched.product_name}${locText}`,
         });
@@ -255,7 +257,7 @@ export function useMoveMovement({
         return;
       } else {
         setValue("product_id", "", { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-        setScanFeedback({
+        reportFeedback({
           type: "error",
           message: `✕ ไม่พบสินค้า "${code.trim()}" ใน ${activeWhName}`,
           scannedCode: code.trim(),
@@ -299,7 +301,7 @@ export function useMoveMovement({
 
       if (!matchedLoc || !targetCode) {
         // Unknown shelf: reject instead of silently creating stock on a phantom location
-        setScanFeedback({
+        reportFeedback({
           type: "error",
           message: `✕ ไม่พบตำแหน่ง "${code.trim()}" ใน ${activeWhName}`,
           scannedCode: code.trim(),
@@ -310,7 +312,7 @@ export function useMoveMovement({
       }
 
       setValue("to_location_id", targetCode, { shouldValidate: true });
-      setScanFeedback({
+      reportFeedback({
         type: "success",
         message: `✓ ปลายทาง: ${targetCode}`,
       });
@@ -318,7 +320,7 @@ export function useMoveMovement({
       setTimeout(() => setScanFeedback(null), 4000);
       return;
     }
-  }, [step, locations, products, activeWhId, activeWhName, setValue, setProducts, setActiveWhId]);
+  }, [step, locations, products, activeWhId, activeWhName, setValue, setProducts, setActiveWhId, setScanFeedback]);
 
   // Global scanner event listener
   const handleScanRef = useRef(handleScanBarcode);

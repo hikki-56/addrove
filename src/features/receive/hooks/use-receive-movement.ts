@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ReceiveDocumentSchema, type ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import { v4 as uuidv4 } from "uuid";
+import { useScanFeedback } from "@/hooks/use-scan-feedback";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
@@ -143,7 +144,7 @@ export function useReceiveMovement({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
-  const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
+  const [scanFeedback, setScanFeedback] = useScanFeedback();
   const [lastScannedId, setLastScannedId] = useState<string | null>(null);
   const [locationInputs, setLocationInputs] = useState<Record<number, string>>({});
   const [confirmedLines, setConfirmedLines] = useState<Record<number, boolean>>({});
@@ -393,7 +394,8 @@ export function useReceiveMovement({
     });
   };
 
-  const handleScanLocationForLine = async (lineIdx: number, rawCode: string) => {
+  const handleScanLocationForLine = async (lineIdx: number, rawCode: string, playSound = false) => {
+    const reportFeedback = (result: ScanFeedback) => setScanFeedback(result, playSound);
     const rawTrimmed = (rawCode || "").trim();
     if (!rawTrimmed) return;
     const trimmed = rawTrimmed.toLowerCase();
@@ -439,7 +441,7 @@ export function useReceiveMovement({
 
     if (!matchedLoc) {
       // Unknown shelf: reject instead of silently creating a phantom location
-      setScanFeedback({
+      reportFeedback({
         type: "error",
         title: "ไม่พบตำแหน่งนี้ในโกดัง",
         message: `"${rawTrimmed.toUpperCase()}" ไม่อยู่ในรายการตำแหน่ง — กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`,
@@ -456,9 +458,15 @@ export function useReceiveMovement({
 
     setValue(`lines.${lineIdx}.location_id`, finalLocId, { shouldValidate: true, shouldDirty: true });
     setLocationInputs((prev) => ({ ...prev, [lineIdx]: finalLocId }));
+    reportFeedback({
+      type: "success",
+      title: "บันทึกตำแหน่งแล้ว",
+      message: finalLocId,
+    });
   };
 
-  const handleScanBarcode = useCallback(async (code: string) => {
+  const handleScanBarcode = useCallback(async (code: string, playSound = false) => {
+    const reportFeedback = (result: ScanFeedback) => setScanFeedback(result, playSound);
     const trimmed = code.trim().toLowerCase();
     if (!trimmed) return;
 
@@ -474,7 +482,7 @@ export function useReceiveMovement({
     if (detectedWh) {
       // กำลังรับตามแผนอยู่ — ห้ามสลับโกดังกลางคัน (เอกสารรับต้องอยู่โกดังเดียวกับแผน)
       if (activePlan) {
-        setScanFeedback({
+        reportFeedback({
           type: "error",
           title: "กำลังรับสินค้าตามแผนอยู่",
           message: `แผน ${activePlan.document_no} เป็นของ${activePlan.warehouse_name} — กด "ออกจากโหมดแผน" ก่อนจึงจะสลับโกดังได้`,
@@ -487,7 +495,7 @@ export function useReceiveMovement({
       if (setActiveWhId) {
         setActiveWhId(detectedWh);
       }
-      setScanFeedback({
+      reportFeedback({
         type: "success",
         title: "สลับโกดังแล้ว",
         message: getWarehouseName(detectedWh),
@@ -527,7 +535,7 @@ export function useReceiveMovement({
       // (เซิร์ฟเวอร์บังคับซ้ำอีกชั้นใน receive-stock — นี่คือชั้น UX)
       const planLine = activePlan ? findPlanLineInPlan(activePlan, matched) : undefined;
       if (activePlan && !planLine) {
-        setScanFeedback({
+        reportFeedback({
           type: "error",
           title: "สินค้าไม่อยู่ในแผนรับสินค้า",
           message: `[${matched.sku}] ${shortName(matched.product_name)} ไม่ได้อยู่ในแผน ${activePlan.document_no} — รับตามแผนได้เฉพาะสินค้าในแผน หากของจริงมาเกินแผนกรุณาแจ้งแอดมินปรับแผนก่อน`,
@@ -558,7 +566,7 @@ export function useReceiveMovement({
       }
 
       const feedback = addProductPack(matched);
-      setScanFeedback({
+      reportFeedback({
         type: "success",
         title: `${feedback}${planSuffix}`,
         message: `[${matched.sku}] ${shortName(matched.product_name)}`,
@@ -624,7 +632,7 @@ export function useReceiveMovement({
 
         if (!matchedLoc) {
           // Unknown shelf: reject instead of silently creating a phantom location
-          setScanFeedback({
+          reportFeedback({
             type: "error",
             title: "ไม่พบตำแหน่งนี้ในโกดัง",
             message: `"${finalLocCode}" ไม่อยู่ในรายการตำแหน่ง — กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`,
@@ -684,7 +692,7 @@ export function useReceiveMovement({
         const lineProduct = products?.find((p) => p.product_id === currentLines[targetIdx].product_id || p.sku === currentLines[targetIdx].product_id);
         const prodName = lineProduct ? lineProduct.product_name : currentLines[targetIdx].product_id;
 
-        setScanFeedback({
+        reportFeedback({
           type: "success",
           title: "บันทึกตำแหน่งแล้ว",
           message: `[${finalLocId}] ${shortName(prodName)}`,
@@ -696,7 +704,7 @@ export function useReceiveMovement({
     }
 
     // Step 3: Neither Product nor Location
-    setScanFeedback({
+    reportFeedback({
       type: "error",
       title: "ไม่พบในระบบ",
       message: `"${code}" ไม่ตรงกับสินค้า/ตำแหน่ง — ต้องตรงทุกหลัก`,
@@ -707,7 +715,7 @@ export function useReceiveMovement({
     }, 4000);
 
     isProcessingRef.current = false;
-  }, [locations, products, activeWhId, watchLines, confirmedLines, activePlan, getValues, setValue, addProductPack, setLocations, setProducts, setActiveWhId]);
+  }, [locations, products, activeWhId, watchLines, confirmedLines, activePlan, getValues, setValue, addProductPack, setLocations, setProducts, setActiveWhId, setScanFeedback]);
 
   // Global barcode scanner listener
   const handleScanRef = useRef(handleScanBarcode);
