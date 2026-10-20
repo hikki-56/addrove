@@ -4,6 +4,8 @@ import React from "react";
 import type { TransferNotification } from "@/lib/transfer-notification-utils";
 import { getInStockSourceLocations, isUsableLocationCode, parseTransferMetadata } from "@/lib/transfer-notification-utils";
 import type { Product } from "@/types/models";
+import { M3Banner, M3Empty } from "@/components/ui/m3";
+import { SolarAltArrowRight, SolarArrowRight, SolarBox, SolarCheckCircle, SolarClose } from "@/components/icons";
 
 export interface TransferNotificationListProps {
   notifications: TransferNotification[];
@@ -116,15 +118,8 @@ export default function TransferNotificationList({
   };
   if (notifications.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-8 sm:p-10 text-center border border-[#E8ECEA] shadow-xs space-y-3">
-        <div className="w-12 h-12 rounded-xl bg-[#EAF2EE] border border-[#C9DFD4] flex items-center justify-center mx-auto text-[#053425]">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <div>
-          <div className="text-base sm:text-lg font-bold text-slate-900">ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้</div>
-        </div>
+      <div className="m3-card p-6">
+        <M3Empty title="ไม่มีรายการงานที่กำลังดำเนินการในขณะนี้" icon={<SolarCheckCircle size={36} />} />
       </div>
     );
   }
@@ -133,31 +128,29 @@ export default function TransferNotificationList({
     <div className="space-y-4">
       {/* Error Banner — ผลลัพธ์ action ที่ล้มเหลว (แทน alert ของเบราว์เซอร์) */}
       {errorBanner && (
-        <div
+        <M3Banner
+          tone="error"
           role="alert"
-          className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold leading-relaxed fade-in flex items-start gap-2.5 whitespace-pre-line"
+          className="fade-in whitespace-pre-line"
+          action={
+            onDismissError ? (
+              <button
+                type="button"
+                onClick={onDismissError}
+                aria-label="ปิดข้อความแจ้งเตือน"
+                className="-m-1.5 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full opacity-64 transition-opacity hover:opacity-100"
+              >
+                <SolarClose size={18} />
+              </button>
+            ) : undefined
+          }
         >
-          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
-          </svg>
-          <span className="flex-1">{errorBanner}</span>
-          {onDismissError && (
-            <button
-              type="button"
-              onClick={onDismissError}
-              aria-label="ปิดข้อความแจ้งเตือน"
-              className="w-11 h-11 -m-2 shrink-0 rounded-xl flex items-center justify-center text-rose-700 hover:bg-rose-100 cursor-pointer transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+          {errorBanner}
+        </M3Banner>
       )}
 
       {/* Task Cards List */}
-      <div className="space-y-3.5">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
         {notifications.map((t) => {
           const barcode = t.barcode && t.barcode.trim() !== "-" ? t.barcode.trim() : "";
           // วิธีเดิม: แสดงจากข้อมูลที่แนบมากับ task เอง — ถ้า sku/barcode ว่าง ให้ parse จาก
@@ -177,42 +170,42 @@ export default function TransferNotificationList({
             ? {
               title: "เบิกแล้ว (รอ Admin อนุมัติ)",
               detail: "",
-              badge: "bg-amber-50 text-amber-700 border-amber-200/70",
-              dot: "bg-amber-500",
+              badge: "m3-label-success",
+              dot: "",
             }
             : step === 1
               ? {
                 title: "กำลังสแกนสินค้า",
                 detail: "พนักงานกำลังสแกนบาร์โค้ดสินค้าบนตัวสินค้า",
-                badge: "bg-amber-50 text-amber-700 border-amber-200/70",
-                dot: "bg-amber-500",
+                badge: "m3-label-info",
+                dot: "",
               }
               : step === 2
                 ? {
                   title: "กำลังหยิบสินค้าต้นทาง",
                   detail: `พนักงานกำลังสแกนตำแหน่งและหยิบของใน ${t.from_warehouse_name}`,
-                  badge: "bg-amber-50 text-amber-700 border-amber-200/70",
-                  dot: "bg-amber-500",
+                  badge: "m3-label-warning",
+                  dot: "",
                 }
                   : step === 3
                     ? {
                       title: "กำลังสแกนตำแหน่งปลายทาง",
                       detail: `พนักงานกำลังนำสินค้าเข้าตำแหน่งปลายทางใน ${t.to_warehouse_name}`,
-                      badge: "bg-amber-50 text-amber-700 border-amber-200/70",
-                      dot: "bg-amber-500",
+                      badge: "bg-[rgba(142,51,255,0.16)] text-[#5119B7]",
+                      dot: "",
                     }
                     : step >= 4
                       ? {
                         title: "เบิกสินค้าสำเร็จ",
                         detail: "ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว",
-                        badge: "bg-[#EAF5F0] text-[#064E3B] border-[#C9E4D8]",
-                        dot: "bg-[#0B5D46]",
+                        badge: "m3-label-success",
+                        dot: "",
                       }
                       : {
                         title: "รอดำเนินการ (ยังไม่เริ่ม)",
                         detail: "สร้างใบงานแล้ว รอพนักงานกดเริ่มงาน",
-                        badge: "bg-slate-100 text-slate-600 border-slate-200/70",
-                        dot: "bg-slate-400",
+                        badge: "m3-label-default",
+                        dot: "",
                       };
 
           return (
@@ -234,68 +227,54 @@ export default function TransferNotificationList({
                     },
                   }
                 : {})}
-              className={`p-4 sm:p-[18px] rounded-[18px] bg-white border border-[#E7ECE9] shadow-[0_1px_3px_rgba(16,24,40,0.04)] transition-all duration-200 space-y-4 relative min-w-0 max-w-full overflow-hidden group ${!isAdmin && !isWaitingApproval
-                ? "cursor-pointer hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0F5C3F]/15"
+              className={`m3-card group relative min-w-0 max-w-full space-y-4 overflow-hidden p-5 transition-shadow duration-200 sm:p-6 ${!isAdmin && !isWaitingApproval
+                ? "cursor-pointer hover:shadow-m3-dropdown focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-grey-800"
                 : "cursor-default"
               }`}
             >
               {/* Header: เลขเอกสาร + สร้างเมื่อ + Status Pill */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <svg className="w-[18px] h-[18px] text-[#94A09A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                <div className="flex min-w-0 items-center gap-2.5">
                   <div className="min-w-0">
-                    <div className="font-mono font-semibold text-[13px] sm:text-sm text-[#1E293B] tracking-tight truncate">
+                    <div className="truncate text-base font-bold tabular-nums text-m3-grey-800">
                       {t.doc_no}
                     </div>
-                    <div className="text-xs text-[#94A09A] mt-0.5">
+                    <div className="text-xs text-m3-grey-500 mt-0.5">
                       สร้างเมื่อ: {formatThaiDateTime(t.created_at)}
                     </div>
                   </div>
                 </div>
 
                 {/* Status Pill */}
-                <div className={`shrink-0 px-2.5 py-1 rounded-full border flex items-center gap-1.5 font-medium text-xs ${stepConfig.badge}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${stepConfig.dot}`} />
+                <div className={`m3-label shrink-0 gap-1 ${stepConfig.badge}`}>
                   <span>{stepConfig.title}</span>
                   {step > 0 && step < 3 && (
-                    <span className="font-mono text-sm opacity-70">({step}/3)</span>
+                    <span className="tabular-nums opacity-72">({step}/3)</span>
                   )}
                 </div>
               </div>
 
               {/* Product Info & Quantity Row */}
               <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  {/* Barcode */}
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-xs font-medium text-[#94A09A] shrink-0">บาร์โค้ด</span>
-                    <span className="font-mono font-bold text-[15px] sm:text-base text-[#17201D] tracking-wide truncate">
-                      {displayBarcode || displaySku}
-                    </span>
-                  </div>
-
-                  {/* SKU */}
-                  <div className="text-[13px] flex items-baseline gap-2 flex-wrap">
-                    <span className="text-xs font-medium text-[#94A09A] shrink-0">SKU</span>
-                    <span className="font-mono font-semibold text-[#66736D] truncate">{displaySku}</span>
-                  </div>
-
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-m3-grey-200 text-m3-grey-500">
+                  <SolarBox size={24} />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
                   {/* Product Title */}
-                  <div className="text-[15px] sm:text-base font-semibold text-[#17201D] leading-[1.45] line-clamp-3">
-                    {t.product_name}
+                  <div className="line-clamp-3 text-[15px] font-bold leading-snug text-m3-grey-800">{t.product_name}</div>
+
+                  {/* Barcode · SKU */}
+                  <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-m3-grey-500">
+                    <span>บาร์โค้ด</span>
+                    <span className="truncate tabular-nums">{displayBarcode || displaySku}</span>
+                    {displaySku && displaySku !== (displayBarcode || displaySku) ? <span className="tabular-nums">· SKU {displaySku}</span> : null}
                   </div>
 
                   {/* Current Location (แสดงเฉพาะในรายการที่ต้องไปเบิก ไม่แสดงในแท็บรออนุมัติ) */}
                   {!isWaitingApproval ? (
-                    <div className="text-[13px] flex items-center gap-1.5 pt-0.5">
-                      <svg className="w-3.5 h-3.5 text-[#94A09A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span className="text-xs font-medium text-[#94A09A] shrink-0">ตำแหน่ง</span>
-                      <span className={`font-mono font-semibold truncate ${resolveProductLocation(t) ? "text-[#17201D]" : "text-[#94A09A]"}`}>
+                    <div className="flex items-center gap-1.5 pt-1 text-sm">
+                      <span className="shrink-0 text-xs text-m3-grey-500">ตำแหน่ง</span>
+                      <span className={`truncate font-bold tabular-nums ${resolveProductLocation(t) ? "text-m3-grey-800" : "text-m3-grey-500"}`}>
                         {resolveProductLocation(t) || "ไม่ระบุ"}
                       </span>
                     </div>
@@ -304,77 +283,55 @@ export default function TransferNotificationList({
 
                 {/* Quantity Chip */}
                 <div className="shrink-0 text-right">
-                  <div className="px-3 py-2 rounded-xl bg-[#EAF5F0] text-[#064E3B] border border-[#D3E8DD] text-right tabular-nums">
-                    <span className="font-mono font-bold text-lg sm:text-xl leading-none">{t.qty.toLocaleString()}</span>
-                    <span className="text-xs font-semibold ml-1">ชิ้น</span>
+                  <div className="text-right tabular-nums text-m3-grey-800">
+                    <span className="font-m3-disp text-2xl leading-none font-bold">{t.qty.toLocaleString()}</span>
+                    <span className="ml-1 text-xs text-m3-grey-500">ชิ้น</span>
                   </div>
                 </div>
               </div>
 
               {/* แถบเตือนเมื่อสินค้าไม่มีตัวระบุ (SKU/บาร์โค้ด) — ตำแหน่งจะหาไม่ได้และสแกนยืนยันไม่ได้ */}
               {!hasIdentifier && (
-                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm" role="status">
-                  <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
-                  </svg>
-                  <span className="flex-1 font-bold leading-relaxed">
-                    สินค้าไม่มี SKU และบาร์โค้ด — แก้ข้อมูลก่อนสแกน
-                  </span>
-                </div>
+                <M3Banner tone="warning" role="status">สินค้าไม่มี SKU และบาร์โค้ด — แก้ข้อมูลก่อนสแกน</M3Banner>
               )}
 
-              {/* Warehouse Route Card */}
-              <div className="rounded-[14px] bg-[#F7F9F8] border border-[#EDF1EE] px-4 py-3 space-y-2">
-                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-[11px] font-medium text-[#94A09A] leading-none">ต้นทาง</span>
-                    <span className="inline-flex px-2.5 py-1 rounded-lg bg-white border border-[#E5EAE7] text-[13px] font-semibold text-[#17201D] truncate">
-                      {t.from_warehouse_name}
-                    </span>
+              {/* Warehouse Route Card (D18) */}
+              <div className="space-y-2">
+                <div className="flex items-stretch gap-3">
+                  <div className="min-w-0 flex-1 rounded-xl bg-m3-grey-100 px-4 py-3">
+                    <div className="text-[11px] text-m3-grey-500">ต้นทาง</div>
+                    <div className="truncate text-sm font-bold text-m3-grey-800">{t.from_warehouse_name}</div>
                   </div>
-                  <svg className="w-4 h-4 text-[#94A09A] shrink-0 self-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-[11px] font-medium text-[#94A09A] leading-none">ปลายทาง</span>
-                    <span className="inline-flex px-2.5 py-1 rounded-lg bg-[#EAF5F0] border border-[#D3E8DD] text-[13px] font-semibold text-[#064E3B] truncate">
-                      {t.to_warehouse_name}
-                    </span>
+                  <SolarArrowRight size={20} className="shrink-0 self-center text-m3-primary" />
+                  <div className="min-w-0 flex-1 rounded-xl bg-[rgba(0,167,111,0.08)] px-4 py-3">
+                    <div className="text-[11px] text-m3-grey-500">ปลายทาง</div>
+                    <div className="truncate text-sm font-bold text-m3-primary-dark">{t.to_warehouse_name}</div>
                   </div>
                 </div>
-                {stepConfig.detail && (
-                  <div className="flex items-center gap-1.5 text-xs text-[#66736D]">
-                    <svg className="w-3.5 h-3.5 text-[#94A09A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{stepConfig.detail}</span>
-                  </div>
-                )}
+                {stepConfig.detail && <p className="text-sm text-m3-grey-600">{stepConfig.detail}</p>}
               </div>
 
               {/* Scanned Locations info if available (แสดงเฉพาะเมื่อพนักงานสแกนจริงแล้วเท่านั้น ไม่ใช่ค่าตำแหน่งจากตอนสร้างใบ) */}
               {(t.to_location_id || (t.source_allocations && t.source_allocations.length > 0) || (t.status === "WAITING_APPROVAL" && t.from_location_id)) && (
-                <div className="rounded-[14px] bg-[#F7F9F8] border border-[#EDF1EE] px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="border-t border-dashed border-[rgba(145,158,171,0.32)] pt-3 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-[#94A09A]">ตำแหน่งที่สแกนจริง</span>
+                    <span className="w-full text-xs text-m3-grey-500">ตำแหน่งที่สแกนจริง</span>
                     {t.source_allocations && t.source_allocations.length > 0 ? (
                       <div className="flex flex-wrap items-center gap-2">
                         {t.source_allocations.map((a, idx) => (
-                          <span key={idx} className="bg-white px-2.5 py-1 rounded-lg border border-[#E5EAE7] font-mono text-[13px] text-[#17201D] font-semibold">
+                          <span key={idx} className="m3-label m3-label-default tabular-nums">
                             ต้นทาง: {a.location_name || a.location_id} ({a.qty.toLocaleString()} ชิ้น)
                           </span>
                         ))}
                       </div>
                     ) : t.from_location_id ? (
-                      <span className="bg-white px-2.5 py-1 rounded-lg border border-[#E5EAE7] font-mono text-[13px] text-[#17201D] font-semibold">
+                      <span className="m3-label m3-label-default tabular-nums">
                         ต้นทาง: {t.from_location_id}
                       </span>
                     ) : null}
-                    <svg className="w-3.5 h-3.5 text-[#94A09A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    {t.to_location_id && <SolarArrowRight size={14} className="shrink-0 text-m3-grey-500" />}
                     {t.to_location_id && (
-                      <span className="bg-[#EAF5F0] px-2.5 py-1 rounded-lg border border-[#D3E8DD] font-mono text-[13px] text-[#064E3B] font-semibold">
+                      <span className="m3-label m3-label-primary tabular-nums">
                         ปลายทาง: {t.to_location_id}
                       </span>
                     )}
@@ -388,33 +345,30 @@ export default function TransferNotificationList({
                   isAdmin && onApproveTask ? (
                     <div className="w-full flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-1.5 flex-1 min-w-[200px]">
-                        <div className="text-[13px] font-semibold text-amber-700 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                          <span>เบิกแล้ว — รออนุมัติ</span>
-                        </div>
+                        <p className="text-sm text-m3-grey-600">ตัดสต็อกต้นทางและนำส่งปลายทางแล้ว — รออนุมัติ</p>
                         {/* Creator & Performer info */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[#66736D]">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-m3-grey-600">
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-[#94A09A]">ผู้สร้างใบเบิก:</span>
-                            <span className="font-semibold text-[#17201D]">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
+                            <span className="text-xs font-medium text-m3-grey-500">ผู้สร้างใบเบิก:</span>
+                            <span className="font-semibold text-m3-grey-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
                           </span>
                           {(t.moved_by || t.assigned_to_name) && (
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-[#94A09A]">ผู้เบิกสินค้า:</span>
-                              <span className="font-semibold text-[#064E3B]">{t.moved_by || t.assigned_to_name}</span>
+                              <span className="text-xs font-medium text-m3-grey-500">ผู้เบิกสินค้า:</span>
+                              <span className="font-semibold text-m3-primary-dark">{t.moved_by || t.assigned_to_name}</span>
                             </span>
                           )}
-                          <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+                          <span className="inline-flex items-center gap-1.5 tabular-nums text-xs">
                             เวลาเบิก: {formatThaiDateTime(t.last_active_at || t.created_at)}
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex w-full items-center gap-2.5">
                         <button
                           type="button"
                           disabled={isCancelling || isApproving}
                           onClick={(e) => (onRejectTask ? onRejectTask(e, t) : onCancelTask?.(e, t))}
-                          className="px-4 min-h-[42px] rounded-xl bg-white hover:bg-[#FFF1F2] text-[#D6455D] border border-rose-200/80 text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+                          className="m3-btn h-11 bg-[rgba(255,86,48,0.16)] px-4 text-m3-error-dark hover:bg-[rgba(255,86,48,0.24)] disabled:opacity-48"
                         >
                           {isCancelling ? "กำลังปฏิเสธ..." : "ปฏิเสธ"}
                         </button>
@@ -422,7 +376,7 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isApproving || isCancelling}
                           onClick={() => onApproveTask?.(t)}
-                          className="px-5 min-h-[44px] rounded-xl bg-[#064E3B] hover:bg-[#054237] text-white text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-[0.98] flex items-center gap-2"
+                          className="m3-btn m3-btn-primary h-11 flex-1 gap-2 px-5 disabled:opacity-48"
                         >
                           {isApproving ? (
                             <>
@@ -431,9 +385,6 @@ export default function TransferNotificationList({
                             </>
                           ) : (
                             <>
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
                               <span>อนุมัติการเบิก</span>
                             </>
                           )}
@@ -443,13 +394,12 @@ export default function TransferNotificationList({
                   ) : (
                     <div className="w-full flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                        <div className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200/70 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <div className="m3-label m3-label-warning">
                           <span>เบิกแล้ว — รออนุมัติ</span>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 text-[13px] text-[#66736D]">
-                          <span className="text-xs font-medium text-[#94A09A]">ผู้สร้าง:</span>
-                          <span className="font-semibold text-[#17201D]">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
+                        <span className="inline-flex items-center gap-1.5 text-[13px] text-m3-grey-600">
+                          <span className="text-xs font-medium text-m3-grey-500">ผู้สร้าง:</span>
+                          <span className="font-semibold text-m3-grey-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
                         </span>
                       </div>
                       {isAdmin && onCancelTask && (
@@ -457,18 +407,15 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isCancelling}
                           onClick={(e) => onCancelTask(e, t)}
-                          className="px-4 min-h-[42px] rounded-xl bg-white hover:bg-[#FFF1F2] text-[#D6455D] border border-rose-200/80 text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-[0.98] flex items-center gap-1.5"
+                          className="m3-btn m3-btn-outline h-11 gap-1.5 px-4 text-m3-error-dark disabled:opacity-48"
                         >
                           {isCancelling ? (
                             <>
-                              <div className="w-3.5 h-3.5 border-2 border-[#D6455D] border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+                              <div className="w-3.5 h-3.5 border-2 border-m3-error border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
                               <span>กำลังยกเลิก...</span>
                             </>
                           ) : (
                             <>
-                              <svg className="w-4 h-4 text-[#D6455D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
                               <span>ยกเลิกรายการ</span>
                             </>
                           )}
@@ -478,12 +425,9 @@ export default function TransferNotificationList({
                   )
                 ) : (
                   <div className="w-full flex items-center justify-between gap-3 flex-wrap pt-1">
-                    <div className="flex items-center gap-1.5 text-[13px] text-[#66736D] min-w-0">
-                      <svg className="w-3.5 h-3.5 text-[#94A09A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                    <div className="flex items-center gap-1.5 text-[13px] text-m3-grey-600 min-w-0">
                       <span className="truncate">
-                        สร้างโดย <span className="font-semibold text-[#17201D]">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
+                        สร้างโดย <span className="font-semibold text-m3-grey-800">{t.created_by_name || t.created_by || "ผู้ดูแลระบบ (Admin)"}</span>
                       </span>
                     </div>
 
@@ -493,18 +437,15 @@ export default function TransferNotificationList({
                           type="button"
                           disabled={isCancelling}
                           onClick={(e) => onCancelTask(e, t)}
-                          className="px-4 min-h-[42px] rounded-xl bg-white hover:bg-[#FFF1F2] text-[#D6455D] border border-rose-200/80 text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-[0.98] flex items-center gap-1.5"
+                          className="m3-btn m3-btn-outline h-11 gap-1.5 px-4 text-m3-error-dark disabled:opacity-48"
                         >
                           {isCancelling ? (
                             <>
-                              <div className="w-3.5 h-3.5 border-2 border-[#D6455D] border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+                              <div className="w-3.5 h-3.5 border-2 border-m3-error border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
                               <span>กำลังยกเลิก...</span>
                             </>
                           ) : (
                             <>
-                              <svg className="w-4 h-4 text-[#D6455D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
                               <span>ยกเลิก</span>
                             </>
                           )}
@@ -514,12 +455,10 @@ export default function TransferNotificationList({
                       <button
                         type="button"
                         onClick={() => onSelectTask(t)}
-                        className="px-5 sm:px-6 min-h-[42px] rounded-xl bg-[#064E3B] hover:bg-[#054237] text-white font-semibold text-sm shadow-sm cursor-pointer transition-all duration-200 active:scale-[0.98] flex items-center gap-1.5"
+                        className="m3-btn m3-btn-dark h-11 gap-1.5 px-5 active:scale-[0.98]"
                       >
                         <span>{step === 0 ? "เริ่มเบิกสินค้า / สแกน" : "สแกนต่อ"}</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <SolarAltArrowRight size={16} />
                       </button>
                     </div>
                   </div>

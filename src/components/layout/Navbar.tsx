@@ -178,6 +178,63 @@ export default function DashboardHeader({
     </button>
   );
 
+  // กระดิ่งงานเบิกสินค้าของพนักงาน (M37) — มือถือเป็นแผงเต็มกว้างใต้ header, จอใหญ่เป็น dropdown
+  const transferDropdown = (placement: "mobile" | "desktop") => (
+    <div
+      className={`z-50 overflow-hidden rounded-2xl bg-white shadow-m3-dropdown animate-in fade-in zoom-in-95 duration-150 ${
+        placement === "mobile" ? "fixed inset-x-4 top-16" : "absolute right-0 mt-2 w-80 max-w-sm"
+      }`}
+    >
+      <div className="flex items-center justify-between px-5 py-4">
+        <span className="text-[14px] font-bold text-m3-grey-800">การแจ้งเตือนงานเบิกสินค้า</span>
+        <button
+          type="button"
+          onClick={() => setNotificationsOpen(false)}
+          aria-label="ปิด"
+          className="grid size-7 cursor-pointer place-items-center rounded-full text-m3-grey-500 hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
+        >
+          <SolarClose size={16} />
+        </button>
+      </div>
+      {notificationsList.length === 0 ? (
+        <div className="border-t border-m3-divider px-4 py-8 text-center text-[13px] font-medium text-m3-grey-500">
+          ไม่มีรายการแจ้งเตือนค้างอยู่
+        </div>
+      ) : (
+        <>
+          <div className="max-h-72 overflow-y-auto border-t border-m3-divider">
+            {notificationsList.map((t) => (
+              <Link
+                key={t.id}
+                href="/movements/transfer"
+                onClick={() => setNotificationsOpen(false)}
+                className="block space-y-1 border-b border-dashed border-m3-divider px-5 py-3.5 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(145,158,171,0.08)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-m3-grey-800">{getDisplayProductName(t)}</span>
+                  <span className="shrink-0 text-[14px] font-bold tabular-nums text-m3-grey-800">
+                    {Number(t.qty || 0).toLocaleString()} <span className="text-[12px] font-normal text-m3-grey-500">ชิ้น</span>
+                  </span>
+                </div>
+                <div className="truncate text-[13px] text-m3-grey-500">
+                  <span className="tabular-nums">{t.doc_no || "TRF"}</span> · {t.from_warehouse_name} →{" "}
+                  <span className="font-semibold text-m3-primary-dark">{t.to_warehouse_name}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Link
+            href="/movements/transfer"
+            onClick={() => setNotificationsOpen(false)}
+            className="block border-t border-dashed border-m3-divider px-5 py-3.5 text-center text-[14px] font-bold text-m3-primary-dark hover:bg-[rgba(145,158,171,0.08)]"
+          >
+            ไปที่รายการที่ต้องเบิก
+          </Link>
+        </>
+      )}
+    </div>
+  );
+
   const userMenu = (
     <div className="absolute right-0 z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-m3-dropdown animate-in fade-in zoom-in-95 duration-150">
       <div className="flex items-center gap-3 px-2 pb-3 pt-2">
@@ -227,7 +284,10 @@ export default function DashboardHeader({
           <div className="flex items-center gap-1">
             {/* กระดิ่งแจ้งเตือนระบบผลิต (ADMIN + APPROVER) — mount จริงเฉพาะช่องที่ตรง breakpoint */}
             <ProductionBell placement="mobile" />
-            <div className="relative">{isAdmin ? approvalsButton : transferBellButton}</div>
+            <div className="relative">
+              {isAdmin ? approvalsButton : transferBellButton}
+              {notificationsOpen && !isAdmin && transferDropdown("mobile")}
+            </div>
             {/* Avatar */}
             <div className="relative">
               <button
@@ -261,54 +321,7 @@ export default function DashboardHeader({
               {isAdmin ? approvalsButton : transferBellButton}
 
               {/* Staff notification dropdown */}
-              {notificationsOpen && !isAdmin && (
-                <div className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl bg-white shadow-m3-dropdown animate-in fade-in zoom-in-95 duration-150 sm:w-80">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-[14px] font-bold text-m3-grey-800">การแจ้งเตือนงานเบิกสินค้า</span>
-                    <button
-                      type="button"
-                      onClick={() => setNotificationsOpen(false)}
-                      aria-label="ปิด"
-                      className="grid size-7 cursor-pointer place-items-center rounded-full text-m3-grey-500 hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
-                    >
-                      <SolarClose size={16} />
-                    </button>
-                  </div>
-                  {notificationsList.length === 0 ? (
-                    <div className="border-t border-dashed border-m3-divider px-4 py-8 text-center text-[13px] font-medium text-m3-grey-500">
-                      ไม่มีรายการแจ้งเตือนค้างอยู่
-                    </div>
-                  ) : (
-                    <div className="max-h-72 overflow-y-auto border-t border-dashed border-m3-divider">
-                      {notificationsList.map((t) => (
-                        <Link
-                          key={t.id}
-                          href="/movements/transfer"
-                          onClick={() => setNotificationsOpen(false)}
-                          className="block space-y-1 border-b border-dashed border-m3-divider px-4 py-3 text-[13px] transition-colors duration-150 last:border-b-0 hover:bg-[rgba(145,158,171,0.08)]"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[13px] font-semibold text-m3-grey-800">
-                              {t.doc_no || "TRF"}
-                            </span>
-                            <span className="m3-label m3-label-warning">
-                              {Number(t.qty || 0).toLocaleString()} ชิ้น
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex-1 truncate text-m3-grey-700">
-                              {getDisplayProductName(t)}
-                            </span>
-                            <span className="shrink-0 text-[12px] text-m3-grey-500">
-                              {t.from_warehouse_name} → <strong className="font-semibold text-m3-primary-dark">{t.to_warehouse_name}</strong>
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {notificationsOpen && !isAdmin && transferDropdown("desktop")}
             </div>
 
             {/* User chip (.chip-u) */}

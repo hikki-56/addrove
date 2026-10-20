@@ -5,6 +5,8 @@ import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useTransferMovement } from "@/features/transfer/hooks/use-transfer-movement";
 import TransferNotificationList from "@/features/transfer/components/TransferNotificationList";
 import TransferStaffWorkflowModal from "@/features/transfer/components/TransferStaffWorkflowModal";
+import { M3Banner } from "@/components/ui/m3";
+import { SolarHome, SolarRefresh } from "@/components/icons";
 
 export default function StaffTransferPage() {
   const searchParams = useSearchParams();
@@ -58,26 +60,32 @@ export default function StaffTransferPage() {
   return (
     <div className="scale-original max-w-2xl mx-auto w-full px-2 sm:px-4 pb-20 sm:pb-8 space-y-4">
       {warehouseError && (
-        <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
+        <M3Banner
+          tone="error"
+          role="alert"
+          action={
+            <button type="button" className="m3-btn m3-btn-sm m3-btn-outline" onClick={() => void refreshData()}>
+              ลองโหลดใหม่
+            </button>
+          }
+        >
           {warehouseError}
-          <button type="button" className="ml-3 underline" onClick={() => void refreshData()}>ลองโหลดใหม่</button>
-        </div>
+        </M3Banner>
       )}
       {/* Staff Info Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#06402B] shrink-0" />
-          <span>พนักงาน: <span className="font-bold text-slate-900">{tabUser?.name || "พนักงานคลัง"}</span> • <span className="font-extrabold text-[#053425]">{activeWhName}</span></span>
+      <div className="m3-card flex items-center justify-between gap-4 p-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-m3-grey-600">
+          <span className="m3-label m3-label-primary shrink-0 gap-1.5">
+            <SolarHome size={14} />
+            {activeWhName}
+          </span>
+          <span className="truncate">
+            พนักงาน: <span className="font-semibold text-m3-grey-800">{tabUser?.name || "พนักงานคลัง"}</span>
+          </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => refreshData()}
-          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
-        >
-          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+        <button type="button" onClick={() => refreshData()} className="m3-btn m3-btn-outline shrink-0 gap-1.5">
+          <SolarRefresh size={16} className="shrink-0" />
           <span>รีเฟรช</span>
         </button>
       </div>

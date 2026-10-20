@@ -6,6 +6,8 @@ import { createPortal } from "react-dom";
 import { type TransferNotification, updateTransferTaskProgress, getInStockSourceLocations, isUsableLocationCode } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import type { Product } from "@/types/models";
+import { M3Banner, m3Cls } from "@/components/ui/m3";
+import { SolarBox, SolarCheckCircle, SolarClose } from "@/components/icons";
 
 export interface TransferStaffWorkflowModalProps {
   selectedTask: TransferNotification | null;
@@ -221,228 +223,158 @@ export default function TransferStaffWorkflowModal({
       className="fixed inset-0 z-[99999] bg-white overflow-y-auto overscroll-y-contain flex flex-col w-full h-[100dvh]"
       style={{ WebkitOverflowScrolling: "touch" }}
     >
-      <div className="w-full max-w-lg mx-auto min-h-full flex flex-col justify-between p-3.5 sm:p-6 pb-28 sm:pb-10 space-y-4 min-w-0 bg-white">
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#E8ECEA] gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="px-2.5 sm:px-3 py-1 rounded-xl bg-[#EAF2EE] text-[#053425] font-mono font-bold text-sm border border-[#C9DFD4] shrink-0">
-                {selectedTask.doc_no}
-              </span>
-              <span className="text-sm text-slate-600 font-medium truncate max-w-[160px] sm:max-w-[280px]">
-                ผู้สร้าง: <strong className="text-slate-900 font-semibold">{selectedTask.created_by_name || selectedTask.created_by || "ผู้ดูแลระบบ (Admin)"}</strong>
-              </span>
-            </div>
-
+      <div className="mx-auto flex min-h-full w-full max-w-lg min-w-0 flex-col bg-white pb-28 sm:pb-10">
+        <div className="space-y-5">
+          {/* Header (M14) */}
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-[rgba(145,158,171,0.2)] bg-white/95 px-4 py-3 sm:px-6">
             <button
               type="button"
               onClick={onClose}
               aria-label="ปิดหน้าต่าง"
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 cursor-pointer transition-colors active:scale-95 shrink-0"
               title="ปิดหน้าต่าง"
+              className="-ml-2 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-m3-grey-800 transition-colors hover:bg-[rgba(145,158,171,0.08)] active:scale-95"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <SolarClose size={24} />
             </button>
-          </div>
-
-          {/* Step Indicator — บอกตำแหน่งปัจจุบันเป็นข้อความตามหลัก P3 (ขั้นที่ n จาก N) */}
-          <div className="space-y-1">
-            <p className="text-center text-sm font-bold text-slate-600">
-              {staffStep === 4 ? "ครบทุกขั้นตอนแล้ว" : `ขั้นที่ ${staffStep === 1 ? 1 : 2} จาก 2`}
-            </p>
-            <div className="relative flex items-center justify-between px-6 sm:px-12 py-3">
-              {/* Connector Line */}
-              <div className="absolute left-14 right-14 top-[32px] h-1 bg-slate-200 rounded-full -z-0">
-                <div
-                  className="h-full bg-[#0F5C3F] rounded-full transition-all duration-300"
-                  style={{
-                    width: staffStep === 1 ? "0%" : "100%",
-                  }}
-                />
-              </div>
-
-              {/* Step 1 */}
-              <div className="flex flex-col items-center gap-1.5 z-10">
-                <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-200 ${
-                    staffStep === 1
-                      ? "bg-[#06402B] text-white shadow-md shadow-[#06402B]/30 ring-4 ring-[#0F5C3F]/10 scale-105"
-                      : staffStep > 1
-                      ? "bg-[#06402B] text-white"
-                      : "bg-slate-100 text-slate-600 border border-[#D5DDD9]"
-                  }`}
-                >
-                  {staffStep > 1 ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    "1"
-                  )}
-                </div>
-                <span
-                  className={`text-sm font-bold transition-colors ${
-                    staffStep >= 1 ? "text-[#052B1F] font-extrabold" : "text-slate-600"
-                  }`}
-                >
-                  สแกนสินค้า
-                </span>
-              </div>
-
-              {/* Step 3 (แสดงเป็นขั้นตอนปลายทาง) */}
-              <div className="flex flex-col items-center gap-1.5 z-10">
-                <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-200 ${
-                    staffStep >= 3
-                      ? "bg-[#06402B] text-white shadow-md shadow-[#06402B]/30 ring-4 ring-[#0F5C3F]/10 scale-105"
-                      : "bg-slate-100 text-slate-600 border border-[#D5DDD9]"
-                  }`}
-                >
-                  {staffStep > 3 ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    "2"
-                  )}
-                </div>
-                <span
-                  className={`text-sm font-bold transition-colors ${
-                    staffStep >= 3 ? "text-[#052B1F] font-extrabold" : "text-slate-600"
-                  }`}
-                >
-                  ตำแหน่งปลายทาง
-                </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-lg font-bold tabular-nums text-m3-grey-800">เบิก {selectedTask.doc_no}</div>
+              <div className="truncate text-xs text-m3-grey-500">
+                ผู้สร้าง: {selectedTask.created_by_name || selectedTask.created_by || "ผู้ดูแลระบบ (Admin)"}
               </div>
             </div>
           </div>
 
-          {/* Product & Route Summary Card (Readable formula from issue-flow.md) */}
-          <div className="rounded-2xl border border-[#E8ECEA] bg-white p-4 sm:p-5 space-y-3 shadow-xs">
-            {/* ช่องสแกนของขั้นปัจจุบัน — ไว้บนสุดของการ์ดรายละเอียดสินค้าให้พนักงานเห็นทันที */}
-            {staffStep === 1 && (
-              <div className="space-y-2">
-                <label htmlFor="staff-scan-product" className="flex items-center text-base font-bold text-slate-900">
-                  สแกนบาร์โค้ดสินค้าบนตัวสินค้า:
-                </label>
-                <BarcodeScanInput
-                  id="staff-scan-product"
-                  value={staffScanProductInput}
-                  onChange={setStaffScanProductInput}
-                  onScanSubmit={onVerifyProductBarcode}
-                  inputRef={staffProductInputRef}
-                  placeholder={barcode ? `สแกนหรือพิมพ์ ${barcode}...` : "สแกนบาร์โค้ดสินค้า..."}
-                />
-              </div>
-            )}
+          <div className="space-y-5 px-4 sm:px-6">
+          {/* Step Indicator — บอกตำแหน่งปัจจุบันเป็นข้อความตามหลัก P3 (ขั้นที่ n จาก N) */}
+          <div className="space-y-2">
+            <p className="flex items-baseline gap-2">
+              <span className="text-sm font-bold text-m3-primary-dark">
+                {staffStep === 4 ? "ครบทุกขั้นตอนแล้ว" : `ขั้นที่ ${staffStep === 1 ? 1 : 2} จาก 2`}
+              </span>
+              <span className="text-xs text-m3-grey-500">{staffStep === 1 ? "สแกนสินค้า" : "ตำแหน่งปลายทาง"}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-1.5" aria-hidden="true">
+              <span className="h-1 rounded-full bg-m3-primary" />
+              <span className={`h-1 rounded-full transition-colors duration-300 ${staffStep >= 3 ? "bg-m3-primary" : "bg-[rgba(145,158,171,0.24)]"}`} />
+            </div>
+          </div>
 
-            {staffStep === 3 && (
-              <div className="space-y-2">
-                <label htmlFor="staff-scan-dest-location" className="block text-base font-bold text-slate-900">
-                  สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
-                </label>
-                <BarcodeScanInput
-                  id="staff-scan-dest-location"
-                  value={staffScanDestLocationInput}
-                  onChange={(val) => {
-                    setStaffScanDestLocationInput(val);
-                    if (scannedToLocation && val !== scannedToLocation) {
-                      setScannedToLocation?.("");
-                    }
-                  }}
-                  onScanSubmit={onVerifyDestinationLocationBarcode}
-                  inputRef={staffDestLocationInputRef}
-                  placeholder="สแกนตำแหน่งปลายทาง..."
-                />
-              </div>
-            )}
+          {/* ช่องสแกนของขั้นปัจจุบัน */}
+          {staffStep === 1 && (
+            <div className="space-y-2">
+              <label htmlFor="staff-scan-product" className="block text-sm font-bold text-m3-grey-800">
+                สแกนบาร์โค้ดสินค้าบนตัวสินค้า:
+              </label>
+              <BarcodeScanInput
+                id="staff-scan-product"
+                value={staffScanProductInput}
+                onChange={setStaffScanProductInput}
+                onScanSubmit={onVerifyProductBarcode}
+                inputRef={staffProductInputRef}
+                placeholder={barcode ? `สแกนหรือพิมพ์ ${barcode}...` : "สแกนบาร์โค้ดสินค้า..."}
+              />
+            </div>
+          )}
 
-            <div className={`space-y-3 ${staffStep === 1 || staffStep === 3 ? "pt-3 border-t border-[#E8ECEA]" : ""}`}>
-              <p className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">{selectedTask.product_name}</p>
-              <div className="flex items-center gap-3 flex-wrap font-mono text-sm">
-                <span className="font-bold text-slate-700">SKU: <strong className="text-slate-900">{selectedTask.sku}</strong></span>
-                {barcode && barcode !== selectedTask.sku && (
-                  <span className="font-bold text-slate-700">บาร์โค้ด: <strong className="text-slate-900">{barcode}</strong></span>
-                )}
-              </div>
+          {staffStep === 3 && (
+            <div className="space-y-2">
+              <label htmlFor="staff-scan-dest-location" className="block text-sm font-bold text-m3-grey-800">
+                สแกนตำแหน่งปลายทางใน {selectedTask.to_warehouse_name}:
+              </label>
+              <BarcodeScanInput
+                id="staff-scan-dest-location"
+                value={staffScanDestLocationInput}
+                onChange={(val) => {
+                  setStaffScanDestLocationInput(val);
+                  if (scannedToLocation && val !== scannedToLocation) {
+                    setScannedToLocation?.("");
+                  }
+                }}
+                onScanSubmit={onVerifyDestinationLocationBarcode}
+                inputRef={staffDestLocationInputRef}
+                placeholder="สแกนตำแหน่งปลายทาง..."
+              />
+            </div>
+          )}
 
-              <div className="flex items-baseline gap-2 pt-2 border-t border-[#E8ECEA]">
-                <span className="text-sm font-bold text-slate-600">ต้องหยิบ</span>
-                <span className="text-3xl font-mono font-bold text-slate-900">{selectedTask.qty.toLocaleString()}</span>
-                <span className="text-sm font-bold text-slate-600">ชิ้น</span>
+          {/* Product & Route Summary Card (M14) */}
+          <div className="space-y-4 rounded-2xl bg-m3-grey-100 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-white text-m3-grey-500">
+                <SolarBox size={28} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-base leading-snug font-bold text-m3-grey-800">{selectedTask.product_name}</p>
+                <p className="mt-0.5 text-xs tabular-nums text-m3-grey-500">
+                  SKU: {selectedTask.sku}
+                  {barcode && barcode !== selectedTask.sku ? ` · บาร์โค้ด: ${barcode}` : ""}
+                </p>
               </div>
+            </div>
 
-              <p className="text-base text-slate-700 font-medium">
-                จาก <span className="font-bold text-slate-950">{selectedTask.from_warehouse_name}</span>
-                {" "}ไป <span className="font-bold text-slate-950">{selectedTask.to_warehouse_name}</span>
-              </p>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold text-m3-grey-600">ต้องหยิบ</span>
+              <span>
+                <span className="font-m3-disp text-[32px] leading-none font-bold tabular-nums text-m3-grey-800">{selectedTask.qty.toLocaleString()}</span>
+                <span className="ml-1 text-sm text-m3-grey-600">ชิ้น</span>
+              </span>
+            </div>
 
-              {/* ตำแหน่งปัจจุบัน ใต้ จาก...ไป... ตัวหนังสือใหญ่ชัดเจน */}
-              <div className="flex items-baseline gap-2.5 pt-2.5 border-t border-[#E8ECEA]">
-                <span className="text-base sm:text-lg font-bold text-slate-700">ตำแหน่งปัจจุบัน:</span>
-                <span className="text-2xl sm:text-3xl font-mono font-black text-slate-950 tracking-wide">
-                  {fetchedLoc || "ไม่ระบุ"}
-                </span>
-              </div>
+            <p className="text-sm text-m3-grey-700">
+              จาก <span className="font-bold text-m3-grey-800">{selectedTask.from_warehouse_name}</span>
+              {" "}ไป <span className="font-bold text-m3-grey-800">{selectedTask.to_warehouse_name}</span>
+            </p>
+
+            {/* ตำแหน่งปัจจุบัน ใต้ จาก...ไป... ตัวหนังสือใหญ่ชัดเจน */}
+            <div className="flex items-baseline gap-2.5 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-4">
+              <span className="text-sm font-semibold text-m3-grey-600">ตำแหน่งปัจจุบัน:</span>
+              <span className="text-2xl font-bold tabular-nums tracking-wide text-m3-grey-800">{fetchedLoc || "ไม่ระบุ"}</span>
             </div>
           </div>
 
           {/* Error Banner — 16px หนา ตามสเปก W4 (ข้อความที่พนักงานอ่านระหว่างถือของ) */}
           {staffStep !== 4 && staffError && (
-            <div
-              role="alert"
-              className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-base font-bold leading-relaxed fade-in flex items-start gap-2.5 whitespace-pre-line"
-            >
-              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
-              </svg>
-              <span>{staffError}</span>
-            </div>
+            <M3Banner tone="error" role="alert" className="fade-in text-base whitespace-pre-line">
+              {staffError}
+            </M3Banner>
           )}
 
           {/* Success note (ข้อความเขียวสั้นตามสเปก S6) — ซ่อนเมื่อแผงยืนยันเขียวของขั้น 2 โชว์อยู่เพื่อไม่ซ้ำซ้อน */}
           {staffStep !== 4 && !staffError && staffSuccess && !(staffStep === 3 && scannedToLocation) && (
-            <div
-              role="status"
-              className="p-3.5 rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-bold leading-relaxed fade-in flex items-start gap-2.5"
-            >
-              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{staffSuccess}</span>
-            </div>
+            <M3Banner tone="success" role="status" className="fade-in">
+              {staffSuccess}
+            </M3Banner>
           )}
+          </div>
 
         {/* Step 2: Source Locations & Quantities */}
         {/*
         {staffStep === 2 && (
           <div className="space-y-3.5 pt-1">
-            <div className="rounded-2xl border border-[#E8ECEA] bg-white p-4 space-y-3">
-              <p className="text-sm font-bold text-slate-600">
+            <div className="rounded-xl border border-[rgba(145,158,171,0.2)] bg-white p-4 space-y-3">
+              <p className="text-sm font-bold text-m3-grey-600">
                 ตำแหน่งต้นทาง ({selectedTask.from_warehouse_name})
               </p>
 
               {remainingNeeded > 0 ? (
-                <p className="text-base font-bold text-slate-900">
+                <p className="text-base font-bold text-m3-grey-800">
                   ยังขาดอีก{" "}
-                  <span className="text-3xl font-mono font-bold text-[#053425] align-middle">
+                  <span className="text-3xl tabular-nums font-bold text-m3-primary-darker align-middle">
                     {remainingNeeded.toLocaleString()}
                   </span>{" "}
                   ชิ้น
                 </p>
               ) : (
-                <p className="text-xl font-bold text-[#053425]">หยิบครบแล้ว</p>
+                <p className="text-xl font-bold text-m3-primary-darker">หยิบครบแล้ว</p>
               )}
 
-              <p className="text-sm text-slate-600 font-mono">
+              <p className="text-sm text-m3-grey-600 tabular-nums">
                 หยิบแล้ว {totalPickedQty.toLocaleString()} จาก {selectedTask.qty.toLocaleString()} ชิ้น
               </p>
 
-              <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-m3-grey-300 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${isCompleteAlloc ? "bg-[#06402B]" : "bg-[#06402B]"}`}
+                  className={`h-full transition-all duration-300 ${isCompleteAlloc ? "bg-m3-primary" : "bg-m3-primary"}`}
                   style={{ width: `${Math.min(100, (totalPickedQty / selectedTask.qty) * 100)}%` }}
                 />
               </div>
@@ -451,30 +383,30 @@ export default function TransferStaffWorkflowModal({
             {sourceAllocations.length > 0 && (
               <div className="space-y-2 max-h-[40dvh] overflow-y-auto pr-0.5">
                 {sourceAllocations.map((alloc, idx) => (
-                  <div key={`alloc-${idx}`} className="p-4 bg-white rounded-2xl border border-[#E8ECEA] shadow-xs space-y-3">
+                  <div key={`alloc-${idx}`} className="p-4 bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-xs space-y-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-10 h-10 rounded-full bg-[#06402B] text-white text-base font-bold flex items-center justify-center shrink-0">
+                      <span className="w-10 h-10 rounded-full bg-m3-primary text-white text-base font-bold flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-mono font-bold text-slate-900 text-lg truncate">
+                        <p className="tabular-nums font-bold text-m3-grey-800 text-lg truncate">
                           {alloc.location_name || alloc.location_id}
                         </p>
                         {typeof alloc.max_qty === "number" && (
-                          <p className="text-sm font-bold text-slate-600">
+                          <p className="text-sm font-bold text-m3-grey-600">
                             ชั้นนี้มี {alloc.max_qty.toLocaleString()} ชิ้น
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#EEF1EF]">
-                      <span className="text-sm text-slate-700 font-bold">จำนวนที่หยิบ:</span>
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[rgba(145,158,171,0.2)]">
+                      <span className="text-sm text-m3-grey-700 font-bold">จำนวนที่หยิบ:</span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, Math.max(1, alloc.qty - 100))}
-                          className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
+                          className="w-11 h-11 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
                           aria-label="ลดจำนวน"
                         >
                           -
@@ -486,17 +418,17 @@ export default function TransferStaffWorkflowModal({
                           value={alloc.qty}
                           onContextMenu={(e) => e.preventDefault()}
                           onChange={(e) => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, parseInt(e.target.value) || 0)}
-                          className="w-24 text-center font-mono font-bold text-lg bg-slate-50 border border-[#D5DDD9] rounded-xl px-2 py-2 text-[#04231A] focus:outline-none focus:ring-2 focus:ring-[#0F5C3F]"
+                          className="w-24 text-center tabular-nums font-bold text-lg bg-m3-grey-100 border border-[rgba(145,158,171,0.32)] rounded-xl px-2 py-2 text-m3-primary-darker focus:outline-none focus:ring-2 focus:ring-m3-primary"
                         />
                         <button
                           type="button"
                           onClick={() => onUpdateSourceAllocationQty && onUpdateSourceAllocationQty(idx, Math.min(alloc.max_qty || (alloc.qty + 100), alloc.qty + 100))}
-                          className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
+                          className="w-11 h-11 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-800 font-bold flex items-center justify-center cursor-pointer text-lg active:scale-95"
                           aria-label="เพิ่มจำนวน"
                         >
                           +
                         </button>
-                        <span className="text-sm text-slate-600 font-bold ml-1">ชิ้น</span>
+                        <span className="text-sm text-m3-grey-600 font-bold ml-1">ชิ้น</span>
                       </div>
                     </div>
 
@@ -504,7 +436,7 @@ export default function TransferStaffWorkflowModal({
                       <button
                         type="button"
                         onClick={() => onRemoveSourceAllocation(idx)}
-                        className="w-full py-3 rounded-xl border border-rose-200 text-rose-700 font-bold text-sm hover:bg-rose-50 cursor-pointer transition-all"
+                        className="w-full py-3 rounded-xl border border-[rgba(255,86,48,0.24)] text-m3-error-dark font-bold text-sm hover:bg-[rgba(255,86,48,0.08)] cursor-pointer transition-all"
                       >
                         เอาชั้นนี้ออกจากรายการ
                       </button>
@@ -516,7 +448,7 @@ export default function TransferStaffWorkflowModal({
 
             {remainingNeeded > 0 && (
               <div className="space-y-2 pt-1">
-                <div className="block text-base font-bold text-slate-900">
+                <div className="block text-base font-bold text-m3-grey-800">
                   {sourceAllocations.length === 0
                     ? "สแกนตำแหน่งต้นทาง:"
                     : `สแกนตำแหน่งที่ ${sourceAllocations.length + 1} (ยังขาดอีก ${remainingNeeded.toLocaleString()} ชิ้น):`}
@@ -535,7 +467,7 @@ export default function TransferStaffWorkflowModal({
               <button
                 type="button"
                 onClick={onProceedToDestStep}
-                className="w-full py-4 px-4 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-[#06402B]/20 cursor-pointer transition-all active:scale-95"
+                className="w-full py-4 px-4 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-base flex items-center justify-center gap-2 shadow-m3-dropdown shadow-m3-primary/20 cursor-pointer transition-all active:scale-95"
               >
                 <span>ถัดไป: สแกนตำแหน่งปลายทาง</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,19 +479,16 @@ export default function TransferStaffWorkflowModal({
         )}
         */}
 
-        {/* Step 3: Destination Location Confirmation (เด้งมาตรงกลางจอเมื่อสแกนสำเร็จ) */}
+        {/* Step 3: Destination Location Confirmation (M16 — bottom sheet มือถือ / dialog จอใหญ่) */}
         {staffStep === 3 && scannedToLocation && (
-          <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-[#06402B] space-y-4 animate-in zoom-in-95 duration-200 text-left">
+          <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-m3-grey-800/48 animate-in fade-in duration-200 sm:items-center sm:p-4">
+            <div className="w-full space-y-4 rounded-t-3xl bg-white px-5 pt-3 pb-6 text-left shadow-m3-dropdown animate-in slide-in-from-bottom-4 duration-200 sm:max-w-md sm:rounded-2xl sm:p-6">
+              <div className="mx-auto h-1 w-10 rounded-full bg-m3-grey-300 sm:hidden" aria-hidden="true" />
               {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#E8ECEA]">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-8 h-8 rounded-full bg-[#EAF2EE] text-[#053425] flex items-center justify-center text-sm font-bold shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900">สแกนชั้นวางปลายทางสำเร็จ</span>
+                  <SolarCheckCircle size={26} className="shrink-0 text-m3-success" />
+                  <span className="text-lg font-bold text-m3-grey-800">สแกนชั้นวางปลายทางสำเร็จ</span>
                 </div>
                 <button
                   type="button"
@@ -568,51 +497,34 @@ export default function TransferStaffWorkflowModal({
                     setStaffScanDestLocationInput("");
                     setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
                   }}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="flex size-9 cursor-pointer items-center justify-center rounded-full text-m3-grey-500 transition-colors hover:bg-[rgba(145,158,171,0.08)] hover:text-m3-grey-800"
                   title="ปิด / สแกนใหม่"
+                  aria-label="ปิด / สแกนใหม่"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <SolarClose size={20} />
                 </button>
               </div>
 
               {/* Target Shelf Box */}
-              <div className="bg-[#F7F9F8] p-4 rounded-2xl border border-[#C9DFD4] shadow-xs flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#EAF2EE] text-[#053425] flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-[#053425]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">ตำแหน่งปลายทาง</div>
-                    <div className="font-mono font-black text-2xl sm:text-3xl text-[#031B14] tracking-wider">
-                      {scannedToLocation}
-                    </div>
-                  </div>
+              <div className="space-y-1 rounded-2xl border-2 border-m3-primary bg-[rgba(0,167,111,0.06)] p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-m3-grey-600">ตำแหน่งปลายทาง</span>
+                  <span className="m3-label m3-label-primary">{selectedTask.to_warehouse_name}</span>
                 </div>
-                <span className="text-xs sm:text-sm font-bold text-[#052B1F] bg-[#DFEDE6] px-3 py-1.5 rounded-xl border border-[#C9DFD4] shrink-0">
-                  {selectedTask.to_warehouse_name}
-                </span>
-              </div>
-
-              {/* Product Summary Mini Card */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-sm space-y-1">
-                <div className="font-bold text-slate-800 line-clamp-1">{selectedTask.product_name}</div>
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-mono">SKU: <strong className="text-slate-900">{selectedTask.sku}</strong></span>
-                  <span>จำนวน: <strong className="text-slate-900 font-mono text-sm font-bold">{selectedTask.qty.toLocaleString()}</strong> ชิ้น</span>
+                <div className="font-m3-disp text-[34px] leading-tight font-bold tabular-nums tracking-wide text-m3-primary-darker">{scannedToLocation}</div>
+                <div className="text-sm text-m3-grey-700">
+                  <span className="line-clamp-1">{selectedTask.product_name}</span>
+                  <span className="tabular-nums text-m3-grey-500">SKU: {selectedTask.sku}</span> · จำนวน:{" "}
+                  <strong className="text-base font-bold tabular-nums text-m3-grey-800">{selectedTask.qty.toLocaleString()}</strong> ชิ้น
                 </div>
               </div>
 
               {/* Submit error — ปกติ staffError ถูก render อยู่หลัง overlay นี้มองไม่เห็น
                   ต้องโชว์ในป๊อปอัปด้วย ไม่งั้นพนักงานกดยืนยันแล้วเงียบจะคิดว่าเสร็จแล้ว */}
               {staffError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold leading-relaxed" role="alert">
+                <M3Banner tone="error" role="alert">
                   {staffError}
-                </div>
+                </M3Banner>
               )}
 
               {/* Action Buttons */}
@@ -621,20 +533,15 @@ export default function TransferStaffWorkflowModal({
                   type="button"
                   disabled={isSubmittingTransfer}
                   onClick={onSubmitTransfer}
-                  className="w-full py-4 px-4 rounded-2xl bg-[#06402B] hover:bg-[#053425] active:scale-95 text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-[#06402B]/30 cursor-pointer transition-all disabled:opacity-50"
+                  className="m3-btn m3-btn-primary h-14 w-full gap-2 text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)] active:scale-[.98] disabled:opacity-48"
                 >
                   {isSubmittingTransfer ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+                      <span className={m3Cls.spinner} />
                       <span>กำลังบันทึกข้อมูล...</span>
                     </>
                   ) : (
-                    <>
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>ยืนยันส่งเบิก</span>
-                    </>
+                    <span>ยืนยันส่งเบิก</span>
                   )}
                 </button>
 
@@ -646,7 +553,7 @@ export default function TransferStaffWorkflowModal({
                     setStaffScanDestLocationInput("");
                     setTimeout(() => staffDestLocationInputRef?.current?.focus(), 50);
                   }}
-                  className="w-full py-2.5 text-center text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  className="w-full cursor-pointer py-2.5 text-center text-sm font-semibold text-m3-grey-600 transition-colors hover:text-m3-grey-800"
                 >
                   ต้องการเปลี่ยนตำแหน่ง / สแกนใหม่
                 </button>
@@ -655,33 +562,32 @@ export default function TransferStaffWorkflowModal({
           </div>
         )}
 
-        {/* Step 4: Submission to Admin Completion Popup (เด้งมาตรงกลางจอ) */}
+        {/* Step 4: Submission to Admin Completion (M17) */}
         {staffStep === 4 && (
-          <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#C9DFD4] text-center space-y-4 animate-in zoom-in-95 duration-200">
-              <div className="w-16 h-16 rounded-full bg-[#EAF2EE] text-[#053425] flex items-center justify-center mx-auto shadow-sm ring-8 ring-[#EAF2EE]/50">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-
-              <div className="space-y-1">
-                <span className="px-3 py-1 rounded-full bg-[#EAF2EE] text-[#053425] font-mono font-bold text-xs border border-[#C9DFD4] inline-block">
-                  {selectedTask.doc_no}
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-m3-grey-800/48 p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm space-y-5 rounded-2xl bg-white p-6 text-center shadow-m3-dropdown animate-in zoom-in-95 duration-200 sm:max-w-md sm:p-8">
+              <div className="mx-auto flex size-24 items-center justify-center rounded-full bg-[rgba(0,167,111,0.12)]">
+                <span className="flex size-14 items-center justify-center rounded-full bg-m3-primary text-white">
+                  <SolarCheckCircle size={32} />
                 </span>
-                <h4 className="text-xl sm:text-2xl font-extrabold text-slate-900 pt-1">
-                  ส่งรายการเบิกแล้ว
-                </h4>
               </div>
 
-              <p className="text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
-                รออนุมัติ
-              </p>
+              <div className="space-y-1.5">
+                <h4 className="text-2xl font-bold text-m3-grey-800">ส่งรายการเบิกแล้ว</h4>
+                <p className="text-sm text-m3-grey-600">รออนุมัติ</p>
+              </div>
+
+              <div className="rounded-xl bg-m3-grey-100 px-4 py-3 text-left text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-m3-grey-600">เลขที่เอกสาร</span>
+                  <span className="font-bold tabular-nums text-m3-grey-800">{selectedTask.doc_no}</span>
+                </div>
+              </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-4 px-6 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-base cursor-pointer shadow-lg shadow-[#06402B]/20 active:scale-95 transition-all"
+                className="m3-btn m3-btn-primary h-12 w-full text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)] active:scale-[.98]"
               >
                 กลับสู่รายการ
               </button>

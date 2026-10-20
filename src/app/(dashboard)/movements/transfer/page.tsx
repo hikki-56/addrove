@@ -9,6 +9,7 @@ import { useTransferMovement } from "@/features/transfer/hooks/use-transfer-move
 import TransferNotificationList from "@/features/transfer/components/TransferNotificationList";
 import TransferForm from "@/features/transfer/components/TransferForm";
 import TransferStaffWorkflowModal from "@/features/transfer/components/TransferStaffWorkflowModal";
+import { M3Banner } from "@/components/ui/m3";
 
 export default function TransferPage() {
   const searchParams = useSearchParams();
@@ -102,96 +103,61 @@ export default function TransferPage() {
   return (
     <div className={`${containerWidth} mx-auto w-full px-3 sm:px-6 pt-2 pb-20 sm:pt-4 sm:pb-8 space-y-4`}>
       {warehouseError && (
-        <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
+        <M3Banner
+          tone="error"
+          role="alert"
+          action={
+            <button type="button" className="m3-btn m3-btn-sm m3-btn-outline" onClick={() => void refreshData()}>
+              ลองโหลดใหม่
+            </button>
+          }
+        >
           {warehouseError}
-          <button type="button" className="ml-3 underline" onClick={() => void refreshData()}>ลองโหลดใหม่</button>
-        </div>
+        </M3Banner>
       )}
       {isApprover ? (
         /* Dedicated Approver Banner */
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="px-3.5 py-1 rounded-full text-sm font-bold bg-amber-500 text-slate-950 shadow-xs shrink-0">
-            รออนุมัติ {waitingApprovalTasks.length} รายการ
-          </span>
+          <span className="m3-label m3-label-warning shrink-0">รออนุมัติ {waitingApprovalTasks.length} รายการ</span>
         </div>
       ) : (
-        /* Segmented Switch Bar: สลับไปทำรายการ / สร้างใบย้าย / รออนุมัติ */
-        <div className={`grid ${isAdmin || waitingApprovalTasks.length > 0 ? "grid-cols-3" : "grid-cols-2"} p-2 bg-[#F8FAF9] border border-[#E5E7EB] rounded-[16px] gap-2 items-stretch shadow-[0_1px_2px_rgba(16,24,40,0.04)]`}>
-          <button
-            type="button"
-            onClick={() => setActiveMode("ADMIN_CREATE")}
-            className={`relative w-full h-full min-h-[58px] sm:min-h-[48px] py-2 px-2 sm:px-3 rounded-[14px] font-semibold text-sm transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center active:scale-[0.98] ${
-              activeMode === "ADMIN_CREATE"
-                ? "bg-white text-slate-900 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(16,24,40,0.08)]"
-                : "text-slate-500 hover:text-slate-800 border border-transparent hover:bg-white/70"
-            }`}
-          >
-            <svg
-              className="w-[18px] h-[18px] shrink-0 transition-colors duration-200"
-              style={{ color: activeMode === "ADMIN_CREATE" ? "#0F5C3F" : "#94A3B8" }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="leading-tight">สร้างใบเบิกสินค้า</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveMode("STAFF_EXECUTE")}
-            className={`relative w-full h-full min-h-[58px] sm:min-h-[48px] py-2 px-2 sm:px-3 rounded-[14px] font-semibold text-sm transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center active:scale-[0.98] ${
-              activeMode === "STAFF_EXECUTE"
-                ? "bg-white text-slate-900 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(16,24,40,0.08)]"
-                : "text-slate-500 hover:text-slate-800 border border-transparent hover:bg-white/70"
-            }`}
-          >
-            <svg
-              className="w-[18px] h-[18px] shrink-0 transition-colors duration-200"
-              style={{ color: activeMode === "STAFF_EXECUTE" ? "#0F5C3F" : "#94A3B8" }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <span className="leading-tight">รายการที่ต้องไปเบิก</span>
-            {pendingTasks.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-rose-500/90 text-white ring-2 ring-white flex items-center justify-center tabular-nums">
-                {pendingTasks.length}
-              </span>
-            )}
-          </button>
-
-          {(isAdmin || waitingApprovalTasks.length > 0) && (
-            <button
-              type="button"
-              onClick={() => setActiveMode("WAITING_APPROVAL")}
-              className={`relative w-full h-full min-h-[58px] sm:min-h-[48px] py-2 px-2 sm:px-3 rounded-[14px] font-semibold text-sm transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center active:scale-[0.98] ${
-                activeMode === "WAITING_APPROVAL"
-                  ? "bg-white text-slate-900 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(16,24,40,0.08)]"
-                  : "text-slate-500 hover:text-slate-800 border border-transparent hover:bg-white/70"
-              }`}
-            >
-              <svg
-                className="w-[18px] h-[18px] shrink-0 transition-colors duration-200"
-                style={{ color: activeMode === "WAITING_APPROVAL" ? "#B45309" : "#94A3B8" }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span className="leading-tight">รออนุมัติ</span>
-              {waitingApprovalTasks.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 sm:static sm:top-auto sm:right-auto min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-amber-400/90 text-amber-950 ring-2 ring-white flex items-center justify-center tabular-nums">
-                  {waitingApprovalTasks.length}
-                </span>
-              )}
-            </button>
-          )}
-        </div>
+        /* แท็บ: สร้างใบเบิก / รายการที่ต้องไปเบิก / รออนุมัติ — มือถือเป็นปุ่มเม็ดยา, จอใหญ่เป็นแท็บขีดเส้นใต้ (D17) */
+        <nav
+          aria-label="โหมดเบิกสินค้า"
+          className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 sm:mx-0 sm:gap-8 sm:overflow-visible sm:rounded-2xl sm:bg-white sm:px-6 sm:pb-0 sm:shadow-m3-card"
+        >
+          {(
+            [
+              { mode: "ADMIN_CREATE", label: "สร้างใบเบิกสินค้า", show: true, badge: 0, badgeCls: "" },
+              { mode: "STAFF_EXECUTE", label: "รายการที่ต้องไปเบิก", show: true, badge: pendingTasks.length, badgeCls: "bg-[rgba(0,184,217,0.16)] text-m3-info-dark" },
+              { mode: "WAITING_APPROVAL", label: "รออนุมัติ", show: isAdmin || waitingApprovalTasks.length > 0, badge: waitingApprovalTasks.length, badgeCls: "bg-m3-warning text-m3-grey-800" },
+            ] as const
+          )
+            .filter((t) => t.show)
+            .map((t) => {
+              const active = activeMode === t.mode;
+              return (
+                <button
+                  key={t.mode}
+                  type="button"
+                  onClick={() => setActiveMode(t.mode)}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors sm:h-14 sm:rounded-none sm:px-0 sm:after:absolute sm:after:inset-x-0 sm:after:bottom-0 sm:after:h-0.5 sm:after:rounded-full ${
+                    active
+                      ? "text-m3-grey-800 max-sm:bg-m3-grey-800 max-sm:text-white sm:after:bg-m3-grey-800"
+                      : "text-m3-grey-600 hover:text-m3-grey-800 max-sm:bg-m3-grey-200"
+                  }`}
+                >
+                  <span>{t.label}</span>
+                  {t.badge > 0 && (
+                    <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums ${t.badgeCls}`}>
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+        </nav>
       )}
 
       {/* Main View based on activeMode */}

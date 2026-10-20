@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { M3IconCircle, m3Cls } from "@/components/ui/m3";
+import { SolarCheckCircle, SolarDangerTriangle } from "@/components/icons";
 
 /**
  * Modal ยืนยันแบบอ่านง่ายของบ้าน (แทน window.confirm ตาม UX Spec หัวข้อ 6.4 / W9)
@@ -98,9 +100,11 @@ function TransferConfirmDialog({
     }
   };
 
+  const subtitle = [detail.docNo, detail.productName].filter(Boolean).join(" · ");
+
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 fade-in"
+      className="fixed inset-0 z-[100000] flex items-end justify-center bg-m3-grey-800/48 fade-in sm:items-center sm:p-6"
       onClick={onCancel}
       onKeyDown={handleKeyDown}
     >
@@ -109,72 +113,48 @@ function TransferConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={text.title}
-        className="bg-white rounded-2xl shadow-xl border border-[#E8ECEA] w-full max-w-sm p-5 sm:p-6 space-y-3.5 scale-in"
+        className={`${m3Cls.sheet} sm:max-w-[400px]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-extrabold text-slate-900 leading-snug">{text.title}</h2>
-
-        {detail.docNo ? (
-          <p className="font-mono font-bold text-base text-slate-900">{detail.docNo}</p>
-        ) : null}
-
-        {detail.productName ? (
-          <p className="text-base font-bold text-slate-900 leading-snug">{detail.productName}</p>
-        ) : null}
-
-        {typeof detail.qty === "number" ? (
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-bold text-slate-600">จำนวน</span>
-            <span className="text-2xl font-mono font-bold text-slate-900 tabular-nums">
-              {detail.qty.toLocaleString()}
-            </span>
-            <span className="text-sm font-bold text-slate-600">ชิ้น</span>
+        <div className="space-y-4 px-5 pt-7 pb-2 text-center sm:px-7">
+          <div className="flex justify-center">
+            <M3IconCircle tone={text.destructive ? "error" : "primary"}>
+              {text.destructive ? <SolarDangerTriangle size={26} /> : <SolarCheckCircle size={26} />}
+            </M3IconCircle>
           </div>
-        ) : null}
-
-        {typeof detail.count === "number" ? (
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-bold text-slate-600">รายการที่จะถูกลบ</span>
-            <span className="text-2xl font-mono font-bold text-slate-900 tabular-nums">
-              {detail.count.toLocaleString()}
-            </span>
-            <span className="text-sm font-bold text-slate-600">รายการ</span>
+          <div>
+            <h2 className="text-xl font-bold leading-snug text-m3-grey-800">{text.title}</h2>
+            {subtitle ? <p className="mt-1 text-sm tabular-nums text-m3-grey-600">{subtitle}</p> : null}
+            {detail.route ? <p className="mt-0.5 text-sm text-m3-grey-600">{detail.route}</p> : null}
           </div>
-        ) : null}
 
-        {detail.route ? (
-          <p className="text-base text-slate-700 font-medium">{detail.route}</p>
-        ) : null}
+          {typeof detail.qty === "number" ? (
+            <div className="flex items-baseline justify-center gap-2 rounded-xl bg-m3-grey-100 px-4 py-4">
+              <span className="text-sm text-m3-grey-600">จำนวน</span>
+              <span className="font-m3-disp text-[28px] font-bold leading-none tabular-nums text-m3-grey-800">{detail.qty.toLocaleString()}</span>
+              <span className="text-sm text-m3-grey-600">ชิ้น</span>
+            </div>
+          ) : null}
 
-        <p className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed pt-1 border-t border-[#E8ECEA]">
-          <svg className="w-4 h-4 shrink-0 mt-0.5 text-[#667085]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span>{text.resultText}</span>
-        </p>
+          {typeof detail.count === "number" ? (
+            <div className="flex items-baseline justify-center gap-2 rounded-xl bg-m3-grey-100 px-4 py-4">
+              <span className="text-sm text-m3-grey-600">รายการที่จะถูกลบ</span>
+              <span className="font-m3-disp text-[28px] font-bold leading-none tabular-nums text-m3-grey-800">{detail.count.toLocaleString()}</span>
+              <span className="text-sm text-m3-grey-600">รายการ</span>
+            </div>
+          ) : null}
 
-        <div className="flex items-stretch gap-3 pt-1">
-          <button
-            ref={cancelButtonRef}
-            type="button"
-            onClick={onCancel}
-            className="flex-1 min-h-[48px] px-4 rounded-xl bg-white border border-black/10 text-slate-700 font-semibold text-sm hover:bg-black/[.04] cursor-pointer transition-colors active:scale-95"
-          >
+          <p className="text-sm text-m3-grey-600">{text.resultText}</p>
+        </div>
+
+        <div className="flex items-stretch gap-3 px-5 pt-4 pb-5 sm:px-7 sm:pb-7">
+          <button ref={cancelButtonRef} type="button" onClick={onCancel} className={`${m3Cls.btnCancel} h-12 flex-1`}>
             ยกเลิก
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`flex-1 min-h-[48px] px-4 rounded-xl text-white font-bold text-sm cursor-pointer transition-colors active:scale-95 ${
-              text.destructive
-                ? "bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-600/20"
-                : "bg-[#06402B] hover:bg-[#053425] shadow-lg shadow-[#06402B]/20"
-            }`}
+            className={`${text.destructive ? m3Cls.btnDanger : m3Cls.btnPrimary} h-12 flex-1`}
           >
             {text.confirmLabel}
           </button>
