@@ -99,7 +99,7 @@ export default function CutStockModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#101828]/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-m3-grey-800/50 "
         onClick={onClose}
       />
 
@@ -108,16 +108,16 @@ export default function CutStockModal({
         role="dialog"
         aria-modal="true"
         aria-label="ตัดสต็อกชั่วคราว"
-        className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl border border-[#E8ECEA] shadow-[0_20px_60px_rgba(16,24,40,0.18)] max-h-[92dvh] flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-xl border border-[rgba(145,158,171,0.2)] shadow-m3-dropdown max-h-[92dvh] flex flex-col animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-[#F2F4F3]">
+        <div className="px-6 pt-5 pb-4 border-b border-[rgba(145,158,171,0.2)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-[#06402B] leading-snug line-clamp-2">
+              <h2 className="text-base font-bold text-m3-primary-dark leading-snug line-clamp-2">
                 {displayProductName(product)}
               </h2>
-              <p className="mt-1 text-xs text-slate-500 font-medium">
+              <p className="mt-1 text-xs text-m3-grey-600 font-medium">
                 รหัส {product.sku}
                 {product.barcode && product.barcode !== product.sku ? ` • บาร์โค้ด ${product.barcode}` : ""}
               </p>
@@ -126,7 +126,7 @@ export default function CutStockModal({
               type="button"
               onClick={onClose}
               aria-label="ปิด"
-              className="shrink-0 grid place-items-center size-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="shrink-0 grid place-items-center size-8 rounded-lg text-m3-grey-500 hover:text-m3-grey-600 hover:bg-m3-grey-200 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18" />
@@ -140,23 +140,23 @@ export default function CutStockModal({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* โกดัง + สต็อก */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-[#F7FAF8] border border-[#E8F0EB] px-4 py-3">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">โกดัง</p>
-              <p className="mt-0.5 text-sm font-bold text-[#06402B]">{TARGET_WAREHOUSE_NAME}</p>
+            <div className="rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] px-4 py-3">
+              <p className="text-[11px] font-semibold text-m3-grey-600 uppercase tracking-wide">โกดัง</p>
+              <p className="mt-0.5 text-sm font-bold text-m3-primary-dark">{TARGET_WAREHOUSE_NAME}</p>
             </div>
-            <div className="rounded-xl bg-[#F7FAF8] border border-[#E8F0EB] px-4 py-3">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สต็อกปัจจุบัน</p>
-              <p className="mt-0.5 text-sm font-bold text-[#06402B]">
+            <div className="rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] px-4 py-3">
+              <p className="text-[11px] font-semibold text-m3-grey-600 uppercase tracking-wide">สต็อกปัจจุบัน</p>
+              <p className="mt-0.5 text-sm font-bold text-m3-primary-dark">
                 {formatQty(product.quantity)}{" "}
-                <span className="text-xs font-semibold text-slate-500">{product.base_unit || "ชิ้น"}</span>
+                <span className="text-xs font-semibold text-m3-grey-600">{product.base_unit || "ชิ้น"}</span>
               </p>
             </div>
           </div>
 
           {/* เหตุผล — กำหนดทิศทาง เพิ่ม/ลด */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-              เหตุผล <span className="text-[#B42318]">*</span>
+            <label className="block text-sm font-semibold text-m3-grey-700 mb-1.5">
+              เหตุผล <span className="text-m3-error-dark">*</span>
             </label>
             <div className="space-y-2">
               {REASON_OPTIONS.map((opt) => {
@@ -170,18 +170,18 @@ export default function CutStockModal({
                     className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all cursor-pointer ${
                       selected
                         ? optIsAdd
-                          ? "border-[#A6E3C4] bg-[#F0FAF4] text-[#067647]"
-                          : "border-[#F2B8B5] bg-[#FEF5F4] text-[#B42318]"
-                        : "border-[#E8ECEA] bg-slate-50 text-slate-600 hover:bg-white hover:border-[#C8DBD1]"
+                          ? "border-[rgba(0,167,111,0.24)] bg-[rgba(0,167,111,0.08)] text-m3-primary-dark"
+                          : "border-[rgba(255,86,48,0.24)] bg-[rgba(255,86,48,0.08)] text-m3-error-dark"
+                        : "border-[rgba(145,158,171,0.2)] bg-m3-grey-100 text-m3-grey-600 hover:bg-white hover:border-[rgba(0,167,111,0.24)]"
                     }`}
                   >
                     <span
                       className={`shrink-0 size-6 rounded-lg grid place-items-center text-xs font-bold ${
                         selected
                           ? optIsAdd
-                            ? "bg-[#067647] text-white"
-                            : "bg-[#B42318] text-white"
-                          : "bg-white border border-[#E8ECEA] text-slate-400"
+                            ? "bg-m3-primary-dark text-white"
+                            : "bg-m3-error text-white"
+                          : "bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-500"
                       }`}
                     >
                       {optIsAdd ? "+" : "−"}
@@ -203,7 +203,7 @@ export default function CutStockModal({
 
           {/* จำนวน */}
           <div>
-            <label htmlFor="cut-qty" className="block text-sm font-semibold text-slate-700 mb-1.5">
+            <label htmlFor="cut-qty" className="block text-sm font-semibold text-m3-grey-700 mb-1.5">
               {reasonChosen
                 ? isAdd
                   ? "จำนวนที่ต้องการเพิ่ม"
@@ -215,7 +215,7 @@ export default function CutStockModal({
                 type="button"
                 onClick={() => stepQty(-1)}
                 aria-label="ลดจำนวน"
-                className="w-12 shrink-0 grid place-items-center rounded-xl border border-[#E8ECEA] bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+                className="w-12 shrink-0 grid place-items-center rounded-xl border border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-600 hover:bg-m3-grey-100 hover:text-m3-grey-800 active:scale-95 transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
                   <path d="M5 12h14" />
@@ -232,15 +232,15 @@ export default function CutStockModal({
                 placeholder="0"
                 className={`flex-1 min-w-0 text-center text-lg font-bold rounded-xl border px-3 py-2.5 transition-all outline-none focus:ring-2 ${
                   error
-                    ? "border-[#F04438] bg-[#FEF3F2] focus:ring-[#F04438]/20"
-                    : "border-[#E8ECEA] bg-slate-50 text-slate-900 focus:bg-white focus:border-[#0F5C3F] focus:ring-[#0F5C3F]/20"
+                    ? "border-m3-error bg-[rgba(255,86,48,0.08)] focus:ring-m3-error/20"
+                    : "border-[rgba(145,158,171,0.2)] bg-m3-grey-100 text-m3-grey-800 focus:bg-white focus:border-m3-grey-800 focus:ring-m3-primary/20"
                 }`}
               />
               <button
                 type="button"
                 onClick={() => stepQty(1)}
                 aria-label="เพิ่มจำนวน"
-                className="w-12 shrink-0 grid place-items-center rounded-xl border border-[#E8ECEA] bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+                className="w-12 shrink-0 grid place-items-center rounded-xl border border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-600 hover:bg-m3-grey-100 hover:text-m3-grey-800 active:scale-95 transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
                   <path d="M12 5v14" />
@@ -249,7 +249,7 @@ export default function CutStockModal({
               </button>
             </div>
             {error && (
-              <p className="mt-1.5 text-xs font-semibold text-[#B42318] flex items-center gap-1.5">
+              <p className="mt-1.5 text-xs font-semibold text-m3-error-dark flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 8v4" />
@@ -263,16 +263,16 @@ export default function CutStockModal({
           {/* คงเหลือหลังทำรายการ */}
           <div
             className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-colors ${
-              error ? "bg-[#FEF3F2] border-[#FBD1CE]" : "bg-[#F0F7F3] border-[#D7EAE0]"
+              error ? "bg-[rgba(255,86,48,0.08)] border-[rgba(255,86,48,0.24)]" : "bg-[rgba(0,167,111,0.08)] border-[rgba(0,167,111,0.24)]"
             }`}
           >
-            <span className="text-sm font-semibold text-slate-600">
+            <span className="text-sm font-semibold text-m3-grey-600">
               {reasonChosen ? (isAdd ? "คงเหลือหลังเพิ่ม" : "คงเหลือหลังลด") : "คงเหลือหลังทำรายการ"}
             </span>
             <span
               className={`text-lg font-bold num ${
-                error || !reasonChosen ? "text-slate-400" : isAdd ? "text-[#067647]" : "text-[#06402B]"
-              } ${!error && reasonChosen && !isAdd && remaining === 0 ? "!text-[#B54708]" : ""}`}
+                error || !reasonChosen ? "text-m3-grey-500" : isAdd ? "text-m3-primary-dark" : "text-m3-primary-dark"
+              } ${!error && reasonChosen && !isAdd && remaining === 0 ? "!text-m3-warning-dark" : ""}`}
             >
               {!reasonChosen ? "—" : error ? "—" : formatQty(remaining)}{" "}
               <span className="text-xs font-semibold opacity-70">{product.base_unit || "ชิ้น"}</span>
@@ -281,7 +281,7 @@ export default function CutStockModal({
 
           {/* หมายเหตุ */}
           <div>
-            <label htmlFor="cut-note" className="block text-sm font-semibold text-slate-700 mb-1.5">
+            <label htmlFor="cut-note" className="block text-sm font-semibold text-m3-grey-700 mb-1.5">
               หมายเหตุเพิ่มเติม
             </label>
             <textarea
@@ -290,17 +290,17 @@ export default function CutStockModal({
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
-              className="w-full rounded-xl border border-[#E8ECEA] bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 resize-none transition-all outline-none focus:bg-white focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
+              className="w-full rounded-xl border border-[rgba(145,158,171,0.2)] bg-m3-grey-100 px-3.5 py-2.5 text-sm text-m3-grey-800 placeholder:text-m3-grey-500 resize-none transition-all outline-none focus:bg-white focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2.5 px-6 py-4 border-t border-[#F2F4F3]">
+        <div className="flex gap-2.5 px-6 py-4 border-t border-[rgba(145,158,171,0.2)]">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#E8ECEA] bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl border border-[rgba(145,158,171,0.2)] bg-white text-sm font-semibold text-m3-grey-600 hover:bg-m3-grey-100 transition-colors cursor-pointer"
           >
             ยกเลิก
           </button>
@@ -309,7 +309,7 @@ export default function CutStockModal({
             onClick={handleSubmit}
             disabled={!canSubmit}
             className={`flex-[1.4] py-2.5 rounded-xl text-sm font-semibold text-white active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-              isAdd ? "bg-[#067647] hover:bg-[#05613B]" : "bg-[#06402B] hover:bg-[#0A5C4E]"
+              isAdd ? "bg-m3-primary-dark hover:bg-m3-primary-dark" : "bg-m3-primary hover:bg-m3-primary-dark"
             }`}
           >
             {submitLabel}

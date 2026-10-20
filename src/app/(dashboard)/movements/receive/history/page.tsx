@@ -1,5 +1,6 @@
 "use client";
 
+import { SolarInboxHistory } from "@/components/icons";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useTabAuth } from "@/context/TabAuthContext";
@@ -561,7 +562,7 @@ export default function ReceiveHistoryPage() {
           </div>
         ) : paginatedRecords.length === 0 ? (
           <div className="p-12 text-center space-y-2 text-m3-grey-500">
-            <span className="text-4xl">📥</span>
+            <SolarInboxHistory size={40} className="text-m3-grey-400" />
             <h3 className="text-base font-bold text-m3-grey-700">ไม่พบรายการประวัติการรับสินค้า</h3>
           </div>
         ) : (

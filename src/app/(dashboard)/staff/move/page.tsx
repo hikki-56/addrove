@@ -74,18 +74,18 @@ export default function StaffMovePage() {
   return (
     <div className="scale-original max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-5">
       {/* Staff Info Bar */}
-      <div className="rounded-2xl bg-white border border-[#E8ECEA] shadow-sm p-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
-          <span>คลัง: <span className="font-bold text-slate-900">{activeWhName}</span></span>
+      <div className="rounded-xl bg-white border border-[rgba(145,158,171,0.2)] shadow-sm p-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm text-m3-grey-600 font-medium">
+          <span className="w-2.5 h-2.5 rounded-full bg-m3-info shrink-0" />
+          <span>คลัง: <span className="font-bold text-m3-grey-800">{activeWhName}</span></span>
         </div>
 
         <button
           type="button"
           onClick={() => refreshData()}
-          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
+          className="px-3.5 py-2 bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-800 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs shrink-0"
         >
-          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           <span>รีเฟรช</span>
@@ -93,22 +93,22 @@ export default function StaffMovePage() {
       </div>
 
       {/* 2-Step Guided Progress Indicator */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs space-y-3">
+      <div className="bg-white rounded-xl p-4 sm:p-5 border border-[rgba(145,158,171,0.2)] shadow-xs space-y-3">
         <div className="flex items-center justify-between max-w-sm mx-auto px-4 pt-1">
           {/* Step 1 */}
           <div className="flex flex-col items-center gap-1.5 flex-1">
             <div
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 1
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
+                  ? "bg-m3-info text-white shadow-md shadow-m3-info/30 ring-4 ring-m3-info/10 scale-105"
+                  : "bg-m3-grey-200 text-m3-grey-600 border border-[rgba(145,158,171,0.32)] shadow-sm"
               }`}
             >
               {step > 1 ? "✓" : "1"}
             </div>
             <span
               className={`text-sm font-bold text-center leading-tight pt-1 ${
-                step >= 1 ? "text-blue-700 font-extrabold" : "text-slate-600"
+                step >= 1 ? "text-m3-info-dark font-extrabold" : "text-m3-grey-600"
               }`}
             >
               {step > 1 ? "สินค้าถูกต้อง" : "สินค้าและจำนวน"}
@@ -117,7 +117,7 @@ export default function StaffMovePage() {
 
           <div
             className={`h-1 w-16 -mt-6 transition-all duration-300 rounded-full ${
-              step > 1 ? "bg-blue-500" : "bg-slate-200"
+              step > 1 ? "bg-m3-info" : "bg-m3-grey-300"
             }`}
           />
 
@@ -126,15 +126,15 @@ export default function StaffMovePage() {
             <div
               className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold transition-all duration-300 ${
                 step >= 2
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-500/10 scale-105"
-                  : "bg-slate-100 text-slate-600 border border-[#D5DDD9] shadow-sm"
+                  ? "bg-m3-info text-white shadow-md shadow-m3-info/30 ring-4 ring-m3-info/10 scale-105"
+                  : "bg-m3-grey-200 text-m3-grey-600 border border-[rgba(145,158,171,0.32)] shadow-sm"
               }`}
             >
               2
             </div>
             <span
               className={`text-sm font-bold text-center leading-tight pt-1 ${
-                step >= 2 ? "text-blue-700 font-extrabold" : "text-slate-600"
+                step >= 2 ? "text-m3-info-dark font-extrabold" : "text-m3-grey-600"
               }`}
             >
               ตำแหน่งปลายทาง
