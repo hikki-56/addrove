@@ -185,9 +185,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-4">
-        <div className="bg-white rounded-3xl p-12 text-center border border-[#E8ECEA] shadow-sm space-y-3">
-          <div className="w-8 h-8 border-3 border-[#0F5C3F] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-500 font-semibold">กำลังโหลดข้อมูลสินค้า...</p>
+        <div className="bg-white rounded-2xl p-12 text-center border border-[rgba(145,158,171,0.2)] shadow-sm space-y-3">
+          <div className="w-8 h-8 border-3 border-m3-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-m3-grey-600 font-semibold">กำลังโหลดข้อมูลสินค้า...</p>
         </div>
       </div>
     );
@@ -196,12 +196,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   if (!product) {
     return (
       <div className="max-w-5xl mx-auto space-y-4">
-        <div className="bg-white rounded-3xl p-12 text-center border border-[#E8ECEA] shadow-sm space-y-3">
-          <p className="text-sm text-slate-500 font-semibold">{error || "ไม่พบสินค้า"}</p>
+        <div className="bg-white rounded-2xl p-12 text-center border border-[rgba(145,158,171,0.2)] shadow-sm space-y-3">
+          <p className="text-sm text-m3-grey-600 font-semibold">{error || "ไม่พบสินค้า"}</p>
           <button
             type="button"
             onClick={() => router.push("/products")}
-            className="px-4 py-2.5 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold shadow-md shadow-[#06402B]/20 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white text-xs sm:text-sm font-extrabold shadow-md shadow-m3-primary/20 transition-all cursor-pointer"
           >
             กลับไปสินค้าทั้งหมด
           </button>
@@ -219,7 +219,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         <button
           type="button"
           onClick={() => router.push("/products")}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-xs sm:text-sm font-semibold mb-3 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-m3-grey-600 hover:text-m3-grey-800 text-xs sm:text-sm font-semibold mb-3 transition-colors cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -228,24 +228,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         </button>
 
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#EAF2EE] text-[#06402B] border border-[#DFEDE6] flex items-center justify-center shrink-0">
+          <div className="w-14 h-14 rounded-xl bg-[rgba(0,167,111,0.08)] text-m3-primary-dark border border-[rgba(0,167,111,0.16)] flex items-center justify-center shrink-0">
             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{product.product_name}</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-m3-grey-800 tracking-tight">{product.product_name}</h1>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${statusMeta.badge}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
                 {statusMeta.label}
               </span>
             </div>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium">
-              SKU: <span className="font-mono font-bold text-[#053425]">{product.sku}</span>
-              <span className="mx-1.5 text-slate-300">·</span>
+            <p className="text-m3-grey-600 text-xs sm:text-sm mt-1 font-medium">
+              SKU: <span className="tabular-nums font-bold text-m3-primary-darker">{product.sku}</span>
+              <span className="mx-1.5 text-m3-grey-400">·</span>
               หมวด: {product.category || "-"}
-              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="mx-1.5 text-m3-grey-400">·</span>
               หน่วย: {product.base_unit || "ชิ้น"}
             </p>
           </div>
@@ -253,9 +253,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <button
               type="button"
               onClick={() => router.push("/movements/transfer")}
-              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-[#E8ECEA]/90 text-slate-700 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer active:scale-98"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-700 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer active:scale-98"
             >
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               เบิกสินค้า
@@ -263,7 +263,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <button
               type="button"
               onClick={openEdit}
-              className="px-4 py-2.5 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
+              className="px-4 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md shadow-m3-primary/20 transition-all cursor-pointer active:scale-98"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -276,44 +276,44 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Stat tiles: บาร์โค้ด / คงเหลือรวม / ขั้นต่ำ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs">
-          <div className="text-xs text-slate-500 font-semibold mb-2">บาร์โค้ด</div>
+        <div className="bg-white rounded-xl p-4 border border-[rgba(145,158,171,0.2)] shadow-2xs">
+          <div className="text-xs text-m3-grey-600 font-semibold mb-2">บาร์โค้ด</div>
           {barcodeValue ? (
             <BarcodeSvg value={barcodeValue} height={36} width={1.2} className="max-w-full" />
           ) : (
-            <div className="text-sm text-slate-400 font-medium py-3">ไม่มีบาร์โค้ด</div>
+            <div className="text-sm text-m3-grey-500 font-medium py-3">ไม่มีบาร์โค้ด</div>
           )}
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs flex flex-col justify-between">
-          <div className="text-xs text-slate-500 font-semibold">คงเหลือรวมทุกโกดัง</div>
-          <div className={`text-2xl sm:text-3xl font-black leading-tight mt-1 ${totalQty < 0 ? "text-rose-600" : totalQty === 0 ? "text-slate-400" : "text-[#06402B]"}`}>
+        <div className="bg-white rounded-xl p-4 border border-[rgba(145,158,171,0.2)] shadow-2xs flex flex-col justify-between">
+          <div className="text-xs text-m3-grey-600 font-semibold">คงเหลือรวมทุกโกดัง</div>
+          <div className={`text-2xl sm:text-3xl font-extrabold leading-tight mt-1 ${totalQty < 0 ? "text-m3-error-dark" : totalQty === 0 ? "text-m3-grey-500" : "text-m3-primary-dark"}`}>
             {totalQty.toLocaleString()}
-            <span className="text-xs font-bold text-slate-400 ml-1.5">{product.base_unit || "ชิ้น"}</span>
+            <span className="text-xs font-bold text-m3-grey-500 ml-1.5">{product.base_unit || "ชิ้น"}</span>
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs flex flex-col justify-between">
-          <div className="text-xs text-slate-500 font-semibold">จำนวนขั้นต่ำ (แจ้งเตือน)</div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight mt-1">
+        <div className="bg-white rounded-xl p-4 border border-[rgba(145,158,171,0.2)] shadow-2xs flex flex-col justify-between">
+          <div className="text-xs text-m3-grey-600 font-semibold">จำนวนขั้นต่ำ (แจ้งเตือน)</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-m3-grey-800 leading-tight mt-1">
             {minimumStock.toLocaleString()}
-            <span className="text-xs font-bold text-slate-400 ml-1.5">{product.base_unit || "ชิ้น"}</span>
+            <span className="text-xs font-bold text-m3-grey-500 ml-1.5">{product.base_unit || "ชิ้น"}</span>
           </div>
         </div>
       </div>
 
       {/* โกดังที่มีสินค้า (กดเพื่อขยายดูเฉพาะชื่อโกดัง) */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-sm">
+      <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-sm">
         <button
           type="button"
           onClick={() => setWhOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 text-left cursor-pointer hover:bg-slate-50/60 transition-colors rounded-2xl"
+          className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 text-left cursor-pointer hover:bg-m3-grey-100/60 transition-colors rounded-xl"
         >
-          <span className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-            <svg className="w-4 h-4 text-[#0F5C3F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span className="text-sm font-extrabold text-m3-grey-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             โกดังที่มีสินค้า
           </span>
-          <span className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
+          <span className="flex items-center gap-2 text-xs text-m3-grey-500 font-semibold">
             {byWarehouse.length} โกดัง
             <svg
               className={`w-4 h-4 transition-transform duration-200 ${whOpen ? "rotate-180" : ""}`}
@@ -329,7 +329,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {whOpen && (
           <div className="px-4 sm:px-5 pb-4">
             {byWarehouse.length === 0 ? (
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-xs text-slate-500 font-medium">
+              <div className="p-3.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs text-m3-grey-600 font-medium">
                 ยังไม่มีสินค้าจัดเก็บในโกดังใด ๆ
               </div>
             ) : (
@@ -337,7 +337,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 {byWarehouse.map((wh) => (
                   <span
                     key={wh.warehouse_id}
-                    className="px-3 py-1.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-xs font-bold text-slate-700"
+                    className="px-3 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs font-bold text-m3-grey-700"
                   >
                     {wh.warehouse_name}
                   </span>
@@ -349,27 +349,27 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* ประวัติสินค้า */}
-      <div id="history" className="bg-white rounded-3xl border border-[#E8ECEA]/90 shadow-sm overflow-hidden scroll-mt-24">
+      <div id="history" className="bg-white rounded-2xl border border-[rgba(145,158,171,0.2)] shadow-sm overflow-hidden scroll-mt-24">
         <div className="p-5 sm:p-6 pb-4 flex items-center justify-between gap-3">
-          <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+          <h2 className="text-sm sm:text-base font-extrabold text-m3-grey-800 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-m3-warning" />
             ประวัติสินค้า (ล่าสุด 20 รายการ)
           </h2>
         </div>
 
         {movementsNote ? (
-          <div className="mx-5 sm:mx-6 mb-5 p-4 rounded-2xl bg-slate-50 border border-[#E8ECEA] text-xs text-slate-500 font-medium">
+          <div className="mx-5 sm:mx-6 mb-5 p-4 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs text-m3-grey-600 font-medium">
             {movementsNote}
           </div>
         ) : movements.length === 0 ? (
-          <div className="mx-5 sm:mx-6 mb-5 p-4 rounded-2xl bg-slate-50 border border-[#E8ECEA] text-xs text-slate-500 font-medium">
+          <div className="mx-5 sm:mx-6 mb-5 p-4 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs text-m3-grey-600 font-medium">
             ยังไม่มีประวัติการเคลื่อนไหวของสินค้านี้
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="bg-slate-50/70 border-y border-[#EEF1EF] text-slate-500 font-semibold">
+                <tr className="bg-m3-grey-100/70 border-y border-[rgba(145,158,171,0.2)] text-m3-grey-600 font-semibold">
                   <th className="py-3 px-4 sm:px-5 font-semibold whitespace-nowrap">วันที่</th>
                   <th className="py-3 px-4 sm:px-5 font-semibold">เอกสาร</th>
                   <th className="py-3 px-4 sm:px-5 font-semibold">ประเภท</th>
@@ -377,26 +377,26 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   <th className="py-3 px-4 sm:px-5 font-semibold">โดย</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#EEF1EF]">
+              <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
                 {movements.map((m) => (
-                  <tr key={m.movement_id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 sm:px-5 text-slate-500 whitespace-nowrap">
+                  <tr key={m.movement_id} className="hover:bg-m3-grey-100/80 transition-colors">
+                    <td className="py-3 px-4 sm:px-5 text-m3-grey-600 whitespace-nowrap">
                       {new Date(m.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
                     </td>
-                    <td className="py-3 px-4 sm:px-5 font-mono text-xs font-bold text-[#06402B] whitespace-nowrap">
+                    <td className="py-3 px-4 sm:px-5 tabular-nums text-xs font-bold text-m3-primary-dark whitespace-nowrap">
                       {m.document_no}
                     </td>
                     <td className="py-3 px-4 sm:px-5">
-                      <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-slate-100 text-slate-700 border-[#E8ECEA] whitespace-nowrap">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-m3-grey-200 text-m3-grey-700 border-[rgba(145,158,171,0.2)] whitespace-nowrap">
                         {movTypeLabel[m.movement_type] ?? m.movement_type}
                       </span>
                     </td>
-                    <td className={`py-3 px-4 sm:px-5 font-mono font-bold text-right whitespace-nowrap ${
-                      (m.qty_change ?? 0) > 0 ? "text-[#06402B]" : (m.qty_change ?? 0) < 0 ? "text-rose-600" : "text-slate-400"
+                    <td className={`py-3 px-4 sm:px-5 tabular-nums font-bold text-right whitespace-nowrap ${
+                      (m.qty_change ?? 0) > 0 ? "text-m3-primary-dark" : (m.qty_change ?? 0) < 0 ? "text-m3-error-dark" : "text-m3-grey-500"
                     }`}>
                       {(m.qty_change ?? 0) > 0 ? "+" : ""}{(m.qty_change ?? 0).toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 sm:px-5 text-slate-600 font-medium">{m.created_by_name}</td>
+                    <td className="py-3 px-4 sm:px-5 text-m3-grey-600 font-medium">{m.created_by_name}</td>
                   </tr>
                 ))}
               </tbody>
@@ -407,17 +407,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Edit Modal */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-xl border border-[#E8ECEA] space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#EEF1EF] pb-3.5">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-m3-grey-800/48 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-xl border border-[rgba(145,158,171,0.2)] space-y-5 shadow-m3-dropdown">
+            <div className="flex items-center justify-between border-b border-[rgba(145,158,171,0.2)] pb-3.5">
+              <h2 className="text-base sm:text-lg font-extrabold text-m3-grey-800 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-m3-primary" />
                 แก้ไขข้อมูลสินค้า ({product.sku})
               </h2>
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                className="text-m3-grey-500 hover:text-m3-grey-700 p-1.5 rounded-xl hover:bg-m3-grey-200 transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -426,7 +426,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {formError && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+              <div className="p-3.5 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-xs font-medium">
                 {formError}
               </div>
             )}
@@ -434,79 +434,79 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label htmlFor="detail-prod-sku" className="block font-bold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
+                  <label htmlFor="detail-prod-sku" className="block font-bold text-m3-grey-700 mb-1.5">รหัสสินค้า (SKU) *</label>
                   <input
                     id="detail-prod-sku"
                     type="text"
                     {...register("sku")}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums font-bold"
                   />
-                  {errors.sku && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.sku.message}</p>}
+                  {errors.sku && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.sku.message}</p>}
                 </div>
                 <div>
-                  <label htmlFor="detail-prod-barcode" className="block font-bold text-slate-700 mb-1.5">Barcode</label>
+                  <label htmlFor="detail-prod-barcode" className="block font-bold text-m3-grey-700 mb-1.5">Barcode</label>
                   <input
                     id="detail-prod-barcode"
                     type="text"
                     {...register("barcode")}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums"
                   />
-                  {errors.barcode && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.barcode.message}</p>}
+                  {errors.barcode && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.barcode.message}</p>}
                 </div>
               </div>
 
               <div>
-                <label htmlFor="detail-prod-name" className="block font-bold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
+                <label htmlFor="detail-prod-name" className="block font-bold text-m3-grey-700 mb-1.5">ชื่อสินค้า *</label>
                 <input
                   id="detail-prod-name"
                   type="text"
                   {...register("product_name")}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm font-medium"
                 />
-                {errors.product_name && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.product_name.message}</p>}
+                {errors.product_name && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.product_name.message}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label htmlFor="detail-prod-cat" className="block font-bold text-slate-700 mb-1.5">หมวดหมู่ *</label>
+                  <label htmlFor="detail-prod-cat" className="block font-bold text-m3-grey-700 mb-1.5">หมวดหมู่ *</label>
                   <input
                     id="detail-prod-cat"
                     type="text"
                     {...register("category")}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                   />
-                  {errors.category && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.category.message}</p>}
+                  {errors.category && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.category.message}</p>}
                 </div>
                 <div>
-                  <label htmlFor="detail-prod-unit" className="block font-bold text-slate-700 mb-1.5">หน่วยนับ *</label>
+                  <label htmlFor="detail-prod-unit" className="block font-bold text-m3-grey-700 mb-1.5">หน่วยนับ *</label>
                   <input
                     id="detail-prod-unit"
                     type="text"
                     {...register("base_unit")}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                   />
-                  {errors.base_unit && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.base_unit.message}</p>}
+                  {errors.base_unit && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.base_unit.message}</p>}
                 </div>
                 <div>
-                  <label htmlFor="detail-prod-min-stock" className="block font-bold text-slate-700 mb-1.5">จำนวนขั้นต่ำ *</label>
+                  <label htmlFor="detail-prod-min-stock" className="block font-bold text-m3-grey-700 mb-1.5">จำนวนขั้นต่ำ *</label>
                   <input
                     id="detail-prod-min-stock"
                     type="number"
                     min="0"
                     {...register("minimum_stock", { valueAsNumber: true })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums font-bold"
                   />
-                  {errors.minimum_stock && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.minimum_stock.message}</p>}
+                  {errors.minimum_stock && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.minimum_stock.message}</p>}
                 </div>
               </div>
 
               <div>
-                <label htmlFor="detail-prod-desc" className="block font-bold text-slate-700 mb-1.5">รายละเอียดเพิ่มเติม / ตำแหน่ง</label>
+                <label htmlFor="detail-prod-desc" className="block font-bold text-m3-grey-700 mb-1.5">รายละเอียดเพิ่มเติม / ตำแหน่ง</label>
                 <textarea
                   id="detail-prod-desc"
                   rows={3}
                   {...register("description")}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm resize-none"
                 />
               </div>
 
@@ -514,14 +514,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer border border-[#E8ECEA]"
+                  className="flex-1 py-3 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 font-bold text-xs sm:text-sm transition-all cursor-pointer border border-[rgba(145,158,171,0.2)]"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-3 rounded-2xl bg-[#06402B] hover:bg-[#053425] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 transition-all cursor-pointer"
+                  className="flex-1 py-3 rounded-xl bg-m3-primary hover:bg-m3-primary-darker disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-m3-primary/20 transition-all cursor-pointer"
                 >
                   {isSubmitting ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
                 </button>

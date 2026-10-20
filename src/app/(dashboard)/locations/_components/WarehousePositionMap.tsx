@@ -55,22 +55,22 @@ export interface WarehousePositionMapProps {
 
 const STATUS_STYLES: Record<PosStatus, { cell: string; code: string; qty: string; sub: string }> = {
   empty: {
-    cell: "bg-slate-50 border-[#E8ECEA] hover:border-[#D5DDD9]",
-    code: "text-slate-400",
-    qty: "text-slate-500",
-    sub: "text-slate-400",
+    cell: "bg-m3-grey-100 border-[rgba(145,158,171,0.2)] hover:border-[rgba(145,158,171,0.32)]",
+    code: "text-m3-grey-500",
+    qty: "text-m3-grey-600",
+    sub: "text-m3-grey-500",
   },
   partial: {
-    cell: "bg-[#EAF2EE] border-[#8FB3A3] hover:border-[#5B8A74]",
-    code: "text-[#053425]",
-    qty: "text-[#04231A]",
-    sub: "text-[#053425]",
+    cell: "bg-[rgba(0,167,111,0.08)] border-[rgba(0,167,111,0.24)] hover:border-m3-primary-dark",
+    code: "text-m3-primary-darker",
+    qty: "text-m3-primary-darker",
+    sub: "text-m3-primary-darker",
   },
   full: {
-    cell: "bg-rose-50 border-rose-300 hover:border-rose-400",
-    code: "text-rose-700",
-    qty: "text-rose-900",
-    sub: "text-rose-700",
+    cell: "bg-[rgba(255,86,48,0.08)] border-[rgba(255,86,48,0.32)] hover:border-m3-error",
+    code: "text-m3-error-dark",
+    qty: "text-m3-error-dark",
+    sub: "text-m3-error-dark",
   },
 };
 
@@ -223,8 +223,8 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
               onClick={() => setMapWhId(normId)}
               className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer active:scale-95 border ${
                 isActive
-                  ? "bg-[#06402B] border-[#06402B] text-white shadow-md shadow-[#06402B]/20"
-                  : "bg-white border-[#E8ECEA] text-slate-700 hover:border-[#8FB3A3] hover:text-[#053425]"
+                  ? "bg-m3-primary border-m3-primary text-white shadow-md shadow-m3-primary/20"
+                  : "bg-white border-[rgba(145,158,171,0.2)] text-m3-grey-700 hover:border-[rgba(0,167,111,0.24)] hover:text-m3-primary-darker"
               }`}
             >
               {w.warehouse_name}
@@ -234,26 +234,26 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
       </div>
 
       {/* Summary + capacity */}
-      <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA] shadow-xs space-y-3">
+      <div className="bg-white rounded-xl p-4 border border-[rgba(145,158,171,0.2)] shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-extrabold text-slate-900 text-base sm:text-lg">
+            <p className="font-extrabold text-m3-grey-800 text-base sm:text-lg">
               {whName}
               {layout ? (
-                <span className="ml-2 font-mono text-sm text-slate-500">({layout.building_code})</span>
+                <span className="ml-2 tabular-nums text-sm text-m3-grey-600">({layout.building_code})</span>
               ) : null}
             </p>
             {layout ? (
-              <p className="text-sm text-slate-500 font-medium">{layout.address_label}</p>
+              <p className="text-sm text-m3-grey-600 font-medium">{layout.address_label}</p>
             ) : (
-              <p className="text-sm text-slate-500 font-medium">ยังไม่มีผังโกดัง</p>
+              <p className="text-sm text-m3-grey-600 font-medium">ยังไม่มีผังโกดัง</p>
             )}
           </div>
           <button
             type="button"
             onClick={loadProducts}
             disabled={loading}
-            className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-700 font-semibold text-xs hover:bg-m3-grey-100 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -264,16 +264,16 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
         {layout && (
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-[#E8ECEA]">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> ว่าง {summary.empty.toLocaleString()}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-m3-grey-400" /> ว่าง {summary.empty.toLocaleString()}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0F5C3F]" /> มีของ {summary.partial.toLocaleString()}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border border-[rgba(0,167,111,0.24)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-m3-primary" /> มีของ {summary.partial.toLocaleString()}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> เต็ม {summary.full.toLocaleString()}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[rgba(255,86,48,0.16)] text-m3-error-dark border border-[rgba(255,86,48,0.24)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-m3-error" /> เต็ม {summary.full.toLocaleString()}
             </span>
-            <label className="ml-auto flex items-center gap-2 text-slate-600 font-semibold text-xs sm:text-sm">
+            <label className="ml-auto flex items-center gap-2 text-m3-grey-600 font-semibold text-xs sm:text-sm">
               ความจุต่อตำแหน่ง
               <input
                 type="number"
@@ -281,28 +281,28 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
                 inputMode="numeric"
                 value={capacity}
                 onChange={(e) => handleCapacityChange(Number(e.target.value))}
-                className="w-24 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 text-xs sm:text-sm font-mono font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20"
+                className="w-24 px-2.5 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 text-xs sm:text-sm tabular-nums font-bold focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20"
               />
               ชิ้น
             </label>
           </div>
         )}
-        <p className="text-xs text-slate-400 font-medium">
+        <p className="text-xs text-m3-grey-500 font-medium">
           จำนวนในผังเป็นค่าประมาณ
         </p>
       </div>
 
       {/* Loading / Error */}
       {loading && (
-        <div className="text-center py-12 text-slate-500 text-sm font-medium">กำลังโหลดข้อมูลสต็อก...</div>
+        <div className="text-center py-12 text-m3-grey-600 text-sm font-medium">กำลังโหลดข้อมูลสต็อก...</div>
       )}
       {!loading && error && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-sm font-semibold flex items-center justify-between gap-3">
           {error}
           <button
             type="button"
             onClick={loadProducts}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shrink-0"
+            className="px-4 py-2 rounded-xl bg-m3-error hover:bg-m3-error-dark text-white font-bold text-xs cursor-pointer shrink-0"
           >
             ลองอีกครั้ง
           </button>
@@ -322,27 +322,27 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
               })
             );
             return (
-              <div key={`floor-${fl.floor}`} className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
-                <div className="px-4 py-3 bg-slate-50/70 border-b border-[#EEF1EF] flex flex-wrap items-center justify-between gap-2">
+              <div key={`floor-${fl.floor}`} className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-xs overflow-hidden">
+                <div className="px-4 py-3 bg-m3-grey-100/70 border-b border-[rgba(145,158,171,0.2)] flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-xl bg-[#06402B] text-white font-black text-base flex items-center justify-center">
+                    <span className="w-8 h-8 rounded-xl bg-m3-primary text-white font-extrabold text-base flex items-center justify-center">
                       {fl.floor}
                     </span>
-                    <h3 className="font-extrabold text-slate-900 text-base">ชั้น {fl.floor}</h3>
+                    <h3 className="font-extrabold text-m3-grey-800 text-base">ชั้น {fl.floor}</h3>
                     {fl.floor === 1 && fl.locks.length > 0 && (
-                      <span className="text-xs font-bold text-[#053425] bg-[#EAF2EE] border border-[#C9DFD4] px-2.5 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-m3-primary-darker bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] px-2.5 py-0.5 rounded-full">
                         ↥ ทางขึ้นหน้าตึก
                       </span>
                     )}
                   </div>
                   {fl.locks.length > 0 && (
-                    <p className="text-xs font-bold text-slate-500">
+                    <p className="text-xs font-bold text-m3-grey-600">
                       ว่าง {floorCounts.empty} • มีของ {floorCounts.partial} • เต็ม {floorCounts.full}
                     </p>
                   )}
                 </div>
                 {fl.locks.length === 0 ? (
-                  <p className="px-4 py-5 text-center text-sm text-slate-500 font-medium">
+                  <p className="px-4 py-5 text-center text-sm text-m3-grey-600 font-medium">
                     {fl.note || "ไม่มีล็อกจัดเก็บสินค้าในชั้นนี้"}
                   </p>
                 ) : (
@@ -368,30 +368,30 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
       {/* Stock outside the plan */}
       {!loading && !error && others.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
-          <div className="px-4 py-3 bg-amber-50/70 border-b border-[#EEF1EF]">
-            <h3 className="font-extrabold text-slate-900 text-sm">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-xs overflow-hidden">
+          <div className="px-4 py-3 bg-[rgba(255,171,0,0.08)] border-b border-[rgba(145,158,171,0.2)]">
+            <h3 className="font-extrabold text-m3-grey-800 text-sm">
               สินค้าที่ตำแหน่งนอกผัง ({others.length.toLocaleString()} รายการ)
             </h3>
           </div>
-          <ul className="divide-y divide-[#EEF1EF]">
+          <ul className="divide-y divide-[rgba(145,158,171,0.2)]">
             {others.slice(0, 50).map((o, i) => (
               <li key={`other-${i}`} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-sm font-bold text-slate-900 truncate">{o.location}</p>
-                  <p className="text-xs text-slate-500 font-medium truncate">
+                  <p className="tabular-nums text-sm font-bold text-m3-grey-800 truncate">{o.location}</p>
+                  <p className="text-xs text-m3-grey-600 font-medium truncate">
                     [{o.sku}] {o.name}
                   </p>
                 </div>
-                <span className="font-mono font-black text-slate-900 text-base shrink-0">
+                <span className="tabular-nums font-extrabold text-m3-grey-800 text-base shrink-0">
                   {Math.round(o.qty).toLocaleString()}
-                  <span className="ml-1 text-xs font-bold text-slate-400">{o.unit}</span>
+                  <span className="ml-1 text-xs font-bold text-m3-grey-500">{o.unit}</span>
                 </span>
               </li>
             ))}
           </ul>
           {others.length > 50 && (
-            <p className="px-4 py-2.5 text-xs text-slate-400 font-medium border-t border-[#EEF1EF]">
+            <p className="px-4 py-2.5 text-xs text-m3-grey-500 font-medium border-t border-[rgba(145,158,171,0.2)]">
               แสดง 50 รายการแรก จากทั้งหมด {others.length.toLocaleString()} รายการ
             </p>
           )}
@@ -400,12 +400,12 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
       {/* Position detail modal */}
       {selectedCode && selectedParsed && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md border border-[#E8ECEA] space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3 border-b border-[#EEF1EF] pb-3.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-m3-grey-800/48 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md border border-[rgba(145,158,171,0.2)] space-y-4 shadow-m3-dropdown max-h-[85dvh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 border-b border-[rgba(145,158,171,0.2)] pb-3.5">
               <div>
-                <p className="font-mono font-black text-2xl text-[#053425]">{selectedCode}</p>
-                <p className="text-sm font-bold text-slate-600 mt-0.5">
+                <p className="tabular-nums font-extrabold text-2xl text-m3-primary-darker">{selectedCode}</p>
+                <p className="text-sm font-bold text-m3-grey-600 mt-0.5">
                   {selectedParsed
                     ? `ล็อก ${selectedParsed.lock} • ${positionLabel(selectedParsed.side, selectedParsed.level)}`
                     : ""}{" "}
@@ -415,7 +415,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
               <button
                 type="button"
                 onClick={() => setSelectedCode(null)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                className="text-m3-grey-500 hover:text-m3-grey-700 p-1.5 rounded-xl hover:bg-m3-grey-200 transition-colors cursor-pointer shrink-0"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -425,7 +425,7 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
 
             {!selectedOcc || selectedOcc.items.length === 0 ? (
               <div className="py-8 text-center space-y-1">
-                <p className="text-base font-extrabold text-slate-400">ตำแหน่งว่าง</p>
+                <p className="text-base font-extrabold text-m3-grey-500">ตำแหน่งว่าง</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -433,25 +433,25 @@ export default function WarehousePositionMap({ warehouses }: WarehousePositionMa
                   <span
                     className={`text-xs px-3 py-1 rounded-full font-bold border ${
                       positionStatus(selectedOcc.qty, capacity) === "full"
-                        ? "bg-rose-100 text-rose-800 border-rose-200"
-                        : "bg-[#DFEDE6] text-[#052B1F] border-[#C9DFD4]"
+                        ? "bg-[rgba(255,86,48,0.16)] text-m3-error-dark border-[rgba(255,86,48,0.24)]"
+                        : "bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border-[rgba(0,167,111,0.24)]"
                     }`}
                   >
                     {statusText(positionStatus(selectedOcc.qty, capacity))}
                   </span>
-                  <span className="font-black text-2xl text-slate-900 font-mono">
+                  <span className="font-extrabold text-2xl text-m3-grey-800 tabular-nums">
                     {Math.round(selectedOcc.qty).toLocaleString()}
-                    <span className="ml-1 text-sm font-bold text-slate-400">ชิ้น</span>
+                    <span className="ml-1 text-sm font-bold text-m3-grey-500">ชิ้น</span>
                   </span>
                 </div>
-                <ul className="divide-y divide-[#EEF1EF] border border-[#E8ECEA] rounded-2xl overflow-hidden">
+                <ul className="divide-y divide-[rgba(145,158,171,0.2)] border border-[rgba(145,158,171,0.2)] rounded-xl overflow-hidden">
                   {selectedOcc.items.map((it, i) => (
                     <li key={`item-${i}`} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">{it.name}</p>
-                        <p className="font-mono text-xs text-slate-500 font-semibold">[{it.sku}]</p>
+                        <p className="text-sm font-bold text-m3-grey-800 truncate">{it.name}</p>
+                        <p className="tabular-nums text-xs text-m3-grey-600 font-semibold">[{it.sku}]</p>
                       </div>
-                      <span className="font-mono font-black text-lg text-slate-900 shrink-0">
+                      <span className="tabular-nums font-extrabold text-lg text-m3-grey-800 shrink-0">
                         {Math.round(it.qty).toLocaleString()}
                       </span>
                     </li>
@@ -482,10 +482,10 @@ function LockCard({
   onSelect: (code: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-[#E8ECEA] overflow-hidden bg-white flex flex-col">
-      <div className="px-2.5 py-1.5 bg-slate-100/80 flex items-center justify-between">
-        <span className="text-xs font-extrabold text-slate-700">ล็อก {lock}</span>
-        <span className="font-mono text-xs font-bold text-slate-400">
+    <div className="rounded-xl border border-[rgba(145,158,171,0.2)] overflow-hidden bg-white flex flex-col">
+      <div className="px-2.5 py-1.5 bg-m3-grey-200/80 flex items-center justify-between">
+        <span className="text-xs font-extrabold text-m3-grey-700">ล็อก {lock}</span>
+        <span className="tabular-nums text-xs font-bold text-m3-grey-500">
           {whNum}K{lock}
         </span>
       </div>
@@ -502,12 +502,12 @@ function LockCard({
               onClick={() => onSelect(p.code)}
               className={`flex flex-col items-start justify-between gap-0.5 p-2 rounded-lg border text-left min-h-[72px] transition-all cursor-pointer active:scale-95 ${style.cell}`}
             >
-              <span className={`font-mono font-extrabold text-xs ${style.code}`}>{p.code.split("-")[1]}</span>
+              <span className={`tabular-nums font-extrabold text-xs ${style.code}`}>{p.code.split("-")[1]}</span>
               {st === "empty" ? (
-                <span className="text-xs font-bold text-slate-400">ว่าง</span>
+                <span className="text-xs font-bold text-m3-grey-500">ว่าง</span>
               ) : (
                 <>
-                  <span className={`font-black text-lg leading-none font-mono ${style.qty}`}>
+                  <span className={`font-extrabold text-lg leading-none tabular-nums ${style.qty}`}>
                     {Math.round(qty).toLocaleString()}
                   </span>
                   <span className={`text-xs font-bold ${style.sub}`}>

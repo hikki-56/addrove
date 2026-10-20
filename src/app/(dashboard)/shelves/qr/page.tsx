@@ -90,11 +90,11 @@ function ScrollableSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#E8ECEA] text-slate-800 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-m3-grey-100 hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20"
       >
         <span className="truncate">{currentOption ? currentOption.label : value}</span>
         <svg
-          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-m3-grey-500 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -104,7 +104,7 @@ function ScrollableSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-full min-w-[160px] bg-white border border-[#E8ECEA] rounded-xl shadow-xl z-50 max-h-[160px] overflow-y-auto divide-y divide-[#EEF1EF] py-1">
+        <div className="absolute left-0 top-full mt-1.5 w-full min-w-[160px] bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown z-50 max-h-[160px] overflow-y-auto divide-y divide-[rgba(145,158,171,0.2)] py-1">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -117,12 +117,12 @@ function ScrollableSelect({
                 }}
                 className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? "bg-[#EAF2EE] text-[#053425] font-bold"
-                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-darker font-bold"
+                    : "text-m3-grey-700 hover:bg-m3-grey-100 hover:text-m3-grey-800"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <span className="text-[#06402B] text-xs font-bold ml-1.5 shrink-0">✓</span>}
+                {isSelected && <span className="text-m3-primary-dark text-xs font-bold ml-1.5 shrink-0">✓</span>}
               </button>
             );
           })}
@@ -247,16 +247,16 @@ export default function ShelfQrPage() {
     return (
       <div
         key={`${item.warehouse_id}-${item.location_id}-${item.location_code}-${idx}`}
-        className="bg-white rounded-3xl p-6 sm:p-7 text-slate-900 border border-[#E8ECEA] shadow-sm flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:border-[#D5DDD9] select-none"
+        className="bg-white rounded-2xl p-6 sm:p-7 text-m3-grey-800 border border-[rgba(145,158,171,0.2)] shadow-sm flex flex-col items-center justify-center gap-3.5 text-center relative overflow-hidden transition-all hover:border-[rgba(145,158,171,0.32)] select-none"
       >
-        <h2 className="text-3xl sm:text-4xl md:text-[4.5rem] font-black text-slate-900 tracking-wide font-mono select-none flex items-center justify-center gap-2 sm:gap-3 flex-nowrap w-full whitespace-nowrap overflow-hidden">
+        <h2 className="text-3xl sm:text-4xl md:text-[4.5rem] font-extrabold text-m3-grey-800 tracking-wide tabular-nums select-none flex items-center justify-center gap-2 sm:gap-3 flex-nowrap w-full whitespace-nowrap overflow-hidden">
           {arrowDir === "down" && (
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#06402B] inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-m3-primary-dark inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
               <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
             </svg>
           )}
           {arrowDir === "up" && (
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#06402B] inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-m3-primary-dark inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
               <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
             </svg>
           )}
@@ -264,19 +264,19 @@ export default function ShelfQrPage() {
           <span className="whitespace-nowrap shrink-0">{item.location_code}</span>
 
           {arrowDir === "down" && (
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#06402B] inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-m3-primary-dark inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="A: ชี้ลง">
               <path d="M12 22l-8.5-9.5h5.5V2h6v10.5h5.5L12 22z" />
             </svg>
           )}
           {arrowDir === "up" && (
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#06402B] inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-m3-primary-dark inline-block shrink-0 fill-current" viewBox="0 0 24 24" aria-label="B: ชี้ขึ้น">
               <path d="M12 2l8.5 9.5h-5.5V22h-6V11.5H3.5L12 2z" />
             </svg>
           )}
         </h2>
 
         <div className="w-full flex items-center justify-center">
-          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-2xl border border-[#D5DDD9] px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-center shadow-2xs">
+          <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white rounded-xl border border-[rgba(145,158,171,0.32)] px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-center shadow-2xs">
             <BarcodeSvg
               value={item.location_code}
               width={2.8}
@@ -299,7 +299,7 @@ export default function ShelfQrPage() {
         <div className="flex items-center justify-end pb-1">
           <button
             onClick={handlePrint}
-            className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-[#06402B]/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95"
+            className="px-5 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-m3-primary/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -308,11 +308,11 @@ export default function ShelfQrPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8ECEA] shadow-xs">
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-[rgba(145,158,171,0.2)] shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
             <div className="lg:col-span-4">
-              <div className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="block text-xs font-semibold text-m3-grey-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 <span>เลือกโกดัง</span>
@@ -329,8 +329,8 @@ export default function ShelfQrPage() {
             </div>
 
             <div className="lg:col-span-3">
-              <div className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="block text-xs font-semibold text-m3-grey-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span>ระดับชั้น</span>
@@ -344,8 +344,8 @@ export default function ShelfQrPage() {
             </div>
 
             <div className="sm:col-span-2 lg:col-span-5">
-              <label htmlFor="shelf-search-input" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label htmlFor="shelf-search-input" className="block text-xs font-semibold text-m3-grey-700 mb-1.5 flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <span>ค้นหารหัสชั้นวาง</span>
@@ -357,9 +357,9 @@ export default function ShelfQrPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="พิมพ์รหัสชั้นวาง (เช่น 1K14-1A)..."
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-medium transition-all shadow-2xs"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm font-medium transition-all shadow-2xs"
                 />
-                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-m3-grey-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
@@ -369,23 +369,23 @@ export default function ShelfQrPage() {
 
         {loading ? (
           <div className="py-20 text-center space-y-4">
-            <div className="w-10 h-10 border-4 border-[#06402B] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-slate-500 text-sm font-medium">กำลังโหลดข้อมูลชั้นวางสินค้า...</p>
+            <div className="w-10 h-10 border-4 border-m3-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-m3-grey-600 text-sm font-medium">กำลังโหลดข้อมูลชั้นวางสินค้า...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="py-20 text-center bg-white border border-[#E8ECEA] shadow-xs rounded-2xl p-8 space-y-3">
+          <div className="py-20 text-center bg-white border border-[rgba(145,158,171,0.2)] shadow-xs rounded-xl p-8 space-y-3">
             <span className="text-4xl block">🔍</span>
-            <p className="text-slate-800 font-bold text-base">ไม่พบข้อมูลชั้นวางสินค้า</p>
+            <p className="text-m3-grey-800 font-bold text-base">ไม่พบข้อมูลชั้นวางสินค้า</p>
           </div>
         ) : selectedLevel === "ALL" && groupedByLevel.length > 1 ? (
           <div className="space-y-8">
             {groupedByLevel.map((group) => (
               <div key={group.levelName} className="space-y-3.5">
-                <div className="flex items-center justify-between border-b border-[#E8ECEA] pb-2">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#06402B]" />
+                <div className="flex items-center justify-between border-b border-[rgba(145,158,171,0.2)] pb-2">
+                  <h3 className="text-base font-bold text-m3-grey-800 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-m3-primary" />
                     <span>{group.levelName}</span>
-                    <span className="text-xs text-slate-500 font-normal">({group.items.length} ตำแหน่ง)</span>
+                    <span className="text-xs text-m3-grey-600 font-normal">({group.items.length} ตำแหน่ง)</span>
                   </h3>
                 </div>
 
@@ -491,7 +491,7 @@ export default function ShelfQrPage() {
                 <div key={`slot-${item.warehouse_id}-${item.location_id}-${itemIdx}`} className="sticker-slot">
                   {/* Top: Location Code Title with Bold Green Arrows on Both Sides - Strictly 1 Line */}
                   <div
-                    className="font-mono font-black text-slate-900 tracking-wide leading-none mb-2 select-none flex items-center justify-center gap-2 flex-nowrap w-full whitespace-nowrap overflow-hidden"
+                    className="tabular-nums font-extrabold text-m3-grey-800 tracking-wide leading-none mb-2 select-none flex items-center justify-center gap-2 flex-nowrap w-full whitespace-nowrap overflow-hidden"
                     style={{ fontSize: "36px", fontWeight: 900, whiteSpace: "nowrap" }}
                   >
                     {arrowDir === "down" && (
@@ -533,7 +533,7 @@ export default function ShelfQrPage() {
 
                   {/* Bottom: Barcode in Inner Box */}
                   <div className="w-full flex items-center justify-center">
-                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-slate-400/90 px-3 py-1.5 flex items-center justify-center">
+                    <div className="w-full max-w-[84mm] bg-white rounded-xl border border-m3-grey-500/90 px-3 py-1.5 flex items-center justify-center">
                       <BarcodeSvg
                         value={item.location_code}
                         width={2.4}

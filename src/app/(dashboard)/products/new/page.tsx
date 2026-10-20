@@ -86,7 +86,7 @@ export default function NewProductPage() {
       <div>
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-m3-grey-600 hover:text-m3-grey-800 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -95,10 +95,10 @@ export default function NewProductPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#E8ECEA] shadow-xs w-full">
+      <div className="bg-white rounded-xl p-5 sm:p-6 border border-[rgba(145,158,171,0.2)] shadow-xs w-full">
         {error && (
-          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-2 font-medium">
-            <svg className="w-5 h-5 flex-shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mb-4 p-3.5 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-xs sm:text-sm flex items-center gap-2 font-medium">
+            <svg className="w-5 h-5 flex-shrink-0 text-m3-error-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <span>{error}</span>
@@ -108,7 +108,7 @@ export default function NewProductPage() {
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4 w-full">
           {/* Warehouse Selection */}
           <div>
-            <div className="block text-xs font-semibold text-slate-700 mb-1.5">จัดเก็บเข้าโกดัง *</div>
+            <div className="block text-xs font-semibold text-m3-grey-700 mb-1.5">จัดเก็บเข้าโกดัง *</div>
             <CustomSelect
               value={watchWarehouse || "wh-1"}
               onChange={(val) => setValue("warehouse_id", val, { shouldValidate: true })}
@@ -120,100 +120,100 @@ export default function NewProductPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="prod-sku" className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสสินค้า (SKU) *</label>
+              <label htmlFor="prod-sku" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">รหัสสินค้า (SKU) *</label>
               <input
                 id="prod-sku"
                 {...register("sku")}
                 placeholder="เช่น PROD-001"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums font-bold transition-all"
               />
-              {errors.sku && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.sku.message}</p>}
+              {errors.sku && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.sku.message}</p>}
             </div>
 
             <div>
-              <label htmlFor="prod-barcode" className="block text-xs font-semibold text-slate-700 mb-1.5">บาร์โค้ด (Barcode)</label>
+              <label htmlFor="prod-barcode" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">บาร์โค้ด (Barcode)</label>
               <input
                 id="prod-barcode"
                 {...register("barcode")}
                 placeholder="เช่น 885000000001"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono font-bold transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums font-bold transition-all"
               />
-              {errors.barcode && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.barcode.message}</p>}
+              {errors.barcode && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.barcode.message}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="prod-name" className="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อสินค้า *</label>
+            <label htmlFor="prod-name" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">ชื่อสินค้า *</label>
             <input
               id="prod-name"
               {...register("product_name")}
               placeholder="กรอกชื่อสินค้าภาษาไทย"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-medium transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm font-medium transition-all"
             />
-            {errors.product_name && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.product_name.message}</p>}
+            {errors.product_name && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.product_name.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="prod-category" className="block text-xs font-semibold text-slate-700 mb-1.5">หมวดหมู่สินค้า *</label>
+              <label htmlFor="prod-category" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">หมวดหมู่สินค้า *</label>
               <input
                 id="prod-category"
                 {...register("category")}
                 placeholder="เช่น เครื่องดื่ม / ของใช้"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm transition-all"
               />
-              {errors.category && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.category.message}</p>}
+              {errors.category && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.category.message}</p>}
             </div>
 
             <div>
-              <label htmlFor="prod-base-unit" className="block text-xs font-semibold text-slate-700 mb-1.5">หน่วยนับ *</label>
+              <label htmlFor="prod-base-unit" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">หน่วยนับ *</label>
               <input
                 id="prod-base-unit"
                 {...register("base_unit")}
                 placeholder="เช่น ชิ้น / กล่อง / แพ็ก"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm transition-all"
               />
-              {errors.base_unit && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.base_unit.message}</p>}
+              {errors.base_unit && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.base_unit.message}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="prod-initial-qty" className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนสินค้าเริ่มต้นในโกดัง</label>
+              <label htmlFor="prod-initial-qty" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">จำนวนสินค้าเริ่มต้นในโกดัง</label>
               <input
                 id="prod-initial-qty"
                 type="number"
                 min="0"
                 {...register("initial_quantity", { valueAsNumber: true })}
                 placeholder="0"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums transition-all"
               />
               {/* Form quantity validation message (formatted with toLocaleString where applicable) */}
-              {errors.initial_quantity && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.initial_quantity.message}</p>}
+              {errors.initial_quantity && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.initial_quantity.message}</p>}
             </div>
 
             <div>
-              <label htmlFor="prod-min-stock" className="block text-xs font-semibold text-slate-700 mb-1.5">จำนวนแจ้งเตือนขั้นต่ำ (Min Stock)</label>
+              <label htmlFor="prod-min-stock" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">จำนวนแจ้งเตือนขั้นต่ำ (Min Stock)</label>
               <input
                 id="prod-min-stock"
                 type="number"
                 min="0"
                 {...register("minimum_stock", { valueAsNumber: true })}
                 placeholder="0"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm font-mono transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm tabular-nums transition-all"
               />
-              {errors.minimum_stock && <p className="mt-1 text-xs text-rose-600 font-medium">{errors.minimum_stock.message}</p>}
+              {errors.minimum_stock && <p className="mt-1 text-xs text-m3-error-dark font-medium">{errors.minimum_stock.message}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="prod-desc" className="block text-xs font-semibold text-slate-700 mb-1.5">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
+            <label htmlFor="prod-desc" className="block text-xs font-semibold text-m3-grey-700 mb-1.5">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
             <textarea
               id="prod-desc"
               {...register("description")}
               rows={3}
               placeholder="กรอกรายละเอียดสินค้า เช่น เอเจนต์ซี ผู้ส่งมอบ หรือข้อความบันทึก"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm resize-none transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm resize-none transition-all"
             />
           </div>
 
@@ -221,7 +221,7 @@ export default function NewProductPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 py-2.5 rounded-xl bg-white border border-[#E8ECEA] hover:bg-slate-50 text-slate-700 font-semibold transition-all text-xs sm:text-sm cursor-pointer active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] hover:bg-m3-grey-100 text-m3-grey-700 font-semibold transition-all text-xs sm:text-sm cursor-pointer active:scale-95"
             >
               ยกเลิก
             </button>
@@ -229,7 +229,7 @@ export default function NewProductPage() {
               type="submit"
               disabled={isSubmitting}
               id="submit-new-product"
-              className="flex-1 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] disabled:opacity-50 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker disabled:opacity-50 text-white font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-md shadow-m3-primary/20 active:scale-95"
             >
               {isSubmitting ? "กำลังบันทึก..." : "บันทึกสินค้าเข้าคลัง"}
             </button>
