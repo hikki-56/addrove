@@ -69,12 +69,12 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-m3-grey-100 flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#06402B]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-[#0F5C3F]/5 rounded-full blur-[150px]" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-m3-primary/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-10 w-[400px] h-[400px] bg-m3-secondary/5 rounded-full blur-[100px]" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[600px] h-[600px] bg-m3-primary/5 rounded-full blur-[150px]" />
       </div>
 
       {/* Admin Login Menu Card */}
@@ -84,13 +84,13 @@ export default function AdminLoginPage() {
           <div className="flex justify-center mb-3">
             <img src="/logo.png" alt="A'AMAZON Logo" className="h-16 sm:h-20 w-auto object-contain max-w-[300px]" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Stockify Admin</h1>
+          <h1 className="text-xl font-bold text-m3-grey-800 tracking-tight">Stockify Admin</h1>
         </div>
 
         {/* Admin Login Card */}
-        <div className="bg-white border border-[#E8ECEA] rounded-2xl p-7 shadow-xl">
-          <h2 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white border border-[rgba(145,158,171,0.2)] rounded-xl p-7 shadow-m3-dropdown">
+          <h2 className="text-base font-bold text-m3-grey-800 mb-5 flex items-center gap-2">
+            <svg className="w-5 h-5 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
             <span>เข้าสู่ระบบ Admin</span>
@@ -98,9 +98,9 @@ export default function AdminLoginPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 animate-fadeIn">
+            <div className="mb-5 p-3.5 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-xs flex items-start gap-2.5 animate-fadeIn">
               <svg
-                className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600"
+                className="w-4 h-4 flex-shrink-0 mt-0.5 text-m3-error-dark"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -119,11 +119,11 @@ export default function AdminLoginPage() {
           <form onSubmit={handleSubmit(onSubmit as any, onInvalid)} className="space-y-4" suppressHydrationWarning>
             {/* Email Field */}
             <div>
-              <label htmlFor="admin-email" className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="admin-email" className="block text-xs font-bold text-m3-grey-700 mb-1.5">
                 อีเมลผู้ดูแลระบบ
               </label>
               <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-m3-grey-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -140,21 +140,21 @@ export default function AdminLoginPage() {
                   {...register("email")}
                   placeholder="admin@stockify.com"
                   suppressHydrationWarning
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 transition-all text-sm"
                 />
               </div>
               {errors.email && (
-                <p className="mt-1.5 text-xs text-rose-600 font-medium">{(errors.email as any).message}</p>
+                <p className="mt-1.5 text-xs text-m3-error-dark font-medium">{(errors.email as any).message}</p>
               )}
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="admin-password" className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label htmlFor="admin-password" className="block text-xs font-medium text-m3-grey-700 mb-1.5">
                 รหัสผ่าน
               </label>
               <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-m3-grey-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -171,13 +171,13 @@ export default function AdminLoginPage() {
                   {...register("password")}
                   placeholder="••••••••"
                   suppressHydrationWarning
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 transition-all text-sm"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 transition-all text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   suppressHydrationWarning
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-m3-grey-500 hover:text-m3-grey-600 transition-colors p-1 cursor-pointer"
                 >
                   {showPassword ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +192,7 @@ export default function AdminLoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1.5 text-xs text-rose-600 font-medium">{(errors.password as any).message}</p>
+                <p className="mt-1.5 text-xs text-m3-error-dark font-medium">{(errors.password as any).message}</p>
               )}
             </div>
 
@@ -202,7 +202,7 @@ export default function AdminLoginPage() {
               type="submit"
               disabled={loading}
               suppressHydrationWarning
-              className="w-full py-2.5 mt-2 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-sm shadow-md shadow-[#06402B]/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2.5 mt-2 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-sm shadow-md shadow-m3-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               {loading ? (
                 <>
@@ -225,7 +225,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-m3-grey-600 text-xs mt-6">
           © {new Date().getFullYear()} Stockify — Admin Security Portal
         </p>
       </div>

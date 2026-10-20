@@ -8,6 +8,9 @@ import {
   getWarehouseName,
   normalizeWarehouseId,
 } from "@/lib/warehouse-utils";
+import AuthShell from "@/components/layout/AuthShell";
+import { M3Banner, M3Loading } from "@/components/ui/m3";
+import { SolarAltArrowRight } from "@/components/icons";
 
 // ── Direct PIN Login Screen (Stockify Frontdoor) ──────────────
 function PinScreen() {
@@ -190,292 +193,124 @@ function PinScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Ambient background brand tint (Stockify Emerald & Slate) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 right-1/4 w-[480px] h-[480px] bg-[#0F5C3F]/6 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-10 w-[380px] h-[380px] bg-teal-600/5 rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[520px] h-[520px] bg-slate-400/5 rounded-full blur-[140px]" />
+    <AuthShell footer={<>© {new Date().getFullYear()} Stockify — ระบบจัดการคลังสินค้า</>}>
+      <div className="flex flex-col items-center text-center">
+        <h1 className="font-m3-disp text-[26px] font-bold text-m3-grey-800">กรอกรหัส PIN</h1>
+        <p className="mt-1 text-sm text-m3-grey-600">ระบบสำหรับพนักงานคลังสินค้า</p>
       </div>
 
-      {/* Main Container */}
-      <div className="relative w-full max-w-sm z-10 flex flex-col items-center my-auto">
-        {/* Brand Header */}
-        <div className="text-center mb-3.5 flex flex-col items-center">
-          <div className="flex justify-center mb-2">
-            <img
-              src="/logo.png"
-              alt="Stockify Logo"
-              className="h-12 sm:h-14 w-auto object-contain max-w-[210px]"
+      {/* Reassurance Beacon: Section/Warehouse context confirmation */}
+      {isPackerSection ? (
+        <M3Banner tone="info" className="mt-5">
+          เข้าปฏิบัติงาน: <strong className="font-bold">ส่วนพนักงานแพ็กของ</strong>
+        </M3Banner>
+      ) : warehouseDisplayName ? (
+        <M3Banner tone="info" className="mt-5">
+          เข้าปฏิบัติงาน: <strong className="font-bold">{warehouseDisplayName}</strong>{" "}
+          {canonicalWhCode && <span className="font-m3-disp">({canonicalWhCode})</span>}
+        </M3Banner>
+      ) : null}
+
+      {/* 4 PIN dot indicators */}
+      <div
+        className="mt-7 flex justify-center gap-5"
+        role="status"
+        aria-label={`กรอกแล้ว ${pin.length} จาก 4 หลัก`}
+      >
+        {[0, 1, 2, 3].map((i) => {
+          const isFilled = i < pin.length;
+          return (
+            <span
+              key={i}
+              className={`size-4 rounded-full transition-all duration-150 ${
+                isFilled ? "bg-m3-grey-800 scale-110" : "border-2 border-m3-grey-400 bg-white"
+              } ${submitting ? "opacity-75 animate-pulse" : ""}`}
             />
-          </div>
-
-          {/* Reassurance Beacon: Section/Warehouse context confirmation */}
-          {isPackerSection ? (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-sky-900 text-sm font-medium shadow-xs">
-              <svg
-                className="w-4 h-4 text-sky-700 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3.3 7 8.7 5 8.7-5" />
-              </svg>
-              <span>
-                เข้าปฏิบัติงาน: <strong className="font-semibold text-sky-900">ส่วนพนักงานแพ็กของ</strong>
-              </span>
-            </div>
-          ) : warehouseDisplayName ? (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EAF2EE] border border-[#C9DFD4] text-[#052B1F] text-sm font-medium shadow-xs">
-              <svg
-                className="w-4 h-4 text-[#053425] flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              <span>
-                เข้าปฏิบัติงาน: <strong className="font-semibold text-[#04231A]">{warehouseDisplayName}</strong>{" "}
-                {canonicalWhCode && <span className="font-mono text-[#053425]">({canonicalWhCode})</span>}
-              </span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-[#E8ECEA] text-slate-700 text-sm font-medium">
-              <svg
-                className="w-4 h-4 text-slate-600 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              <span>ระบบสำหรับพนักงานคลังสินค้า</span>
-            </div>
-          )}
-        </div>
-
-        {/* PIN Login Card */}
-        <div className="w-full rounded-3xl p-4.5 sm:p-7 border border-[#E8ECEA]/90 shadow-xl bg-white">
-          {/* Card Title */}
-          <div className="text-center mb-3">
-            <h1 className="text-slate-900 font-bold text-lg sm:text-xl mb-0.5">กรอกรหัส PIN</h1>
-          </div>
-
-          {/* 4 PIN Square Indicator Boxes */}
-          <div
-            className="flex justify-center gap-3 sm:gap-4 mb-3"
-            role="status"
-            aria-label={`กรอกแล้ว ${pin.length} จาก 4 หลัก`}
-          >
-            {[0, 1, 2, 3].map((i) => {
-              const isFilled = i < pin.length;
-              return (
-                <div
-                  key={i}
-                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl border-2 flex items-center justify-center transition-all duration-150 ${
-                    isFilled
-                      ? "border-[#06402B] bg-[#EAF2EE]/60 shadow-xs scale-102"
-                      : "border-[#E8ECEA] bg-slate-50"
-                  } ${submitting ? "opacity-75 animate-pulse" : ""}`}
-                >
-                  {isFilled && (
-                    <span className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-[#053425] shadow-xs inline-block" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Error / Success / Lockout Message Feedback */}
-          <div className="min-h-[40px] flex items-center justify-center mb-3 text-center px-1">
-            {submitting ? (
-              <p className="text-[#052B1F] text-sm font-semibold flex items-center gap-2 animate-pulse">
-                <span className="w-4 h-4 border-2 border-[#053425] border-t-transparent rounded-full animate-spin inline-block flex-shrink-0" />
-                กำลังยืนยันตัวตน...
-              </p>
-            ) : successMessage ? (
-              <p className="text-[#052B1F] text-sm font-semibold flex items-center gap-2">
-                <svg
-                  className="w-5 h-5 text-[#053425] flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-                {successMessage}
-              </p>
-            ) : error ? (
-              <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium ${
-                  locked
-                    ? "bg-amber-50 border border-amber-300 text-amber-900"
-                    : "bg-red-50 border border-red-200 text-red-700"
-                }`}
-              >
-                {locked ? (
-                  <svg
-                    className="w-5 h-5 text-amber-700 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-5 h-5 text-red-600 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-                <span>
-                  {locked
-                    ? `กรุณารอ ${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, "0")} นาที — ระงับการกดชั่วคราว`
-                    : error}
-                </span>
-              </div>
-            ) : null}
-          </div>
-
-          {/* On-Screen Ergonomic Numpad Grid */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
-              <button
-                type="button"
-                key={k}
-                id={`pin-key-${k}`}
-                disabled={locked || submitting}
-                onClick={() => handleNumClick(k)}
-                className="h-14 sm:h-16 rounded-2xl bg-white border border-[#E8ECEA] shadow-xs
-                           text-slate-900 font-bold text-2xl font-mono
-                           hover:bg-[#EAF2EE] hover:border-[#8FB3A3] hover:text-[#052B1F]
-                           active:bg-[#053425] active:text-white active:scale-95
-                           transition-all duration-100 cursor-pointer flex items-center justify-center
-                           select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {k}
-              </button>
-            ))}
-
-            {/* Clear Button */}
-            <button
-              type="button"
-              id="pin-key-clear"
-              disabled={locked || submitting}
-              onClick={handleClear}
-              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-[#E8ECEA] shadow-xs
-                         text-slate-700 font-semibold text-sm
-                         hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 active:scale-95
-                         transition-all duration-100 cursor-pointer flex flex-col items-center justify-center gap-0.5
-                         select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="ล้างรหัส PIN ทั้งหมด"
-              title="ล้างรหัส PIN ทั้งหมด"
-            >
-              <svg
-                className="w-4 h-4 text-slate-600 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>ล้าง</span>
-            </button>
-
-            {/* Digit 0 */}
-            <button
-              type="button"
-              id="pin-key-0"
-              disabled={locked || submitting}
-              onClick={() => handleNumClick("0")}
-              className="h-14 sm:h-16 rounded-2xl bg-white border border-[#E8ECEA] shadow-xs
-                         text-slate-900 font-bold text-2xl font-mono
-                         hover:bg-[#EAF2EE] hover:border-[#8FB3A3] hover:text-[#052B1F]
-                         active:bg-[#053425] active:text-white active:scale-95
-                         transition-all duration-100 cursor-pointer flex items-center justify-center
-                         select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              0
-            </button>
-
-            {/* Backspace Button */}
-            <button
-              type="button"
-              id="pin-key-del"
-              disabled={locked || submitting}
-              onClick={() => handleNumClick("del")}
-              className="h-14 sm:h-16 rounded-2xl bg-slate-100/90 border border-[#E8ECEA] shadow-xs
-                         text-slate-700
-                         hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800
-                         active:bg-amber-700 active:text-white active:scale-95
-                         transition-all duration-100 cursor-pointer flex items-center justify-center
-                         select-none touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-              title="ลบตัวเลขล่าสุด"
-            >
-              <svg
-                className="w-6 h-6 text-slate-700 pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v12a2 2 0 01-2 2H10.828a2 2 0 01-1.414-.586L3 12z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Footer Info */}
-        <p className="text-slate-600 text-sm mt-3 sm:mt-4 text-center">
-          © {new Date().getFullYear()} Stockify — ระบบจัดการคลังสินค้า
-        </p>
+          );
+        })}
       </div>
-    </div>
+
+      {/* Error / Success / Lockout Message Feedback */}
+      <div className="mt-4 mb-4 flex min-h-[44px] items-center justify-center text-center">
+        {submitting ? (
+          <p className="flex items-center gap-2 text-sm font-semibold text-m3-primary-dark">
+            <span className="inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-m3-primary border-r-transparent" />
+            กำลังยืนยันตัวตน...
+          </p>
+        ) : successMessage ? (
+          <M3Banner tone="success" className="w-full">{successMessage}</M3Banner>
+        ) : error ? (
+          <M3Banner tone={locked ? "warning" : "error"} role="alert" className="w-full text-left">
+            {locked
+              ? `กรุณารอ ${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, "0")} นาที — ระงับการกดชั่วคราว`
+              : error}
+          </M3Banner>
+        ) : null}
+      </div>
+
+      {/* On-Screen Numpad */}
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
+          <button
+            type="button"
+            key={k}
+            id={`pin-key-${k}`}
+            disabled={locked || submitting}
+            onClick={() => handleNumClick(k)}
+            className="h-14 sm:h-[60px] rounded-xl bg-m3-grey-200/70 font-m3-disp text-[26px] font-semibold text-m3-grey-800
+                hover:bg-m3-grey-300/70 active:bg-m3-grey-800 active:text-white active:scale-95
+                transition-all duration-100 cursor-pointer flex items-center justify-center
+                select-none touch-manipulation disabled:opacity-48 disabled:cursor-not-allowed"
+          >
+            {k}
+          </button>
+        ))}
+
+        {/* Clear Button */}
+        <button
+          type="button"
+          id="pin-key-clear"
+          disabled={locked || submitting}
+          onClick={handleClear}
+          className="h-14 sm:h-[60px] rounded-xl text-sm font-semibold text-m3-grey-600 hover:bg-[rgba(145,158,171,0.08)] active:scale-95
+                transition-all duration-100 cursor-pointer flex items-center justify-center
+                select-none touch-manipulation disabled:opacity-48 disabled:cursor-not-allowed"
+          aria-label="ล้างรหัส PIN ทั้งหมด"
+          title="ล้างรหัส PIN ทั้งหมด"
+        >
+          <span>ล้าง</span>
+        </button>
+
+        {/* Digit 0 */}
+        <button
+          type="button"
+          id="pin-key-0"
+          disabled={locked || submitting}
+          onClick={() => handleNumClick("0")}
+          className="h-14 sm:h-[60px] rounded-xl bg-m3-grey-200/70 font-m3-disp text-[26px] font-semibold text-m3-grey-800
+                hover:bg-m3-grey-300/70 active:bg-m3-grey-800 active:text-white active:scale-95
+                transition-all duration-100 cursor-pointer flex items-center justify-center
+                select-none touch-manipulation disabled:opacity-48 disabled:cursor-not-allowed"
+        >
+          0
+        </button>
+
+        {/* Backspace Button */}
+        <button
+          type="button"
+          id="pin-key-del"
+          disabled={locked || submitting}
+          onClick={() => handleNumClick("del")}
+          className="h-14 sm:h-[60px] rounded-xl text-m3-grey-800 hover:bg-[rgba(145,158,171,0.08)] active:scale-95
+                transition-all duration-100 cursor-pointer flex items-center justify-center
+                select-none touch-manipulation disabled:opacity-48 disabled:cursor-not-allowed"
+          title="ลบตัวเลขล่าสุด"
+          aria-label="ลบตัวเลขล่าสุด"
+        >
+          <SolarAltArrowRight size={24} className="pointer-events-none rotate-180" />
+        </button>
+      </div>
+    </AuthShell>
   );
 }
 
@@ -484,29 +319,8 @@ export default function EmployeeLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <svg
-              className="animate-spin h-8 w-8 text-[#053425]"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            <p className="text-slate-600 text-sm font-medium">กำลังเตรียมระบบ...</p>
-          </div>
+        <div className="flex min-h-screen items-center justify-center bg-white">
+          <M3Loading label="กำลังเตรียมระบบ..." />
         </div>
       }
     >
