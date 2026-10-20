@@ -21,22 +21,22 @@ interface ScrollSelectProps {
 // สี accent ของ trigger/รายการที่เลือก — เก็บไว้เป็นชุดเดียวกันทั้ง component
 const ACCENTS = {
   purple: {
-    open: "border-purple-600 bg-white ring-2 ring-purple-100",
-    closed: "border-[#D5DDD9] hover:border-purple-400 hover:bg-white",
-    item: "bg-purple-50 text-purple-700",
-    check: "text-purple-600",
+    open: "border-m3-secondary bg-white ring-2 ring-[rgba(142,51,255,0.16)]",
+    closed: "border-[rgba(145,158,171,0.32)] hover:border-m3-secondary hover:bg-white",
+    item: "bg-[rgba(142,51,255,0.08)] text-m3-secondary-dark",
+    check: "text-m3-secondary-dark",
   },
   rose: {
-    open: "border-rose-600 bg-white ring-2 ring-rose-100",
-    closed: "border-[#D5DDD9] hover:border-rose-400 hover:bg-white",
-    item: "bg-rose-50 text-rose-700",
-    check: "text-rose-600",
+    open: "border-m3-error bg-white ring-2 ring-[rgba(255,86,48,0.16)]",
+    closed: "border-[rgba(145,158,171,0.32)] hover:border-m3-error hover:bg-white",
+    item: "bg-[rgba(255,86,48,0.08)] text-m3-error-dark",
+    check: "text-m3-error-dark",
   },
   emerald: {
-    open: "border-[#06402B] bg-white ring-2 ring-[#DFEDE6]",
-    closed: "border-[#D5DDD9] hover:border-[#5B8A74] hover:bg-white",
-    item: "bg-[#EAF2EE] text-[#053425]",
-    check: "text-[#053425]",
+    open: "border-m3-primary bg-white ring-2 ring-[rgba(0,167,111,0.16)]",
+    closed: "border-[rgba(145,158,171,0.32)] hover:border-m3-primary-dark hover:bg-white",
+    item: "bg-[rgba(0,167,111,0.08)] text-m3-primary-darker",
+    check: "text-m3-primary-darker",
   },
 } as const;
 
@@ -78,7 +78,7 @@ export default function ScrollSelect({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full px-4 py-2.5 min-h-[46px] bg-slate-50 border rounded-xl text-base font-bold text-slate-800 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
+        className={`w-full px-4 py-2.5 min-h-[46px] bg-m3-grey-100 border rounded-xl text-base font-bold text-m3-grey-800 flex items-center justify-between transition-all cursor-pointer shadow-2xs ${
           open ? accent.open : accent.closed
         }`}
       >
@@ -86,7 +86,7 @@ export default function ScrollSelect({
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <svg
-          className={`w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200 ${
+          className={`w-4 h-4 flex-shrink-0 text-m3-grey-500 transition-transform duration-200 ${
             open ? `rotate-180 ${accent.check}` : ""
           }`}
           fill="none"
@@ -101,7 +101,7 @@ export default function ScrollSelect({
       {open && (
         <div
           style={{ maxHeight: `${maxHeight}px` }}
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#E8ECEA] rounded-xl shadow-xl overflow-y-auto py-1 divide-y divide-slate-50 min-w-[120px]"
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-y-auto py-1 divide-y divide-m3-grey-100 min-w-[120px]"
         >
           {options.map((opt) => {
             const isSelected = opt.value === value;
@@ -114,7 +114,7 @@ export default function ScrollSelect({
                   setOpen(false);
                 }}
                 className={`w-full px-4 py-3 text-base font-bold text-left flex items-center justify-between transition-colors cursor-pointer ${
-                  isSelected ? accent.item : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  isSelected ? accent.item : "text-m3-grey-700 hover:bg-m3-grey-200 hover:text-m3-grey-800"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>

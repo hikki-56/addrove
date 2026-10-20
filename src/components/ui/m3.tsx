@@ -104,6 +104,40 @@ export function M3Loading({ label }: { label: string }) {
   );
 }
 
+/** กล่องโหลดไม่สำเร็จ (D52 · SectionStateBox ผิดพลาด) — ปุ่ม "ลองโหลดใหม่" เรียก onRetry ของผู้ใช้ */
+export function M3ErrorState({ title, onRetry, retryLabel = "ลองโหลดใหม่", children }: { title: ReactNode; onRetry?: () => void; retryLabel?: string; children?: ReactNode }) {
+  return (
+    <div role="alert" className="flex flex-col items-center justify-center gap-2.5 rounded-xl bg-[rgba(255,86,48,0.08)] px-6 py-10 text-center">
+      <SolarDangerCircle size={32} className="text-m3-error" />
+      <p className="text-sm font-bold text-m3-error-dark">{title}</p>
+      {children}
+      {onRetry ? (
+        <button type="button" onClick={onRetry} className="m3-btn m3-btn-sm m3-btn-outline mt-1 cursor-pointer">
+          {retryLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** โครงโหลดแบบตาราง (D52 · skeleton) */
+export function M3Skeleton({ rows = 3, label }: { rows?: number; label?: string }) {
+  return (
+    <div role="status" aria-busy="true" className="space-y-4 px-2 py-4">
+      {label ? <span className="sr-only">{label}</span> : null}
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-6">
+          <div className="flex-1 space-y-2">
+            <div className="h-2.5 w-3/5 animate-pulse rounded-full bg-m3-grey-200" />
+            <div className="h-2.5 w-2/5 animate-pulse rounded-full bg-m3-grey-200" />
+          </div>
+          <div className="h-2.5 w-16 animate-pulse rounded-full bg-m3-grey-200" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const STAT_TONE = {
   grey: "bg-m3-grey-100 text-m3-grey-800",
   primary: "bg-[rgba(0,167,111,0.10)] text-m3-primary-dark",

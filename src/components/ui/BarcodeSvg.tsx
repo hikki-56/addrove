@@ -86,7 +86,7 @@ function BarcodeSvgComponent({
 
   if (!cleanValue) {
     return (
-      <div className={`flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-[#D5DDD9] text-slate-400 text-xs font-mono select-none bg-slate-50 ${sizeClasses} ${className}`}>
+      <div className={`flex flex-col items-center justify-center p-2 rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] text-m3-grey-500 text-xs tabular-nums select-none bg-m3-grey-100 ${sizeClasses} ${className}`}>
         <span>(ไม่มีข้อมูลบาร์โค้ด)</span>
       </div>
     );
@@ -99,8 +99,8 @@ function BarcodeSvgComponent({
           if (!disableZoom) setIsZoomed(true);
         }}
         title={disableZoom ? "" : "ขยายบาร์โค้ด"}
-        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-[#E8ECEA] shadow-2xs ${
-          disableZoom ? "" : "hover:border-[#5B8A74] hover:shadow-md cursor-zoom-in"
+        className={`group relative flex flex-col items-center justify-center bg-white px-2 py-1 rounded-xl border border-[rgba(145,158,171,0.2)] shadow-2xs ${
+          disableZoom ? "" : "hover:border-m3-primary-dark hover:shadow-md cursor-zoom-in"
         } transition-all select-none overflow-hidden ${sizeClasses} ${className}`}
       >
         <canvas
@@ -114,7 +114,7 @@ function BarcodeSvgComponent({
           }}
         />
         {!disableZoom && (
-          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 text-white text-xs font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
+          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-m3-grey-800/80 text-white text-xs font-sans px-1.5 py-0.5 rounded flex items-center gap-0.5 pointer-events-none">
             <span>🔍</span> ขยาย
           </div>
         )}
@@ -124,28 +124,28 @@ function BarcodeSvgComponent({
       {!disableZoom && isZoomed && (
         <div
           onClick={() => setIsZoomed(false)}
-          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-fade-in"
+          className="fixed inset-0 z-50 bg-m3-grey-800/70 flex items-center justify-center p-4 cursor-pointer animate-fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-[#E8ECEA] flex flex-col items-center gap-6 relative cursor-default"
+            className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-m3-dropdown border border-[rgba(145,158,171,0.2)] flex flex-col items-center gap-6 relative cursor-default"
           >
             <button
               type="button"
               onClick={() => setIsZoomed(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full text-xl transition-all cursor-pointer"
+              className="absolute top-4 right-4 text-m3-grey-500 hover:text-m3-grey-700 hover:bg-m3-grey-200 p-2 rounded-full text-xl transition-all cursor-pointer"
             >
               ✕
             </button>
 
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-black text-slate-800">
-                บาร์โค้ด: <span className="font-mono text-[#053425]">{cleanValue}</span>
+              <h3 className="text-lg font-extrabold text-m3-grey-800">
+                บาร์โค้ด: <span className="tabular-nums text-m3-primary-darker">{cleanValue}</span>
               </h3>
             </div>
 
             {/* Giant White Box Canvas */}
-            <div className="bg-white p-6 rounded-2xl border-2 border-[#D5DDD9] shadow-inner flex flex-col items-center justify-center w-full overflow-x-auto">
+            <div className="bg-white p-6 rounded-xl border border-[rgba(145,158,171,0.32)] shadow-inner flex flex-col items-center justify-center w-full overflow-x-auto">
               <canvas
                 ref={zoomCanvasRef}
                 style={{
@@ -162,14 +162,14 @@ function BarcodeSvgComponent({
                 onClick={() => {
                   navigator.clipboard.writeText(cleanValue);
                 }}
-                className="flex-1 py-3 px-4 rounded-xl bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] font-bold text-sm border border-[#C9DFD4] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-xl bg-[rgba(0,167,111,0.08)] hover:bg-[rgba(0,167,111,0.16)] text-m3-primary-darker font-bold text-sm border border-[rgba(0,167,111,0.24)] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>📋 คัดลอกเลขบาร์โค้ด</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsZoomed(false)}
-                className="py-3 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition-all cursor-pointer"
+                className="py-3 px-6 rounded-xl bg-m3-grey-800 hover:bg-m3-grey-800 text-white font-bold text-sm transition-all cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>

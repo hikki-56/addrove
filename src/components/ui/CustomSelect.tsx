@@ -133,18 +133,18 @@ export default function CustomSelect({
         aria-activedescendant={open ? optionId(highlightIndex) : undefined}
         className={`w-full h-10 px-3.5 rounded-xl text-left text-xs sm:text-sm font-medium flex items-center justify-between transition-all duration-150 border cursor-pointer ${
           disabled
-            ? "bg-slate-100 opacity-50 cursor-not-allowed border-[#E8ECEA] text-slate-400"
+            ? "bg-m3-grey-200 opacity-50 cursor-not-allowed border-[rgba(145,158,171,0.2)] text-m3-grey-500"
             : open
-            ? "bg-white border-[#0F5C3F] text-slate-900 ring-2 ring-[#0F5C3F]/20 shadow-xs"
-            : "bg-slate-50 border-[#E8ECEA] text-slate-900 hover:bg-slate-100/80 hover:border-[#D5DDD9]"
+            ? "bg-white border-m3-primary text-m3-grey-800 ring-2 ring-m3-primary/20 shadow-xs"
+            : "bg-m3-grey-100 border-[rgba(145,158,171,0.2)] text-m3-grey-800 hover:bg-m3-grey-200/80 hover:border-[rgba(145,158,171,0.32)]"
         }`}
       >
         <span className="truncate pr-2">
-          {selectedOption ? selectedOption.label : <span className="text-slate-500">{placeholder}</span>}
+          {selectedOption ? selectedOption.label : <span className="text-m3-grey-600">{placeholder}</span>}
         </span>
         <svg
-          className={`w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200 ${
-            open ? "rotate-180 text-[#06402B]" : ""
+          className={`w-4 h-4 flex-shrink-0 text-m3-grey-500 transition-transform duration-200 ${
+            open ? "rotate-180 text-m3-primary-dark" : ""
           }`}
           fill="none"
           stroke="currentColor"
@@ -161,7 +161,7 @@ export default function CustomSelect({
           id={listId}
           role="listbox"
           aria-label={placeholder}
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 w-full max-w-full bg-white border border-[#E8ECEA] rounded-xl shadow-xl overflow-hidden py-1 max-h-56 overflow-y-auto scale-in duration-100"
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 w-full max-w-full bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-hidden py-1 max-h-56 overflow-y-auto scale-in duration-100"
           style={listStyle}
         >
           {allOptions.map((opt, i) => {
@@ -177,12 +177,12 @@ export default function CustomSelect({
                 onClick={() => selectIndex(i)}
                 className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm cursor-pointer transition-colors truncate ${
                   isSelected
-                    ? "bg-[#EAF2EE] text-[#053425] font-bold border-l-2 border-[#06402B]"
+                    ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-darker font-bold border-l-2 border-m3-primary"
                     : i === 0
-                    ? `text-slate-500 ${isHighlighted ? "bg-slate-50 text-slate-900" : "hover:bg-slate-50 hover:text-slate-800"}`
+                    ? `text-m3-grey-600 ${isHighlighted ? "bg-m3-grey-100 text-m3-grey-800" : "hover:bg-m3-grey-100 hover:text-m3-grey-800"}`
                     : isHighlighted
-                    ? "bg-slate-50 text-slate-900"
-                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-m3-grey-100 text-m3-grey-800"
+                    : "text-m3-grey-700 hover:bg-m3-grey-100 hover:text-m3-grey-800"
                 }`}
               >
                 {opt.label}
@@ -192,7 +192,7 @@ export default function CustomSelect({
         </div>
       )}
 
-      {error && <p className="mt-1 text-xs text-rose-600 font-medium">{error}</p>}
+      {error && <p className="mt-1 text-xs text-m3-error-dark font-medium">{error}</p>}
     </div>
   );
 }
