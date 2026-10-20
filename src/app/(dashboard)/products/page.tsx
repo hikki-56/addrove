@@ -5,6 +5,7 @@ import type { Product, Warehouse } from "@/types/models";
 import { STOCK_STATUS_META, getStockStatus, type StockStatus } from "@/lib/stock-status";
 import { useRouter } from "next/navigation";
 import CustomSelect from "@/components/ui/CustomSelect";
+import { SolarBox, SolarBoxClosed, SolarBuildings, SolarMapPoint } from "@/components/icons/solar";
 
 const STATUS_OPTIONS: StockStatus[] = ["NORMAL", "LOW", "OUT", "NEGATIVE"];
 
@@ -15,7 +16,7 @@ const resolveStatus = (p: Product): StockStatus =>
   p.stock_status ?? getStockStatus(Number(p.total_quantity ?? p.quantity ?? 0), Number(p.minimum_stock ?? 0));
 
 const WAREHOUSE_ICON = (
-  <svg className="w-3.5 h-3.5 text-[#0F5C3F] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-3.5 h-3.5 text-m3-primary-dark shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
   </svg>
 );
@@ -194,7 +195,7 @@ export default function ProductsPage() {
 
   const grandValue = (v: number | null, unit: string) =>
     v === null ? (
-      <span className="text-slate-400">—</span>
+      <span className="text-m3-grey-500">—</span>
     ) : (
       <>
         {v.toLocaleString()}{" "}
@@ -205,14 +206,14 @@ export default function ProductsPage() {
   const showEmptyState = !loading && !loadError && displayProducts.length === 0;
 
   return (
-    <div className="w-full space-y-6 print:hidden">
+    <div className="w-full space-y-4 sm:space-y-5 print:hidden">
       {/* Top Action Row */}
       <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-1">
         {/* Action: เพิ่มสินค้าใหม่ */}
         <button
           type="button"
           onClick={() => router.push("/products/new")}
-          className="px-4 py-2.5 rounded-2xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
+          className="m3-btn m3-btn-dark gap-2 cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="M12 4v16m8-8H4" />
@@ -221,11 +222,65 @@ export default function ProductsPage() {
         </button>
       </div>
 
+      {/* 4 Summary Stat Cards Grid — ตัวเลขรวมทั้งระบบ ไม่เปลี่ยนตามตัวกรอง */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: สินค้าทั้งหมด */}
+        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,167,111,0.12)] text-m3-primary"><SolarBox className="size-6" /></span>
+          <div className="min-w-0">
+            <div className="text-xs text-m3-grey-600 font-semibold truncate">สินค้าทั้งหมด</div>
+            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+              {grandValue(grandProductCount, "รายการ")}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: โกดังทั้งหมด */}
+        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,184,217,0.12)] text-m3-info"><SolarBuildings className="size-6" /></span>
+          <div className="min-w-0">
+            <div className="text-xs text-m3-grey-600 font-semibold truncate">โกดังทั้งหมด</div>
+            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+              {grandValue(warehouses === null ? null : warehouses.length, "โกดัง")}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: ตำแหน่งทั้งหมด */}
+        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(255,171,0,0.16)] text-m3-warning"><SolarMapPoint className="size-6" /></span>
+          <div className="min-w-0">
+            <div className="text-xs text-m3-grey-600 font-semibold truncate">ตำแหน่งทั้งหมด</div>
+            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+              {grandValue(totalLocationsCount, "ตำแหน่ง")}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: สินค้าคงเหลือรวม */}
+        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(142,51,255,0.12)] text-[#8E33FF]"><SolarBoxClosed className="size-6" /></span>
+          <div className="min-w-0">
+            <div className="text-xs text-m3-grey-600 font-semibold truncate">สินค้าคงเหลือรวม</div>
+            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-primary-dark leading-tight num">
+              {totalStockSum === null ? (
+                <span className="text-m3-grey-500">—</span>
+              ) : (
+                <>
+                  {totalStockSum.toLocaleString()}{" "}
+                  <span className="text-xs font-bold text-m3-primary-dark">ชิ้น</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filter and Search Bar Row */}
-      <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-2.5 md:gap-3 items-stretch sm:items-center w-full">
+      <div className="m3-card flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-2.5 md:gap-3 items-stretch sm:items-center w-full p-4">
         {/* Search Input Box */}
-        <div className="relative flex-1 min-w-[200px] bg-slate-50 rounded-xl border border-[#E8ECEA] focus-within:bg-white focus-within:border-[#0F5C3F] focus-within:ring-2 focus-within:ring-[#0F5C3F]/20 overflow-hidden transition-all">
-          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative flex-1 min-w-[200px] bg-m3-grey-100 rounded-xl border border-[rgba(145,158,171,0.2)] focus-within:bg-white focus-within:border-m3-grey-800 focus-within:ring-2 focus-within:ring-m3-primary/20 overflow-hidden transition-all">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -235,7 +290,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหารหัสสินค้า บาร์โค้ด หรือชื่อสินค้า"
             aria-label="ค้นหารหัสสินค้า บาร์โค้ด หรือชื่อสินค้า"
-            className="w-full h-10 pl-10 pr-3.5 bg-transparent text-slate-900 font-medium placeholder-slate-500 text-xs sm:text-sm outline-none"
+            className="w-full h-10 pl-10 pr-3.5 bg-transparent text-m3-grey-800 font-medium placeholder-m3-grey-600 text-xs sm:text-sm outline-none"
           />
         </div>
 
@@ -280,9 +335,9 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={resetFilters}
-            className="px-4 h-10 bg-slate-50 hover:bg-slate-100/80 hover:border-[#D5DDD9] rounded-xl border border-[#E8ECEA] text-slate-600 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 active:scale-95"
+            className="px-4 h-10 bg-m3-grey-100 hover:bg-m3-grey-200/80 hover:border-[rgba(145,158,171,0.32)] rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 active:scale-95"
           >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M6 18L18 6M6 6l12 12" />
             </svg>
             <span>ล้างตัวกรอง</span>
@@ -290,82 +345,32 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* 4 Summary Stat Cards Grid — ตัวเลขรวมทั้งระบบ ไม่เปลี่ยนตามตัวกรอง */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: สินค้าทั้งหมด */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs">
-          <div className="min-w-0">
-            <div className="text-xs text-slate-500 font-semibold truncate">สินค้าทั้งหมด</div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-tight num">
-              {grandValue(grandProductCount, "รายการ")}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: โกดังทั้งหมด */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs">
-          <div className="min-w-0">
-            <div className="text-xs text-slate-500 font-semibold truncate">โกดังทั้งหมด</div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-tight num">
-              {grandValue(warehouses === null ? null : warehouses.length, "โกดัง")}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: ตำแหน่งทั้งหมด */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs">
-          <div className="min-w-0">
-            <div className="text-xs text-slate-500 font-semibold truncate">ตำแหน่งทั้งหมด</div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-tight num">
-              {grandValue(totalLocationsCount, "ตำแหน่ง")}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: สินค้าคงเหลือรวม */}
-        <div className="bg-white rounded-2xl p-4 border border-[#E8ECEA]/80 shadow-2xs">
-          <div className="min-w-0">
-            <div className="text-xs text-slate-500 font-semibold truncate">สินค้าคงเหลือรวม</div>
-            <div className="text-lg sm:text-xl font-black text-[#06402B] leading-tight num">
-              {totalStockSum === null ? (
-                <span className="text-slate-400">—</span>
-              ) : (
-                <>
-                  {totalStockSum.toLocaleString()}{" "}
-                  <span className="text-xs font-bold text-[#06402B]">ชิ้น</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* เนื้อหาหลัก: โหลด / ผิดพลาด / ว่าง / ตาราง */}
       {loadError ? (
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-rose-200/80 shadow-sm px-6 py-12 sm:py-14 text-center">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200/70 flex items-center justify-center">
-            <svg className="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-xl sm:rounded-xl border border-[rgba(255,86,48,0.24)] shadow-sm px-6 py-12 sm:py-14 text-center">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] flex items-center justify-center">
+            <svg className="w-6 h-6 text-m3-error-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <p className="mt-4 text-sm font-extrabold text-slate-900">โหลดข้อมูลสินค้าไม่สำเร็จ</p>
+          <p className="mt-4 text-sm font-extrabold text-m3-grey-800">โหลดข้อมูลสินค้าไม่สำเร็จ</p>
           <button
             type="button"
             onClick={loadProducts}
-            className="mt-5 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
+            className="mt-5 px-4 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white text-xs sm:text-sm font-extrabold shadow-md shadow-m3-primary/20 transition-all cursor-pointer active:scale-98"
           >
             ลองโหลดอีกครั้ง
           </button>
         </div>
       ) : showEmptyState ? (
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E8ECEA]/90 shadow-sm px-6 py-12 sm:py-14 text-center">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-[#EAF2EE] border border-[#C9DFD4]/60 flex items-center justify-center">
-            <svg className="w-6 h-6 text-[#0F5C3F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-xl sm:rounded-xl border border-[rgba(145,158,171,0.2)] shadow-sm px-6 py-12 sm:py-14 text-center">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] flex items-center justify-center">
+            <svg className="w-6 h-6 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16Z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="m3.3 7 8.7 5 8.7-5" />
             </svg>
           </div>
-          <p className="mt-4 text-sm font-extrabold text-slate-900">
+          <p className="mt-4 text-sm font-extrabold text-m3-grey-800">
             {hasActiveFilters ? "ไม่พบสินค้าที่ตรงเงื่อนไข" : "ยังไม่มีรายการสินค้า"}
           </p>
           <div className="mt-5">
@@ -373,7 +378,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-[#E8ECEA] hover:border-[#D5DDD9] text-slate-700 text-xs sm:text-sm font-bold transition-all cursor-pointer active:scale-95"
+                className="px-4 py-2.5 rounded-xl bg-m3-grey-100 hover:bg-m3-grey-200/80 border border-[rgba(145,158,171,0.2)] hover:border-[rgba(145,158,171,0.32)] text-m3-grey-700 text-xs sm:text-sm font-bold transition-all cursor-pointer active:scale-95"
               >
                 ล้างตัวกรองทั้งหมด
               </button>
@@ -381,7 +386,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => router.push("/products/new")}
-                className="px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-xs sm:text-sm font-extrabold shadow-md shadow-[#06402B]/20 transition-all cursor-pointer active:scale-98"
+                className="px-4 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white text-xs sm:text-sm font-extrabold shadow-md shadow-m3-primary/20 transition-all cursor-pointer active:scale-98"
               >
                 เพิ่มสินค้าใหม่
               </button>
@@ -391,23 +396,23 @@ export default function ProductsPage() {
       ) : loading ? (
         <>
           {/* Desktop skeleton */}
-          <div className="hidden sm:block bg-white rounded-3xl border border-[#E8ECEA]/90 shadow-sm overflow-hidden" role="status" aria-live="polite">
+          <div className="hidden sm:block m3-card overflow-hidden" role="status" aria-live="polite">
             <span className="sr-only">กำลังโหลดข้อมูลสินค้า</span>
             <div className="overflow-hidden">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-semibold">
+                  <tr className="bg-m3-grey-100 text-m3-grey-600 font-semibold">
                     {["บาร์โค้ด", "SKU", "ชื่อสินค้า", "หมวดหมู่", "หน่วย", "ขั้นต่ำ", "คงเหลือ", "สถานะ"].map((h) => (
-                      <th key={h} className="py-3.5 px-4 font-semibold whitespace-nowrap border-b border-[#EEF1EF]">{h}</th>
+                      <th key={h} className="py-3.5 px-4 font-semibold whitespace-nowrap border-b border-[rgba(145,158,171,0.2)]">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF1EF]">
+                <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <tr key={`sk-${i}`}>
                       {["w-24", "w-20", "w-44", "w-20", "w-12", "w-14", "w-14", "w-20"].map((w, j) => (
                         <td key={j} className="py-4 px-4">
-                          <div className={`h-3 rounded-full bg-slate-100 animate-pulse ${w}`} />
+                          <div className={`h-3 rounded-full bg-m3-grey-200 animate-pulse ${w}`} />
                         </td>
                       ))}
                     </tr>
@@ -421,10 +426,10 @@ export default function ProductsPage() {
           <div className="sm:hidden space-y-3" role="status" aria-live="polite">
             <span className="sr-only">กำลังโหลดข้อมูลสินค้า</span>
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={`msk-${i}`} className="bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-2xs p-4 space-y-3">
-                <div className="h-4 w-2/3 rounded-full bg-slate-100 animate-pulse" />
-                <div className="h-3 w-1/3 rounded-full bg-slate-100 animate-pulse" />
-                <div className="h-3 w-1/2 rounded-full bg-slate-100 animate-pulse" />
+              <div key={`msk-${i}`} className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-2xs p-4 space-y-3">
+                <div className="h-4 w-2/3 rounded-full bg-m3-grey-200 animate-pulse" />
+                <div className="h-3 w-1/3 rounded-full bg-m3-grey-200 animate-pulse" />
+                <div className="h-3 w-1/2 rounded-full bg-m3-grey-200 animate-pulse" />
               </div>
             ))}
           </div>
@@ -432,22 +437,22 @@ export default function ProductsPage() {
       ) : (
         <>
           {/* Desktop: Main Table of Products */}
-          <div className="hidden sm:block bg-white rounded-3xl border border-[#E8ECEA]/90 shadow-sm overflow-hidden">
+          <div className="hidden sm:block m3-card overflow-hidden">
             <div className="overflow-auto max-h-[60vh]">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead>
-                  <tr className="text-slate-500 font-semibold">
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">บาร์โค้ด</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">SKU</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">ชื่อสินค้า</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">หมวดหมู่</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">หน่วย</th>
-                    <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">ขั้นต่ำ</th>
-                    <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">คงเหลือ</th>
-                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-slate-50 border-b border-[#EEF1EF]">สถานะ</th>
+                  <tr className="text-m3-grey-600 font-semibold">
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">บาร์โค้ด</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">SKU</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">ชื่อสินค้า</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">หมวดหมู่</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">หน่วย</th>
+                    <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">ขั้นต่ำ</th>
+                    <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">คงเหลือ</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap sticky top-0 z-10 bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)]">สถานะ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF1EF]">
+                <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
                   {displayProducts.map((p: Product, idx: number) => {
                     const totalStock = Number(p.total_quantity ?? p.quantity ?? 0);
                     const status = resolveStatus(p);
@@ -461,18 +466,18 @@ export default function ProductsPage() {
                       <React.Fragment key={`prod-row-${p.product_id || p.sku || idx}-${idx}`}>
                         <tr
                           onClick={() => setExpandedSku(isExpanded ? null : rowKey)}
-                          className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
-                            isExpanded ? "bg-[#EAF2EE]/40" : ""
+                          className={`hover:bg-m3-grey-100/80 transition-colors cursor-pointer ${
+                            isExpanded ? "bg-[rgba(0,167,111,0.08)]" : ""
                           }`}
                         >
                           {/* Barcode */}
-                          <td className="py-3.5 px-4 font-mono num text-slate-600 text-xs whitespace-nowrap">
+                          <td className="py-3.5 px-4 tabular-nums num text-m3-grey-600 text-xs whitespace-nowrap">
                             {p.barcode && p.barcode.trim() !== "-" ? p.barcode : "—"}
                           </td>
 
                           {/* SKU */}
                           <td className="py-3.5 px-4">
-                            <span className="font-mono num font-bold text-[#053425] text-xs sm:text-sm whitespace-nowrap">
+                            <span className="tabular-nums num font-bold text-m3-primary-darker text-xs sm:text-sm whitespace-nowrap">
                               {p.sku}
                             </span>
                           </td>
@@ -483,14 +488,14 @@ export default function ProductsPage() {
                               type="button"
                               onClick={() => setExpandedSku(isExpanded ? null : rowKey)}
                               aria-expanded={isExpanded}
-                              className="w-full flex items-center gap-1 text-left font-bold text-slate-800 py-1 pr-1 rounded-lg -mx-1 px-1 cursor-pointer"
+                              className="w-full flex items-center gap-1 text-left font-bold text-m3-grey-800 py-1 pr-1 rounded-lg -mx-1 px-1 cursor-pointer"
                             >
                               <span className="truncate" title={p.product_name}>
                                 {p.product_name}
                               </span>
                               <svg
                                 className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
-                                  isExpanded ? "rotate-180 text-[#0F5C3F]" : "text-slate-500"
+                                  isExpanded ? "rotate-180 text-m3-primary-dark" : "text-m3-grey-600"
                                 }`}
                                 fill="none"
                                 stroke="currentColor"
@@ -502,23 +507,23 @@ export default function ProductsPage() {
                           </td>
 
                           {/* Category */}
-                          <td className="py-3.5 px-4 text-slate-500 text-xs whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-m3-grey-600 text-xs whitespace-nowrap">
                             {p.category || "—"}
                           </td>
 
                           {/* Unit */}
-                          <td className="py-3.5 px-4 text-slate-500 text-xs font-medium whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-m3-grey-600 text-xs font-medium whitespace-nowrap">
                             {p.base_unit || "ชิ้น"}
                           </td>
 
                           {/* Minimum Stock */}
-                          <td className="py-3.5 px-4 font-mono num text-slate-600 text-xs text-right whitespace-nowrap">
+                          <td className="py-3.5 px-4 tabular-nums num text-m3-grey-600 text-xs text-right whitespace-nowrap">
                             {(Number(p.minimum_stock) || 0).toLocaleString()}
                           </td>
 
                           {/* Stock Quantity */}
-                          <td className="py-3.5 px-4 font-mono num font-bold text-right text-xs sm:text-sm whitespace-nowrap">
-                            <span className={totalStock < 0 ? "text-rose-600" : totalStock === 0 ? "text-slate-500" : "text-[#053425]"}>
+                          <td className="py-3.5 px-4 tabular-nums num font-bold text-right text-xs sm:text-sm whitespace-nowrap">
+                            <span className={totalStock < 0 ? "text-m3-error-dark" : totalStock === 0 ? "text-m3-grey-600" : "text-m3-primary-darker"}>
                               {totalStock.toLocaleString()}
                             </span>
                           </td>
@@ -535,26 +540,26 @@ export default function ProductsPage() {
 
                         {/* แถวขยาย: สินค้านี้อยู่โกดังไหนกี่ชิ้น */}
                         {isExpanded && (
-                          <tr className="bg-[#EAF2EE]/30">
+                          <tr className="bg-[rgba(0,167,111,0.08)]">
                             <td colSpan={8} className="px-4 py-3">
-                              <div className="rounded-xl border border-[#C9DFD4]/60 bg-white p-3.5 flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-extrabold text-slate-700 mr-1">อยู่ในโกดัง:</span>
+                              <div className="rounded-xl border border-[rgba(0,167,111,0.24)] bg-white p-3.5 flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-extrabold text-m3-grey-700 mr-1">อยู่ในโกดัง:</span>
                                 {whList.length === 0 ? (
-                                  <span className="text-xs text-slate-500 font-medium">
+                                  <span className="text-xs text-m3-grey-600 font-medium">
                                     ยังไม่มีข้อมูลโกดังของสินค้านี้
                                   </span>
                                 ) : (
                                   whList.map((w) => (
                                     <span
                                       key={w.name}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-xs"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs"
                                     >
                                       {WAREHOUSE_ICON}
-                                      <span className="font-bold text-slate-700">{w.name}</span>
-                                      <span className="font-mono num font-extrabold text-[#053425]">
+                                      <span className="font-bold text-m3-grey-700">{w.name}</span>
+                                      <span className="tabular-nums num font-extrabold text-m3-primary-darker">
                                         {w.qty.toLocaleString()}
                                       </span>
-                                      <span className="text-slate-500 font-medium">{p.base_unit || "ชิ้น"}</span>
+                                      <span className="text-m3-grey-600 font-medium">{p.base_unit || "ชิ้น"}</span>
                                     </span>
                                   ))
                                 )}
@@ -570,9 +575,9 @@ export default function ProductsPage() {
             </div>
 
             {/* Pagination Footer */}
-            <div className="p-4 border-t border-[#EEF1EF] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 bg-white">
+            <div className="p-4 border-t border-[rgba(145,158,171,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-m3-grey-600 bg-white">
               {/* Range text */}
-              <div className="text-slate-500 font-medium num">
+              <div className="text-m3-grey-600 font-medium num">
                 แสดง {totalItems > 0 ? startIndex + 1 : 0}-{endIndex} จาก {totalItems.toLocaleString()} รายการ
               </div>
 
@@ -582,7 +587,7 @@ export default function ProductsPage() {
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-[#E8ECEA] text-slate-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-m3-grey-100 hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                   aria-label="หน้าก่อนหน้า"
                 >
                   ‹
@@ -595,15 +600,15 @@ export default function ProductsPage() {
                     const showDots = prev && p - prev > 1;
                     return (
                       <React.Fragment key={`page-${p}`}>
-                        {showDots && <span className="px-1 text-slate-400">...</span>}
+                        {showDots && <span className="px-1 text-m3-grey-500">...</span>}
                         <button
                           type="button"
                           onClick={() => setCurrentPage(p)}
                           aria-current={currentPage === p ? "page" : undefined}
                           className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all cursor-pointer num ${
                             currentPage === p
-                              ? "bg-[#06402B] text-white shadow-sm shadow-[#06402B]/30"
-                              : "bg-white hover:bg-slate-50 border border-[#E8ECEA] text-slate-700"
+                              ? "bg-m3-primary text-white shadow-sm shadow-m3-primary/30"
+                              : "bg-white hover:bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-700"
                           }`}
                         >
                           {p}
@@ -616,7 +621,7 @@ export default function ProductsPage() {
                   type="button"
                   disabled={currentPage === totalPages || totalPages === 0}
                   onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                  className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-[#E8ECEA] text-slate-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-m3-grey-100 hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
                   aria-label="หน้าถัดไป"
                 >
                   ›
@@ -629,7 +634,7 @@ export default function ProductsPage() {
                   value={pageSize}
                   onChange={(e) => handlePageSizeChange(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
                   aria-label="จำนวนรายการต่อหน้า"
-                  className="px-3 py-1.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 text-xs font-bold focus:outline-none focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-700 text-xs font-bold focus:outline-none focus:border-m3-grey-800 focus:ring-2 focus:ring-m3-primary/20 cursor-pointer shadow-2xs"
                 >
                   {[10, 20, 30, 50, 100, "ALL"].map((size) => (
                     <option key={`ps-${size}`} value={size}>
@@ -655,29 +660,29 @@ export default function ProductsPage() {
               return (
                 <div
                   key={`prod-card-${p.product_id || idx}`}
-                  className="bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-2xs overflow-hidden"
+                  className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-2xs overflow-hidden"
                 >
                   <button
                     type="button"
                     onClick={() => setExpandedSku(isExpanded ? null : rowKey)}
                     aria-expanded={isExpanded}
                     className={`w-full text-left p-4 cursor-pointer transition-colors ${
-                      isExpanded ? "bg-[#EAF2EE]/40" : "hover:bg-slate-50/60"
+                      isExpanded ? "bg-[rgba(0,167,111,0.08)]" : "hover:bg-m3-grey-100/60"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-slate-900 leading-snug">{p.product_name}</p>
+                        <p className="text-sm font-extrabold text-m3-grey-800 leading-snug">{p.product_name}</p>
                         <p className="mt-0.5 flex items-center gap-2 text-xs min-w-0">
-                          <span className="font-mono num font-bold text-[#053425] shrink-0">{p.sku}</span>
+                          <span className="tabular-nums num font-bold text-m3-primary-darker shrink-0">{p.sku}</span>
                           {p.barcode && p.barcode.trim() !== "-" && (
-                            <span className="font-mono num text-slate-500 truncate">{p.barcode}</span>
+                            <span className="tabular-nums num text-m3-grey-600 truncate">{p.barcode}</span>
                           )}
                         </p>
                       </div>
                       <svg
                         className={`w-4 h-4 shrink-0 mt-1 transition-transform duration-200 ${
-                          isExpanded ? "rotate-180 text-[#0F5C3F]" : "text-slate-500"
+                          isExpanded ? "rotate-180 text-m3-primary-dark" : "text-m3-grey-600"
                         }`}
                         fill="none"
                         stroke="currentColor"
@@ -689,29 +694,29 @@ export default function ProductsPage() {
 
                     <div className="mt-3 flex items-center justify-between gap-3 text-xs">
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-xs font-bold text-slate-500">ขั้นต่ำ</span>
-                        <span className="font-mono num font-bold text-slate-700">
+                        <span className="text-xs font-bold text-m3-grey-600">ขั้นต่ำ</span>
+                        <span className="tabular-nums num font-bold text-m3-grey-700">
                           {(Number(p.minimum_stock) || 0).toLocaleString()}
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-xs font-bold text-slate-500">คงเหลือ</span>
+                        <span className="text-xs font-bold text-m3-grey-600">คงเหลือ</span>
                         <span
-                          className={`font-mono num font-extrabold ${
-                            totalStock < 0 ? "text-rose-600" : totalStock === 0 ? "text-slate-500" : "text-[#053425]"
+                          className={`tabular-nums num font-extrabold ${
+                            totalStock < 0 ? "text-m3-error-dark" : totalStock === 0 ? "text-m3-grey-600" : "text-m3-primary-darker"
                           }`}
                         >
                           {totalStock.toLocaleString()}
                         </span>
                       </span>
                       <span className="flex items-baseline gap-1.5 min-w-0">
-                        <span className="text-xs font-bold text-slate-500 shrink-0">หน่วย</span>
-                        <span className="font-bold text-slate-700 truncate">{p.base_unit || "ชิ้น"}</span>
+                        <span className="text-xs font-bold text-m3-grey-600 shrink-0">หน่วย</span>
+                        <span className="font-bold text-m3-grey-700 truncate">{p.base_unit || "ชิ้น"}</span>
                       </span>
                     </div>
 
                     <div className="mt-2.5 flex items-center justify-between gap-2">
-                      <span className="text-xs text-slate-500 font-medium truncate">
+                      <span className="text-xs text-m3-grey-600 font-medium truncate">
                         {p.category || "ไม่ระบุหมวดหมู่"}
                       </span>
                       <span
@@ -725,24 +730,24 @@ export default function ProductsPage() {
 
                   {isExpanded && (
                     <div className="px-4 pb-4">
-                      <div className="rounded-xl border border-[#C9DFD4]/60 bg-white p-3 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-extrabold text-slate-700 mr-1">อยู่ในโกดัง:</span>
+                      <div className="rounded-xl border border-[rgba(0,167,111,0.24)] bg-white p-3 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-extrabold text-m3-grey-700 mr-1">อยู่ในโกดัง:</span>
                         {whList.length === 0 ? (
-                          <span className="text-xs text-slate-500 font-medium">
+                          <span className="text-xs text-m3-grey-600 font-medium">
                             ยังไม่มีข้อมูลโกดังของสินค้านี้
                           </span>
                         ) : (
                           whList.map((w) => (
                             <span
                               key={w.name}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-xs"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs"
                             >
                               {WAREHOUSE_ICON}
-                              <span className="font-bold text-slate-700">{w.name}</span>
-                              <span className="font-mono num font-extrabold text-[#053425]">
+                              <span className="font-bold text-m3-grey-700">{w.name}</span>
+                              <span className="tabular-nums num font-extrabold text-m3-primary-darker">
                                 {w.qty.toLocaleString()}
                               </span>
-                              <span className="text-slate-500 font-medium">{p.base_unit || "ชิ้น"}</span>
+                              <span className="text-m3-grey-600 font-medium">{p.base_unit || "ชิ้น"}</span>
                             </span>
                           ))
                         )}
@@ -758,7 +763,7 @@ export default function ProductsPage() {
 
       {/* Mobile: pagination แบบกระชับ */}
       {!loading && !loadError && totalItems > 0 && (
-        <div className="sm:hidden bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-2xs p-3 flex items-center justify-between gap-2 text-xs text-slate-500">
+        <div className="sm:hidden bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-2xs p-3 flex items-center justify-between gap-2 text-xs text-m3-grey-600">
           <span className="font-medium num">
             แสดง {totalItems > 0 ? startIndex + 1 : 0}-{endIndex} จาก {totalItems.toLocaleString()}
           </span>
@@ -767,19 +772,19 @@ export default function ProductsPage() {
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((pg) => Math.max(pg - 1, 1))}
-              className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-[#E8ECEA] text-slate-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
+              className="w-8 h-8 rounded-lg bg-m3-grey-100 hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
               aria-label="หน้าก่อนหน้า"
             >
               ‹
             </button>
-            <span className="font-bold text-slate-700 px-1 num">
+            <span className="font-bold text-m3-grey-700 px-1 num">
               {currentPage} / {totalPages}
             </span>
             <button
               type="button"
               disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage((pg) => Math.min(pg + 1, totalPages))}
-              className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-[#E8ECEA] text-slate-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
+              className="w-8 h-8 rounded-lg bg-m3-grey-100 hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-600 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
               aria-label="หน้าถัดไป"
             >
               ›

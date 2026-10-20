@@ -68,12 +68,12 @@ function toExpressWhCode(targetSheet: string): string {
 
 function statusMetaFor(doc: ApprovalDoc) {
   if (doc.status === "PROCESSING") {
-    return { label: "ต้องตรวจสอบ", badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" };
+    return { label: "ต้องตรวจสอบ", badge: "bg-[rgba(255,86,48,0.08)] text-m3-error-dark border-[rgba(255,86,48,0.24)]", dot: "bg-m3-error" };
   }
   if (doc.status === "POSTED" || doc.status === "APPROVED" || doc.status === "COMPLETED") {
-    return { label: "อนุมัติแล้ว", badge: "bg-[#EAF2EE] text-[#053425] border-[#C9DFD4]", dot: "bg-[#0F5C3F]" };
+    return { label: "อนุมัติแล้ว", badge: "bg-[rgba(0,167,111,0.08)] text-m3-primary-darker border-[rgba(0,167,111,0.24)]", dot: "bg-m3-primary" };
   }
-  return { label: "รออนุมัติ", badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" };
+  return { label: "รออนุมัติ", badge: "bg-[rgba(255,171,0,0.08)] text-m3-warning-dark border-[rgba(255,171,0,0.24)]", dot: "bg-m3-warning" };
 }
 
 function docTotalQty(doc: ApprovalDoc): number {
@@ -119,10 +119,10 @@ function isRowQtyInvalid(row: any[]): boolean {
 function editInputClass(invalid: boolean, mono: boolean): string {
   return [
     "w-full px-2.5 py-1.5 rounded-lg border text-sm font-bold focus:ring-2 focus:outline-hidden transition-colors",
-    mono ? "font-mono text-slate-900" : "text-slate-800",
+    mono ? "tabular-nums text-m3-grey-800" : "text-m3-grey-800",
     invalid
-      ? "border-rose-400 bg-rose-50/70 focus:ring-rose-400"
-      : "border-[#D5DDD9] focus:ring-[#0F5C3F]",
+      ? "border-m3-error bg-[rgba(255,86,48,0.08)] focus:ring-m3-error"
+      : "border-[rgba(145,158,171,0.32)] focus:ring-m3-primary",
   ].join(" ");
 }
 
@@ -515,10 +515,10 @@ export default function ApprovalsPage() {
   const renderReviewItems = (doc: ApprovalDoc) => (
     <>
       {/* Desktop: ตาราง */}
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-[#E8ECEA] bg-white">
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-[rgba(145,158,171,0.2)] bg-white">
         <table className="w-full text-left text-base">
           <thead>
-            <tr className="bg-slate-50/70 text-slate-500 border-b border-[#EEF1EF]">
+            <tr className="bg-m3-grey-100/70 text-m3-grey-600 border-b border-[rgba(145,158,171,0.2)]">
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">บาร์โค้ด</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">รหัสสินค้า</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ชื่อสินค้า</th>
@@ -527,23 +527,23 @@ export default function ApprovalsPage() {
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ผู้จำหน่าย</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#EEF1EF]">
+          <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
             {(doc.rows || []).map((row, idx) => {
               const qtyNum = !isNaN(Number(row[4])) && String(row[4]).trim() !== "" ? Number(row[4]) : 1;
               return (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors text-slate-700">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                <tr key={idx} className="hover:bg-m3-grey-100/80 transition-colors text-m3-grey-700">
+                  <td className="py-3.5 px-4 tabular-nums font-bold text-m3-grey-800 whitespace-nowrap">
                     {row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-")}
                   </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{row[0] || "-"}</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900 max-w-[360px] truncate" title={row[3]}>
+                  <td className="py-3.5 px-4 tabular-nums font-bold text-m3-grey-800 whitespace-nowrap">{row[0] || "-"}</td>
+                  <td className="py-3.5 px-4 font-bold text-m3-grey-800 max-w-[360px] truncate" title={row[3]}>
                     {row[3] || "-"}
                   </td>
-                  <td className="py-3.5 px-4 text-center font-mono font-extrabold text-lg text-slate-900 whitespace-nowrap tabular-nums">
+                  <td className="py-3.5 px-4 text-center tabular-nums font-extrabold text-lg text-m3-grey-800 whitespace-nowrap tabular-nums">
                     {qtyNum.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{row[1] || "-"}</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">{formatSupplierName(row[6])}</td>
+                  <td className="py-3.5 px-4 tabular-nums font-bold text-m3-grey-800 whitespace-nowrap">{row[1] || "-"}</td>
+                  <td className="py-3.5 px-4 font-bold text-m3-grey-800 whitespace-nowrap">{formatSupplierName(row[6])}</td>
                 </tr>
               );
             })}
@@ -558,25 +558,25 @@ export default function ApprovalsPage() {
           const barcodeVal =
             row[2] && row[2] !== "-" ? row[2] : (to8DigitBarcode(row[2], row[0]) || row[0] || "-");
           return (
-            <div key={idx} className="rounded-xl border border-[#E8ECEA] p-4 space-y-2">
+            <div key={idx} className="rounded-xl border border-[rgba(145,158,171,0.2)] p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-base font-bold text-slate-900 leading-snug min-w-0">{row[3] || "-"}</p>
-                <span className="font-mono font-extrabold text-[#053425] text-lg shrink-0">
+                <p className="text-base font-bold text-m3-grey-800 leading-snug min-w-0">{row[3] || "-"}</p>
+                <span className="tabular-nums font-extrabold text-m3-primary-darker text-lg shrink-0">
                   {qtyNum.toLocaleString()}
                 </span>
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-base">
-                <span className="text-slate-500">
-                  บาร์โค้ด: <span className="font-mono font-bold text-slate-800">{barcodeVal}</span>
+                <span className="text-m3-grey-600">
+                  บาร์โค้ด: <span className="tabular-nums font-bold text-m3-grey-800">{barcodeVal}</span>
                 </span>
-                <span className="text-slate-500">
-                  รหัส: <span className="font-mono font-bold text-slate-800">{row[0] || "-"}</span>
+                <span className="text-m3-grey-600">
+                  รหัส: <span className="tabular-nums font-bold text-m3-grey-800">{row[0] || "-"}</span>
                 </span>
-                <span className="text-slate-500">
-                  ตำแหน่ง: <span className="font-mono font-bold text-slate-800">{row[1] || "-"}</span>
+                <span className="text-m3-grey-600">
+                  ตำแหน่ง: <span className="tabular-nums font-bold text-m3-grey-800">{row[1] || "-"}</span>
                 </span>
-                <span className="text-slate-500">
-                  ผู้จำหน่าย: <span className="font-bold text-slate-800">{formatSupplierName(row[6])}</span>
+                <span className="text-m3-grey-600">
+                  ผู้จำหน่าย: <span className="font-bold text-m3-grey-800">{formatSupplierName(row[6])}</span>
                 </span>
               </div>
             </div>
@@ -587,18 +587,18 @@ export default function ApprovalsPage() {
   );
 
   return (
-    <div className="space-y-6 w-full pb-12">
+    <div className="space-y-4 sm:space-y-5 w-full pb-12">
       {/* Toast Notification Banner */}
       {notification && (
         <div
           role={notification.tone === "error" ? "alert" : "status"}
           aria-live="polite"
-          className={`p-4 rounded-2xl border text-sm font-bold flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-3 ${
+          className={`p-4 rounded-xl border text-sm font-bold flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-3 ${
             notification.tone === "error"
-              ? "bg-rose-50 border-rose-200 text-rose-800"
+              ? "bg-[rgba(255,86,48,0.08)] border-[rgba(255,86,48,0.24)] text-m3-error-dark"
               : notification.tone === "progress"
-              ? "bg-amber-50 border-amber-200 text-amber-800"
-              : "bg-[#EAF2EE] border-[#C9DFD4] text-[#053425]"
+              ? "bg-[rgba(255,171,0,0.08)] border-[rgba(255,171,0,0.24)] text-m3-warning-dark"
+              : "bg-[rgba(0,167,111,0.08)] border-[rgba(0,167,111,0.24)] text-m3-primary-darker"
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -614,7 +614,7 @@ export default function ApprovalsPage() {
           {notification.tone === "success" && notification.message.includes("Express") && (
             <Link
               href="/express-import/receive"
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-[#06402B] hover:bg-[#0F5C3F] text-white text-sm font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-m3-primary hover:bg-m3-primary text-white text-sm font-bold transition-all shrink-0 cursor-pointer shadow-xs"
             >
               เปิดคิวนำเข้า Express →
             </Link>
@@ -625,11 +625,7 @@ export default function ApprovalsPage() {
       {/* Top Status Row */}
       <div className="flex items-center justify-end gap-2.5 pt-1">
         <span
-          className={`px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${
-            pendingDocs.length > 0
-              ? "bg-amber-50 text-amber-700 border-amber-200"
-              : "bg-[#EAF2EE] text-[#053425] border-[#C9DFD4]"
-          }`}
+          className={`m3-label whitespace-nowrap ${pendingDocs.length > 0 ? "m3-label-warning" : "m3-label-success"}`}
         >
           {pendingDocs.length > 0 ? `รออนุมัติ ${pendingDocs.length} เอกสาร` : "อนุมัติครบทุกรายการ"}
         </span>
@@ -637,9 +633,9 @@ export default function ApprovalsPage() {
 
       {/* Filter & Search Bar */}
       {currentDocs.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
-          <div className="relative flex-1 min-w-[200px] bg-slate-50 rounded-xl border border-[#E8ECEA] focus-within:bg-white focus-within:border-[#0F5C3F] focus-within:ring-2 focus-within:ring-[#0F5C3F]/20 overflow-hidden transition-all">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="m3-card flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 p-4">
+          <div className="relative flex-1 min-w-[200px] bg-m3-grey-100 rounded-xl border border-[rgba(145,158,171,0.2)] focus-within:bg-white focus-within:border-m3-grey-800 focus-within:ring-2 focus-within:ring-m3-primary/20 overflow-hidden transition-all">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-m3-grey-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -648,13 +644,13 @@ export default function ApprovalsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาเลขเอกสาร, SKU, ชื่อสินค้า, ผู้จำหน่าย..."
-              className="w-full h-10 pl-10 pr-10 bg-transparent text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none"
+              className="w-full h-10 pl-10 pr-10 bg-transparent text-sm text-m3-grey-800 placeholder-m3-grey-500 font-medium focus:outline-none"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
                 aria-label="ล้างคำค้นหา"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg flex items-center justify-center text-m3-grey-500 hover:text-m3-grey-600 hover:bg-m3-grey-200 cursor-pointer transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -679,19 +675,19 @@ export default function ApprovalsPage() {
       {loading ? (
         <div aria-busy="true" aria-label="กำลังโหลดรายการเอกสาร">
           {/* Desktop: โครงตาราง */}
-          <div className="hidden md:block bg-white rounded-3xl border border-[#E8ECEA]/90 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-[1.3fr_1fr_1fr_0.7fr_1.1fr_0.9fr_0.6fr] gap-4 px-4 py-3.5 bg-slate-50/70 border-b border-[#EEF1EF]">
+          <div className="hidden md:block m3-card overflow-hidden">
+            <div className="grid grid-cols-[1.3fr_1fr_1fr_0.7fr_1.1fr_0.9fr_0.6fr] gap-4 px-4 py-3.5 bg-m3-grey-100/70 border-b border-[rgba(145,158,171,0.2)]">
               {[...Array(7)].map((_, i) => (
-                <div key={i} className="h-2.5 rounded-full bg-slate-200/70 animate-pulse" />
+                <div key={i} className="h-2.5 rounded-full bg-m3-grey-300/70 animate-pulse" />
               ))}
             </div>
-            <div className="divide-y divide-[#EEF1EF]">
+            <div className="divide-y divide-[rgba(145,158,171,0.2)]">
               {[...Array(4)].map((_, r) => (
                 <div key={r} className="grid grid-cols-[1.3fr_1fr_1fr_0.7fr_1.1fr_0.9fr_0.6fr] gap-4 items-center px-4 py-4">
                   {[...Array(7)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-3 rounded-full bg-slate-200/70 animate-pulse"
+                      className="h-3 rounded-full bg-m3-grey-300/70 animate-pulse"
                       style={{ width: i === 4 ? "90%" : `${58 + ((r + i) % 3) * 12}%` }}
                     />
                   ))}
@@ -702,37 +698,37 @@ export default function ApprovalsPage() {
           {/* Mobile: การ์ดเอกสาร */}
           <div className="md:hidden space-y-3">
             {[...Array(3)].map((_, c) => (
-              <div key={c} className="bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-2xs p-4 space-y-3">
+              <div key={c} className="m3-card p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-2 min-w-0">
-                    <div className="h-3.5 w-40 rounded-full bg-slate-200/70 animate-pulse" />
-                    <div className="h-2.5 w-28 rounded-full bg-slate-100 animate-pulse" />
+                    <div className="h-3.5 w-40 rounded-full bg-m3-grey-300/70 animate-pulse" />
+                    <div className="h-2.5 w-28 rounded-full bg-m3-grey-200 animate-pulse" />
                   </div>
-                  <div className="h-6 w-20 rounded-full bg-slate-100 animate-pulse shrink-0" />
+                  <div className="h-6 w-20 rounded-full bg-m3-grey-200 animate-pulse shrink-0" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="h-5 w-16 rounded-md bg-slate-100 animate-pulse" />
-                  <div className="h-3 w-32 rounded-full bg-slate-200/70 animate-pulse" />
+                  <div className="h-5 w-16 rounded-md bg-m3-grey-200 animate-pulse" />
+                  <div className="h-3 w-32 rounded-full bg-m3-grey-300/70 animate-pulse" />
                 </div>
-                <div className="h-9 w-full rounded-xl bg-slate-100 animate-pulse" />
+                <div className="h-9 w-full rounded-xl bg-m3-grey-200 animate-pulse" />
               </div>
             ))}
           </div>
         </div>
       ) : currentDocs.length === 0 ? (
-        <div className="rounded-3xl border border-[#E8ECEA]/90 bg-white shadow-sm px-6 py-14 text-center space-y-5">
-          <div className="w-16 h-16 mx-auto rounded-full bg-[#EAF2EE] border border-[#DFEDE6] flex items-center justify-center text-[#06402B]">
+        <div className="m3-card px-6 py-14 text-center space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-full bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.16)] flex items-center justify-center text-m3-primary-dark">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-black text-slate-900">ไม่มีรายการรออนุมัติ</h3>
+            <h3 className="text-lg font-extrabold text-m3-grey-800">ไม่มีรายการรออนุมัติ</h3>
           </div>
           <button
             type="button"
             onClick={() => fetchApprovals(false)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white text-sm font-bold transition-all cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white text-sm font-bold transition-all cursor-pointer shadow-md shadow-m3-primary/20 active:scale-95"
           >
             <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -741,14 +737,14 @@ export default function ApprovalsPage() {
           </button>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="rounded-3xl p-12 text-center border border-[#E8ECEA] bg-white shadow-sm space-y-3">
-          <p className="text-slate-500 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา &quot;{searchQuery}&quot;</p>
+        <div className="m3-card p-12 text-center space-y-3">
+          <p className="text-m3-grey-600 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา &quot;{searchQuery}&quot;</p>
           <button
             onClick={() => {
               setSearchQuery("");
               setSelectedWarehouse("ALL");
             }}
-            className="mt-1 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold cursor-pointer transition-colors"
+            className="mt-1 px-4 py-2 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 text-sm font-bold cursor-pointer transition-colors"
           >
             ล้างตัวกรองทั้งหมด
           </button>
@@ -756,11 +752,11 @@ export default function ApprovalsPage() {
       ) : (
         <>
           {/* Desktop: ตารางกระชับ */}
-          <div className="hidden md:block bg-white rounded-3xl border border-[#E8ECEA]/90 shadow-sm overflow-hidden">
+          <div className="hidden md:block m3-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="bg-slate-50/70 border-b border-[#EEF1EF] text-slate-500 font-semibold">
+                  <tr className="bg-m3-grey-100/70 border-b border-[rgba(145,158,171,0.2)] text-m3-grey-600 font-semibold">
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">เลขที่เอกสาร</th>
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ผู้ขออนุมัติ</th>
                     <th className="py-3.5 px-4 font-semibold whitespace-nowrap">คลัง</th>
@@ -768,37 +764,33 @@ export default function ApprovalsPage() {
                     <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">ตรวจสอบ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF1EF]">
+                <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
                   {filteredDocs.map((doc, idx) => {
                     return (
                       <tr
                         key={`${doc.document_id}-${idx}`}
-                        className="hover:bg-slate-50/80 transition-colors"
+                        className="hover:bg-m3-grey-100/80 transition-colors"
                       >
-                        <td className="py-3.5 px-4 font-mono font-bold text-[#06402B] whitespace-nowrap">
+                        <td className="py-3.5 px-4 tabular-nums font-bold text-m3-grey-800 whitespace-nowrap">
                           {doc.document_no}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-700 font-semibold whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-m3-grey-700 font-semibold whitespace-nowrap">
                           {formatUserName(doc.created_by, doc.created_by_name)}
                         </td>
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#DFEDE6]/80">
+                          <span className="text-m3-grey-600">
                             {doc.target_sheet}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-right tabular-nums font-bold text-m3-grey-700 whitespace-nowrap">
                           สินค้า {docSkuCount(doc).toLocaleString()} ชนิด / {docTotalQty(doc).toLocaleString()} ชิ้น
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => setReviewDoc(doc)}
-                            className="px-3.5 py-1.5 rounded-full text-sm font-bold text-[#053425] bg-[#EAF2EE] hover:bg-[#DFEDE6] border border-[#C9DFD4]/90 inline-flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                            className="m3-btn m3-btn-sm m3-btn-outline cursor-pointer"
                           >
-                            <svg className="w-3.5 h-3.5 text-[#06402B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
                             <span>ตรวจสอบ</span>
                           </button>
                         </td>
@@ -815,11 +807,11 @@ export default function ApprovalsPage() {
             {filteredDocs.map((doc, idx) => {
               const meta = statusMetaFor(doc);
               return (
-                <div key={`${doc.document_id}-m-${idx}`} className="bg-white rounded-2xl border border-[#E8ECEA]/90 shadow-2xs p-4">
+                <div key={`${doc.document_id}-m-${idx}`} className="m3-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-mono font-bold text-[#06402B] text-sm truncate">{doc.document_no}</p>
-                      <p className="text-sm text-slate-500 font-medium mt-0.5">
+                      <p className="tabular-nums font-bold text-m3-primary-dark text-sm truncate">{doc.document_no}</p>
+                      <p className="text-sm text-m3-grey-600 font-medium mt-0.5">
                         {formatUserName(doc.created_by, doc.created_by_name)} · {formatDocDate(doc)}
                       </p>
                     </div>
@@ -829,17 +821,17 @@ export default function ApprovalsPage() {
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2 text-sm">
-                    <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#EAF2EE] text-[#053425] border border-[#DFEDE6]/80">
+                    <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[rgba(0,167,111,0.08)] text-m3-primary-darker border border-[rgba(0,167,111,0.16)]">
                       {doc.target_sheet}
                     </span>
-                    <span className="font-mono font-bold text-slate-700">
+                    <span className="tabular-nums font-bold text-m3-grey-700">
                       สินค้า {docSkuCount(doc).toLocaleString()} ชนิด / {docTotalQty(doc).toLocaleString()} ชิ้น
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setReviewDoc(doc)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-[#053425] bg-[#EAF2EE] hover:bg-[#DFEDE6] border border-[#C9DFD4]/90 transition-all cursor-pointer active:scale-95"
+                    className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-m3-primary-darker bg-[rgba(0,167,111,0.08)] hover:bg-[rgba(0,167,111,0.16)] border border-[rgba(0,167,111,0.24)] transition-all cursor-pointer active:scale-95"
                   >
                     ตรวจสอบเอกสาร
                   </button>
@@ -852,24 +844,25 @@ export default function ApprovalsPage() {
 
       {/* Review Document Modal */}
       {reviewDoc && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="review-dialog-title" className="bg-white rounded-3xl border border-[#E8ECEA] shadow-2xl w-full max-w-6xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 bg-m3-grey-800/50 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="review-dialog-title" className="bg-white rounded-2xl border border-[rgba(145,158,171,0.2)] shadow-m3-dropdown w-full max-w-4xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-[#EEF1EF] flex items-start justify-between gap-3">
+            <div className="px-4 pt-5 pb-3 sm:px-6 sm:pt-6 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 id="review-dialog-title" className="text-base sm:text-lg font-black text-slate-900 font-mono">{reviewDoc.document_no}</h3>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${statusMetaFor(reviewDoc).badge}`}>
+                <div className="text-lg font-bold text-m3-grey-800">ตรวจสอบเอกสาร</div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <h3 id="review-dialog-title" className="text-sm font-medium text-m3-grey-600 tabular-nums">{reviewDoc.document_no}</h3>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-bold border whitespace-nowrap ${statusMetaFor(reviewDoc).badge}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${statusMetaFor(reviewDoc).dot}`} />
                     {statusMetaFor(reviewDoc).label}
                   </span>
                 </div>
-                <p className="text-sm text-slate-500 font-medium mt-1">
-                  ผู้ขออนุมัติ: <strong className="text-slate-700">{formatUserName(reviewDoc.created_by, reviewDoc.created_by_name)}</strong>
-                  <span className="mx-1.5 text-slate-300">·</span>
+                <p className="text-sm text-m3-grey-600 font-medium mt-1">
+                  ผู้ขออนุมัติ: <strong className="text-m3-grey-700">{formatUserName(reviewDoc.created_by, reviewDoc.created_by_name)}</strong>
+                  <span className="mx-1.5 text-m3-grey-400">·</span>
                   {formatDocDate(reviewDoc)}
-                  <span className="mx-1.5 text-slate-300">·</span>
-                  คลังเป้าหมาย: <strong className="text-slate-700">{reviewDoc.target_sheet}</strong>
+                  <span className="mx-1.5 text-m3-grey-400">·</span>
+                  คลังเป้าหมาย: <strong className="text-m3-grey-700">{reviewDoc.target_sheet}</strong>
                 </p>
 
               </div>
@@ -877,7 +870,7 @@ export default function ApprovalsPage() {
                 type="button"
                 onClick={() => setReviewDoc(null)}
                 aria-label="ปิดหน้าต่างตรวจสอบ"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors shrink-0"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-m3-grey-500 hover:text-m3-grey-700 hover:bg-m3-grey-200 cursor-pointer transition-colors shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -886,22 +879,22 @@ export default function ApprovalsPage() {
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              <span className="text-sm font-extrabold text-slate-700">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 space-y-3">
+              <span className="text-sm font-extrabold text-m3-grey-700">
                 รายการสินค้า (สินค้า {docSkuCount(reviewDoc).toLocaleString()} ชนิด / {docTotalQty(reviewDoc).toLocaleString()} ชิ้น)
               </span>
               {renderReviewItems(reviewDoc)}
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 sm:px-5 border-t border-[#EEF1EF] flex items-center justify-end gap-2.5 bg-slate-50/60">
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+            <div className="p-4 sm:px-6 sm:pb-6 border-t border-[rgba(145,158,171,0.2)] sm:border-t-0">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full">
                 <button
                   type="button"
                   onClick={() => openEditModal(reviewDoc)}
-                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-[#E8ECEA] text-slate-700 font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                  className="m3-btn m3-btn-outline gap-2 cursor-pointer sm:mr-auto"
                 >
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   <span>แก้ไขเอกสาร</span>
@@ -909,21 +902,15 @@ export default function ApprovalsPage() {
                 <button
                   type="button"
                   onClick={() => setConfirmAction({ type: "reject", doc: reviewDoc })}
-                  className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+                  className="m3-btn gap-2 bg-[rgba(255,86,48,0.16)] text-m3-error-dark hover:bg-[rgba(255,86,48,0.24)] cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
                   <span>ไม่อนุมัติ</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmAction({ type: "approve", doc: reviewDoc })}
-                  className="col-span-2 sm:col-span-1 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-extrabold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95"
+                  className="col-span-2 sm:col-span-1 m3-btn m3-btn-primary gap-2 cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
                   <span>อนุมัติ</span>
                 </button>
               </div>
@@ -934,14 +921,14 @@ export default function ApprovalsPage() {
 
       {/* Confirm Action Modal */}
       {confirmAction && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="bg-white rounded-3xl p-6 w-full max-w-md border border-[#E8ECEA] space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-m3-grey-800/48 animate-in fade-in duration-150">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" className="bg-white rounded-2xl p-6 w-full max-w-md border border-[rgba(145,158,171,0.2)] space-y-4 shadow-m3-dropdown">
             <div className="flex items-start gap-3">
               <span
-                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   confirmAction.type === "approve"
-                    ? "bg-[#EAF2EE] text-[#06402B] border border-[#C9DFD4]"
-                    : "bg-rose-50 text-rose-600 border border-rose-200"
+                    ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-dark border border-[rgba(0,167,111,0.24)]"
+                    : "bg-[rgba(255,86,48,0.08)] text-m3-error-dark border border-[rgba(255,86,48,0.24)]"
                 }`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -953,14 +940,14 @@ export default function ApprovalsPage() {
                 </svg>
               </span>
               <div>
-                <h4 id="confirm-dialog-title" className="text-base font-black text-slate-900">
+                <h4 id="confirm-dialog-title" className="text-base font-extrabold text-m3-grey-800">
                   {confirmAction.type === "approve" ? "ยืนยันอนุมัติการรับเข้า?" : "ยืนยันไม่อนุมัติเอกสารนี้?"}
                 </h4>
-                <p className="text-sm text-slate-500 font-medium mt-1 leading-relaxed">
+                <p className="text-sm text-m3-grey-600 font-medium mt-1 leading-relaxed">
                   {confirmAction.doc.document_no} · สินค้า {docSkuCount(confirmAction.doc).toLocaleString()} ชนิด /{" "}
                   {docTotalQty(confirmAction.doc).toLocaleString()} ชิ้น
                 </p>
-                <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                <p className="text-sm text-m3-grey-600 mt-2 leading-relaxed">
                   {confirmAction.type === "approve"
                     ? "เพิ่มสต็อกและส่งต่อเข้า Express"
                     : "ปฏิเสธรายการ โดยไม่เพิ่มสต็อก"}
@@ -971,7 +958,7 @@ export default function ApprovalsPage() {
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}
-                className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-all cursor-pointer border border-[#E8ECEA]"
+                className="flex-1 py-3 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 font-bold text-sm transition-all cursor-pointer border border-[rgba(145,158,171,0.2)]"
               >
                 ยกเลิก
               </button>
@@ -985,10 +972,10 @@ export default function ApprovalsPage() {
                   if (type === "approve") handleApprove(doc);
                   else handleReject(doc);
                 }}
-                className={`flex-1 py-3 rounded-2xl text-white font-extrabold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md active:scale-95 ${
+                className={`flex-1 py-3 rounded-xl text-white font-extrabold text-sm transition-all disabled:opacity-50 cursor-pointer shadow-md active:scale-95 ${
                   confirmAction.type === "approve"
-                    ? "bg-[#06402B] hover:bg-[#053425] shadow-[#06402B]/20"
-                    : "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
+                    ? "bg-m3-primary hover:bg-m3-primary-darker shadow-m3-primary/20"
+                    : "bg-m3-error hover:bg-m3-error-dark shadow-m3-error/20"
                 }`}
               >
                 {confirmAction.type === "approve" ? "ยืนยันอนุมัติ" : "ยืนยันไม่อนุมัติ"}
@@ -1000,23 +987,23 @@ export default function ApprovalsPage() {
 
       {/* Edit Document Modal */}
       {editingDoc && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="edit-dialog-title" className="bg-white rounded-2xl border border-[#E8ECEA] shadow-2xl w-full max-w-5xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 bg-m3-grey-800/50 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="edit-dialog-title" className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-m3-dropdown w-full max-w-5xl my-auto max-h-[92dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-[#E8ECEA] flex items-center justify-between bg-slate-50">
+            <div className="p-4 sm:p-5 border-b border-[rgba(145,158,171,0.2)] flex items-center justify-between bg-m3-grey-100">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2.5">
                   <span
                     aria-hidden="true"
-                    className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-xl bg-[rgba(255,171,0,0.08)] text-m3-warning-dark border border-[rgba(255,171,0,0.24)] flex items-center justify-center shrink-0"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </span>
                   <div>
-                    <h3 id="edit-dialog-title" className="text-base font-extrabold text-slate-900 leading-snug">
-                      แก้ไขเอกสารรับเข้า <span className="font-mono whitespace-nowrap">{editingDoc.document_no}</span>
+                    <h3 id="edit-dialog-title" className="text-base font-extrabold text-m3-grey-800 leading-snug">
+                      แก้ไขเอกสารรับเข้า <span className="tabular-nums whitespace-nowrap">{editingDoc.document_no}</span>
                     </h3>
                   </div>
                 </div>
@@ -1029,7 +1016,7 @@ export default function ApprovalsPage() {
                 }}
                 disabled={isSavingEdit}
                 aria-label="ปิดหน้าต่างแก้ไข"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors shrink-0"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-m3-grey-500 hover:text-m3-grey-700 hover:bg-m3-grey-300 cursor-pointer transition-colors shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -1038,15 +1025,15 @@ export default function ApprovalsPage() {
             </div>
 
             {/* Modal Meta Settings (Warehouse & Date) */}
-            <div className="p-4 sm:px-6 bg-slate-50/50 border-b border-[#E8ECEA] grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 sm:px-6 bg-m3-grey-100/50 border-b border-[rgba(145,158,171,0.2)] grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                <label className="block text-sm font-bold text-m3-grey-700 mb-1.5">
                   โกดังเป้าหมาย
                 </label>
                 <select
                   value={editWarehouse}
                   onChange={(e) => setEditWarehouse(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-[#D5DDD9] bg-white font-bold text-slate-800 focus:ring-2 focus:ring-[#0F5C3F] focus:outline-hidden"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-[rgba(145,158,171,0.32)] bg-white font-bold text-m3-grey-800 focus:ring-2 focus:ring-m3-primary focus:outline-hidden"
                 >
                   <option value="โกดัง1">โกดัง1</option>
                   <option value="โกดัง2">โกดัง2</option>
@@ -1058,14 +1045,14 @@ export default function ApprovalsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                <label className="block text-sm font-bold text-m3-grey-700 mb-1.5">
                   วันที่เอกสาร
                 </label>
                 <input
                   type="date"
                   value={editDocDate}
                   onChange={(e) => setEditDocDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-[#D5DDD9] bg-white font-medium text-slate-800 focus:ring-2 focus:ring-[#0F5C3F] focus:outline-hidden"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-[rgba(145,158,171,0.32)] bg-white font-medium text-m3-grey-800 focus:ring-2 focus:ring-m3-primary focus:outline-hidden"
                 />
               </div>
             </div>
@@ -1073,13 +1060,13 @@ export default function ApprovalsPage() {
             {/* Modal Items Table */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                <span className="text-sm font-bold text-m3-grey-700 uppercase tracking-wider">
                   รายการสินค้าในเอกสาร ({editRows.length} รายการ)
                 </span>
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 border border-m3-grey-400 font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" />
@@ -1101,7 +1088,7 @@ export default function ApprovalsPage() {
                   }
                 />
                 {catalogLoadError && (
-                  <p role="alert" className="text-xs font-bold text-rose-700">
+                  <p role="alert" className="text-xs font-bold text-m3-error-dark">
                     {catalogLoadError}
                   </p>
                 )}
@@ -1111,7 +1098,7 @@ export default function ApprovalsPage() {
               {editError && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2.5 rounded-xl bg-rose-50 border border-rose-200 px-3.5 py-3 text-rose-800"
+                  className="flex items-start gap-2.5 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] px-3.5 py-3 text-m3-error-dark"
                 >
                   <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
@@ -1121,10 +1108,10 @@ export default function ApprovalsPage() {
               )}
 
               {/* Desktop: ตารางแก้ไข */}
-              <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#E8ECEA]">
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-[rgba(145,158,171,0.2)]">
                 <table className="w-full text-left text-sm min-w-[820px]">
                   <thead>
-                    <tr className="bg-slate-50/70 text-slate-500 border-b border-[#EEF1EF]">
+                    <tr className="bg-m3-grey-100/70 text-m3-grey-600 border-b border-[rgba(145,158,171,0.2)]">
                       <th className="py-2.5 px-3 font-semibold w-32">รหัสสินค้า (SKU)</th>
                       <th className="py-2.5 px-3 font-semibold">ชื่อสินค้า</th>
                       <th className="py-2.5 px-3 font-semibold w-28">ตำแหน่ง</th>
@@ -1136,13 +1123,13 @@ export default function ApprovalsPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E8ECEA]">
+                  <tbody className="divide-y divide-[rgba(145,158,171,0.2)]">
                     {editRows.map((row, rIdx) => {
                       const skuBad = Boolean(editError) && isRowSkuMissing(row);
                       const qtyBad = Boolean(editError) && isRowQtyInvalid(row);
                       const canDelete = editRows.length > 1;
                       return (
-                        <tr key={rIdx} className="hover:bg-slate-50/70">
+                        <tr key={rIdx} className="hover:bg-m3-grey-100/70">
                           {/* SKU */}
                           <td className="p-2">
                             <input
@@ -1228,7 +1215,7 @@ export default function ApprovalsPage() {
                               disabled={!canDelete}
                               aria-label={`ลบรายการที่ ${rIdx + 1}`}
                               title={canDelete ? "ลบรายการนี้" : "เอกสารต้องมีสินค้าอย่างน้อย 1 รายการ"}
-                              className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              className="w-7 h-7 rounded-lg text-m3-error hover:text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -1249,9 +1236,9 @@ export default function ApprovalsPage() {
                   const qtyBad = Boolean(editError) && isRowQtyInvalid(row);
                   const canDelete = editRows.length > 1;
                   return (
-                    <div key={rIdx} className="rounded-xl border border-[#E8ECEA] p-3 space-y-2.5">
+                    <div key={rIdx} className="rounded-xl border border-[rgba(145,158,171,0.2)] p-3 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                        <span className="text-sm font-bold text-m3-grey-500 uppercase tracking-wider">
                           รายการที่ {rIdx + 1}
                         </span>
                         <button
@@ -1260,7 +1247,7 @@ export default function ApprovalsPage() {
                           disabled={!canDelete}
                           aria-label={`ลบรายการที่ ${rIdx + 1}`}
                           title={canDelete ? "ลบรายการนี้" : "เอกสารต้องมีสินค้าอย่างน้อย 1 รายการ"}
-                          className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          className="w-7 h-7 rounded-lg text-m3-error hover:text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -1268,7 +1255,7 @@ export default function ApprovalsPage() {
                         </button>
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-500 mb-1">รหัสสินค้า (SKU) *</label>
+                        <label className="block text-sm font-bold text-m3-grey-600 mb-1">รหัสสินค้า (SKU) *</label>
                         <input
                           type="text"
                           value={row[0] || ""}
@@ -1280,7 +1267,7 @@ export default function ApprovalsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-500 mb-1">ชื่อสินค้า</label>
+                        <label className="block text-sm font-bold text-m3-grey-600 mb-1">ชื่อสินค้า</label>
                         <input
                           type="text"
                           value={row[3] || ""}
@@ -1292,7 +1279,7 @@ export default function ApprovalsPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-sm font-bold text-slate-500 mb-1">ตำแหน่ง</label>
+                          <label className="block text-sm font-bold text-m3-grey-600 mb-1">ตำแหน่ง</label>
                           <input
                             type="text"
                             value={row[1] === "-" ? "" : row[1]}
@@ -1303,7 +1290,7 @@ export default function ApprovalsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-slate-500 mb-1">บาร์โค้ด</label>
+                          <label className="block text-sm font-bold text-m3-grey-600 mb-1">บาร์โค้ด</label>
                           <input
                             type="text"
                             value={row[2] || ""}
@@ -1315,7 +1302,7 @@ export default function ApprovalsPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-500 mb-1">ผู้จำหน่าย</label>
+                        <label className="block text-sm font-bold text-m3-grey-600 mb-1">ผู้จำหน่าย</label>
                         <input
                           type="text"
                           value={row[6] === "-" ? "" : row[6]}
@@ -1326,7 +1313,7 @@ export default function ApprovalsPage() {
                         />
                       </div>
                       <div className="w-28">
-                        <label className="block text-sm font-bold text-slate-500 mb-1">จำนวน</label>
+                        <label className="block text-sm font-bold text-m3-grey-600 mb-1">จำนวน</label>
                         <input
                           type="number"
                           min="1"
@@ -1353,10 +1340,10 @@ export default function ApprovalsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 sm:px-6 border-t border-[#E8ECEA] bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <span className="text-sm text-slate-500 leading-relaxed">
-                รวมทั้งหมด <strong className="text-slate-800">{editRows.length}</strong> รายการ | ยอดรวม{" "}
-                <strong className="text-slate-900 font-mono tabular-nums">
+            <div className="p-4 sm:px-6 border-t border-[rgba(145,158,171,0.2)] bg-m3-grey-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span className="text-sm text-m3-grey-600 leading-relaxed">
+                รวมทั้งหมด <strong className="text-m3-grey-800">{editRows.length}</strong> รายการ | ยอดรวม{" "}
+                <strong className="text-m3-grey-800 tabular-nums">
                   {editRows.reduce((sum, r) => sum + (Number(r[4]) || 0), 0).toLocaleString()}
                 </strong>{" "}
                 ชิ้น
@@ -1367,7 +1354,7 @@ export default function ApprovalsPage() {
                   type="button"
                   onClick={() => setEditingDoc(null)}
                   disabled={isSavingEdit}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-sm cursor-pointer transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-m3-grey-600 hover:bg-m3-grey-300 font-bold text-sm cursor-pointer transition-colors"
                 >
                   ยกเลิก
                 </button>
@@ -1375,7 +1362,7 @@ export default function ApprovalsPage() {
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={isSavingEdit}
-                  className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#06402B]/20 active:scale-95 whitespace-nowrap"
+                  className="px-5 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-m3-primary/20 active:scale-95 whitespace-nowrap"
                 >
                   {isSavingEdit ? (
                     <>
