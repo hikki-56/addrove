@@ -1,5 +1,6 @@
 "use client";
 
+import { SolarDangerTriangle } from "@/components/icons";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { outboundApi, type ShipmentDetailData, type ShipmentListItem } from "@/client/outbound-client";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
@@ -175,20 +176,20 @@ export default function OutboundLoadingPage() {
   if (active) {
     const allLoaded = loaded >= expected && expected > 0;
     return (
-      <div className={`max-w-2xl mx-auto pb-24 sm:pb-8 space-y-4 transition-colors duration-150 ${flash === "ok" ? "bg-emerald-50" : flash === "bad" ? "bg-red-50" : ""}`}>
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4">
+      <div className={`max-w-2xl mx-auto pb-24 sm:pb-8 space-y-4 transition-colors duration-150 ${flash === "ok" ? "bg-[rgba(0,167,111,0.08)]" : flash === "bad" ? "bg-[rgba(255,86,48,0.08)]" : ""}`}>
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => { setActive(null); setActiveNo(""); setFeedback(null); }}
-              className="text-slate-400 hover:text-slate-600 text-sm"
+              className="text-m3-grey-500 hover:text-m3-grey-600 text-sm"
             >
               ✕ ปิด
             </button>
             <div className="text-center">
-              <div className="text-2xl font-extrabold text-slate-800">🚚 {active.note.truck_plate}</div>
-              <div className="text-xs text-slate-400">{active.doc.document_no}{active.note.destination ? ` · ${active.note.destination}` : ""}</div>
+              <div className="text-2xl font-extrabold text-m3-grey-800">{active.note.truck_plate}</div>
+              <div className="text-xs text-m3-grey-500">{active.doc.document_no}{active.note.destination ? ` · ${active.note.destination}` : ""}</div>
             </div>
-            <div className="text-right text-xs text-slate-400">
+            <div className="text-right text-xs text-m3-grey-500">
               {active.bills.length} บิล
             </div>
           </div>
@@ -199,13 +200,13 @@ export default function OutboundLoadingPage() {
         {feedback && <ScanFeedbackBanner feedback={feedback ? { type: feedback.tone === "error" ? "error" : "success", message: feedback.message } : null} />}
 
         {/* ตัวนับใหญ่ */}
-        <div className="bg-white rounded-2xl border-2 border-[#06402B]/30 p-6 text-center">
-          <div className="text-xs text-slate-400 tracking-widest">กล่องที่ขึ้นรถแล้ว</div>
-          <div className="text-6xl font-black tabular-nums text-[#06402B] leading-none">
-            {loaded}<span className="text-3xl text-slate-300">/{expected}</span>
+        <div className="bg-white rounded-xl border-2 border-m3-primary/30 p-6 text-center">
+          <div className="text-xs text-m3-grey-500 tracking-widest">กล่องที่ขึ้นรถแล้ว</div>
+          <div className="text-6xl font-extrabold tabular-nums text-m3-primary-dark leading-none">
+            {loaded}<span className="text-3xl text-m3-grey-400">/{expected}</span>
           </div>
-          <div className="mt-3 h-3 rounded-full bg-slate-100 overflow-hidden">
-            <div className="h-full bg-[#06402B] rounded-full transition-all duration-300" style={{ width: `${expected ? Math.round((loaded / expected) * 100) : 0}%` }} />
+          <div className="mt-3 h-3 rounded-full bg-m3-grey-200 overflow-hidden">
+            <div className="h-full bg-m3-primary rounded-full transition-all duration-300" style={{ width: `${expected ? Math.round((loaded / expected) * 100) : 0}%` }} />
           </div>
         </div>
 
@@ -221,18 +222,18 @@ export default function OutboundLoadingPage() {
             />
 
             {/* กล่องในรอบ */}
-            <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4 space-y-2">
-              <div className="text-xs font-bold text-slate-500">กล่องในรอบนี้</div>
+            <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4 space-y-2">
+              <div className="text-xs font-bold text-m3-grey-600">กล่องในรอบนี้</div>
               {active.boxes.map((b) => (
                 <div
                   key={b.box_id}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${
                     b.box_status === "LOADED" || b.box_status === "SHIPPED"
-                      ? "bg-emerald-50 text-emerald-900"
-                      : "bg-[#F7F9F8] text-slate-600"
+                      ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-dark"
+                      : "bg-m3-grey-100 text-m3-grey-600"
                   }`}
                 >
-                  <div className="font-mono text-sm">{b.box_code}</div>
+                  <div className="tabular-nums text-sm">{b.box_code}</div>
                   <div className="text-xs">
                     {b.bill_document_no} · {b.total_qty} ชิ้น ·{" "}
                     {b.box_status === "LOADED" || b.box_status === "SHIPPED" ? "✓ ขึ้นรถแล้ว" : "ยังไม่ขึ้น"}
@@ -247,7 +248,7 @@ export default function OutboundLoadingPage() {
                           setFeedback({ tone: "error", message: e instanceof Error ? e.message : "ถอดไม่สำเร็จ" });
                         }
                       }}
-                      className="text-xs text-red-600 font-semibold"
+                      className="text-xs text-m3-error-dark font-semibold"
                     >
                       ถอด
                     </button>
@@ -263,20 +264,20 @@ export default function OutboundLoadingPage() {
                 else setClosing(true);
               }}
               disabled={busy || loaded === 0}
-              className="w-full py-6 rounded-2xl bg-[#06402B] text-white text-2xl font-black disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full py-6 rounded-xl bg-m3-primary text-white text-2xl font-extrabold disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
-              🚚 {allLoaded ? "ปิดรอบ — ออกรถ" : `ปิดรอบ (เหลือ ${expected - loaded} กล่อง)`}
+              {allLoaded ? "ปิดรอบ — ออกรถ" : `ปิดรอบ (เหลือ ${expected - loaded} กล่อง)`}
             </button>
           </>
         )}
 
         {active.note.shipment_status === "CLOSED" && (
           <div className="space-y-3">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center font-bold text-emerald-900">
+            <div className="bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] rounded-xl p-5 text-center font-bold text-m3-primary-dark">
               ปิดรอบแล้ว — ออกรถเรียบร้อย ✅
             </div>
             {active.note.express_synced_at ? (
-              <div className="text-center text-xs text-slate-400">
+              <div className="text-center text-xs text-m3-grey-500">
                 ส่งยอดเข้า Express แล้วเมื่อ {new Date(active.note.express_synced_at).toLocaleString("th-TH")}
               </div>
             ) : (
@@ -301,9 +302,9 @@ export default function OutboundLoadingPage() {
                     setFeedback({ tone: "error", message: e instanceof Error ? e.message : "ส่งเข้า Express ไม่สำเร็จ" });
                   }
                 }}
-                className="w-full py-4 rounded-2xl bg-[#06402B] text-white text-lg font-black active:scale-[0.98] transition-transform"
+                className="w-full py-4 rounded-xl bg-m3-primary text-white text-lg font-extrabold active:scale-[0.98] transition-transform"
               >
-                📤 ส่งยอดเข้า Express
+                ส่งยอดเข้า Express
               </button>
             )}
           </div>
@@ -320,28 +321,28 @@ export default function OutboundLoadingPage() {
 
         {/* โมดัลยืนยันกล่องที่ขาด */}
         {closing && (
-          <div className="fixed inset-0 z-50 bg-black/50 overflow-auto p-4">
-            <div className="bg-white rounded-3xl max-w-lg mx-auto p-5 space-y-4">
+          <div className="fixed inset-0 z-50 bg-m3-grey-800/48 overflow-auto p-4">
+            <div className="bg-white rounded-2xl max-w-lg mx-auto p-5 space-y-4">
               <div className="text-center">
-                <div className="text-4xl mb-1">⚠️</div>
-                <div className="font-bold text-slate-800">ยังมี {missingBoxes.length} กล่องที่ไม่ได้ขึ้นรถ</div>
-                <div className="text-xs text-slate-500">ระบุผลและเหตุผลให้ครบทุกใบ</div>
+                <SolarDangerTriangle size={40} className="mx-auto mb-1 text-m3-warning" />
+                <div className="font-bold text-m3-grey-800">ยังมี {missingBoxes.length} กล่องที่ไม่ได้ขึ้นรถ</div>
+                <div className="text-xs text-m3-grey-600">ระบุผลและเหตุผลให้ครบทุกใบ</div>
               </div>
               {missingBoxes.map((b) => {
                 const c = confirmations[b.box_id] ?? { outcome: "ROLLOVER" as const, reason: "" };
                 return (
-                  <div key={b.box_id} className="border border-[#E8ECEA] rounded-2xl p-3 space-y-2">
-                    <div className="font-mono text-sm font-bold text-slate-800">{b.box_code} <span className="text-xs font-normal text-slate-400">({b.bill_document_no})</span></div>
+                  <div key={b.box_id} className="border border-[rgba(145,158,171,0.2)] rounded-xl p-3 space-y-2">
+                    <div className="tabular-nums text-sm font-bold text-m3-grey-800">{b.box_code} <span className="text-xs font-normal text-m3-grey-500">({b.bill_document_no})</span></div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setConfirmations((prev) => ({ ...prev, [b.box_id]: { ...c, outcome: "ROLLOVER" } }))}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border ${c.outcome === "ROLLOVER" ? "bg-amber-500 text-white border-amber-500" : "border-[#E8ECEA] text-slate-600"}`}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border ${c.outcome === "ROLLOVER" ? "bg-m3-warning text-white border-m3-warning" : "border-[rgba(145,158,171,0.2)] text-m3-grey-600"}`}
                       >
-                        🔁 ไปรอบถัดไป
+                        ไปรอบถัดไป
                       </button>
                       <button
                         onClick={() => setConfirmations((prev) => ({ ...prev, [b.box_id]: { ...c, outcome: "CANCELLED" } }))}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border ${c.outcome === "CANCELLED" ? "bg-red-600 text-white border-red-600" : "border-[#E8ECEA] text-slate-600"}`}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border ${c.outcome === "CANCELLED" ? "bg-m3-error text-white border-m3-error" : "border-[rgba(145,158,171,0.2)] text-m3-grey-600"}`}
                       >
                         ✕ ไม่ส่งกล่องนี้
                       </button>
@@ -351,7 +352,7 @@ export default function OutboundLoadingPage() {
                       value={c.reason}
                       onChange={(e) => setConfirmations((prev) => ({ ...prev, [b.box_id]: { ...c, reason: e.target.value } }))}
                       placeholder="เหตุผล"
-                      className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2 text-sm"
+                      className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl px-3 py-2 text-sm"
                     />
                   </div>
                 );
@@ -360,11 +361,11 @@ export default function OutboundLoadingPage() {
                 <button
                   onClick={() => void closeRound()}
                   disabled={busy}
-                  className="flex-1 py-3 rounded-xl bg-[#06402B] text-white font-bold disabled:opacity-40"
+                  className="flex-1 py-3 rounded-xl bg-m3-primary text-white font-bold disabled:opacity-40"
                 >
                   ยืนยันปิดรอบ
                 </button>
-                <button onClick={() => setClosing(false)} className="px-4 py-3 rounded-xl border border-[#E8ECEA] text-slate-600">
+                <button onClick={() => setClosing(false)} className="px-4 py-3 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600">
                   ย้อนกลับ
                 </button>
               </div>
@@ -381,14 +382,14 @@ export default function OutboundLoadingPage() {
   return (
     <div className="max-w-2xl mx-auto pb-20 sm:pb-8 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#06402B] flex items-center gap-2">
-          <span className="text-3xl">🚚</span> ของขึ้นรถ
+        <h1 className="text-xl font-bold text-m3-primary-dark flex items-center gap-2">
+          ของขึ้นรถ
         </h1>
         <button
           onClick={() => setShowCreate((v) => !v)}
-          className="px-4 py-2.5 rounded-xl bg-[#06402B] text-white text-sm font-semibold"
+          className="px-4 py-2.5 rounded-xl bg-m3-primary text-white text-sm font-semibold"
         >
-          ➕ สร้างรอบ
+          สร้างรอบ
         </button>
       </div>
 
@@ -396,35 +397,35 @@ export default function OutboundLoadingPage() {
 
       {/* ฟอร์มสร้างรอบ: เลือกบิลก่อน → รู้จำนวนกล่องรวม */}
       {showCreate && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">ทะเบียนรถ *</label>
+              <label className="block text-sm font-semibold text-m3-grey-700 mb-1">ทะเบียนรถ *</label>
               <input
                 type="text"
                 value={truckPlate}
                 onChange={(e) => setTruckPlate(e.target.value)}
                 placeholder="เช่น 1กข 1234"
-                className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2.5"
+                className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl px-3 py-2.5"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">ปลายทาง/หมายเหตุ</label>
+              <label className="block text-sm font-semibold text-m3-grey-700 mb-1">ปลายทาง/หมายเหตุ</label>
               <input
                 type="text"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2.5"
+                className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl px-3 py-2.5"
               />
             </div>
           </div>
 
           <div>
-            <div className="text-sm font-semibold text-slate-700 mb-2">
+            <div className="text-sm font-semibold text-m3-grey-700 mb-2">
               เลือกบิลที่จะขึ้นรอบนี้ ({selectedBills.length} เลือกแล้ว)
             </div>
             {packedBills.length === 0 ? (
-              <div className="text-sm text-slate-400">ไม่มีบิลที่แพ็กครบรอขึ้นรถ</div>
+              <div className="text-sm text-m3-grey-500">ไม่มีบิลที่แพ็กครบรอขึ้นรถ</div>
             ) : (
               <div className="space-y-2">
                 {packedBills.map((b) => {
@@ -438,21 +439,21 @@ export default function OutboundLoadingPage() {
                         )
                       }
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
-                        checked ? "border-[#06402B] bg-emerald-50" : "border-[#E8ECEA] hover:border-slate-300"
+                        checked ? "border-m3-primary bg-[rgba(0,167,111,0.08)]" : "border-[rgba(145,158,171,0.2)] hover:border-m3-grey-400"
                       }`}
                     >
-                      <span className={`w-6 h-6 rounded-md border flex items-center justify-center text-sm font-black ${checked ? "bg-[#06402B] text-white border-[#06402B]" : "border-slate-300"}`}>
+                      <span className={`w-6 h-6 rounded-md border flex items-center justify-center text-sm font-extrabold ${checked ? "bg-m3-primary text-white border-m3-primary" : "border-m3-grey-400"}`}>
                         {checked ? "✓" : ""}
                       </span>
                       <span className="flex-1">
-                        <span className="font-bold text-slate-800">{b.express_bill_no}</span>
-                        <span className="ml-2 text-xs text-slate-400">{b.customer}</span>
+                        <span className="font-bold text-m3-grey-800">{b.express_bill_no}</span>
+                        <span className="ml-2 text-xs text-m3-grey-500">{b.customer}</span>
                         {b.outbound_status === "PARTIALLY_SHIPPED" && (
-                          <span className="ml-2 text-xs font-bold text-orange-600">กล่องค้างจากรอบก่อน</span>
+                          <span className="ml-2 text-xs font-bold text-m3-warning-dark">กล่องค้างจากรอบก่อน</span>
                         )}
                       </span>
-                      <span className="text-2xl font-black tabular-nums text-[#06402B]">{b.box_count}</span>
-                      <span className="text-xs text-slate-400">กล่อง</span>
+                      <span className="text-2xl font-extrabold tabular-nums text-m3-primary-dark">{b.box_count}</span>
+                      <span className="text-xs text-m3-grey-500">กล่อง</span>
                     </button>
                   );
                 })}
@@ -463,7 +464,7 @@ export default function OutboundLoadingPage() {
           <button
             onClick={() => void createRound()}
             disabled={busy || !truckPlate.trim() || selectedBills.length === 0}
-            className="w-full py-3.5 rounded-xl bg-[#06402B] text-white font-bold disabled:opacity-40"
+            className="w-full py-3.5 rounded-xl bg-m3-primary text-white font-bold disabled:opacity-40"
           >
             สร้างรอบรถ
           </button>
@@ -472,7 +473,7 @@ export default function OutboundLoadingPage() {
 
       {/* รายการรอบ */}
       {shipments.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-8 text-center text-slate-400">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-8 text-center text-m3-grey-500">
           ยังไม่มีรอบรถ
         </div>
       ) : (
@@ -480,36 +481,36 @@ export default function OutboundLoadingPage() {
           <button
             key={s.document_id}
             onClick={() => void loadActive(s.document_no).catch(() => {})}
-            className="w-full bg-white rounded-2xl border border-[#E8ECEA] p-5 text-left hover:border-[#06402B]/40 transition-colors"
+            className="w-full bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-5 text-left hover:border-m3-primary/40 transition-colors"
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-lg font-extrabold text-slate-800">🚚 {s.truck_plate}</div>
-                <div className="text-xs text-slate-400 font-mono">
+                <div className="text-lg font-extrabold text-m3-grey-800">{s.truck_plate}</div>
+                <div className="text-xs text-m3-grey-500 tabular-nums">
                   {s.document_no} · {s.bill_count} บิล{s.destination ? ` · ${s.destination}` : ""}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-black tabular-nums text-[#06402B]">
+                <div className="text-2xl font-extrabold tabular-nums text-m3-primary-dark">
                   {s.loaded_boxes}/{s.expected_boxes}
                 </div>
-                <div className="text-xs text-slate-400">กล่อง</div>
+                <div className="text-xs text-m3-grey-500">กล่อง</div>
               </div>
             </div>
             <div className="mt-2 flex items-center gap-2">
               <span
                 className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                   s.shipment_status === "CLOSED"
-                    ? "bg-emerald-50 text-emerald-800"
+                    ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-dark"
                     : s.shipment_status === "CANCELLED"
-                      ? "bg-slate-100 text-slate-400"
-                      : "bg-blue-50 text-blue-800"
+                      ? "bg-m3-grey-200 text-m3-grey-500"
+                      : "bg-[rgba(0,184,217,0.08)] text-m3-info-dark"
                 }`}
               >
                 {s.shipment_status === "OPEN" ? "เปิดรอบ" : s.shipment_status === "LOADING" ? "กำลังขึ้นรถ" : s.shipment_status === "CLOSED" ? "ปิดรอบแล้ว" : "ยกเลิก"}
               </span>
               {s.shipment_status !== "CLOSED" && s.shipment_status !== "CANCELLED" && (
-                <span className="text-xs text-slate-400">สแกนกล่อง ▶</span>
+                <span className="text-xs text-m3-grey-500">สแกนกล่อง ▶</span>
               )}
             </div>
           </button>

@@ -10,8 +10,8 @@ import QPickingPanel from "./_components/QPickingPanel";
 export default function OutboundPickPage() {
   return (
     <div className="max-w-full pb-20 sm:pb-8 space-y-4">
-      <h1 className="text-xl font-bold text-[#06402B] flex items-center gap-2">
-        <span className="text-3xl">🎯</span> หยิบของ
+      <h1 className="text-xl font-bold text-m3-primary-dark flex items-center gap-2">
+        หยิบของ
       </h1>
       <QPickingPanel />
     </div>

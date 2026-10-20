@@ -1,5 +1,6 @@
 "use client";
 
+import { SolarDangerTriangle } from "@/components/icons";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { outboundApi, type QPickViewData } from "@/client/outbound-client";
@@ -251,9 +252,8 @@ export default function QPickingPanel() {
   if (view === "scan") {
     return (
       <div className="space-y-3">
-        <div className="bg-gradient-to-br from-sky-600 to-sky-700 rounded-2xl p-6 sm:p-8 text-white space-y-4 shadow-md">
+        <div className="bg-m3-grey-800 rounded-2xl p-6 sm:p-8 text-white space-y-4 shadow-m3-card">
           <div className="flex items-center gap-4">
-            <span className="text-5xl">📦</span>
             <div>
               <div className="text-xl sm:text-2xl font-extrabold">งานกล่อง Q (Q1 - Q6)</div>
             </div>
@@ -301,25 +301,25 @@ export default function QPickingPanel() {
   if (view === "done" && qData) {
     return (
       <div className="space-y-4">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-3">
+        <div className="bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] rounded-xl p-8 text-center space-y-3">
           <div className="text-6xl">✅</div>
-          <div className="text-2xl font-black text-emerald-900">กล่อง {qData.q_code} หยิบเสร็จ</div>
-          <div className="text-sm text-emerald-700">{doneMessage}</div>
-          <div className="text-xs text-emerald-600">
+          <div className="text-2xl font-extrabold text-m3-primary-dark">กล่อง {qData.q_code} หยิบเสร็จ</div>
+          <div className="text-sm text-m3-primary-dark">{doneMessage}</div>
+          <div className="text-xs text-m3-primary-dark">
             {totalCount} รายการ
           </div>
         </div>
         <button
           onClick={() => router.push("/outbound/pack")}
-          className="w-full py-6 rounded-2xl bg-emerald-600 text-white text-2xl font-black active:scale-[0.98] transition-transform"
+          className="w-full py-6 rounded-xl bg-m3-primary text-white text-2xl font-extrabold active:scale-[0.98] transition-transform"
         >
           ✓ ยืนยัน — ไปแพ็กของใส่กล่อง
         </button>
         <button
           onClick={resetToScan}
-          className="w-full py-4 rounded-2xl bg-white border border-[#E8ECEA] text-slate-600 text-lg font-bold active:scale-[0.98] transition-transform"
+          className="w-full py-4 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-600 text-lg font-bold active:scale-[0.98] transition-transform"
         >
-          📦 สแกนกล่อง Q ถัดไป
+          สแกนกล่อง Q ถัดไป
         </button>
         {feedback && (
           <ScanFeedbackBanner
@@ -338,31 +338,31 @@ export default function QPickingPanel() {
   return (
     <div
       className={`flex flex-col gap-4 transition-colors duration-150 lg:min-h-[calc(100dvh-13rem)] ${
-        flash === "ok" ? "bg-emerald-50" : flash === "bad" ? "bg-red-50" : ""
+        flash === "ok" ? "bg-[rgba(0,167,111,0.08)]" : flash === "bad" ? "bg-[rgba(255,86,48,0.08)]" : ""
       }`}
     >
       {/* หัวกล่อง + บาร์โค้ดประจำกล่อง Q + progress */}
-      <div className="bg-white rounded-2xl border border-sky-200 p-4 sm:p-5 space-y-3 shadow-sm">
+      <div className="bg-white rounded-xl border border-[rgba(0,184,217,0.24)] p-4 sm:p-5 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
-          <button onClick={resetToScan} className="text-slate-400 hover:text-slate-600 text-sm font-semibold flex items-center gap-1">
+          <button onClick={resetToScan} className="text-m3-grey-500 hover:text-m3-grey-600 text-sm font-semibold flex items-center gap-1">
             ✕ ปิด
           </button>
           <div className="text-center">
-            <div className="text-3xl lg:text-5xl font-black text-sky-700 tabular-nums">📦 {qData.q_code}</div>
+            <div className="text-3xl lg:text-5xl font-extrabold text-m3-info-dark tabular-nums">{qData.q_code}</div>
           </div>
           <div className="text-right">
-            <div className="text-2xl lg:text-4xl font-black tabular-nums text-sky-700">
+            <div className="text-2xl lg:text-4xl font-extrabold tabular-nums text-m3-info-dark">
               {pickedCount}/{totalCount}
             </div>
-            <div className="text-xs lg:text-sm text-slate-400">รายการ</div>
+            <div className="text-xs lg:text-sm text-m3-grey-500">รายการ</div>
           </div>
         </div>
 
 
         {/* แถบ Progress */}
-        <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+        <div className="h-3 rounded-full bg-m3-grey-200 overflow-hidden">
           <div
-            className="h-full bg-sky-600 rounded-full transition-all duration-300"
+            className="h-full bg-m3-info rounded-full transition-all duration-300"
             style={{ width: `${totalCount === 0 ? 0 : Math.round((pickedCount / totalCount) * 100)}%` }}
           />
         </div>
@@ -375,7 +375,7 @@ export default function QPickingPanel() {
       )}
 
       {/* ช่องสแกนบาร์โค้ดเร็ว — 1 สแกน = 1 ชิ้น */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-3">
+      <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-3">
         <BarcodeScanInput
           value={itemScanValue}
           onChange={setItemScanValue}
@@ -387,7 +387,7 @@ export default function QPickingPanel() {
       </div>
 
       {/* แสดงรายการสินค้าที่จะต้องไปหยิบใส่ในกล่อง Q นี้ให้ครบทุกรายการ */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4 space-y-3 shadow-sm">
+      <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4 space-y-3 shadow-sm">
 
         <div className="space-y-3">
           {items.map((it, i) => {
@@ -399,14 +399,14 @@ export default function QPickingPanel() {
             return (
               <div
                 key={`${it.sku}-${i}`}
-                className={`p-3.5 lg:p-5 rounded-2xl border transition-all ${
+                className={`p-3.5 lg:p-5 rounded-xl border transition-all ${
                   isCurrent
-                    ? "bg-sky-50/70 border-sky-300 ring-2 ring-sky-200/80 shadow-sm"
+                    ? "bg-[rgba(0,184,217,0.08)] border-[rgba(0,184,217,0.32)] ring-2 ring-[rgba(0,184,217,0.24)] shadow-sm"
                     : done
-                      ? "bg-emerald-50/40 border-emerald-200"
+                      ? "bg-[rgba(0,167,111,0.08)] border-[rgba(0,167,111,0.24)]"
                       : problem
-                        ? "bg-orange-50/50 border-orange-200"
-                        : "bg-[#F7F9F8] border-slate-200"
+                        ? "bg-[rgba(255,171,0,0.08)] border-[rgba(255,171,0,0.24)]"
+                        : "bg-m3-grey-100 border-m3-grey-300"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -416,29 +416,29 @@ export default function QPickingPanel() {
                   <div className="min-w-0 flex-1 space-y-1.5">
                     {/* แท็กตำแหน่งชั้นวาง */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-sky-100 text-sky-900 font-mono font-black text-xs sm:text-sm">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-[rgba(0,184,217,0.16)] text-m3-info-dark tabular-nums font-extrabold text-xs sm:text-sm">
                         📍 {it.location_id || (it as unknown as { location_hint?: string }).location_hint || "ไม่ระบุตำแหน่ง"}
                       </span>
                       {it.location_wh && (
-                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-xs font-medium">
-                          🏬 {getWarehouseDisplayName(it.location_wh)}
+                        <span className="px-2 py-0.5 rounded-lg bg-[rgba(255,171,0,0.16)] text-m3-warning-dark text-xs font-medium">
+                          {getWarehouseDisplayName(it.location_wh)}
                         </span>
                       )}
                       {done && (
-                        <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">
+                        <span className="px-2 py-0.5 rounded-lg bg-[rgba(0,167,111,0.16)] text-m3-primary-dark text-xs font-bold">
                           ✓ หยิบครบแล้ว
                         </span>
                       )}
                       {problem && (
-                        <span className="px-2 py-0.5 rounded-lg bg-orange-100 text-orange-800 text-xs font-bold">
-                          ⚠️ แจ้งปัญหาแล้ว
+                        <span className="px-2 py-0.5 rounded-lg bg-[rgba(255,171,0,0.16)] text-m3-warning-dark text-xs font-bold">
+                          แจ้งปัญหาแล้ว
                         </span>
                       )}
                     </div>
 
                     {/* ชื่อสินค้า + จำนวน (อยู่บรรทัดเดียวกัน) */}
                     <div className="flex items-start justify-between gap-3">
-                      <div className="font-bold text-slate-900 text-base sm:text-lg leading-snug break-words flex-1 min-w-0">
+                      <div className="font-bold text-m3-grey-800 text-base sm:text-lg leading-snug break-words flex-1 min-w-0">
                         {it.product_name || it.sku}
                       </div>
 
@@ -447,11 +447,11 @@ export default function QPickingPanel() {
                           type="button"
                           onClick={() => handleItemScan(it.sku)}
                           disabled={done || problem}
-                          className="text-right active:scale-90 transition-transform cursor-pointer px-2.5 py-1 -mr-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200/80 shadow-xs"
+                          className="text-right active:scale-90 transition-transform cursor-pointer px-2.5 py-1 -mr-1 rounded-xl bg-[rgba(0,184,217,0.08)] hover:bg-[rgba(0,184,217,0.16)] border border-[rgba(0,184,217,0.24)] shadow-xs"
                           title="แตะเพื่อหยิบ 1 ชิ้นทันที"
                         >
-                          <div className="text-xl sm:text-2xl font-black tabular-nums text-sky-950">
-                            {it.qty_picked}/{it.qty_required} <span className="text-xs font-normal text-slate-500">ชิ้น</span>
+                          <div className="text-xl sm:text-2xl font-extrabold tabular-nums text-m3-info-dark">
+                            {it.qty_picked}/{it.qty_required} <span className="text-xs font-normal text-m3-grey-600">ชิ้น</span>
                           </div>
                         </button>
                       </div>
@@ -472,7 +472,7 @@ export default function QPickingPanel() {
             setDoneMessage(`กล่อง ${qData.q_code} หยิบเสร็จสมบูรณ์`);
             setView("done");
           }}
-          className="w-full py-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xl sm:text-2xl font-black shadow-lg active:scale-[0.98] transition-transform"
+          className="w-full py-5 rounded-xl bg-m3-primary hover:bg-m3-primary-dark text-white text-xl sm:text-2xl font-extrabold shadow-m3-dropdown active:scale-[0.98] transition-transform"
         >
           ✓ ยืนยัน — กล่อง {qData.q_code} หยิบครบแล้ว (ไปแพ็กของใส่กล่อง)
         </button>
@@ -480,13 +480,13 @@ export default function QPickingPanel() {
 
       {/* รายการที่มีปัญหาแล้ว */}
       {items.some((it) => it.status === "PROBLEM") && (
-        <div className="bg-orange-50 rounded-2xl border border-orange-200 p-3">
-          <div className="text-xs font-bold text-orange-900 mb-1">แจ้งปัญหาแล้ว (รอหัวหน้าตัดสิน)</div>
+        <div className="bg-[rgba(255,171,0,0.08)] rounded-xl border border-[rgba(255,171,0,0.24)] p-3">
+          <div className="text-xs font-bold text-m3-warning-dark mb-1">แจ้งปัญหาแล้ว (รอหัวหน้าตัดสิน)</div>
           {items
             .filter((it) => it.status === "PROBLEM")
             .map((it, i) => (
-              <div key={i} className="text-xs text-orange-800">
-                ⚠️ {it.product_name || it.sku} ({it.qty_picked}/{it.qty_required})
+              <div key={i} className="text-xs text-m3-warning-dark">
+                {it.product_name || it.sku} ({it.qty_picked}/{it.qty_required})
               </div>
             ))}
         </div>
@@ -503,20 +503,20 @@ export default function QPickingPanel() {
 
       {/* โมดัลเลือกปัญหา */}
       {problemFor && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-5 w-full max-w-md space-y-3">
+        <div className="fixed inset-0 z-50 bg-m3-grey-800/48 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md space-y-3">
             <div className="text-center">
-              <div className="text-4xl mb-1">⚠️</div>
-              <div className="font-bold text-slate-800">มีปัญหาอะไรกับ</div>
+              <SolarDangerTriangle size={40} className="mx-auto mb-1 text-m3-warning" />
+              <div className="font-bold text-m3-grey-800">มีปัญหาอะไรกับ</div>
               {(() => {
                 const targetItem = items.find((it) => it.sku === problemFor);
                 return (
-                  <div className="font-bold text-slate-900 text-base lg:text-lg">
+                  <div className="font-bold text-m3-grey-800 text-base lg:text-lg">
                     {targetItem?.product_name || problemFor}
                   </div>
                 );
               })()}
-              <div className="text-xs text-slate-400 mt-1">ในกล่อง {qData.q_code}</div>
+              <div className="text-xs text-m3-grey-500 mt-1">ในกล่อง {qData.q_code}</div>
             </div>
             {PROBLEM_OPTIONS.map((opt) => (
               <button
@@ -537,13 +537,13 @@ export default function QPickingPanel() {
                   }
                 }}
                 disabled={busy}
-                className="w-full py-4 rounded-2xl border border-[#E8ECEA] hover:border-amber-400 hover:bg-amber-50 flex items-center gap-3 px-4 disabled:opacity-50"
+                className="w-full py-4 rounded-xl border border-[rgba(145,158,171,0.2)] hover:border-m3-warning hover:bg-[rgba(255,171,0,0.08)] flex items-center gap-3 px-4 disabled:opacity-50"
               >
                 <span className="text-3xl">{opt.icon}</span>
-                <span className="text-lg font-bold text-slate-800">{opt.label}</span>
+                <span className="text-lg font-bold text-m3-grey-800">{opt.label}</span>
               </button>
             ))}
-            <button onClick={() => setProblemFor(null)} className="w-full py-3 rounded-2xl text-slate-500 font-semibold">
+            <button onClick={() => setProblemFor(null)} className="w-full py-3 rounded-xl text-m3-grey-600 font-semibold">
               ยกเลิก
             </button>
           </div>

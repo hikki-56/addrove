@@ -77,11 +77,12 @@ export function OfflineQueueBadge({
   if (online && pendingCount === 0) return null;
   return (
     <div
-      className={`rounded-xl px-3 py-2 text-sm font-semibold flex items-center gap-2 ${
-        online ? "bg-amber-50 border border-amber-200 text-amber-800" : "bg-orange-100 border border-orange-300 text-orange-900"
+      role="status"
+      className={`rounded-lg px-4 py-2.5 text-sm font-semibold flex items-center gap-2.5 ${
+        online ? "bg-[rgba(0,184,217,0.12)] text-m3-info-dark" : "bg-[rgba(255,171,0,0.16)] text-m3-warning-dark"
       }`}
     >
-      <span>{online ? "🟠" : "⛔"}</span>
+      <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${online ? "bg-m3-info animate-pulse" : "bg-m3-warning"}`} />
       {online ? "กำลัง sync" : "ออฟไลน์"} {pendingCount > 0 ? `— ${pendingCount} รายการรอ Sync` : ""}
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { SolarBoxClosed } from "@/components/icons";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { outboundApi, type BillDetailData } from "@/client/outbound-client";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
@@ -231,12 +232,12 @@ export default function OutboundPackPage() {
   if (!active) {
     return (
       <div className="max-w-2xl mx-auto pb-20 sm:pb-8 space-y-4">
-        <h1 className="text-xl font-bold text-[#06402B] flex items-center gap-2">
-          <span className="text-3xl">📦</span> แพ็กใส่กล่อง
+        <h1 className="text-xl font-bold text-m3-primary-dark flex items-center gap-2">
+          แพ็กใส่กล่อง
         </h1>
 
         {queue.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E8ECEA] p-8 text-center text-slate-400">
+          <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-8 text-center text-m3-grey-500">
             ไม่มีบิลรอแพ็กตอนนี้
           </div>
         ) : (
@@ -244,19 +245,19 @@ export default function OutboundPackPage() {
             <button
               key={b.document_id}
               onClick={() => void loadActive(b.document_no).catch(() => {})}
-              className="w-full bg-white rounded-2xl border border-[#E8ECEA] p-5 text-left hover:border-[#06402B]/40 transition-colors"
+              className="w-full bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-5 text-left hover:border-m3-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-lg font-extrabold text-slate-800 tabular-nums">{b.express_bill_no}</div>
-                  <div className="text-xs text-slate-400 font-mono">{b.document_no}</div>
+                  <div className="text-lg font-extrabold text-m3-grey-800 tabular-nums">{b.express_bill_no}</div>
+                  <div className="text-xs text-m3-grey-500 tabular-nums">{b.document_no}</div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="text-3xl font-black text-[#06402B] tabular-nums leading-none">
+                    <div className="text-3xl font-extrabold text-m3-primary-dark tabular-nums leading-none">
                       {b.box_count}
                     </div>
-                    <div className="text-xs text-slate-400">กล่อง</div>
+                    <div className="text-xs text-m3-grey-500">กล่อง</div>
                   </div>
                   <span className="text-4xl">
                     {b.outbound_status === "PACKED" ? "✅" : "▶"}
@@ -264,7 +265,7 @@ export default function OutboundPackPage() {
                 </div>
               </div>
               {b.outbound_status === "PACKED" && (
-                <div className="mt-2 text-xs font-semibold text-emerald-700">แพ็กครบแล้ว</div>
+                <div className="mt-2 text-xs font-semibold text-m3-primary-dark">แพ็กครบแล้ว</div>
               )}
             </button>
           ))
@@ -280,21 +281,21 @@ export default function OutboundPackPage() {
   const totalBoxed = Array.from(boxedBySku.values()).reduce((s, v) => s + v, 0);
 
   return (
-    <div className={`max-w-2xl mx-auto pb-24 sm:pb-8 space-y-4 transition-colors duration-150 ${flash === "ok" ? "bg-emerald-50" : flash === "bad" ? "bg-red-50" : ""}`}>
+    <div className={`max-w-2xl mx-auto pb-24 sm:pb-8 space-y-4 transition-colors duration-150 ${flash === "ok" ? "bg-[rgba(0,167,111,0.08)]" : flash === "bad" ? "bg-[rgba(255,86,48,0.08)]" : ""}`}>
       {/* หัวบิล */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4 flex items-center justify-between">
-        <button onClick={() => { setActive(null); setActiveBillNo(""); setFeedback(null); }} className="text-slate-400 hover:text-slate-600 text-sm">
+      <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4 flex items-center justify-between">
+        <button onClick={() => { setActive(null); setActiveBillNo(""); setFeedback(null); }} className="text-m3-grey-500 hover:text-m3-grey-600 text-sm">
           ✕ ปิด
         </button>
         <div className="text-center">
-          <div className="text-xl font-extrabold text-slate-800 tabular-nums">{note?.express_bill_no}</div>
-          <div className="text-xs text-slate-400">{note?.customer}</div>
+          <div className="text-xl font-extrabold text-m3-grey-800 tabular-nums">{note?.express_bill_no}</div>
+          <div className="text-xs text-m3-grey-500">{note?.customer}</div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black tabular-nums text-[#06402B]">
+          <div className="text-2xl font-extrabold tabular-nums text-m3-primary-dark">
             {boxes.filter((b) => b.box_status !== "CANCELLED").length}
           </div>
-          <div className="text-xs text-slate-400">กล่อง · {totalBoxed.toLocaleString("th-TH")} ชิ้น</div>
+          <div className="text-xs text-m3-grey-500">กล่อง · {totalBoxed.toLocaleString("th-TH")} ชิ้น</div>
         </div>
       </div>
 
@@ -306,12 +307,12 @@ export default function OutboundPackPage() {
         <>
           {/* กล่องปัจจุบัน */}
           {openBox ? (
-            <div className="bg-white rounded-2xl border-2 border-[#06402B]/30 p-5 text-center">
-              <div className="text-xs text-slate-400 tracking-widest">BOX กำลังรับของ</div>
-              <div className="text-4xl font-black font-mono text-[#06402B]">#{openBox.box_no}</div>
-              <div className="text-xs font-mono text-slate-400">{openBox.document_no}</div>
-              <div className="mt-2 text-2xl font-black tabular-nums text-slate-900">
-                {openBox.total_qty.toLocaleString("th-TH")} <span className="text-sm font-normal text-slate-400">ชิ้นในกล่อง</span>
+            <div className="bg-white rounded-xl border-2 border-m3-primary/30 p-5 text-center">
+              <div className="text-xs text-m3-grey-500 tracking-widest">BOX กำลังรับของ</div>
+              <div className="text-4xl font-extrabold tabular-nums text-m3-primary-dark">#{openBox.box_no}</div>
+              <div className="text-xs tabular-nums text-m3-grey-500">{openBox.document_no}</div>
+              <div className="mt-2 text-2xl font-extrabold tabular-nums text-m3-grey-800">
+                {openBox.total_qty.toLocaleString("th-TH")} <span className="text-sm font-normal text-m3-grey-500">ชิ้นในกล่อง</span>
               </div>
 
               {openBox.items.length > 0 && (
@@ -319,7 +320,7 @@ export default function OutboundPackPage() {
                   {openBox.items.map((it, i) => {
                     const itDetail = note?.items.find((x) => x.sku === it.sku);
                     return (
-                      <span key={i} className="px-2 py-1 rounded-lg bg-[#F7F9F8] text-xs text-slate-700">
+                      <span key={i} className="px-2 py-1 rounded-lg bg-m3-grey-100 text-xs text-m3-grey-700">
                         {itDetail?.product_name || it.sku} ×{it.qty}
                       </span>
                     );
@@ -331,27 +332,27 @@ export default function OutboundPackPage() {
             <button
               onClick={createBox}
               disabled={busy}
-              className="w-full py-8 rounded-2xl bg-[#06402B] text-white text-2xl font-black disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="w-full py-8 rounded-xl bg-m3-primary text-white text-2xl font-extrabold disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              ➕ เปิดกล่องใหม่
+              เปิดกล่องใหม่
             </button>
           )}
 
           {/* ของที่ยังต้องใส่ */}
           {openBox && packableItems.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4 space-y-2">
-              <div className="text-xs font-bold text-slate-500">ยังต้องใส่อีก ({packableItems.length} รายการ)</div>
+            <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4 space-y-2">
+              <div className="text-xs font-bold text-m3-grey-600">ยังต้องใส่อีก ({packableItems.length} รายการ)</div>
               {packableItems.map((it) => (
                 <button
                   key={it.sku}
                   onClick={() => void handleScan(it.sku)}
                   disabled={busy}
-                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl bg-[#F7F9F8] hover:bg-emerald-50 disabled:opacity-50 text-left"
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl bg-m3-grey-100 hover:bg-[rgba(0,167,111,0.08)] disabled:opacity-50 text-left"
                 >
                   <div>
-                    <div className="font-bold text-slate-800 text-sm lg:text-base">{it.product_name || it.sku}</div>
+                    <div className="font-bold text-m3-grey-800 text-sm lg:text-base">{it.product_name || it.sku}</div>
                   </div>
-                  <div className="text-3xl font-black tabular-nums text-[#06402B]">{it.remaining}</div>
+                  <div className="text-3xl font-extrabold tabular-nums text-m3-primary-dark">{it.remaining}</div>
                 </button>
               ))}
             </div>
@@ -374,16 +375,16 @@ export default function OutboundPackPage() {
             <button
               onClick={closeBox}
               disabled={busy}
-              className="w-full py-6 rounded-2xl bg-emerald-600 text-white text-2xl font-black disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="w-full py-6 rounded-xl bg-m3-primary text-white text-2xl font-extrabold disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              📦 ปิดกล่อง
+              ปิดกล่อง
             </button>
           )}
           {openBox && openBox.items.length === 0 && (
             <button
               onClick={() => void run(async () => outboundApi.boxAction(activeBillNo, { action: "cancel-open" }))}
               disabled={busy}
-              className="w-full py-3 rounded-2xl border border-[#E8ECEA] text-slate-500 font-semibold disabled:opacity-50"
+              className="w-full py-3 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600 font-semibold disabled:opacity-50"
             >
               ยกเลิกกล่องเปล่านี้
             </button>
@@ -394,23 +395,23 @@ export default function OutboundPackPage() {
       {/* แพ็กครบแล้ว */}
       {status === "PACKED" && (
         <div className="space-y-3">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
+          <div className="bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] rounded-xl p-6 text-center">
             <div className="text-5xl mb-2">✅</div>
-            <div className="font-bold text-emerald-900">แพ็กครบ {boxes.length} กล่อง — พร้อมเข้ารอบรถ</div>
+            <div className="font-bold text-m3-primary-dark">แพ็กครบ {boxes.length} กล่อง — พร้อมเข้ารอบรถ</div>
           </div>
           <button
             onClick={printAllLabels}
-            className="w-full py-5 rounded-2xl bg-[#06402B] text-white text-xl font-black active:scale-[0.98] transition-transform"
+            className="w-full py-5 rounded-xl bg-m3-primary text-white text-xl font-extrabold active:scale-[0.98] transition-transform"
           >
-            🖨 พิมพ์สติกเกอร์ชุดเต็ม ({boxes.length} กล่อง)
+            พิมพ์สติกเกอร์ชุดเต็ม ({boxes.length} กล่อง)
           </button>
         </div>
       )}
 
       {/* รายการกล่องของบิล */}
       {boxes.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-4">
-          <div className="text-xs font-bold text-slate-500 mb-2">กล่องทั้งหมด ({boxes.length})</div>
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
+          <div className="text-xs font-bold text-m3-grey-600 mb-2">กล่องทั้งหมด ({boxes.length})</div>
           <div className="grid grid-cols-2 gap-2">
             {boxes.map((b) => (
               <button
@@ -429,12 +430,12 @@ export default function OutboundPackPage() {
                     ],
                   });
                 }}
-                className={`border rounded-xl p-3 text-center ${b.box_status === "CANCELLED" ? "border-slate-100 opacity-40" : "border-[#E8ECEA] hover:border-[#06402B]/40"}`}
+                className={`border rounded-xl p-3 text-center ${b.box_status === "CANCELLED" ? "border-m3-grey-200 opacity-40" : "border-[rgba(145,158,171,0.2)] hover:border-m3-primary/40"}`}
               >
-                <div className="text-2xl">📦</div>
-                <div className="font-bold text-slate-800">กล่อง {b.box_no} · {b.total_qty} ชิ้น</div>
-                <div className="text-xs font-mono text-slate-400">{b.document_no}</div>
-                <div className="text-xs text-slate-500">{b.box_status}</div>
+                <SolarBoxClosed size={28} className="text-m3-grey-500" />
+                <div className="font-bold text-m3-grey-800">กล่อง {b.box_no} · {b.total_qty} ชิ้น</div>
+                <div className="text-xs tabular-nums text-m3-grey-500">{b.document_no}</div>
+                <div className="text-xs text-m3-grey-600">{b.box_status}</div>
               </button>
             ))}
           </div>
@@ -452,11 +453,11 @@ export default function OutboundPackPage() {
 
       {/* หน้าต่างพิมพ์สติกเกอร์ */}
       {printJob && (
-        <div className="fixed inset-0 z-50 bg-black/60 overflow-auto p-4">
-          <div className="bg-white rounded-3xl max-w-2xl mx-auto p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-m3-grey-800/48 overflow-auto p-4">
+          <div className="bg-white rounded-2xl max-w-2xl mx-auto p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="font-bold text-slate-800">สติกเกอร์กล่อง — {printJob.billNo}</div>
-              <button onClick={() => setPrintJob(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <div className="font-bold text-m3-grey-800">สติกเกอร์กล่อง — {printJob.billNo}</div>
+              <button onClick={() => setPrintJob(null)} className="text-m3-grey-500 hover:text-m3-grey-600">✕</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {printJob.stickers.map((s) => (
@@ -470,7 +471,7 @@ export default function OutboundPackPage() {
                     customer: printJob.customer,
                   })}
                   alt={`สติกเกอร์กล่อง ${s.boxCode}`}
-                  className="w-full border border-[#E8ECEA] rounded-xl sticker-print-item"
+                  className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl sticker-print-item"
                 />
               ))}
             </div>
@@ -488,11 +489,11 @@ export default function OutboundPackPage() {
                     )
                   ).then(() => window.print());
                 }}
-                className="flex-1 py-3 rounded-xl bg-[#06402B] text-white font-bold"
+                className="flex-1 py-3 rounded-xl bg-m3-primary text-white font-bold"
               >
-                🖨 พิมพ์
+                พิมพ์
               </button>
-              <button onClick={() => setPrintJob(null)} className="px-4 py-3 rounded-xl border border-[#E8ECEA] text-slate-600">
+              <button onClick={() => setPrintJob(null)} className="px-4 py-3 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600">
                 ปิด
               </button>
             </div>

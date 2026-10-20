@@ -1,5 +1,6 @@
 "use client";
 
+import { SolarBill } from "@/components/icons";
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { tabTokenHeader } from "@/client/outbound-client";
@@ -281,31 +282,31 @@ export default function OutboundUploadPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#06402B]">นำเข้าบิลจากไฟล์ Express</h1>
+          <h1 className="text-2xl font-bold text-m3-primary-dark">นำเข้าบิลจากไฟล์ Express</h1>
         </div>
-        <Link href="/outbound" className="text-sm text-slate-500 hover:text-[#06402B]">← กลับรายการบิล</Link>
+        <Link href="/outbound" className="text-sm text-m3-grey-600 hover:text-m3-primary-dark">← กลับรายการบิล</Link>
       </div>
 
       {/* ตัวชี้ขั้นตอน */}
       <div className="flex items-center gap-2 text-sm">
         {["เลือกไฟล์", pdfDoc ? "ข้อมูลจากเอกสาร" : "จับคู่คอลัมน์", "ตรวจและนำเข้า"].map((label, i) => (
           <div key={label} className="flex items-center gap-2">
-            <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold ${step > i ? "bg-[#06402B] text-white" : "bg-slate-100 text-slate-400"}`}>
+            <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold ${step > i ? "bg-m3-primary text-white" : "bg-m3-grey-200 text-m3-grey-500"}`}>
               {i + 1}
             </span>
-            <span className={step > i ? "font-semibold text-slate-800" : "text-slate-400"}>{label}</span>
-            {i < 2 && <span className="w-8 h-px bg-slate-200" />}
+            <span className={step > i ? "font-semibold text-m3-grey-800" : "text-m3-grey-500"}>{label}</span>
+            {i < 2 && <span className="w-8 h-px bg-m3-grey-300" />}
           </div>
         ))}
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>}
-      {notice && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3 text-sm">{notice}</div>}
+      {error && <div className="bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark rounded-xl px-4 py-3 text-sm">{error}</div>}
+      {notice && <div className="bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] text-m3-primary-dark rounded-xl px-4 py-3 text-sm">{notice}</div>}
 
       {/* ขั้น 1: ไฟล์ */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-8">
-          <label className="block border-2 border-dashed border-[#C9DFD4] rounded-2xl p-10 text-center cursor-pointer hover:border-[#06402B] transition-colors">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-8">
+          <label className="block border-2 border-dashed border-[rgba(0,167,111,0.24)] rounded-xl p-10 text-center cursor-pointer hover:border-m3-primary transition-colors">
             <input
               type="file"
               accept=".xlsx,.xls,.csv,.txt,.pdf"
@@ -316,43 +317,43 @@ export default function OutboundUploadPage() {
                 if (f) void handleFile(f);
               }}
             />
-            <div className="text-5xl mb-3">📄</div>
-            <div className="font-semibold text-slate-700">เลือกไฟล์ Express</div>
-            {busy && <div className="text-sm text-slate-400 mt-1">กำลังอ่านไฟล์…</div>}
+            <SolarBill size={48} className="mx-auto mb-3 text-m3-grey-400" />
+            <div className="font-semibold text-m3-grey-700">เลือกไฟล์ Express</div>
+            {busy && <div className="text-sm text-m3-grey-500 mt-1">กำลังอ่านไฟล์…</div>}
           </label>
         </div>
       )}
 
       {/* ขั้น 2 (PDF): แสดงข้อมูลที่ดึงได้จากเอกสาร */}
       {step === 2 && pdfDoc && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] overflow-hidden">
           {/* หัวเอกสาร */}
-          <div className="px-6 py-5 border-b border-[#E8ECEA] bg-[#F7F9F8]">
+          <div className="px-6 py-5 border-b border-[rgba(145,158,171,0.2)] bg-m3-grey-100">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold tracking-wide text-[#06402B]/60 uppercase">ใบสั่งขาย / ใบส่งของ (Express)</div>
-                <div className="mt-1 text-2xl font-bold text-[#06402B] font-mono">{pdfDoc.express_bill_no}</div>
+                <div className="text-xs font-semibold tracking-wide text-m3-primary-dark/60 uppercase">ใบสั่งขาย / ใบส่งของ (Express)</div>
+                <div className="mt-1 text-2xl font-bold text-m3-primary-dark tabular-nums">{pdfDoc.express_bill_no}</div>
                 {pdfDoc.doc_no && pdfDoc.doc_no !== pdfDoc.express_bill_no && (
-                  <div className="text-sm text-slate-500 mt-0.5">เลขที่เอกสาร {pdfDoc.doc_no}</div>
+                  <div className="text-sm text-m3-grey-600 mt-0.5">เลขที่เอกสาร {pdfDoc.doc_no}</div>
                 )}
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <div className="text-xs text-slate-400">ลูกค้า</div>
-                <div className="text-sm font-semibold text-slate-800">{pdfDoc.customer || "—"}</div>
+                <div className="text-xs text-m3-grey-500">ลูกค้า</div>
+                <div className="text-sm font-semibold text-m3-grey-800">{pdfDoc.customer || "—"}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">วันที่เอกสาร</div>
-                <div className="text-sm font-semibold text-slate-800 tabular-nums">{pdfDoc.date || "—"}</div>
+                <div className="text-xs text-m3-grey-500">วันที่เอกสาร</div>
+                <div className="text-sm font-semibold text-m3-grey-800 tabular-nums">{pdfDoc.date || "—"}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">จำนวนรายการ</div>
-                <div className="text-sm font-semibold text-slate-800 tabular-nums">{pdfDoc.items.length} รายการ</div>
+                <div className="text-xs text-m3-grey-500">จำนวนรายการ</div>
+                <div className="text-sm font-semibold text-m3-grey-800 tabular-nums">{pdfDoc.items.length} รายการ</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">รวมทั้งหมด</div>
-                <div className="text-sm font-semibold text-slate-800 tabular-nums">
+                <div className="text-xs text-m3-grey-500">รวมทั้งหมด</div>
+                <div className="text-sm font-semibold text-m3-grey-800 tabular-nums">
                   {pdfDoc.items.reduce((s, it) => s + it.qty, 0).toLocaleString("th-TH")} ชิ้น
                 </div>
               </div>
@@ -361,11 +362,11 @@ export default function OutboundUploadPage() {
 
           {/* รายการสินค้าตามเอกสาร */}
           <div className="p-6 space-y-4">
-            <div className="text-sm font-semibold text-slate-700">รายการสินค้า (ตามเอกสาร)</div>
-            <div className="overflow-x-auto rounded-xl border border-[#E8ECEA]">
+            <div className="text-sm font-semibold text-m3-grey-700">รายการสินค้า (ตามเอกสาร)</div>
+            <div className="overflow-x-auto rounded-xl border border-[rgba(145,158,171,0.2)]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#F7F9F8] text-left text-xs text-slate-500">
+                  <tr className="bg-m3-grey-100 text-left text-xs text-m3-grey-600">
                     <th className="px-3 py-2 w-12">ลำดับ</th>
                     <th className="px-3 py-2">ชื่อสินค้า</th>
                     <th className="px-3 py-2 text-right w-20">จำนวน</th>
@@ -378,16 +379,16 @@ export default function OutboundUploadPage() {
                         ? `${it.sku} ${it.product_name}`
                         : it.product_name || it.sku;
                     return (
-                      <tr key={it.no} className="border-t border-[#E8ECEA]">
-                        <td className="px-3 py-2 text-slate-400 tabular-nums">{it.no}</td>
-                        <td className="px-3 py-2 text-slate-800 font-medium">{displayName}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-slate-800 tabular-nums">{it.qty.toLocaleString("th-TH")}</td>
+                      <tr key={it.no} className="border-t border-[rgba(145,158,171,0.2)]">
+                        <td className="px-3 py-2 text-m3-grey-500 tabular-nums">{it.no}</td>
+                        <td className="px-3 py-2 text-m3-grey-800 font-medium">{displayName}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-m3-grey-800 tabular-nums">{it.qty.toLocaleString("th-TH")}</td>
                       </tr>
                     );
                   })}
                   {pdfDoc.items.length === 0 && (
-                    <tr className="border-t border-[#E8ECEA]">
-                      <td colSpan={3} className="px-3 py-6 text-center text-red-600 text-sm">
+                    <tr className="border-t border-[rgba(145,158,171,0.2)]">
+                      <td colSpan={3} className="px-3 py-6 text-center text-m3-error-dark text-sm">
                         ไม่พบรายการสินค้าในเอกสาร — ลองส่งไฟล์ตัวอย่างให้ทีมพัฒนาเพิ่มรูปแบบ
                       </td>
                     </tr>
@@ -400,11 +401,11 @@ export default function OutboundUploadPage() {
               <button
                 onClick={() => void handlePreview()}
                 disabled={busy || pdfDoc.items.length === 0}
-                className="px-5 py-2.5 rounded-xl bg-[#06402B] text-white font-semibold disabled:opacity-40 hover:bg-[#0A5C3E] transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-m3-primary text-white font-semibold disabled:opacity-40 hover:bg-m3-primary-dark transition-colors"
               >
                 {busy ? "กำลังตรวจ…" : "ตรวจสอบตัวอย่างบิล →"}
               </button>
-              <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl border border-[#E8ECEA] text-slate-600">เลือกไฟล์ใหม่</button>
+              <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600">เลือกไฟล์ใหม่</button>
             </div>
           </div>
         </div>
@@ -412,10 +413,10 @@ export default function OutboundUploadPage() {
 
       {/* ขั้น 2 (Excel/CSV): mapping */}
       {step === 2 && !pdfDoc && (
-        <div className="bg-white rounded-2xl border border-[#E8ECEA] p-6 space-y-5">
+        <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">ชีต</label>
+              <label className="block text-sm font-semibold text-m3-grey-700 mb-1">ชีต</label>
               <select
                 value={sheet}
                 onChange={(e) => {
@@ -423,7 +424,7 @@ export default function OutboundUploadPage() {
                   const s = sheets.find((x) => x.name === e.target.value);
                   if (s) setHeaderRow(s.suggestedHeaderRow);
                 }}
-                className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2.5 bg-white"
+                className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl px-3 py-2.5 bg-white"
               >
                 {sheets.map((s) => (
                   <option key={s.name} value={s.name}>
@@ -433,14 +434,14 @@ export default function OutboundUploadPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">แถวหัวตา (แถวที่)</label>
+              <label className="block text-sm font-semibold text-m3-grey-700 mb-1">แถวหัวตา (แถวที่)</label>
               <input
                 type="number"
                 min={1}
                 max={50}
                 value={headerRow}
                 onChange={(e) => setHeaderRow(Number(e.target.value) || 1)}
-                className="w-full border border-[#E8ECEA] rounded-xl px-3 py-2.5 bg-white tabular-nums"
+                className="w-full border border-[rgba(145,158,171,0.2)] rounded-xl px-3 py-2.5 bg-white tabular-nums"
               />
             </div>
           </div>
@@ -448,43 +449,43 @@ export default function OutboundUploadPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-m3-grey-600 mb-1">
                   {f.label}
-                  {mappingLoadedFromStorage && mapping[f.key] && <span className="ml-1 text-[#06402B]">(จำไว้แล้ว)</span>}
+                  {mappingLoadedFromStorage && mapping[f.key] && <span className="ml-1 text-m3-primary-dark">(จำไว้แล้ว)</span>}
                 </label>
                 <select
                   value={mapping[f.key]}
                   onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                  className={`w-full border rounded-xl px-3 py-2 bg-white text-sm ${f.required && !mapping[f.key] ? "border-red-300" : "border-[#E8ECEA]"}`}
+                  className={`w-full border rounded-xl px-3 py-2 bg-white text-sm ${f.required && !mapping[f.key] ? "border-[rgba(255,86,48,0.32)]" : "border-[rgba(145,158,171,0.2)]"}`}
                 >
                   <option value="">— ไม่ใช้ —</option>
                   {headers.map((h) => (
                     <option key={h} value={h}>{h || "(ไม่มีชื่อ)"}</option>
                   ))}
                 </select>
-                <div className="text-xs text-slate-400 mt-0.5">{f.hint}</div>
+                <div className="text-xs text-m3-grey-500 mt-0.5">{f.hint}</div>
               </div>
             ))}
           </div>
 
           {/* ตัวอย่างข้อมูล */}
           {sheet && (
-            <div className="overflow-x-auto rounded-xl border border-[#E8ECEA]">
+            <div className="overflow-x-auto rounded-xl border border-[rgba(145,158,171,0.2)]">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-[#F7F9F8]">
-                    <th className="px-2 py-2 text-left text-slate-400">#</th>
+                  <tr className="bg-m3-grey-100">
+                    <th className="px-2 py-2 text-left text-m3-grey-500">#</th>
                     {headers.map((h, i) => (
-                      <th key={i} className="px-2 py-2 text-left text-slate-600 whitespace-nowrap">{h || `คอลัมน์ ${i + 1}`}</th>
+                      <th key={i} className="px-2 py-2 text-left text-m3-grey-600 whitespace-nowrap">{h || `คอลัมน์ ${i + 1}`}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(sheets.find((s) => s.name === sheet)?.sampleRows ?? []).slice(0, 4).map((row, ri) => (
-                    <tr key={ri} className="border-t border-[#E8ECEA]">
-                      <td className="px-2 py-1.5 text-slate-300">{ri + 1}</td>
+                    <tr key={ri} className="border-t border-[rgba(145,158,171,0.2)]">
+                      <td className="px-2 py-1.5 text-m3-grey-400">{ri + 1}</td>
                       {headers.map((_, ci) => (
-                        <td key={ci} className="px-2 py-1.5 text-slate-600 whitespace-nowrap max-w-[160px] truncate">{row[ci] ?? ""}</td>
+                        <td key={ci} className="px-2 py-1.5 text-m3-grey-600 whitespace-nowrap max-w-[160px] truncate">{row[ci] ?? ""}</td>
                       ))}
                     </tr>
                   ))}
@@ -497,11 +498,11 @@ export default function OutboundUploadPage() {
             <button
               onClick={() => void handlePreview()}
               disabled={busy || !mapping.bill_no || !mapping.sku || !mapping.qty}
-              className="px-5 py-2.5 rounded-xl bg-[#06402B] text-white font-semibold disabled:opacity-40 hover:bg-[#0A5C3E] transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-m3-primary text-white font-semibold disabled:opacity-40 hover:bg-m3-primary-dark transition-colors"
             >
               {busy ? "กำลังตรวจ…" : "ตรวจสอบตัวอย่างบิล →"}
             </button>
-            <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl border border-[#E8ECEA] text-slate-600">เลือกไฟล์ใหม่</button>
+            <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600">เลือกไฟล์ใหม่</button>
           </div>
         </div>
       )}
@@ -509,20 +510,20 @@ export default function OutboundUploadPage() {
       {/* ขั้น 3: preview + commit */}
       {step === 3 && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-[#E8ECEA] p-5 space-y-4">
+          <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] p-5 space-y-4">
             {(totalUnmatched > 0 || duplicates.length > 0) && (
               <div className="flex flex-wrap gap-4 text-sm">
                 {totalUnmatched > 0 && (
-                  <span className="text-orange-600 font-semibold">สินค้า match ไม่ได้ {totalUnmatched} รายการ</span>
+                  <span className="text-m3-warning-dark font-semibold">สินค้า match ไม่ได้ {totalUnmatched} รายการ</span>
                 )}
                 {duplicates.length > 0 && (
-                  <span className="text-red-600 font-semibold">นำเข้าไปแล้ว {duplicates.length} บิล (จะข้าม)</span>
+                  <span className="text-m3-error-dark font-semibold">นำเข้าไปแล้ว {duplicates.length} บิล (จะข้าม)</span>
                 )}
               </div>
             )}
 
             {/* ตัวเลือกการแบ่งกล่อง Q อัตโนมัติ */}
-            <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-3.5 flex flex-wrap items-center gap-4">
+            <div className="rounded-xl border border-[rgba(0,184,217,0.16)] bg-[rgba(0,184,217,0.08)] p-3.5 flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -531,12 +532,12 @@ export default function OutboundUploadPage() {
                     setAutoQ(e.target.checked);
                     if (step === 3) void handlePreview(); // คำนวณการแบ่ง Q ใหม่
                   }}
-                  className="w-4 h-4 accent-sky-600 cursor-pointer"
+                  className="w-4 h-4 accent-m3-info cursor-pointer"
                 />
-                <span className="text-sm font-semibold text-slate-700">📦 จัดแบ่งกล่อง Q อัตโนมัติ</span>
+                <span className="text-sm font-semibold text-m3-grey-700">จัดแบ่งกล่อง Q อัตโนมัติ</span>
               </label>
               {autoQ && (
-                <label className="flex items-center gap-2 text-sm text-slate-600">
+                <label className="flex items-center gap-2 text-sm text-m3-grey-600">
                   กล่องละไม่เกิน
                   <input
                     type="number"
@@ -547,7 +548,7 @@ export default function OutboundUploadPage() {
                     onBlur={() => {
                       if (step === 3) void handlePreview();
                     }}
-                    className="w-16 px-2 py-1.5 rounded-lg bg-white border border-[#E8ECEA] text-center font-bold tabular-nums"
+                    className="w-16 px-2 py-1.5 rounded-lg bg-white border border-[rgba(145,158,171,0.2)] text-center font-bold tabular-nums"
                   />
                   รายการ
                 </label>
@@ -558,7 +559,7 @@ export default function OutboundUploadPage() {
               <button
                 onClick={() => void handleCommit(false)}
                 disabled={busy || !warehouseId || totalUnmatched > 0 || previewBills.length === duplicates.length}
-                className="px-5 py-2.5 rounded-xl bg-[#06402B] text-white font-semibold disabled:opacity-40 hover:bg-[#0A5C3E] transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-m3-primary text-white font-semibold disabled:opacity-40 hover:bg-m3-primary-dark transition-colors"
               >
                 {busy ? "กำลังนำเข้า…" : "ยืนยันนำเข้า"}
               </button>
@@ -566,28 +567,28 @@ export default function OutboundUploadPage() {
                 <button
                   onClick={() => void handleCommit(true)}
                   disabled={busy || !warehouseId || previewBills.length === duplicates.length}
-                  className="px-4 py-2.5 rounded-xl bg-amber-500 text-white font-semibold disabled:opacity-40"
+                  className="px-4 py-2.5 rounded-xl bg-m3-warning text-white font-semibold disabled:opacity-40"
                 >
                   นำเข้าเฉพาะบิลที่สินค้าครบ
                 </button>
               )}
-              <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl border border-[#E8ECEA] text-slate-600">{pdfDoc ? "ย้อนกลับดูเอกสาร" : "แก้การจับคู่"}</button>
+              <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-600">{pdfDoc ? "ย้อนกลับดูเอกสาร" : "แก้การจับคู่"}</button>
             </div>
           </div>
 
           <div className="space-y-3">
             {previewBills.map((b) => (
-              <div key={b.express_bill_no} className={`bg-white rounded-2xl border p-4 ${b.duplicate_of ? "border-red-200 opacity-70" : b.unmatched_count > 0 ? "border-orange-200" : "border-[#E8ECEA]"}`}>
+              <div key={b.express_bill_no} className={`bg-white rounded-xl border p-4 ${b.duplicate_of ? "border-[rgba(255,86,48,0.24)] opacity-70" : b.unmatched_count > 0 ? "border-[rgba(255,171,0,0.24)]" : "border-[rgba(145,158,171,0.2)]"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <span className="font-bold text-slate-800">{b.express_bill_no}</span>
-                    {b.customer && <span className="ml-2 text-sm text-slate-500">{b.customer}</span>}
+                    <span className="font-bold text-m3-grey-800">{b.express_bill_no}</span>
+                    {b.customer && <span className="ml-2 text-sm text-m3-grey-600">{b.customer}</span>}
                   </div>
                   <div className="text-sm">
                     {b.duplicate_of ? (
-                      <span className="text-red-600 font-semibold">นำเข้าไปแล้ว ({b.duplicate_of})</span>
+                      <span className="text-m3-error-dark font-semibold">นำเข้าไปแล้ว ({b.duplicate_of})</span>
                     ) : (
-                      <span className="text-slate-600 tabular-nums">{b.items.length} รายการ · {b.total_qty.toLocaleString("th-TH")} ชิ้น</span>
+                      <span className="text-m3-grey-600 tabular-nums">{b.items.length} รายการ · {b.total_qty.toLocaleString("th-TH")} ชิ้น</span>
                     )}
                   </div>
                 </div>
@@ -597,7 +598,7 @@ export default function OutboundUploadPage() {
                     {b.items.map((it) => (
                       <span
                         key={it.sku}
-                        className={`px-2 py-1 rounded-lg text-xs ${it.matched ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700 line-through"}`}
+                        className={`px-2 py-1 rounded-lg text-xs ${it.matched ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-dark" : "bg-[rgba(255,86,48,0.08)] text-m3-error-dark line-through"}`}
                         title={it.product?.product_name || it.product_name || (it.matched ? "" : "ไม่พบสินค้านี้ในระบบ")}
                       >
                         {it.product?.product_name || it.product_name || it.sku} ×{it.qty}
@@ -609,18 +610,18 @@ export default function OutboundUploadPage() {
                 {/* การแบ่งกล่อง Q — รายการของบิลนี้ถูกจัดกลุ่มลงกล่องล่วงหน้า */}
                 {autoQ && b.q_assignments && b.q_assignments.length > 0 && (
                   <div className="mt-3 space-y-1.5">
-                    <div className="text-xs font-bold text-sky-800">การแบ่งกล่อง Q ({b.q_assignments.length} กล่อง)</div>
+                    <div className="text-xs font-bold text-m3-info-dark">การแบ่งกล่อง Q ({b.q_assignments.length} กล่อง)</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {b.q_assignments.map((q) => (
-                        <div key={q.q_code} className="rounded-xl border border-sky-100 bg-sky-50/60 px-2.5 py-2">
-                          <div className="text-xs font-extrabold text-sky-800 mb-1">
-                            📦 {q.q_code} <span className="font-normal text-slate-400">· {q.items.length} รายการ</span>
+                        <div key={q.q_code} className="rounded-xl border border-[rgba(0,184,217,0.16)] bg-[rgba(0,184,217,0.08)] px-2.5 py-2">
+                          <div className="text-xs font-extrabold text-m3-info-dark mb-1">
+                            {q.q_code} <span className="font-normal text-m3-grey-500">· {q.items.length} รายการ</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {q.items.map((it) => {
                               const itDetail = b.items.find((x) => x.sku === it.sku);
                               return (
-                                <span key={it.sku} className="px-1.5 py-0.5 rounded bg-white border border-sky-100 text-xs text-slate-700">
+                                <span key={it.sku} className="px-1.5 py-0.5 rounded bg-white border border-[rgba(0,184,217,0.16)] text-xs text-m3-grey-700">
                                   {itDetail?.product?.product_name || itDetail?.product_name || it.sku} ×{it.qty}
                                 </span>
                               );
