@@ -449,3 +449,12 @@ export function SolarRefresh(props: SolarIconProps) {
     </svg>
   );
 }
+
+/** ปุ่ม “ปริ้น” */
+export function SolarPrinter(props: SolarIconProps) {
+  return (
+    <svg {...base("0 0 24 24", props)}>
+      <g fill="currentColor"><path d="M17 6.5V7H7v-.5C7 4.57 7.57 3 9.5 3h5C16.43 3 17 4.57 17 6.5Z" opacity=".5"/><path fillRule="evenodd" d="M2 12c0-2.83 0-4.24.88-5.12C3.76 6 5.17 6 8 6h8c2.83 0 4.24 0 5.12.88C22 7.76 22 9.17 22 12s0 4.24-.88 5.12c-.6.6-1.44.79-2.79.85V17c0-.94 0-1.41-.29-1.71C17.74 15 17.27 15 16.33 15H7.67c-.94 0-1.41 0-1.71.29C5.67 15.59 5.67 16.06 5.67 17v.97c-1.35-.06-2.19-.25-2.79-.85C2 16.24 2 14.83 2 12Zm4 -2.25a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 0 0-1.5H6Z" clipRule="evenodd"/><path d="M7 16.5h10V19c0 1.41 0 2.12-.44 2.56-.44.44-1.15.44-2.56.44h-4c-1.41 0-2.12 0-2.56-.44C7 21.12 7 20.41 7 19v-2.5Z" opacity=".5"/></g>
+    </svg>
+  );
+}
