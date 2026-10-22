@@ -68,7 +68,7 @@ export default function StaffDashboard() {
 
   // ไทล์ Minimal v3 (M03) — ลิงก์/ลำดับ/เงื่อนไขเหมือนเดิม เปลี่ยนเฉพาะหน้าตา
   const tileClass =
-    "rise-in group relative aspect-square w-full h-full rounded-3xl bg-white border border-[rgba(145,158,171,0.12)] shadow-[0_8px_24px_rgba(145,158,171,0.2)] hover:shadow-m3-dropdown transition-all duration-200 active:scale-95 flex flex-col items-center justify-center gap-3.5 p-3.5 sm:p-5 text-center cursor-pointer";
+    "rise-in group relative aspect-square w-full h-full rounded-2xl bg-white border border-[rgba(145,158,171,0.12)] shadow-[0_8px_24px_rgba(145,158,171,0.2)] hover:shadow-m3-dropdown transition-all duration-200 active:scale-95 flex flex-col items-center justify-center gap-3.5 p-3.5 sm:p-5 text-center cursor-pointer";
   const iconTileClass =
     "size-16 rounded-[18px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-110";
   const labelClass = "text-[16px] font-extrabold leading-[1.25] text-m3-grey-800 text-center";
@@ -98,7 +98,7 @@ export default function StaffDashboard() {
             className={tileClass}
             style={{ animationDelay: "90ms" }}
           >
-            <span className={`${iconTileClass} bg-[#EAF2EE] text-m3-primary`}>
+            <span className={`${iconTileClass} bg-[rgba(0,167,111,0.08)] text-m3-primary`}>
               <SolarInboxIn size={36} />
             </span>
             <h2 className={labelClass}>
@@ -116,7 +116,7 @@ export default function StaffDashboard() {
             className={tileClass}
             style={{ animationDelay: "180ms" }}
           >
-            <span className={`${iconTileClass} bg-[#EAF2EE] text-m3-primary`}>
+            <span className={`${iconTileClass} bg-[rgba(0,167,111,0.08)] text-m3-primary`}>
               <SolarNavigationArrow size={36} />
             </span>
             <h2 className={labelClass}>

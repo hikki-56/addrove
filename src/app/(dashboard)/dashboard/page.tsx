@@ -7,7 +7,7 @@ import StaffDashboard from "./_components/StaffDashboard";
 function DashboardLoading() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-2 border-[#06402B] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-m3-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -34,7 +34,7 @@ export default function DashboardPage() {
     }
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-m3-warning border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

@@ -112,8 +112,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </div>
@@ -134,8 +134,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
         </svg>
       </div>
@@ -210,8 +210,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -231,8 +231,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
       </div>
@@ -306,8 +306,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="12" cy="12" r="8" />
           <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="12" cy="12" r="3" />
         </svg>
@@ -326,8 +326,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m3.3 7 8.7 5 8.7-5" />
@@ -349,8 +349,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35a1 1 0 0 0-.78-.38H16" />
           <circle strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} cx="7" cy="18" r="2" />
@@ -371,8 +371,8 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     staffIcon: (
-      <div className="w-5 h-5 rounded bg-[#F3F6F4] border border-[#E8ECEA] flex items-center justify-center p-0.5">
-        <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] flex items-center justify-center p-0.5">
+        <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
       </div>
