@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { SolarClose, SolarTagBarcode } from "@/components/icons";
+import { prepareFeedbackAudio } from "@/client/feedback";
 
 export interface BarcodeScanInputProps {
   value: string;
@@ -95,7 +96,10 @@ export default function BarcodeScanInput({
           {onOpenScannerModal && (
             <button
               type="button"
-              onClick={onOpenScannerModal}
+              onClick={() => {
+                prepareFeedbackAudio();
+                onOpenScannerModal();
+              }}
               disabled={disabled || isProcessing}
               aria-label="เปิดกล้องสแกน"
               className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-m3-grey-800 text-white transition-transform hover:bg-m3-grey-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-48"

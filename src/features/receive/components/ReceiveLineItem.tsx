@@ -9,6 +9,7 @@ import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import { M3Dialog, M3NumberTile, m3Cls } from "@/components/ui/m3";
 import { SolarAddLine, SolarAltArrowDown, SolarCheckCircle, SolarClockCircle, SolarDangerTriangle, SolarMapPoint, SolarMinusLine, SolarQrCode } from "@/components/icons";
+import { prepareFeedbackAudio } from "@/client/feedback";
 
 export interface ReceiveLineItemProps {
   index: number;
@@ -23,8 +24,8 @@ export interface ReceiveLineItemProps {
   onToggleConfirm: (index: number) => void;
   onAddLocationForProduct: (index: number) => void;
   onRemove: (index: number) => void;
-  onScanLocation: (index: number, code: string) => void;
-  onScanFeedback?: (feedback: ScanFeedback | null) => void;
+  onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
+  onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
 }
 
 export default function ReceiveLineItem({
@@ -144,14 +145,14 @@ export default function ReceiveLineItem({
     setValue(`lines.${index}.qty`, pQty + sumExtras, { shouldValidate: true, shouldDirty: true });
   };
 
-  const handleLocScanSubmit = (rawCode: string) => {
+  const handleLocScanSubmit = async (rawCode: string, playSound = false) => {
     const code = rawCode.trim();
     if (!code) return;
-    onScanLocation(index, code);
+    await onScanLocation(index, code, playSound);
     setLocScanInput("");
   };
 
-  const handleExtraLocScanSubmit = (extraIdx: number, rawCode: string) => {
+  const handleExtraLocScanSubmit = (extraIdx: number, rawCode: string, playSound = false) => {
     const code = rawCode.trim();
     if (!code) return;
     // Only accept locations that exist in the warehouse master — never accept an unknown code silently
@@ -169,13 +170,18 @@ export default function ReceiveLineItem({
         type: "error",
         title: "ไม่พบตำแหน่งนี้ในโกดัง",
         message: `"${code.toUpperCase()}" ไม่อยู่ในรายการตำแหน่ง — กรุณาเช็ค QR ชั้นวางหรือเพิ่มตำแหน่งในระบบก่อน`,
-      });
+      }, playSound);
       return;
     }
     const updated = [...extraLocations];
     updated[extraIdx] = code.toUpperCase();
     setValue(`lines.${index}.extra_locations` as any, updated, { shouldValidate: true, shouldDirty: true });
     setExtraLocScanInputs((prev) => ({ ...prev, [extraIdx]: "" }));
+    onScanFeedback?.({
+      type: "success",
+      title: "บันทึกตำแหน่งแล้ว",
+      message: code.toUpperCase(),
+    }, playSound);
   };
 
   const locationBreakdowns = [
@@ -263,7 +269,10 @@ export default function ReceiveLineItem({
           />
           <button
             type="button"
-            onClick={() => setCameraSlot({ isPrimary, extraIdx })}
+            onClick={() => {
+              prepareFeedbackAudio();
+              setCameraSlot({ isPrimary, extraIdx });
+            }}
             aria-label={`เปิดกล้องสแกนตำแหน่งที่ ${slotNo}`}
             title="เปิดกล้องสแกน"
             className="absolute top-1/2 right-1.5 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-m3-grey-700 transition-colors hover:bg-[rgba(145,158,171,0.08)] active:scale-95"
@@ -515,13 +524,14 @@ export default function ReceiveLineItem({
       )}
 
       <CameraBarcodeScannerModal
+        feedbackHandledByCaller
         isOpen={cameraSlot !== null}
         onClose={() => setCameraSlot(null)}
-        onScan={(code) => {
+        onScan={async (code, playSound) => {
           const clean = code.trim();
           if (!clean || !cameraSlot) return;
-          if (cameraSlot.isPrimary) handleLocScanSubmit(clean);
-          else if (cameraSlot.extraIdx !== undefined) handleExtraLocScanSubmit(cameraSlot.extraIdx, clean);
+          if (cameraSlot.isPrimary) await handleLocScanSubmit(clean, playSound);
+          else if (cameraSlot.extraIdx !== undefined) handleExtraLocScanSubmit(cameraSlot.extraIdx, clean, playSound);
         }}
       />
     </div>

@@ -19,8 +19,8 @@ export interface ReceiveLinesTableProps {
   onToggleConfirm: (index: number) => void;
   onAddLocationForProduct: (index: number) => void;
   onRemove: (index: number) => void;
-  onScanLocation: (index: number, code: string) => void;
-  onScanFeedback?: (feedback: ScanFeedback | null) => void;
+  onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
+  onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
   onOpenConfirmModal: () => void;
 }
 

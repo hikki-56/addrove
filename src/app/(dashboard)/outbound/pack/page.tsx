@@ -160,7 +160,7 @@ export default function OutboundPackPage() {
     });
 
   const handleScan = useCallback(
-    async (code: string) => {
+    async (code: string, playSound = false) => {
       setScanValue("");
       if (!active || !openBox) return;
       const norm = (s: string) => s.trim().toLowerCase().replace(/[\s\-_#]/g, "");
@@ -168,14 +168,14 @@ export default function OutboundPackPage() {
         (it) => norm(it.sku) === norm(code) || (it.barcode ? norm(it.barcode) === norm(code) : false)
       );
       if (!item) {
-        feedbackError();
+        if (playSound) feedbackError();
         doFlash("bad");
         setFeedback({ tone: "error", message: `✗ ไม่อยู่ในบิลนี้ (${code})` });
         return;
       }
       const remaining = item.qty_picked - (boxedBySku.get(item.sku) || 0);
       if (remaining <= 0) {
-        feedbackError();
+        if (playSound) feedbackError();
         doFlash("bad");
         setFeedback({ tone: "error", message: `✗ ${item.sku} ลงกล่องครบแล้ว` });
         return;
@@ -190,17 +190,17 @@ export default function OutboundPackPage() {
           label: `ใส่กล่อง ${item.sku} ×${remaining} (${activeBillNo})`,
         });
         if (result.status === "queued") {
-          feedbackWarn();
+          if (playSound) feedbackWarn();
           setFeedback({ tone: "success", message: `🟠 ออฟไลน์ — บันทึก "${result.label}" ไว้ในเครื่องแล้ว จะส่งเองเมื่อเน็ตกลับ` });
           offlineQueue.refreshCounts();
         } else {
-          feedbackSuccess();
+          if (playSound) feedbackSuccess();
           doFlash("ok");
           setFeedback({ tone: "success", message: result.message });
           await loadActive(activeBillNo);
         }
       } catch (e) {
-        feedbackError();
+        if (playSound) feedbackError();
         doFlash("bad");
         setFeedback({ tone: "error", message: e instanceof Error ? e.message : "✗ ใส่กล่องไม่สำเร็จ" });
         await loadActive(activeBillNo).catch(() => {});
@@ -443,11 +443,12 @@ export default function OutboundPackPage() {
       )}
 
       <CameraBarcodeScannerModal
+        feedbackHandledByCaller
         isOpen={cameraOpen}
         onClose={() => setCameraOpen(false)}
-        onScanSuccess={(code) => {
+        onScanSuccess={(code, playSound) => {
           setCameraOpen(false);
-          void handleScan(code);
+          return handleScan(code, playSound);
         }}
       />
 

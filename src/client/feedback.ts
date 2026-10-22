@@ -18,12 +18,17 @@ function getAudioContext(): AudioContext | null {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
-    if (!audioCtx) audioCtx = new Ctor();
-    if (audioCtx.state === "suspended") void audioCtx.resume();
+    if (!audioCtx || audioCtx.state === "closed") audioCtx = new Ctor();
+    if (audioCtx.state === "suspended") void audioCtx.resume().catch(() => {});
     return audioCtx;
   } catch {
     return null;
   }
+}
+
+/** Call from a user gesture so mobile browsers can enable scanner audio. */
+export function prepareFeedbackAudio() {
+  getAudioContext();
 }
 
 function tone(freq: number, durationMs: number, delayMs = 0, type: OscillatorType = "sine") {
@@ -39,6 +44,10 @@ function tone(freq: number, durationMs: number, delayMs = 0, type: OscillatorTyp
     gain.gain.exponentialRampToValueAtTime(0.25, start + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + durationMs / 1000);
     osc.connect(gain).connect(ctx.destination);
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
     osc.start(start);
     osc.stop(start + durationMs / 1000 + 0.02);
   } catch {

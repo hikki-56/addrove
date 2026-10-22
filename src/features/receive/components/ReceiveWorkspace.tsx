@@ -361,10 +361,12 @@ export default function ReceiveWorkspace() {
           />
 
           <CameraBarcodeScannerModal
+            feedbackHandledByCaller
+            feedback={scanFeedback}
             isOpen={isCameraOpen}
             onClose={() => setIsCameraOpen(false)}
-            onScan={(scannedText) => {
-              handleScanBarcode(scannedText);
+            onScan={(scannedText, playSound) => {
+              return handleScanBarcode(scannedText, playSound);
             }}
           />
 

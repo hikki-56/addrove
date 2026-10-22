@@ -173,11 +173,14 @@ export default function MovePage() {
 
       {/* Camera Barcode Scanner Modal */}
       <CameraBarcodeScannerModal
+        feedbackHandledByCaller
+        feedback={scanFeedback}
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
-        onScanSuccess={(scannedText) => {
-          handleScanBarcode(scannedText);
+        onScanSuccess={(scannedText, playSound) => {
+          const result = handleScanBarcode(scannedText, playSound);
           setIsCameraOpen(false);
+          return result;
         }}
       />
     </div>
