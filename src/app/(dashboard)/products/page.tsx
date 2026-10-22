@@ -225,44 +225,44 @@ export default function ProductsPage() {
       {/* 4 Summary Stat Cards Grid — ตัวเลขรวมทั้งระบบ ไม่เปลี่ยนตามตัวกรอง */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: สินค้าทั้งหมด */}
-        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
-          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,167,111,0.12)] text-m3-primary"><SolarBox className="size-6" /></span>
+        <div className="m3-card flex items-center gap-2.5 p-3 sm:gap-3 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,167,111,0.12)] text-m3-primary"><SolarBox className="size-5 sm:size-6" /></span>
           <div className="min-w-0">
-            <div className="text-xs text-m3-grey-600 font-semibold truncate">สินค้าทั้งหมด</div>
-            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+            <div className="text-xs text-m3-grey-600 font-semibold leading-snug line-clamp-2">สินค้าทั้งหมด</div>
+            <div className="font-m3-disp text-base min-[400px]:text-lg sm:text-2xl font-bold [overflow-wrap:anywhere] text-m3-grey-800 leading-tight num">
               {grandValue(grandProductCount, "รายการ")}
             </div>
           </div>
         </div>
 
         {/* Card 2: โกดังทั้งหมด */}
-        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
-          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,184,217,0.12)] text-m3-info"><SolarBuildings className="size-6" /></span>
+        <div className="m3-card flex items-center gap-2.5 p-3 sm:gap-3 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(0,184,217,0.12)] text-m3-info"><SolarBuildings className="size-5 sm:size-6" /></span>
           <div className="min-w-0">
-            <div className="text-xs text-m3-grey-600 font-semibold truncate">โกดังทั้งหมด</div>
-            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+            <div className="text-xs text-m3-grey-600 font-semibold leading-snug line-clamp-2">โกดังทั้งหมด</div>
+            <div className="font-m3-disp text-base min-[400px]:text-lg sm:text-2xl font-bold [overflow-wrap:anywhere] text-m3-grey-800 leading-tight num">
               {grandValue(warehouses === null ? null : warehouses.length, "โกดัง")}
             </div>
           </div>
         </div>
 
         {/* Card 3: ตำแหน่งทั้งหมด */}
-        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
-          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(255,171,0,0.16)] text-m3-warning"><SolarMapPoint className="size-6" /></span>
+        <div className="m3-card flex items-center gap-2.5 p-3 sm:gap-3 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(255,171,0,0.16)] text-m3-warning"><SolarMapPoint className="size-5 sm:size-6" /></span>
           <div className="min-w-0">
-            <div className="text-xs text-m3-grey-600 font-semibold truncate">ตำแหน่งทั้งหมด</div>
-            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-grey-800 leading-tight num">
+            <div className="text-xs text-m3-grey-600 font-semibold leading-snug line-clamp-2">ตำแหน่งทั้งหมด</div>
+            <div className="font-m3-disp text-base min-[400px]:text-lg sm:text-2xl font-bold [overflow-wrap:anywhere] text-m3-grey-800 leading-tight num">
               {grandValue(totalLocationsCount, "ตำแหน่ง")}
             </div>
           </div>
         </div>
 
         {/* Card 4: สินค้าคงเหลือรวม */}
-        <div className="m3-card flex items-center gap-3 p-4 sm:p-5">
-          <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(142,51,255,0.12)] text-[#8E33FF]"><SolarBoxClosed className="size-6" /></span>
+        <div className="m3-card flex items-center gap-2.5 p-3 sm:gap-3 sm:p-5">
+          <span aria-hidden="true" className="inline-flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(142,51,255,0.12)] text-[#8E33FF]"><SolarBoxClosed className="size-5 sm:size-6" /></span>
           <div className="min-w-0">
-            <div className="text-xs text-m3-grey-600 font-semibold truncate">สินค้าคงเหลือรวม</div>
-            <div className="font-m3-disp text-xl sm:text-2xl font-bold text-m3-primary-dark leading-tight num">
+            <div className="text-xs text-m3-grey-600 font-semibold leading-snug line-clamp-2">สินค้าคงเหลือรวม</div>
+            <div className="font-m3-disp text-base min-[400px]:text-lg sm:text-2xl font-bold [overflow-wrap:anywhere] text-m3-primary-dark leading-tight num">
               {totalStockSum === null ? (
                 <span className="text-m3-grey-500">—</span>
               ) : (
