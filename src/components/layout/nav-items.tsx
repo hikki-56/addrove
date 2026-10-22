@@ -1,6 +1,7 @@
 import React from "react";
 import type { UserRole } from "@/types/models";
 import { canManageUserMenus, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
+import { BOM_EDITOR_HREF, canEditBom } from "@/lib/bom-editor";
 
 export interface NavItem {
   href: string;
@@ -88,6 +89,15 @@ export function getSelectableMenuItems(user: MenuUser): NavItem[] {
 export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, canManage = canManageUserMenus(user.email)): NavItem[] {
   const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
   const visible = getSelectableMenuItems(user).filter((item) => allowed === null || allowed.includes(item.href));
+  // "แก้ไขสูตร BOM" ผูกกับบัญชีเดียว ไม่ขึ้นกับการตั้งค่าเมนูรายผู้ใช้
+  // (ต้องให้เซิร์ฟเวอร์ยืนยันบัญชีผ่าน can_manage ด้วย — ไม่เชื่อ email ฝั่ง client อย่างเดียว)
+  if (canManage && canEditBom(user.email)) {
+    visible.push({
+      href: BOM_EDITOR_HREF,
+      label: "แก้ไขสูตร BOM",
+      icon: <Icon><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Icon>,
+    });
+  }
   // Keep the account owner able to restore menus even when all boxes are cleared.
   if (canManage && canManageUserMenus(user.email)) {
     visible.push({

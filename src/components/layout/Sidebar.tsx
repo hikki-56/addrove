@@ -6,6 +6,7 @@ import type { UserRole } from "@/types/models";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getVisibleNavItems, SYSTEM_MENU_HREFS, type NavItem } from "@/components/layout/nav-items";
 import { MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
+import { BOM_EDITOR_HREF } from "@/lib/bom-editor";
 import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 import { getExpressTagCounts } from "@/client/express-tag-utils";
 import { useEffect, useState, useCallback } from "react";
@@ -231,6 +232,7 @@ export default function Sidebar({
         "/production",
         "/production/jobs",
         "/production/summary",
+        BOM_EDITOR_HREF,
         "/movements/receive/history",
         "/movements/transfer/history",
         "/movements/history",

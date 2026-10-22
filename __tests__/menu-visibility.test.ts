@@ -1,4 +1,5 @@
 import { canManageUserMenus, parseMenuHrefs, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
+import { BOM_EDITOR_HREF } from "@/lib/bom-editor";
 import { getVisibleNavItems, getSelectableMenuItems } from "@/components/layout/nav-items";
 
 const admin = { role: "ADMIN" as const, email: "other@stockify.com", name: "ทิชากร" };
@@ -17,7 +18,8 @@ test("unset settings preserve existing menus; empty settings hide all optional m
   expect(hrefs(admin, null)).toContain("/products");
   expect(hrefs(admin, [])).toEqual([]);
   expect(hrefs(admin, ["/products"])).toEqual(["/products"]);
-  expect(hrefs(owner, [])).toEqual([MENU_SETTINGS_HREF]);
+  expect(hrefs(owner, [])).toEqual([BOM_EDITOR_HREF, MENU_SETTINGS_HREF]);
+  expect(hrefs(admin, null)).not.toContain(BOM_EDITOR_HREF);
   expect(getVisibleNavItems(owner, [], false)).toEqual([]);
 });
 
