@@ -832,9 +832,6 @@ async function reportProductionInternal(
     if (good + defect <= 0 && !(input.materials?.some(i => i.used_qty + i.scrap_qty > 0) || input.report_kind === "FINAL")) {
       throw new ProductionError("กรุณากรอกจำนวนผลิตดีหรือของเสียอย่างน้อย 1 รายการ");
     }
-    if (defect > 0 && !input.defect_cause?.trim()) {
-      throw new ProductionError("มีของเสียต้องระบุสาเหตุของเสียทุกครั้ง", 400);
-    }
 
     // กันกดยืนยันซ้ำ: เคยมีรายงาน idempotency_key นี้แล้ว → คืนผลเดิม
     const existingRows = await readReportRows(true);
