@@ -17,7 +17,7 @@ import {
 import { setDocumentStatus } from "@/server/document-status-store";
 import { appendRows, SHEETS } from "@/server/google-sheets/client";
 import { to8DigitBarcode } from "@/lib/barcode-utils";
-import { expressStatusMap } from "@/app/api/express-import/status/route";
+import { expressStatusMap } from "@/server/express-status-cache";
 import { cleanExpressCode, expressItemKey, todayBangkokIsoDate } from "@/lib/express-status-utils";
 
 export const maxDuration = 60;

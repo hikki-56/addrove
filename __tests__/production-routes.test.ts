@@ -33,7 +33,16 @@ jest.mock("@/server/production/production-job.service", () => ({
   },
 }));
 
+jest.mock("@/server/production/production-bom.service", () => ({ listProductionBoms: jest.fn(async () => []) }));
+jest.mock("@/server/production/production-material.service", () => ({ listProductionCapacities: jest.fn(async () => []), previewMaterialAvailability: jest.fn(async () => ({})) }));
+
+import { NextRequest } from "next/server";
+import type { ProductionJob } from "@/types/production";
+import { listJobs, getJobDetail } from "@/server/production/production-job.service";
 import { POST as createJobsPOST, GET as jobsGET } from "@/app/api/production/jobs/route";
+import { GET as detailGET } from "@/app/api/production/jobs/[job_no]/route";
+import { GET as capacitiesGET } from "@/app/api/production/capacities/route";
+import { GET as bomsGET, POST as bomsPOST } from "@/app/api/production/boms/route";
 import { POST as reportPOST } from "@/app/api/production/jobs/[job_no]/report/route";
 import { POST as startPOST } from "@/app/api/production/jobs/[job_no]/start/route";
 import { PATCH as notifPATCH } from "@/app/api/production/notifications/route";
@@ -53,9 +62,36 @@ const PACKER = { id: "u4", name: "แพ็ค", email: "pk@x.com", role: "PACKE
 
 beforeEach(() => {
   mockSession = null;
+  jest.clearAllMocks();
 });
 
 describe("สิทธิ์ระบบผลิต — บังคับฝั่งเซิร์ฟเวอร์ทุกครั้ง", () => {
+  it("BOM และกำลังผลิตต้องล็อกอิน และกำลังผลิต/พรีวิวจำกัดเฉพาะ Admin", async () => {
+    const req = () => new NextRequest("http://localhost/api/production/boms");
+    expect((await bomsGET(req())).status).toBe(401);
+    expect((await capacitiesGET(req())).status).toBe(401);
+    mockSession = { user: APPROVER };
+    expect((await bomsGET(req())).status).toBe(200);
+    expect((await capacitiesGET(req())).status).toBe(403);
+    expect((await bomsPOST(req())).status).toBe(403);
+    mockSession = { user: ADMIN };
+    expect((await capacitiesGET(req())).status).toBe(200);
+  });
+
+  it("ผู้อนุมัติไม่เห็นฉบับร่างทั้งรายการและ URL รายละเอียด", async () => {
+    const draft = { job_no: "PRD-DRAFT", status: "DRAFT" } as ProductionJob;
+    const waiting = { job_no: "PRD-WAITING", status: "WAITING" } as ProductionJob;
+    jest.mocked(listJobs).mockResolvedValueOnce([draft, waiting]);
+    mockSession = { user: APPROVER };
+    const response = await jobsGET(new NextRequest("http://localhost/api/production/jobs"));
+    expect((await response.json()).data).toEqual([waiting]);
+    jest.mocked(getJobDetail).mockResolvedValueOnce({ job: draft, reports: [], history: [] });
+    expect((await detailGET(new NextRequest("http://localhost/x"), { params: Promise.resolve({ job_no: draft.job_no }) })).status).toBe(403);
+    mockSession = { user: ADMIN };
+    jest.mocked(getJobDetail).mockResolvedValueOnce({ job: draft, reports: [], history: [] });
+    expect((await detailGET(new NextRequest("http://localhost/x"), { params: Promise.resolve({ job_no: draft.job_no }) })).status).toBe(200);
+  });
+
   it("ไม่ล็อกอิน → 401 ทุก endpoint", async () => {
     const res1 = await jobsGET(makeRequest("http://localhost/api/production/jobs", "GET") as any);
     expect(res1.status).toBe(401);

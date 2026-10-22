@@ -188,6 +188,14 @@ describe("reverseStock Use Case", () => {
     repo = new MockStockRepo();
   });
 
+  test.each(["PRODUCTION_RESULT", "PRODUCTION_RECEIPT", "PRODUCTION_ADJUSTMENT", "PRODUCTION_REPORT_RESULT"])("rejects %s documents before any stock mutation", async (kind) => {
+    const doc: Document = { document_id: `production-${kind}`, document_no: "PRD-TEST-R1", document_type: "RECEIVE", document_date: "2026-10-21", status: "POSTED", note: JSON.stringify({ kind }), created_by: "user-1", created_at: new Date().toISOString() };
+    repo.documentsList.push(doc);
+    await expect(reverseStock({ repo }, { original_document_id: doc.document_id, note: "", idempotency_key: `reverse-${kind}`, user_id: "user-1" })).rejects.toThrow("เอกสารผลิต");
+    expect(repo.documentsList).toEqual([doc]);
+    expect(repo.movementsList).toEqual([]);
+  });
+
   test("should successfully reverse a POSTED document", async () => {
     const originalDoc: Document = {
       document_id: "doc-orig-1",

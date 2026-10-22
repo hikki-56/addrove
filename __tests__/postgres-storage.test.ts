@@ -64,7 +64,7 @@ afterAll(async () => {
 test("all schema migrations are rerunnable and server-only RLS is enabled", async () => {
     await mockDb.exec(fs.readFileSync(path.join(root, "supabase/migrations/20261012000000_complete_stockify_storage.sql"), "utf8"));
     const rows = await query("SELECT relname,relrowsecurity FROM pg_class JOIN pg_namespace n ON n.oid=relnamespace WHERE n.nspname='public' AND relkind='r'");
-    expect(rows).toHaveLength(23);
+    expect(rows).toHaveLength(26);
     expect(rows.every(row => row.relrowsecurity)).toBe(true);
     await mockDb.exec("SET ROLE anon;");
     try {
@@ -187,12 +187,17 @@ test("swallowed nested business errors still force the outer transaction to roll
 test("native production reporting posts stock exactly once and draft deletion retains history", async () => {
     await query("INSERT INTO warehouses(warehouse_id,warehouse_code,warehouse_name) VALUES('wh-2','WH02','โกดัง2')");
     await query("INSERT INTO locations(location_id,warehouse_id,location_code) VALUES('loc-wh2-A1','wh-2','A1')");
+    const raw = await repo.products.create({ sku: "PROD-RAW", product_name: "Production raw material", category: "test", barcode: "PROD-RAW", base_unit: "ชิ้น", minimum_stock: 0, description: "" });
+    await repo.stockSummary.applyChanges([{ productId: raw.product_id, warehouseId: "wh-2", locationId: "A1", delta: 20 }]);
+    await query("UPDATE stock_summary SET opening_quantity=20 WHERE product_id=$1", [raw.product_id]);
+    await query("INSERT INTO bom_formulas(bom_id,fg_sku,fg_name,fg_unit) VALUES('BOM-TEST-PROD','TEST','Test product','ชิ้น')");
+    const [material] = await query("INSERT INTO bom_formula_items(bom_id,rm_sku,rm_name,rm_unit,rm_wh) VALUES('BOM-TEST-PROD','PROD-RAW','Raw','ชิ้น','wh-2') RETURNING bom_item_id");
     const actor = { id: "test", name: "Test operator", role: "ADMIN" as const };
-    const input = { production_date: "2026-10-12", table_no: 1, product_id: "prod-TEST", target_qty: 4, priority: "NORMAL" as const, note: "", location: "A1" };
+    const input = { production_date: "2026-10-12", table_no: 1, product_id: "prod-TEST", target_qty: 4, priority: "NORMAL" as const, note: "", location: "A1", bom: { bom_id: "BOM-TEST-PROD" } };
     const [job] = await createJobs(actor, [input]);
     await submitJobs(actor, [job.job_no]);
     await startJob(actor, job.job_no);
-    const report = { good_qty: 2, defect_qty: 0, defect_cause: "", note: "", photo_url: "", report_kind: "PARTIAL" as const, close_reason: "", idempotency_key: "production-native-report" };
+    const report = { good_qty: 2, defect_qty: 0, defect_cause: "", note: "", photo_url: "", report_kind: "PARTIAL" as const, close_reason: "", idempotency_key: "production-native-report", receipt_location_id: "loc-wh2-A1", materials: [{ item_id: Number(material.bom_item_id), used_qty: 2, scrap_qty: 0, scrap_cause: "" }] };
     await reportProduction(actor, job.job_no, report);
     expect((await reportProduction(actor, job.job_no, report)).replayed).toBe(true);
     expect(await repo.movements.getBalance("TEST", "wh-2", "A1")).toBe(2);

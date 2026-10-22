@@ -6,7 +6,8 @@
 // - เพิ่มสต็อก "เฉพาะผลิตดี" ของแต่ละรายงานที่ยืนยัน ครั้งเดียว (กันซ้ำด้วย idempotency_key ของ movement)
 // - จบงานไม่เพิ่มยอดสะสมซ้ำ / ของเสียไม่เข้าสต็อกสินค้าดี
 // - การปรับปรุงยอด (ADJUSTMENT) สร้าง movement ชนิด ADJUST ที่ตรวจสอบย้อนหลังได้
-// - ไม่ตัดวัตถุดิบ (ยังไม่มีสูตร BOM — รอกำหนดเพิ่ม)
+// - เส้นทางเดิมสำหรับ Sheets เท่านั้น; PostgreSQL ใช้ production-material.service
+//   เพื่อบันทึกวัตถุดิบใช้จริงและรับสินค้าดีในธุรกรรมเดียวกัน
 
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document, StockMovement } from "@/types/models";

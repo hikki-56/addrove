@@ -9,6 +9,7 @@ import { PRODUCTION_PRIORITY_LABELS, type ProductionPriority } from "@/types/pro
 
 export const HISTORY_ACTION_LABELS: Record<string, string> = {
   CREATE: "สร้างงาน",
+  BACKORDER: "สร้างงานค้างจากการผลิต",
   EDIT: "แก้ไขงาน",
   DELETE: "ลบฉบับร่าง",
   SUBMIT: "ส่งงานผลิต",

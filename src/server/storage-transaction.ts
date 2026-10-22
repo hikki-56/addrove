@@ -36,7 +36,11 @@ export function withStorageRequest<Args extends unknown[]>(handler: (...args: Ar
             if (error instanceof RollbackResponse)
                 return error.response;
             console.error("[Storage] Request rolled back", error instanceof Error ? error.name : "UnknownError");
-            return Response.json({ success: false, error: "บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่" }, { status: 503 });
+            return Response.json({
+                success: false,
+                message: "ระบบฐานข้อมูลไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง",
+                error: "บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่",
+            }, { status: 503 });
         }
     };
 }

@@ -1,4 +1,5 @@
 import { withStorageRequest } from "@/server/storage-transaction";
+import { expressStatusMap, type ExpressStatusEntry } from "@/server/express-status-cache";
 import { NextRequest } from "next/server";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
@@ -16,7 +17,6 @@ import {
   expressItemKey,
   docNoVariants,
   aggregateDocStatus,
-  type ExpressSyncStatusValue,
 } from "@/lib/express-status-utils";
 
 export const dynamic = "force-dynamic";
@@ -43,24 +43,6 @@ interface StatusUpdateItem {
   status: "IMPORTED" | "PENDING";
   type?: "ISSUE" | "RECEIVE" | "TRANSFER";
 }
-
-interface ExpressStatusEntry {
-  status: ExpressSyncStatusValue;
-  type: string;
-  updated_at: string;
-  document_no: string;
-  // มีเฉพาะ entry ระดับรายการ (คีย์ "docno|sku") — entry ระดับเอกสารคือ aggregate
-  sku?: string;
-}
-
-// Global in-memory status cache to immediately sync across all clients
-const globalForExpressStatus = globalThis as unknown as {
-  expressStatusMap?: Map<string, ExpressStatusEntry>;
-};
-
-export const expressStatusMap =
-  globalForExpressStatus.expressStatusMap ||
-  (globalForExpressStatus.expressStatusMap = new Map<string, ExpressStatusEntry>());
 
 export async function GET(req: NextRequest) {
   try {

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty, PriorityBadge } from "./ui";
+import { ProductionMaterialSummary } from "./MaterialStockLocations";
 import { M3Dialog, M3ErrorBanner, M3NumberTile, M3SubmitLabel, m3Cls, type M3IconTone } from "@/components/ui/m3";
 import { SolarCheckCircle, SolarDangerTriangle, SolarPen } from "@/components/icons";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
@@ -27,7 +28,6 @@ interface ReasonModalProps {
 export function ReasonModal({
   open,
   title,
-  hint,
   reasonLabel,
   confirmLabel,
   tone = "primary",
@@ -49,7 +49,6 @@ export function ReasonModal({
   return (
     <M3Dialog
       title={title}
-      hint={hint}
       icon={isDanger ? <SolarDangerTriangle size={26} /> : <SolarPen size={26} />}
       iconTone={isDanger ? "error" : "primary"}
       onBackdrop={() => !submitting && onClose()}
@@ -110,7 +109,6 @@ interface ConfirmModalProps {
 export function ConfirmModal({
   open,
   title,
-  hint,
   children,
   confirmLabel,
   tone = "primary",
@@ -129,7 +127,6 @@ export function ConfirmModal({
   return (
     <M3Dialog
       title={title}
-      hint={hint}
       icon={icon ?? (isDanger ? <SolarDangerTriangle size={26} /> : <SolarCheckCircle size={26} />)}
       iconTone={iconTone ?? (isDanger ? "error" : "primary")}
       widthClass={widthClass}
@@ -158,6 +155,7 @@ export function ConfirmModal({
 /** สรุปงานในการ์ดยืนยันเริ่มผลิต — สินค้า โต๊ะ เป้าหมาย หมายเหตุ */
 export function StartJobSummary({ job }: { job: ProductionJob }) {
   return (
+    <div className="space-y-3">
     <div className="rounded-xl bg-m3-grey-100 p-4">
       <div className="flex items-start gap-3">
         <M3NumberTile className="size-9 text-lg">{job.table_no}</M3NumberTile>
@@ -183,6 +181,8 @@ export function StartJobSummary({ job }: { job: ProductionJob }) {
           </>
         )}
       </dl>
+    </div>
+    {job.material_plan && <ProductionMaterialSummary plan={job.material_plan} />}
     </div>
   );
 }
@@ -299,7 +299,6 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           disabled={submitting}
-          placeholder="เช่น นับซ้ำจริง ต้องลดยอดผลิตดี 5 ชิ้น"
           className={`mt-1.5 resize-none ${m3Cls.input}`}
         />
       </label>

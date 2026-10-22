@@ -18,6 +18,14 @@ import { executeAtomicOperation } from "./atomic-stock-executor";
 
 export { ReverseStockSchema, type ReverseStockInput };
 
+function assertNotProductionDocument(document: Document): void {
+  let kind: unknown;
+  try { kind = JSON.parse(document.note || "{}")?.kind; } catch { /* Plain-text notes are valid. */ }
+  if (typeof kind === "string" && kind.startsWith("PRODUCTION_")) {
+    throw new StockValidationError("เอกสารผลิตไม่สามารถกลับรายการผ่านเมนูสต็อกทั่วไปได้ เพราะต้องปรับรายงานผลิตและวัตถุดิบพร้อมกัน");
+  }
+}
+
 export async function reverseStock(
   deps: StockUseCaseDeps,
   input: ReverseStockInput & { user_id: string; role?: string; correlation_id?: string }
@@ -29,6 +37,7 @@ export async function reverseStock(
   if (!originalDoc) {
     throw new StockNotFoundError("ไม่พบเอกสารที่ต้องการกลับยอด");
   }
+  assertNotProductionDocument(originalDoc);
 
   if (originalDoc.status !== "POSTED" && originalDoc.status !== "COMPLETED") {
     throw new StockValidationError(
@@ -71,6 +80,9 @@ export async function reverseStock(
     warehouseId: originalMovements[0]?.warehouse_id || "",
     payload: input,
     execute: async ({ repo }) => {
+      const freshDoc = await repo.documents.findById(originalDoc.document_id);
+      if (!freshDoc) throw new StockNotFoundError("ไม่พบเอกสารที่ต้องการกลับยอด");
+      assertNotProductionDocument(freshDoc);
       // Re-check after acquiring the lock (BUG-C6): two concurrent reversals with
       // different idempotency keys can both pass the pre-lock fast-path check above,
       // so the check must always be repeated once the lock is held.

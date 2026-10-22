@@ -17,6 +17,8 @@ import { getAllowedActions } from "@/features/production/lib/permissions";
 import { buildJobPatch } from "@/features/production/lib/job-form";
 import { formatHistoryDetail, historyActionLabel } from "@/features/production/lib/history";
 import ReportModal from "@/features/production/components/ReportModal";
+import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
+import { ProductionMaterialSummary } from "@/features/production/components/MaterialStockLocations";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ReasonModal, AdjustModal, ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
 import { StatusBadge, PriorityBadge, JobSignalBadges, formatQty, formatDateTime } from "@/features/production/components/ui";
@@ -117,8 +119,8 @@ export default function ProductionJobDetailPage() {
   const canReport = actions.report;
   const canEdit = actions.edit;
   const canCancel = actions.cancel;
-  const canReopen = actions.reopen;
-  const canAdjust = actions.adjust;
+  const canReopen = actions.reopen && !job.material_plan?.backorder_job_no;
+  const canAdjust = actions.adjust && !job.material_plan;
 
   // ทุก action ที่เปลี่ยนข้อมูลผ่าน guard เดียว — กันกดซ้ำ/กดหลาย action พร้อมกัน
   const runAction = (key: string, fn: () => Promise<ProductionApiResult>, closeOnSuccess = true) =>
@@ -250,6 +252,7 @@ export default function ProductionJobDetailPage() {
 
       {/* หัวงาน */}
       <div className="m3-card mb-5 p-5 sm:p-6">
+        {(user?.role === "ADMIN" || user?.role === "APPROVER") && <div className="mb-3 flex justify-end"><ProductionPrintButton jobs={[job]} disabled={submitting} /></div>}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -281,6 +284,14 @@ export default function ProductionJobDetailPage() {
             </div>
           )}
         </div>
+
+        {job.material_plan && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-m3-grey-600">
+            <span className="m3-label m3-label-primary">สูตร {job.material_plan.snapshot.bom_id} · {job.material_plan.snapshot.label}</span>
+            {job.material_plan.parent_job_no && <span>งานค้างจาก <Link className="font-bold text-m3-primary-dark underline underline-offset-2" href={`/production/jobs/${encodeURIComponent(job.material_plan.parent_job_no)}`}>{job.material_plan.parent_job_no}</Link></span>}
+            {job.material_plan.backorder_job_no && <span>สร้างงานค้างแล้ว: {user?.role === "ADMIN" ? <Link className="font-bold text-m3-primary-dark underline underline-offset-2" href={`/production/jobs/${encodeURIComponent(job.material_plan.backorder_job_no)}`}>{job.material_plan.backorder_job_no}</Link> : <b className="text-m3-grey-800">{job.material_plan.backorder_job_no}</b>}</span>}
+          </div>
+        )}
 
         {(job.note || job.cancel_reason || job.close_reason) && (
           <div className="mt-4 space-y-2">
@@ -333,6 +344,8 @@ export default function ProductionJobDetailPage() {
         </div>
       )}
 
+      {job.material_plan && <div className="mb-5"><ProductionMaterialSummary plan={job.material_plan} /></div>}
+
       {/* ประวัติรายงาน */}
       <div className="m3-card mb-5 overflow-hidden">
         <div className="px-5 pt-5 pb-3 sm:px-6">
@@ -356,6 +369,14 @@ export default function ProductionJobDetailPage() {
                     {r.reported_by_name}
                     {r.kind === "ADJUSTMENT" ? ` · ${r.reason}` : r.defect_cause || r.reason || r.note ? ` · ${r.defect_cause || r.reason || r.note}` : ""}
                   </p>
+                  {r.material_details && (
+                    <details className="mt-1.5 text-xs text-m3-grey-600">
+                      <summary className="cursor-pointer font-semibold text-m3-primary-dark">วัตถุดิบใช้จริง / ของเสีย</summary>
+                      {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: โกดัง 2 · {r.receipt_location_code}</p>}
+                      {r.material_details.map((m, i) => <p key={`${m.sku}-${i}`} className="mt-1 tabular-nums">{m.sku}: ใช้ผลิต {m.used_qty} · เสียเพิ่ม {m.scrap_qty} · รวมตัด {m.total_qty} {m.stock_unit}{m.scrap_cause && ` (${m.scrap_cause})`}</p>)}
+                      {r.material_reason && <p className="mt-1">เหตุผลยอดใช้จริง: {r.material_reason}</p>}
+                    </details>
+                  )}
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-sm tabular-nums text-m3-grey-600">
                     <span>
                       ดีรอบนี้{" "}
@@ -411,6 +432,14 @@ export default function ProductionJobDetailPage() {
                       <td className="m3-num font-bold tabular-nums">{formatQty(r.cumulative_good)}</td>
                       <td className="text-xs">
                         {r.kind === "ADJUSTMENT" ? r.reason : r.defect_cause || r.reason || r.note || "-"}
+                        {r.material_details && (
+                        <details className="mt-2 min-w-56 text-xs text-m3-grey-600">
+                          <summary className="cursor-pointer font-semibold text-m3-primary-dark">วัตถุดิบใช้จริง / ของเสีย</summary>
+                          {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: โกดัง 2 · {r.receipt_location_code}</p>}
+                          {r.material_details.map((m, i) => <p key={`${m.sku}-${i}`} className="mt-1 tabular-nums">{m.sku}: ใช้ผลิต {m.used_qty} · เสียเพิ่ม {m.scrap_qty} · รวมตัด {m.total_qty} {m.stock_unit}{m.scrap_cause && ` (${m.scrap_cause})`}</p>)}
+                          {r.material_reason && <p className="mt-1">เหตุผลยอดใช้จริง: {r.material_reason}</p>}
+                        </details>
+                      )}
                       </td>
                     </tr>
                   ))}

@@ -1,0 +1,53 @@
+#production-print-root {
+  position: fixed; inset: 0; z-index: 100; overflow: auto;
+  background: #e8eeeb; color: #111827;
+}
+.production-print-toolbar {
+  position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap;
+  align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; background: white; border-bottom: 1px solid #d1d5db;
+}
+.production-print-toolbar h2 { font-size: 16px; font-weight: 700; }
+.production-print-toolbar > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.production-print-toolbar button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 14px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.production-print-toolbar button:last-child { background: #06402b; color: white; }
+.production-print-toolbar button:disabled { cursor: default; opacity: .45; }
+.production-print-toolbar p { width: 100%; color: #b42318; font-size: 13px; }
+.production-work-order-sheets { width: 210mm; margin: 20px auto; zoom: var(--production-print-scale, 1); }
+.production-work-order-sheet { display: flex; flex-direction: column; min-height: 297mm; padding: 14mm; margin-bottom: 20px; background: white; font-size: 13px; line-height: 1.6; }
+.production-work-order-sheet > * { flex-shrink: 0; }
+.production-work-order-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111; padding-bottom: 12px; }
+.production-work-order-heading h1 { font-size: 24px; font-weight: 800; }
+.production-work-order-heading p { font-size: 12px; }
+.production-work-order-table { font-size: 18px; font-weight: 700; white-space: nowrap; }
+.production-work-order-table strong { font-size: 32px; }
+.production-work-order-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 12px 0; }
+.production-work-order-product { border: 1px solid #555; padding: 12px; margin-bottom: 16px; }
+.production-work-order-product h2 { font-size: 18px; font-weight: 800; }
+.production-work-order-product p { font-size: 12px; overflow-wrap: anywhere; }
+.production-work-order-sheet h3 { font-size: 15px; font-weight: 800; }
+.production-work-order-bom { margin-bottom: 8px; font-size: 12px; }
+.production-work-order-materials { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.production-work-order-materials th, .production-work-order-materials td { border: 1px solid #777; padding: 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.production-work-order-materials th { background: #f1f5f3; font-weight: 700; }
+.production-work-order-materials .production-work-order-index { width: 10%; text-align: center; }
+.production-work-order-materials .production-work-order-qty { width: 22%; text-align: right; }
+.production-work-order-location + .production-work-order-location { margin-top: 5px; }
+.production-work-order-location span { display: block; font-size: 11px; }
+.production-work-order-note { margin-top: 14px; overflow-wrap: anywhere; }
+.production-work-order-signature { margin-top: 16px; text-align: right; break-inside: avoid; }
+.production-work-order-error { color: #b42318; margin: 8px 0; }
+@media print {
+  @page production-work-order { size: A4 portrait; margin: 12mm; }
+  html.production-print-open, body.production-print-open { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; }
+  body.production-print-open > :not(#production-print-root) { display: none !important; }
+  #production-print-root { position: static !important; overflow: visible !important; background: white; }
+  #production-print-root .production-print-toolbar { display: none !important; }
+  .production-work-order-sheets { width: auto; max-width: none; margin: 0; zoom: 1; }
+  #production-print-root .production-work-order-sheet { page: production-work-order; min-height: 272mm; padding: 0; margin: 0; color: #000; font-size: 13px; box-shadow: none; }
+  .production-work-order-sheet + .production-work-order-sheet { break-before: page; }
+  .production-work-order-heading, .production-work-order-product, .production-work-order-materials tr { break-inside: avoid; }
+  .production-work-order-sheet h3 { break-after: avoid; }
+  .production-work-order-materials thead { display: table-header-group; }
+  .production-work-order-materials th { background: white; }
+}

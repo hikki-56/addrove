@@ -2,6 +2,8 @@ import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { OutboundBillNote, StockSummary } from "@/types/models";
 import { isBillReserving } from "./outbound-state-machine";
 import { listBillDocuments, parseBillNote } from "./outbound-documents";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
+import { query } from "@/server/repositories/postgres/database";
 
 /**
  * Stock Reservation — จองสต็อกเมื่อเริ่มหยิบ เพื่อกันสองบิลถูกส่งไปหยิบ
@@ -98,6 +100,10 @@ export async function getAvailability(
   for (const e of reservedEntries) {
     if (options?.excludeBillId && e.bill_document_id === options.excludeBillId) continue;
     reservedByProduct.set(e.product_id, (reservedByProduct.get(e.product_id) || 0) + e.qty);
+  }
+  if (getStorageDriver() === "postgres") {
+    const production = await query("SELECT product_id,sum(quantity) AS quantity FROM production_material_reservations GROUP BY product_id");
+    for (const row of production) reservedByProduct.set(String(row.product_id), (reservedByProduct.get(String(row.product_id)) || 0) + Number(row.quantity));
   }
 
   return items.map((it) => {

@@ -390,14 +390,7 @@ export function buildMigrationModel(snapshot: Snapshot): MigrationModel {
             seen.add(value);
         }
     }
-    const fg = new Set<string>();
-    for (const row of table("bom_formulas")) {
-        if (!row.active)
-            continue;
-        const sku = String(row.fg_sku);
-        if (fg.has(sku))
-            model.errors.push("bom_formulas: duplicate active finished-goods SKU");
-        fg.add(sku);
-    }
+    // Distinct bom_id values may describe alternative active recipes for one SKU.
+    // Duplicate BOM identities are already archived when reading BOM_Headers.
     return model;
 }

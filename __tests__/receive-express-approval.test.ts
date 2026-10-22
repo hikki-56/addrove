@@ -16,7 +16,7 @@ jest.mock("@/server/locking", () => ({
 jest.mock("@/server/audit", () => ({ logAudit: jest.fn(async () => null) }));
 jest.mock("@/server/document-status-store", () => ({ setDocumentStatus: jest.fn() }));
 jest.mock("@/server/idempotency", () => ({}));
-jest.mock("@/app/api/express-import/status/route", () => ({ expressStatusMap: new Map() }));
+jest.mock("@/server/express-status-cache", () => ({ expressStatusMap: new Map() }));
 jest.mock("@/server/google-sheets/client", () => ({
   SHEETS: { PRODUCTS: "PRODUCTS", EXPRESS_RECEIVE: "ExpressReceive" },
   getWarehouseSheetName: (id: string) => id,
@@ -26,7 +26,7 @@ jest.mock("@/server/google-sheets/client", () => ({
 
 import { getRepository } from "@/server/repositories";
 import { appendRows, readSheet, SHEETS } from "@/server/google-sheets/client";
-import { expressStatusMap } from "@/app/api/express-import/status/route";
+import { expressStatusMap } from "@/server/express-status-cache";
 import { POST as approve } from "@/app/api/approvals/[id]/approve/route";
 import { GET as receiveExpress } from "@/app/api/express-import/receive/route";
 

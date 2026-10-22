@@ -58,12 +58,12 @@ function createHook(options) {
     useRef: (value) => ({ current: value }),
     useEffect: () => {},
   };
-  const { useWarehouseData } = compile("src/hooks/use-warehouse-data.ts", (name) => {
+  const { useWarehouseData: createWarehouseData } = compile("src/hooks/use-warehouse-data.ts", (name) => {
     if (name === "react") return reactBoundary;
     if (name === "@/lib/warehouse-utils") return warehouse;
     throw new Error(`Unexpected import: ${name}`);
   });
-  return { hook: useWarehouseData({ initialWarehouseId: "wh-01", ...options }), states };
+  return { hook: createWarehouseData({ initialWarehouseId: "wh-01", ...options }), states };
 }
 
 function installSyntheticFetch({ productRows, delays, productPrefix = "product", failProducts = false }) {

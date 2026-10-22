@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import BomPlanFields from "@/features/production/components/BomPlanFields";
+import type { ProductionCapacity, ProductionBomSelection } from "@/types/production-bom";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
 import type { Product } from "@/types/models";
 import type { ProductionJob, ProductionPriority } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
-import { editRuleHint, formatQty } from "./ui";
+import { formatQty } from "./ui";
 import { parseQtyInput } from "@/features/production/lib/quantity";
 import { canEditField } from "@/features/production/lib/job-form";
 import { M3Banner, M3Dialog, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
 import { SolarCheckCircle, SolarFactory, SolarFlag } from "@/components/icons";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
-// — เลือกสินค้าจากรายการสินค้าจริงในระบบ (ProductSearchInput → /api/products)
+// — เลือกเฉพาะสินค้าสำเร็จรูปที่มี BOM เปิดใช้งานและมีรายการวัตถุดิบ
 
 export interface AddJobFormValue {
+  bom?: ProductionBomSelection;
   production_date: string;
   table_no: number;
   product_id: string;
@@ -56,6 +59,9 @@ export default function AddJobModal({
   useEscapeKey(open && !submitting, onClose);
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [bomError, setBomError] = useState<string | null>(null);
   const [form, setForm] = useState<AddJobFormValue>({
     production_date: defaultDate || "",
     table_no: defaultTable,
@@ -70,25 +76,33 @@ export default function AddJobModal({
     reason: "",
   });
 
-  // โหลดรายการสินค้าเมื่อเปิด modal — เฉพาะสินค้าที่มีอยู่จริงในโกดัง 2 (คลังผลิต, warehouse_id = wh-02
-  // ให้ตรงกับคลังที่เซิร์ฟเวอร์รับผลผลิตเข้า PRODUCTION_RECEIVE_WAREHOUSE — เดิมใช้ wh-2 ซึ่งไม่มีใน master)
-  // (ไม่ใส่ limit — เรียกแบบไม่มี limit จะได้ data เป็น array ตรง ๆ แบบ legacy)
+  // จับคู่ทะเบียนสินค้ากับสินค้าปลายทางของ BOM ไม่จำกัดว่าต้องมีสต็อกแล้ว
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/products?active=true&warehouse_id=wh-02", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled || !json.success) return;
+    setProducts([]);
+    setCapacities({});
+    setProductsError(null);
+    Promise.all([
+      fetch("/api/products?active=true&master_only=true", { cache: "no-store" }).then(r => r.json()),
+      fetch(`/api/production/capacities${job?.job_no ? `?job_no=${encodeURIComponent(job.job_no)}` : ""}`, { cache: "no-store" }).then(r => r.json()),
+    ])
+      .then(([json, bomJson]) => {
+        if (cancelled) return;
+        if (!json.success || !bomJson.success) throw new Error("โหลดสินค้าที่มีสูตรการผลิตไม่สำเร็จ กรุณาปิดและเปิดฟอร์มอีกครั้ง");
         // รองรับทั้ง data ตรง ๆ และแบบแบ่งหน้า { items: [...] }
         const list = Array.isArray(json.data) ? json.data : Array.isArray(json.data?.items) ? json.data.items : null;
-        if (list) setProducts(list as Product[]);
+        if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าหรือสูตรการผลิตไม่ถูกต้อง กรุณาลองใหม่");
+        const rows = bomJson.data as ProductionCapacity[];
+        const formulaProducts = new Set(rows.map(f => f.product_id));
+        setCapacities(Object.fromEntries(rows.map(c => [c.product_id, c])));
+        setProducts((list as Product[]).filter(p => formulaProducts.has(p.product_id)));
       })
-      .catch(() => {});
+      .catch(e => { if (!cancelled) setProductsError(e instanceof Error ? e.message : "โหลดสินค้าที่มีสูตรไม่สำเร็จ"); });
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, job?.job_no]);
 
   // รีเซ็ตฟอร์มทุกครั้งที่เปิด
   useEffect(() => {
@@ -106,6 +120,7 @@ export default function AddJobModal({
         note: job.note || "",
         location: job.location || "",
         reason: "",
+        bom: job.material_plan?.selection,
       });
     } else {
       setForm({
@@ -139,13 +154,16 @@ export default function AddJobModal({
   // ตรวจจำนวนเป้าหมายแบบนับตำแหน่งทศนิยมจากข้อความ (สูตรเดิม Math.round(v*100) === v*100 ปฏิเสธ 2.3, 1.15)
   const qtyParse = useMemo(() => parseQtyInput(form.target_qty, { allowEmpty: false, allowZero: false }), [form.target_qty]);
   const qtyInvalid = !qtyParse.ok && !qtyParse.empty;
+  const changeBom = useCallback((bom: ProductionBomSelection | undefined, unit?: string) => setForm(f => ({ ...f, bom, unit: unit || f.unit })), []);
   const formError = useMemo(() => {
     if (!form.production_date) return "กรุณาเลือกวันที่ผลิต";
+    if (productsError) return productsError;
     if (!form.product_id) return "กรุณาเลือกสินค้าจากรายการ";
+    if (bomError) return bomError;
     if (!qtyParse.ok) return qtyParse.empty ? "จำนวนเป้าหมายต้องมากกว่า 0" : `จำนวนเป้าหมาย: ${qtyParse.error}`;
     if (needReason && !form.reason.trim()) return "การแก้ไขงานที่ส่งแล้วต้องระบุเหตุผล";
     return null;
-  }, [form.production_date, form.product_id, qtyParse, needReason, form.reason]);
+  }, [form.production_date, form.product_id, qtyParse, needReason, form.reason, bomError, productsError]);
 
   if (!open) return null;
 
@@ -163,7 +181,7 @@ export default function AddJobModal({
   return (
     <M3Dialog
       title={isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต (ฉบับร่าง)"}
-      subtitle={isEdit && job ? `${job.job_no} · ${PRODUCTION_JOB_STATUS_LABELS[job.status]}` : undefined}
+      subtitle={isEdit && job ? job.job_no : undefined}
       hint={isEdit ? undefined : "เฉพาะผู้ดูแลระบบ (Admin)"}
       icon={<SolarFactory size={26} />}
       widthClass="sm:max-w-[560px]"
@@ -185,10 +203,9 @@ export default function AddJobModal({
       }
     >
       {error && <M3ErrorBanner message={error} />}
-      {isEdit && job && job.status !== "DRAFT" && <M3Banner tone="info">{editRuleHint(job.status)}</M3Banner>}
 
       <div>
-        <span className={m3Cls.label}>โต๊ะผลิต (1–5)</span>
+        <span className={m3Cls.label}>โต๊ะผลิต</span>
         <div className="mt-1.5 flex gap-2" role="group" aria-label="โต๊ะผลิต">
           {PRODUCTION_TABLES.map((t) => (
             <button
@@ -218,16 +235,22 @@ export default function AddJobModal({
       </label>
 
       <div>
-        <span className={m3Cls.label}>สินค้า (โกดัง 2)</span>
+        <span className={m3Cls.label}>สินค้าสำเร็จรูป</span>
         <div className="mt-1.5">
           {canEditProduct ? (
             <ProductSearchInput
               products={products}
-              placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
+              showStock={false}
+              renderProductMeta={p => {
+                const c = capacities[p.product_id];
+                return <span className={`text-right text-xs font-semibold ${c?.quantity === 0 ? "text-m3-error-dark" : c?.quantity != null ? "text-m3-primary-dark" : "text-m3-grey-500"}`}>ผลิตได้ <strong className="font-bold tabular-nums">{c?.quantity == null ? "—" : formatQty(c.quantity)}</strong>{c?.unit ? ` ${c.unit}` : ""}</span>;
+              }}
+              placeholder="ค้นหาสินค้าสำเร็จรูป / SKU / บาร์โค้ด"
               onSelectProduct={(p) =>
                 setForm((f) => ({
                   ...f,
                   product_id: p.product_id,
+                  bom: undefined,
                   product_name: p.product_name,
                   sku: p.sku,
                   unit: p.base_unit || "ชิ้น",
@@ -248,6 +271,9 @@ export default function AddJobModal({
           ) : null}
         </div>
       </div>
+
+      <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
+        disabled={isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING"} onChange={changeBom} onValidation={setBomError} />
 
       <label className="block">
         <span className={m3Cls.label}>เป้าหมายสินค้าดี</span>
@@ -290,25 +316,23 @@ export default function AddJobModal({
       </div>
 
       <label className="block">
-        <span className={m3Cls.label}>ตำแหน่งเก็บตอนรับเข้าโกดัง 2 (ไม่บังคับ)</span>
+        <span className={m3Cls.label}>ตำแหน่งเก็บที่เสนอ</span>
         <input
           type="text"
           value={form.location}
           disabled={!canEditLocation}
           onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-          placeholder="เช่น 2A-05"
           className={`mt-1.5 tabular-nums ${m3Cls.input}`}
         />
       </label>
 
       <label className="block">
-        <span className={m3Cls.label}>หมายเหตุ (ถ้ามี)</span>
+        <span className={m3Cls.label}>หมายเหตุ</span>
         <textarea
           rows={2}
           value={form.note}
           disabled={false}
           onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-          placeholder="เช่น เตรียมวัตถุดิบให้ก่อน 10:00"
           className={`mt-1.5 resize-none ${m3Cls.input}`}
         />
       </label>
@@ -322,11 +346,12 @@ export default function AddJobModal({
             rows={2}
             value={form.reason}
             onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-            placeholder="เช่น ลูกค้าเพิ่มออเดอร์ ต้องเพิ่มเป้าหมาย"
             className={`mt-1.5 resize-none ${m3Cls.input}`}
           />
         </label>
       )}
+
+      {formError && !error && <p role="alert" className="text-sm font-semibold text-m3-error-dark">{formError}</p>}
     </M3Dialog>
   );
 }

@@ -271,6 +271,7 @@ export class PostgresStockSummaryRepository {
         delta: number;
     }[]): Promise<void> {
         await withDatabaseTransaction(async () => {
+            const reducedStocks = new Map<string, { product_id: string; warehouse_id: string }>();
             for (const change of changes) {
                 if (!Number.isFinite(change.delta))
                     throw new StockValidationError("Invalid stock delta");
@@ -282,13 +283,32 @@ export class PostgresStockSummaryRepository {
                 const rows = await query("UPDATE stock_summary SET quantity=quantity+$4,last_updated=now(),listed_in_warehouse=true WHERE product_id=$1 AND warehouse_id=$2 AND location_id=$3 AND quantity+$4>=0 RETURNING quantity", [prod, wh, loc, change.delta]);
                 if (!rows.length)
                     throw new InsufficientStockError("สต็อกไม่เพียงพอ ไม่สามารถทำให้ยอดติดลบได้");
+                if (change.delta < 0)
+                    reducedStocks.set(JSON.stringify([prod, wh]), { product_id: prod, warehouse_id: wh });
+            }
+            // Check the whole batch after both sides of a same-warehouse move.
+            // A violation rolls back the surrounding stock/document transaction.
+            if (reducedStocks.size) {
+                const reservedStocks = await query(`SELECT r.product_id,r.warehouse_id,p.sku,sum(r.quantity) AS reserved,
+                    coalesce((SELECT sum(s.quantity) FROM stock_summary s JOIN locations l USING(location_id)
+                        WHERE s.product_id=r.product_id AND s.warehouse_id=r.warehouse_id AND l.active),0) AS on_hand
+                    FROM production_material_reservations r
+                    JOIN jsonb_to_recordset($1::jsonb) AS affected(product_id text,warehouse_id text)
+                        ON affected.product_id=r.product_id AND affected.warehouse_id=r.warehouse_id
+                    JOIN products p ON p.product_id=r.product_id
+                    GROUP BY r.product_id,r.warehouse_id,p.sku HAVING sum(r.quantity)>0`, [JSON.stringify([...reducedStocks.values()])]);
+                const shortage = reservedStocks.find(row => Number(row.on_hand) < Number(row.reserved));
+                if (shortage)
+                    throw new InsufficientStockError(`${shortage.sku}: สต็อกถูกจองให้งานผลิต ${shortage.reserved} หน่วย รายการนี้จะเหลือเพียง ${shortage.on_hand} หน่วย กรุณาลดจำนวนหรือยกเลิกการจองก่อน`);
             }
         });
     }
     async rebuild(): Promise<void> {
         await withDatabaseTransaction(async () => {
             await query("UPDATE stock_summary s SET quantity=s.opening_quantity+coalesce((SELECT sum(m.qty_change) FROM stock_movements m WHERE m.product_id=s.product_id AND m.warehouse_id=s.warehouse_id AND m.location_id=s.location_id),0),last_updated=now()");
-            await query("INSERT INTO stock_summary(product_id,warehouse_id,location_id,quantity) SELECT product_id,warehouse_id,location_id,sum(qty_change) FROM stock_movements GROUP BY product_id,warehouse_id,location_id ON CONFLICT DO NOTHING");
+            // Existing balances may have a positive opening and net-negative usage.
+            // Skip them before INSERT, whose nonnegative check runs before ON CONFLICT.
+            await query("INSERT INTO stock_summary(product_id,warehouse_id,location_id,quantity) SELECT m.product_id,m.warehouse_id,m.location_id,sum(m.qty_change) FROM stock_movements m WHERE NOT EXISTS (SELECT 1 FROM stock_summary s WHERE s.product_id=m.product_id AND s.warehouse_id=m.warehouse_id AND s.location_id=m.location_id) GROUP BY m.product_id,m.warehouse_id,m.location_id ON CONFLICT DO NOTHING");
         });
     }
 }

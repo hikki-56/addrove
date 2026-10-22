@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import type { Product } from "@/types/models";
 import { matchesBarcodeLast4 } from "@/lib/barcode-utils";
 
@@ -15,6 +15,8 @@ interface ProductSearchInputProps {
   className?: string;
   inputClassName?: string;
   size?: "default" | "lg";
+  showStock?: boolean;
+  renderProductMeta?: (product: Product) => ReactNode;
 }
 
 export default function ProductSearchInput({
@@ -28,6 +30,8 @@ export default function ProductSearchInput({
   className = "",
   inputClassName = "",
   size = "default",
+  showStock = true,
+  renderProductMeta,
 }: ProductSearchInputProps) {
   const [internalQuery, setInternalQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -309,12 +313,13 @@ export default function ProductSearchInput({
                     </div>
 
                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      {renderProductMeta?.(p)}
                       {/* Far Right: Stock Balance Text (Black & Frameless) */}
-                      <div className="text-right shrink-0">
+                      {showStock && <div className="text-right shrink-0">
                         <span className="text-xs text-m3-grey-600 font-medium">
                           คงเหลือ <strong className="text-m3-grey-800 tabular-nums font-bold text-sm">{(p.quantity ?? p.total_quantity ?? 0).toLocaleString()}</strong> ชิ้น
                         </span>
-                      </div>
+                      </div>}
 
                       {isSelected && (
                         <span className="m3-label m3-label-primary shrink-0">

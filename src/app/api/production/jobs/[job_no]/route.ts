@@ -27,6 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ job_
     if (!detail) {
       return NextResponse.json({ success: false, message: "ไม่พบใบสั่งผลิตนี้" }, { status: 404 });
     }
+    if (guard.actor.role === "APPROVER" && detail.job.status === "DRAFT") return NextResponse.json({ success: false, message: "งานนี้ยังไม่ได้ยืนยันส่งผลิต" }, { status: 403 });
     return NextResponse.json({ success: true, data: detail });
   } catch (error) {
     return productionErrorResponse(error);

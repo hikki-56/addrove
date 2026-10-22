@@ -380,7 +380,6 @@ export default function ProductionSummaryPage() {
               </tbody>
             </table>
           </div>
-          <p className="px-6 py-3 text-xs text-m3-grey-500">ยอดขาด/เกินนับเฉพาะสินค้าดี · ไม่รวมยอดต่างหน่วย · แถวละ 1 สินค้า × 1 โต๊ะ</p>
         </div>
       )}
     </div>
