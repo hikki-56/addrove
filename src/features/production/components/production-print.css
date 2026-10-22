@@ -51,3 +51,14 @@
   .production-work-order-materials thead { display: table-header-group; }
   .production-work-order-materials th { background: white; }
 }
+/* ใบรายงานผลผลิต (ต่อรอบ) — ใช้ #production-print-root เดียวกับใบงาน จึงพิมพ์ทีละชุด */
+.production-report-brand { font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+.production-report-qty { margin-bottom: 14px; }
+.production-report-qty td { font-size: 16px; font-weight: 700; }
+.production-work-order-materials .production-report-num { width: 12%; text-align: right; }
+.production-report-reasons { margin-bottom: 14px; }
+.production-report-reasons > div { display: flex; gap: 8px; }
+.production-report-reasons dt { font-weight: 700; white-space: nowrap; }
+.production-report-reasons dd { overflow-wrap: anywhere; }
+.production-report-signatures { display: flex; justify-content: space-around; gap: 24px; margin-top: 48px; text-align: center; break-inside: avoid; }
+.production-report-signatures p { margin-top: 4px; }

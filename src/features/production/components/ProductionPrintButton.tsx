@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { productionApi } from "@/features/production/lib/api";
@@ -51,6 +51,19 @@ export default function ProductionPrintButton({ jobs, disabled = false }: { jobs
 
 function ProductionPrintPreview({ jobs, onClose }: { jobs: ProductionJob[]; onClose: () => void }) {
   const entries = useMemo(() => buildProductionPrintJobs(jobs), [jobs]);
+  const invalid = entries.some(entry => entry.issues.length > 0);
+  return <ProductionPrintPortal title={`ตัวอย่างใบงานผลิต · ${entries.length} ใบ`} onClose={onClose} blockedMessage={invalid ? "กรุณาให้ Admin ตรวจสูตรวัตถุดิบก่อนพิมพ์" : null}>
+    <ProductionWorkOrderSheets entries={entries} />
+  </ProductionPrintPortal>;
+}
+
+/**
+ * หน้าต่างตัวอย่างก่อนพิมพ์ (portal ไป body เป็น #production-print-root)
+ * ตอนพิมพ์ CSS ซ่อนลูกอื่นของ body ทั้งหมด → พิมพ์เฉพาะเอกสารใน portal นี้ (เปิดได้ทีละอัน)
+ */
+export function ProductionPrintPortal({ title, onClose, blockedMessage = null, autoPrint = false, children }: {
+  title: string; onClose: () => void; blockedMessage?: string | null; autoPrint?: boolean; children: ReactNode;
+}) {
   const closeButton = useRef<HTMLButtonElement>(null);
   const [printing, setPrinting] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
@@ -74,20 +87,26 @@ function ProductionPrintPreview({ jobs, onClose }: { jobs: ProductionJob[]; onCl
       if (previous?.isConnected) previous.focus();
     };
   }, []);
-  const print = async () => {
+  const print = useCallback(async () => {
     setPrinting(true); setError(null);
     try { await document.fonts.ready; window.print(); }
     catch { setError("เปิดหน้าพิมพ์ไม่สำเร็จ กรุณาลองใหม่"); }
     finally { setPrinting(false); }
-  };
-  const invalid = entries.some(entry => entry.issues.length > 0);
+  }, []);
+  const autoPrinted = useRef(false);
+  useEffect(() => {
+    if (!autoPrint || blockedMessage || autoPrinted.current) return;
+    autoPrinted.current = true;
+    const id = window.setTimeout(() => { void print(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [autoPrint, blockedMessage, print]);
   return createPortal(<div id="production-print-root" role="dialog" aria-modal="true" aria-labelledby="production-print-title" style={{ "--production-print-scale": previewScale } as CSSProperties}>
     <div className="production-print-toolbar">
-      <h2 id="production-print-title">ตัวอย่างใบงานผลิต · {entries.length} ใบ</h2>
-      <div><button ref={closeButton} type="button" onClick={onClose} disabled={printing}>ปิด</button><button type="button" onClick={print} disabled={printing || invalid}>{printing ? "กำลังเปิดหน้าพิมพ์…" : "พิมพ์ / บันทึก PDF"}</button></div>
-      {invalid && <p role="alert">กรุณาให้ Admin ตรวจสูตรวัตถุดิบก่อนพิมพ์</p>}
+      <h2 id="production-print-title">{title}</h2>
+      <div><button ref={closeButton} type="button" onClick={onClose} disabled={printing}>ปิด</button><button type="button" onClick={print} disabled={printing || !!blockedMessage}>{printing ? "กำลังเปิดหน้าพิมพ์…" : "พิมพ์ / บันทึก PDF"}</button></div>
+      {blockedMessage && <p role="alert">{blockedMessage}</p>}
       {error && <p role="alert">{error}</p>}
     </div>
-    <ProductionWorkOrderSheets entries={entries} />
+    {children}
   </div>, document.body);
 }

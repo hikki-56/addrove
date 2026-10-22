@@ -18,6 +18,7 @@ import { buildJobPatch } from "@/features/production/lib/job-form";
 import { formatHistoryDetail, historyActionLabel } from "@/features/production/lib/history";
 import ReportModal from "@/features/production/components/ReportModal";
 import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
+import ProductionReportPrintButton from "@/features/production/components/ProductionReportPrintButton";
 import { ProductionMaterialSummary } from "@/features/production/components/MaterialStockLocations";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ReasonModal, AdjustModal, ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
@@ -363,7 +364,10 @@ export default function ProductionJobDetailPage() {
                     <span className="text-[15px] font-bold text-m3-grey-800">
                       {r.kind === "ADJUSTMENT" ? "ปรับปรุงยอด" : `รอบที่ ${r.report_no}`}
                     </span>
-                    <span className="text-xs text-m3-grey-500">{formatDateTime(r.reported_at)}</span>
+                    <span className="flex items-center gap-2 text-xs text-m3-grey-500">
+                      {formatDateTime(r.reported_at)}
+                      <ProductionReportPrintButton job={job} report={r} />
+                    </span>
                   </div>
                   <p className="mt-0.5 text-xs text-m3-grey-500">
                     {r.reported_by_name}
@@ -409,6 +413,7 @@ export default function ProductionJobDetailPage() {
                     <th className="m3-num">เสียรอบนี้</th>
                     <th className="m3-num">ดีสะสม</th>
                     <th>สาเหตุ/เหตุผล</th>
+                    <th className="w-px"><span className="sr-only">ปริ้น</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -441,6 +446,7 @@ export default function ProductionJobDetailPage() {
                         </details>
                       )}
                       </td>
+                      <td className="align-top"><ProductionReportPrintButton job={job} report={r} /></td>
                     </tr>
                   ))}
                 </tbody>
