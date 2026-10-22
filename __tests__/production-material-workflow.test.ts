@@ -322,7 +322,7 @@ test("frozen recipe, actual component scrap, partial receipts and final backorde
   await startJob(actor, f.job.job_no);
   await query("UPDATE bom_formula_items SET rm_qty_required=99 WHERE bom_item_id=$1", [f.mainId]);
   const partial = { good_qty: 1, defect_qty: 1, defect_cause: "ประกอบแล้วเสีย", note: "", photo_url: "", report_kind: "PARTIAL" as const, close_reason: "", idempotency_key: "material-partial", receipt_location_id: "fg-A",
-    materials: [{ item_id: f.mainId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 1, scrap_qty: 1, scrap_cause: "แผงขาดก่อนประกอบ" }] };
+    materials: [{ item_id: f.mainId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 2, scrap_qty: 1, scrap_cause: "แผงขาดก่อนประกอบ" }] };
   await reportProduction(actor, f.job.job_no, partial);
   await reportProduction(actor, f.job.job_no, partial);
   expect(await f.repo.movements.getBalance(f.fg.product_id, "wh-02", "fg-A")).toBe(1);

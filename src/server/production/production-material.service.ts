@@ -160,8 +160,10 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
     if (!a || !isValidProductionStockQuantity(a.used_qty, i.stock_unit) || !isValidProductionStockQuantity(a.scrap_qty, i.stock_unit)) throw new ProductionError(`${i.sku}: จำนวนใช้จริงหรือของเสียไม่ถูกต้องตามหน่วยสต็อก`);
     if (a.scrap_qty > 0 && !a.scrap_cause.trim()) throw new ProductionError(`${i.sku}: มีวัตถุดิบเสียต้องระบุสาเหตุ`);
     const expected = report.good_qty > 0 ? i.stock_qty! : 0;
-    if (a.used_qty !== expected && !input.material_reason?.trim()) throw new ProductionError("ยอดใช้จริงต่างจากสูตร ต้องระบุเหตุผล");
-    return { ...i, ...a, expected_qty: expected, total_qty: round(a.used_qty + a.scrap_qty) };
+    // ยอดเบิก (used_qty) รวมของเสียไว้แล้ว: ตัดสต็อกเท่ายอดเบิก, ส่วนที่ใช้ได้ = เบิก − เสีย
+    if (a.scrap_qty > a.used_qty) throw new ProductionError(`${i.sku}: ของเสียมากกว่ายอดเบิกไม่ได้`);
+    if (round(a.used_qty - a.scrap_qty) !== expected && !input.material_reason?.trim()) throw new ProductionError("ยอดใช้จริงต่างจากสูตร ต้องระบุเหตุผล");
+    return { ...i, ...a, expected_qty: expected, total_qty: round(a.used_qty) };
   });
   const registry = await query("SELECT product_id,base_unit,active FROM products WHERE product_id=ANY($1::text[])", [[job.product_id, ...details.map(i => i.product_id)]]);
   for (const i of details) if (!registry.some(p => p.product_id === i.product_id && p.active && p.base_unit === i.stock_unit)) throw new ProductionError(`${i.sku}: หน่วยหรือสถานะวัตถุดิบเปลี่ยนหลังวางแผน กรุณาตรวจสอบ`);
