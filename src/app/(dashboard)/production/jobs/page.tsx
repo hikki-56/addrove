@@ -55,7 +55,7 @@ export default function ProductionJobsPage() {
     } else setDateBounds({ from: toYMD(new Date(now.getTime() - 6 * 86400000)), to: toYMD(now) });
   }, [preset]);
   const [tableFilter, setTableFilter] = useState<number | "ALL">("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("WAITING");
   const [q, setQ] = useState("");
   // ส่งช่วงวันที่/โต๊ะ/สถานะให้เซิร์ฟเวอร์กรอง (รอคำนวณช่วงวันที่จาก preset ก่อน)
   const { jobs, loading, error, reload } = useProductionJobs(
