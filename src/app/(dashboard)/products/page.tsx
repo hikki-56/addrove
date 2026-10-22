@@ -5,6 +5,7 @@ import type { Product, Warehouse } from "@/types/models";
 import { STOCK_STATUS_META, getStockStatus, type StockStatus } from "@/lib/stock-status";
 import { useRouter } from "next/navigation";
 import CustomSelect from "@/components/ui/CustomSelect";
+import ProductLocationBreakdown from "@/components/products/ProductLocationBreakdown";
 import { SolarBox, SolarBoxClosed, SolarBuildings, SolarMapPoint } from "@/components/icons/solar";
 
 const STATUS_OPTIONS: StockStatus[] = ["NORMAL", "LOW", "OUT", "NEGATIVE"];
@@ -14,12 +15,6 @@ const statusMeta = (s?: string) =>
 
 const resolveStatus = (p: Product): StockStatus =>
   p.stock_status ?? getStockStatus(Number(p.total_quantity ?? p.quantity ?? 0), Number(p.minimum_stock ?? 0));
-
-const WAREHOUSE_ICON = (
-  <svg className="w-3.5 h-3.5 text-m3-primary-dark shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-  </svg>
-);
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -171,17 +166,6 @@ export default function ProductsPage() {
   const effectiveLimit = pageSize === "ALL" ? totalItems || 1 : Number(pageSize);
   const startIndex = (currentPage - 1) * effectiveLimit;
   const endIndex = pageSize === "ALL" ? totalItems : Math.min(startIndex + effectiveLimit, totalItems);
-
-  const warehouseTotalsFor = (p: Product) => {
-    const whTotals = new Map<string, { name: string; qty: number }>();
-    (p.locations_breakdown ?? []).forEach((e) => {
-      const key = e.warehouse_id || e.warehouse_name;
-      const cur = whTotals.get(key) || { name: e.warehouse_name, qty: 0 };
-      cur.qty += Number(e.quantity) || 0;
-      whTotals.set(key, cur);
-    });
-    return Array.from(whTotals.values());
-  };
 
   const displayProducts = useMemo(() => {
     const seen = new Set<string>();
@@ -460,7 +444,6 @@ export default function ProductsPage() {
                     const rowKey =
                       (p.sku || "").trim().toLowerCase().replace(/^prod-/, "") || String(idx);
                     const isExpanded = expandedSku === rowKey;
-                    const whList = warehouseTotalsFor(p);
 
                     return (
                       <React.Fragment key={`prod-row-${p.product_id || p.sku || idx}-${idx}`}>
@@ -538,32 +521,11 @@ export default function ProductsPage() {
 
                         </tr>
 
-                        {/* แถวขยาย: สินค้านี้อยู่โกดังไหนกี่ชิ้น */}
+                        {/* แถวขยาย: สินค้านี้อยู่โกดัง/ตำแหน่งไหนกี่ชิ้น */}
                         {isExpanded && (
                           <tr className="bg-[rgba(0,167,111,0.08)]">
                             <td colSpan={8} className="px-4 py-3">
-                              <div className="rounded-xl border border-[rgba(0,167,111,0.24)] bg-white p-3.5 flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-extrabold text-m3-grey-700 mr-1">อยู่ในโกดัง:</span>
-                                {whList.length === 0 ? (
-                                  <span className="text-xs text-m3-grey-600 font-medium">
-                                    ยังไม่มีข้อมูลโกดังของสินค้านี้
-                                  </span>
-                                ) : (
-                                  whList.map((w) => (
-                                    <span
-                                      key={w.name}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs"
-                                    >
-                                      {WAREHOUSE_ICON}
-                                      <span className="font-bold text-m3-grey-700">{w.name}</span>
-                                      <span className="tabular-nums num font-extrabold text-m3-primary-darker">
-                                        {w.qty.toLocaleString()}
-                                      </span>
-                                      <span className="text-m3-grey-600 font-medium">{p.base_unit || "ชิ้น"}</span>
-                                    </span>
-                                  ))
-                                )}
-                              </div>
+                              <ProductLocationBreakdown product={p} />
                             </td>
                           </tr>
                         )}
@@ -655,7 +617,6 @@ export default function ProductsPage() {
               const rowKey =
                 (p.sku || "").trim().toLowerCase().replace(/^prod-/, "") || String(idx);
               const isExpanded = expandedSku === rowKey;
-              const whList = warehouseTotalsFor(p);
 
               return (
                 <div
@@ -730,28 +691,7 @@ export default function ProductsPage() {
 
                   {isExpanded && (
                     <div className="px-4 pb-4">
-                      <div className="rounded-xl border border-[rgba(0,167,111,0.24)] bg-white p-3 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-extrabold text-m3-grey-700 mr-1">อยู่ในโกดัง:</span>
-                        {whList.length === 0 ? (
-                          <span className="text-xs text-m3-grey-600 font-medium">
-                            ยังไม่มีข้อมูลโกดังของสินค้านี้
-                          </span>
-                        ) : (
-                          whList.map((w) => (
-                            <span
-                              key={w.name}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-xs"
-                            >
-                              {WAREHOUSE_ICON}
-                              <span className="font-bold text-m3-grey-700">{w.name}</span>
-                              <span className="tabular-nums num font-extrabold text-m3-primary-darker">
-                                {w.qty.toLocaleString()}
-                              </span>
-                              <span className="text-m3-grey-600 font-medium">{p.base_unit || "ชิ้น"}</span>
-                            </span>
-                          ))
-                        )}
-                      </div>
+                      <ProductLocationBreakdown product={p} />
                     </div>
                   )}
                 </div>
