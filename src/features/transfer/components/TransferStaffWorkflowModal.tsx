@@ -304,11 +304,11 @@ export default function TransferStaffWorkflowModal({
                 <SolarBox size={28} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-base leading-snug font-bold text-m3-grey-800">{selectedTask.product_name}</p>
-                <p className="mt-0.5 text-xs tabular-nums text-m3-grey-500">
+                <p className="text-xs font-semibold tabular-nums text-black">
                   SKU: {selectedTask.sku}
                   {barcode && barcode !== selectedTask.sku ? ` · บาร์โค้ด: ${barcode}` : ""}
                 </p>
+                <p className="mt-0.5 text-base leading-snug font-bold text-m3-grey-800">{selectedTask.product_name}</p>
               </div>
             </div>
 
