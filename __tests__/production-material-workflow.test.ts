@@ -171,7 +171,7 @@ test("production result documents reject generic reversal without changing stock
 test("note-only edits work during material shortages while changed targets still revalidate reservations", async () => {
   const f = await fixture(10);
   await submitJobs(admin, [f.job.job_no]); await startJob(actor, f.job.job_no);
-  await reportProduction(actor, f.job.job_no, { good_qty: 1, defect_qty: 1, defect_cause: "ประกอบเสีย", note: "", photo_url: "", report_kind: "PARTIAL", close_reason: "", idempotency_key: "note-shortage-partial", receipt_location_id: "fg-A", materials: [{ item_id: f.mainId, used_qty: 4, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }] });
+  await reportProduction(actor, f.job.job_no, { good_qty: 1, defect_qty: 1, defect_cause: "ประกอบเสีย", note: "", photo_url: "", report_kind: "PARTIAL", close_reason: "", idempotency_key: "note-shortage-partial", receipt_location_id: "fg-A", materials: [{ item_id: f.mainId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 1, scrap_qty: 0, scrap_cause: "" }] });
   const job = (await getJobDetail(f.job.job_no))!.job;
   const reserved = await query("SELECT * FROM production_material_reservations WHERE job_no=$1 ORDER BY product_id", [job.job_no]);
   const edited = await updateJob(admin, job.job_no, { updated_at: job.updated_at, note: "รอวัตถุดิบ", reason: "แก้หมายเหตุเท่านั้น" });
@@ -322,12 +322,12 @@ test("frozen recipe, actual component scrap, partial receipts and final backorde
   await startJob(actor, f.job.job_no);
   await query("UPDATE bom_formula_items SET rm_qty_required=99 WHERE bom_item_id=$1", [f.mainId]);
   const partial = { good_qty: 1, defect_qty: 1, defect_cause: "ประกอบแล้วเสีย", note: "", photo_url: "", report_kind: "PARTIAL" as const, close_reason: "", idempotency_key: "material-partial", receipt_location_id: "fg-A",
-    materials: [{ item_id: f.mainId, used_qty: 4, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 2, scrap_qty: 1, scrap_cause: "แผงขาดก่อนประกอบ" }] };
+    materials: [{ item_id: f.mainId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 1, scrap_qty: 1, scrap_cause: "แผงขาดก่อนประกอบ" }] };
   await reportProduction(actor, f.job.job_no, partial);
   await reportProduction(actor, f.job.job_no, partial);
   expect(await f.repo.movements.getBalance(f.fg.product_id, "wh-02", "fg-A")).toBe(1);
-  expect(await f.repo.movements.getBalance(f.main.product_id, "wh-02", "raw-A")).toBe(26);
-  expect(await f.repo.movements.getBalance(f.shared.product_id, "wh-02", "raw-A")).toBe(7);
+  expect(await f.repo.movements.getBalance(f.main.product_id, "wh-02", "raw-A")).toBe(28);
+  expect(await f.repo.movements.getBalance(f.shared.product_id, "wh-02", "raw-A")).toBe(8);
   await expect(reportProduction(actor, f.job.job_no, { ...partial, good_qty: 2 })).rejects.toThrow("รหัสยืนยัน");
   const final = { ...partial, good_qty: 1, defect_qty: 0, defect_cause: "", report_kind: "FINAL" as const, close_reason: "ทำส่วนที่เหลือต่อ", create_backorder: true, idempotency_key: "material-final",
     materials: [{ item_id: f.mainId, used_qty: 2, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 1, scrap_qty: 0, scrap_cause: "" }] };

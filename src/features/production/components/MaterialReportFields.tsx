@@ -18,7 +18,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   const [reason, setReason] = useState("");
   const [locations, setLocations] = useState<Array<{ location_id: string; location_code: string }>>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const preview = useMemo(() => previewProductionBom(plan.snapshot, good + defect, plan.selection, { allowZero: true }), [plan, good, defect]);
+  const preview = useMemo(() => previewProductionBom(plan.snapshot, good, plan.selection, { allowZero: true }), [plan, good]);
   useEffect(() => {
     let live = true;
     fetch("/api/production/locations", { cache: "no-store" }).then(r => r.json()).then(json => {
@@ -31,7 +31,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   const value = useMemo(() => {
     let error = preview.issues[0] || null;
     const materials = preview.materials.map(i => {
-      const expected = good + defect > 0 ? i.stock_qty || 0 : 0;
+      const expected = good > 0 ? i.stock_qty || 0 : 0;
       const used = edits[i.item_id]?.used ?? String(expected);
       const scrap = edits[i.item_id]?.scrap ?? "0";
       const cause = edits[i.item_id]?.cause || "";
@@ -42,16 +42,16 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     });
     if (good > 0 && !location) error ||= "กรุณาเลือกตำแหน่งเก็บสินค้าดี";
     if (good > 0 && locationError) error ||= locationError;
-    const changed = materials.some((m, index) => m.used_qty !== (good + defect > 0 ? preview.materials[index].stock_qty || 0 : 0));
+    const changed = materials.some((m, index) => m.used_qty !== (good > 0 ? preview.materials[index].stock_qty || 0 : 0));
     if (changed && !reason.trim()) error ||= "ยอดใช้จริงต่างจากสูตร ต้องระบุเหตุผล";
     return { payload: { materials, receipt_location_id: location, material_reason: reason.trim() }, error };
-  }, [preview, edits, good, defect, location, locationError, reason]);
+  }, [preview, edits, good, location, locationError, reason]);
   useEffect(() => { onChange(value); }, [value, onChange]);
   const edit = (id: number, change: Edit) => setEdits(old => ({ ...old, [id]: { ...old[id], ...change } }));
   return <section className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
     <h3 className="text-sm font-bold">วัตถุดิบใช้จริง · {plan.snapshot.bom_id}</h3>
     {preview.materials.map(i => {
-      const expected = good + defect > 0 ? i.stock_qty || 0 : 0;
+      const expected = good > 0 ? i.stock_qty || 0 : 0;
       return <div key={i.item_id} className="space-y-2 rounded-lg bg-m3-grey-100 p-3 text-xs">
         <p className="font-bold">{i.name}</p>
         <div className="grid grid-cols-2 gap-2">

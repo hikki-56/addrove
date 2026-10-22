@@ -150,7 +150,7 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
   const plan = await getMaterialPlan(job.job_no);
   if (!plan) throw new ProductionError("งานนี้ยังไม่มีสูตรวัตถุดิบ กรุณาให้ Admin ผูกสูตรก่อนรายงานผล");
   if (!isValidProductionStockQuantity(report.good_qty, plan.snapshot.unit) || !isValidProductionStockQuantity(report.defect_qty, plan.snapshot.unit)) throw new ProductionError(`จำนวนสินค้าดีและสินค้าที่เสียไม่ถูกต้องตามหน่วย ${plan.snapshot.unit}`);
-  const preview = previewProductionBom(plan.snapshot, report.good_qty + report.defect_qty, plan.selection, { allowZero: true });
+  const preview = previewProductionBom(plan.snapshot, report.good_qty, plan.selection, { allowZero: true }); // ตัดวัตถุดิบตามยอดผลิตดีเท่านั้น
   // A close-only report consumes no default materials, but still validates the frozen units.
   if (preview.issues.length) throw new ProductionError(preview.issues.join(" · "));
   const actual = input.materials || [];
@@ -159,7 +159,7 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
     const a = actual.find(a => a.item_id === i.item_id);
     if (!a || !isValidProductionStockQuantity(a.used_qty, i.stock_unit) || !isValidProductionStockQuantity(a.scrap_qty, i.stock_unit)) throw new ProductionError(`${i.sku}: จำนวนใช้จริงหรือของเสียไม่ถูกต้องตามหน่วยสต็อก`);
     if (a.scrap_qty > 0 && !a.scrap_cause.trim()) throw new ProductionError(`${i.sku}: มีวัตถุดิบเสียต้องระบุสาเหตุ`);
-    const expected = report.good_qty + report.defect_qty > 0 ? i.stock_qty! : 0;
+    const expected = report.good_qty > 0 ? i.stock_qty! : 0;
     if (a.used_qty !== expected && !input.material_reason?.trim()) throw new ProductionError("ยอดใช้จริงต่างจากสูตร ต้องระบุเหตุผล");
     return { ...i, ...a, expected_qty: expected, total_qty: round(a.used_qty + a.scrap_qty) };
   });
