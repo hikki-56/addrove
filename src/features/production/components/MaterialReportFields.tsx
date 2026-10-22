@@ -49,26 +49,26 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   }, [preview, edits, good, defect, location, locationError, reason]);
   useEffect(() => { onChange(value); }, [value, onChange]);
   const edit = (id: number, change: Edit) => setEdits(old => ({ ...old, [id]: { ...old[id], ...change } }));
-  return <section className="space-y-3 rounded-lg border border-slate-200 p-3">
+  return <section className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
     <h3 className="text-sm font-bold">วัตถุดิบใช้จริง · {plan.snapshot.bom_id}</h3>
     {preview.materials.map(i => {
       const expected = good + defect > 0 ? i.stock_qty || 0 : 0;
-      return <div key={i.item_id} className="space-y-2 rounded bg-slate-50 p-2 text-xs">
+      return <div key={i.item_id} className="space-y-2 rounded-lg bg-m3-grey-100 p-3 text-xs">
         <p className="font-bold">{i.sku} · {i.name}</p>
         <p>ตามสูตร {expected} {i.stock_unit}</p>
         <MaterialStockLocations locations={plan.stock_locations} productId={i.product_id} unit={i.stock_unit} />
         <div className="grid grid-cols-2 gap-2">
-          <label>ใช้ผลิต ({i.stock_unit})<input aria-label={`ใช้ผลิต ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.used ?? String(expected)} onChange={e => edit(i.item_id, { used: e.target.value })} className="mt-1 w-full rounded border p-2" /></label>
-          <label>เสียก่อนประกอบ ({i.stock_unit})<input aria-label={`เสียก่อนประกอบ ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"} onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1 w-full rounded border p-2" /></label>
+          <label>ใช้ผลิต ({i.stock_unit})<input aria-label={`ใช้ผลิต ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.used ?? String(expected)} onChange={e => edit(i.item_id, { used: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
+          <label>เสียก่อนประกอบ ({i.stock_unit})<input aria-label={`เสียก่อนประกอบ ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"} onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
         </div>
-        {Number(edits[i.item_id]?.scrap || 0) > 0 && <label className="block">สาเหตุวัตถุดิบเสีย<input disabled={disabled} value={edits[i.item_id]?.cause || ""} onChange={e => edit(i.item_id, { cause: e.target.value })} className="mt-1 w-full rounded border p-2" /></label>}
+        {Number(edits[i.item_id]?.scrap || 0) > 0 && <label className="block">สาเหตุวัตถุดิบเสีย<input disabled={disabled} value={edits[i.item_id]?.cause || ""} onChange={e => edit(i.item_id, { cause: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
       </div>;
     })}
-    <label className="block text-xs">เหตุผลเมื่อใช้ต่างจากสูตร<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
+    <label className="block text-xs">เหตุผลเมื่อใช้ต่างจากสูตร<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
     {good > 0 && <label className="block text-sm font-bold">ตำแหน่งเก็บสินค้าดี · โกดัง 2
-      <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1 w-full rounded border bg-white p-2"><option value="">เลือกตำแหน่งเก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code}</option>)}</select>
+      <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกตำแหน่งเก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code}</option>)}</select>
       <span className="mt-1 block text-xs font-normal">รับเข้า {Math.round(good * (preview.fg_factor || 0) * 1000) / 1000} {plan.snapshot.stock_unit}</span>
     </label>}
-    {value.error && <p role="alert" className="text-xs font-bold text-rose-700">{value.error}</p>}
+    {value.error && <p role="alert" className="text-xs font-bold text-m3-error-dark">{value.error}</p>}
   </section>;
 }

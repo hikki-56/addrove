@@ -60,16 +60,16 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   }, [productId, value, targetQty, jobNo, preview, disabled]);
   if (!productId) return null;
   const factorInput = (unit: string, stockUnit: string, current: number | undefined, change: (n: number | undefined) => void) => (
-    <label className="mt-2 block text-xs text-slate-600">1 {unit} =
+    <label className="mt-2 block text-xs text-m3-grey-600">1 {unit} =
       <input aria-label={`อัตราแปลง ${unit} เป็น ${stockUnit}`} type="number" min="0.001" step="any" disabled={disabled} value={current ?? ""}
-        onChange={e => change(e.target.value === "" ? undefined : Number(e.target.value))} className="mx-2 w-24 rounded border bg-white px-2 py-1" />{stockUnit}
+        onChange={e => change(e.target.value === "" ? undefined : Number(e.target.value))} className="mx-2 h-9 w-24 px-2 text-right tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" />{stockUnit}
     </label>
   );
-  return <section className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+  return <section className="space-y-3 rounded-xl bg-m3-grey-100 p-4">
     <p className="text-sm font-bold">วัตถุดิบ · โกดัง 2</p>
-    {formula && formulas.length <= 1 && <p className="text-xs text-slate-600">{formula.bom_id}</p>}
+    {formula && formulas.length <= 1 && <p className="text-xs text-m3-grey-600">{formula.bom_id}</p>}
     {formulas.length > 1 && <label className="block text-xs font-semibold">สูตร
-      <select aria-label="สูตรการผลิต" disabled={disabled} value={selected || ""} onChange={e => { const f = formulas.find(f => f.bom_id === e.target.value); onChange(f ? { bom_id: f.bom_id, revision: f.revision } : undefined, f?.unit); }} className="mt-1 block w-full rounded border bg-white p-2 text-sm">
+      <select aria-label="สูตรการผลิต" disabled={disabled} value={selected || ""} onChange={e => { const f = formulas.find(f => f.bom_id === e.target.value); onChange(f ? { bom_id: f.bom_id, revision: f.revision } : undefined, f?.unit); }} className="mt-1.5 block h-11 w-full px-3 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
         {savedPlan && !formulas.some(f => f.bom_id === savedPlan.snapshot.bom_id) && <option value={savedPlan.snapshot.bom_id}>{savedPlan.snapshot.label}</option>}
         {formulas.map(f => <option key={f.bom_id} value={f.bom_id}>{f.label}</option>)}
       </select>
@@ -79,11 +79,11 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       {formula.unit !== formula.stock_unit && factorInput(formula.unit, formula.stock_unit, value?.fg_factor, n => onChange({ ...value!, fg_factor: n }, formula.unit))}
       {preview?.materials.map(i => {
         const stock = availability?.materials.find(m => m.item_id === i.item_id);
-        return <div key={i.item_id} className="rounded border bg-white p-2 text-sm">
+        return <div key={i.item_id} className="rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
           <p className="font-semibold">{i.sku} · {i.name}</p>
-          <p className="text-xs text-slate-500">{!i.role_confirmed ? "ยังไม่ระบุหลัก/รอง" : i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {i.stock_qty ?? "—"} {i.stock_unit}</p>
+          <p className="text-xs text-m3-grey-600">{!i.role_confirmed ? "ยังไม่ระบุหลัก/รอง" : i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {i.stock_qty ?? "—"} {i.stock_unit}</p>
           {!formula.items.find(m => m.item_id === i.item_id)?.role_confirmed && <label className="mt-1 block text-xs">หลัก / รอง
-            <select disabled={disabled} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit)} className="ml-2 rounded border p-1">
+            <select disabled={disabled} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit)} className="ml-2 h-9 px-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
               <option value="" disabled>ระบุประเภท</option><option value="1">ตัวหลัก</option><option value="0">ตัวรอง</option>
             </select>
           </label>}
@@ -91,11 +91,11 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
             const factors = { ...value?.material_factors }; if (n === undefined) delete factors[String(i.item_id)]; else factors[String(i.item_id)] = n;
             onChange({ ...value!, material_factors: factors }, formula.unit);
           })}
-          {stock && <p className={stock.shortage ? "text-xs font-bold text-rose-700" : "text-xs text-slate-500"}>พร้อมใช้ {stock.available} {i.stock_unit}{stock.shortage ? ` · ขาด ${stock.shortage}` : ""}</p>}
+          {stock && <p className={stock.shortage ? "text-xs font-bold text-m3-error-dark" : "text-xs text-m3-grey-600"}>พร้อมใช้ {stock.available} {i.stock_unit}{stock.shortage ? ` · ขาด ${stock.shortage}` : ""}</p>}
         </div>;
       })}
-      {availability?.main_capacity != null && <p className="text-sm font-bold text-emerald-800">ผลิตได้ {availability.main_capacity} {formula.unit}</p>}
+      {availability?.main_capacity != null && <p className="text-sm font-bold text-m3-primary-dark">ผลิตได้ {availability.main_capacity} {formula.unit}</p>}
     </>}
-    {validation && <p role="alert" className="text-xs font-semibold text-rose-700">{validation}</p>}
+    {validation && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{validation}</p>}
   </section>;
 }

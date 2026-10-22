@@ -41,10 +41,10 @@ export default function ProductionPrintButton({ jobs, disabled = false }: { jobs
     finally { pending.current = false; setLoading(false); }
   };
   return <div className="production-print-action">
-    <button type="button" className="rounded-lg border border-[#C9DFD4] bg-white px-4 py-2.5 text-sm font-bold text-[#06402B] hover:bg-[#EAF2EE] disabled:opacity-40" disabled={disabled || loading || !candidates.length} onClick={open}>
+    <button type="button" className="m3-btn m3-btn-outline" disabled={disabled || loading || !candidates.length} onClick={open}>
       {loading ? "กำลังโหลดใบงาน…" : "พิมพ์ใบงาน"}
     </button>
-    {error && <p role="alert" className="mt-1 max-w-sm text-xs font-semibold text-rose-700">{error}</p>}
+    {error && <p role="alert" className="mt-1 max-w-sm text-xs font-semibold text-m3-error-dark">{error}</p>}
     {printingJobs && <ProductionPrintPreview jobs={printingJobs} onClose={() => setPrintingJobs(null)} />}
   </div>;
 }
