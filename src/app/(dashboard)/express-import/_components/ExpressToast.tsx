@@ -45,10 +45,10 @@ export default function ExpressToast({
     }
   > = {
     success: {
-      container: "bg-white border-[#8FB3A3] text-[#052B1F] shadow-[0_10px_30px_rgba(6,64,43,0.12)]",
-      iconBg: "bg-[#EAF2EE] border border-[#C9DFD4]",
-      iconColor: "text-[#06402B]",
-      textColor: "text-[#052B1F]",
+      container: "bg-white border-[rgba(0,167,111,0.24)] text-m3-primary-darker shadow-[0_10px_30px_rgba(6,64,43,0.12)]",
+      iconBg: "bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)]",
+      iconColor: "text-m3-primary-dark",
+      textColor: "text-m3-primary-darker",
     },
     error: {
       container: "bg-white border-[#F3C4BA] text-[#9B1C1C] shadow-[0_10px_30px_rgba(155,28,28,0.12)]",
@@ -57,10 +57,10 @@ export default function ExpressToast({
       textColor: "text-[#9B1C1C]",
     },
     syncing: {
-      container: "bg-white border-[#D0DDD6] text-slate-800 shadow-[0_10px_30px_rgba(16,24,40,0.1)]",
-      iconBg: "bg-slate-100 border border-slate-200",
-      iconColor: "text-[#06402B]",
-      textColor: "text-slate-800",
+      container: "bg-white border-[#D0DDD6] text-m3-grey-800 shadow-[0_10px_30px_rgba(16,24,40,0.1)]",
+      iconBg: "bg-m3-grey-200 border border-m3-grey-300",
+      iconColor: "text-m3-primary-dark",
+      textColor: "text-m3-grey-800",
     },
   };
 
@@ -74,7 +74,7 @@ export default function ExpressToast({
       <div
         role={tone === "error" ? "alert" : "status"}
         aria-live="polite"
-        className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border ${currentStyle.container} backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-200 transition-all`}
+        className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border ${currentStyle.container} animate-in fade-in slide-in-from-top-4 duration-200 transition-all`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <span
@@ -130,7 +130,7 @@ export default function ExpressToast({
           type="button"
           onClick={onClose}
           aria-label="ปิดการแจ้งเตือน"
-          className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/[0.05] grid place-items-center shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06402B]"
+          className="w-8 h-8 rounded-lg text-m3-grey-500 hover:text-m3-grey-700 hover:bg-black/[0.05] grid place-items-center shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary"
         >
           <svg
             className="w-4 h-4"

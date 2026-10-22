@@ -1095,11 +1095,11 @@ export default function ExpressTransferPage() {
   return (
     <div className="w-full max-w-full space-y-5 pb-12">
       {/* Top Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-end gap-2 bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E8ECEA] shadow-sm print:hidden">
+      <div className="flex flex-wrap items-center justify-end gap-2 bg-white p-3.5 sm:p-4 rounded-xl border border-[rgba(145,158,171,0.2)] shadow-sm print:hidden">
         <button
           type="button"
           onClick={handleCopyExpressData}
-          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-m3-secondary hover:bg-m3-secondary-dark text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -1110,10 +1110,10 @@ export default function ExpressTransferPage() {
         <button
           type="button"
           onClick={handleDownloadExpressTxt}
-          className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#D5DDD9] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+          className="px-3.5 py-2 rounded-xl bg-white hover:bg-m3-grey-100 text-m3-grey-700 border border-[rgba(145,158,171,0.32)] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
           title="ดาวน์โหลดไฟล์ .txt สำหรับ Express"
         >
-          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-m3-secondary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           <span>ดาวน์โหลด .txt</span>
@@ -1122,9 +1122,9 @@ export default function ExpressTransferPage() {
         <button
           type="button"
           onClick={handlePrintBarcodes}
-          className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#D5DDD9] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+          className="px-3.5 py-2 rounded-xl bg-white hover:bg-m3-grey-100 text-m3-grey-700 border border-[rgba(145,158,171,0.32)] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
         >
-          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-m3-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
           </svg>
           <span>พิมพ์ใบสแกน</span>
@@ -1139,10 +1139,10 @@ export default function ExpressTransferPage() {
               document.exitFullscreen().catch(() => {});
             }
           }}
-          className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+          className="px-3.5 py-2 rounded-xl bg-m3-grey-800 hover:bg-m3-grey-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
           title="ขยายเต็มหน้าจอ (Fullscreen)"
         >
-          <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-m3-grey-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
           <span>เต็มจอ</span>
@@ -1154,49 +1154,49 @@ export default function ExpressTransferPage() {
         {/* All Items Card */}
         <div
           onClick={() => setTagFilter("ALL")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
             tagFilter === "ALL"
-              ? "bg-slate-100 border-slate-400 shadow-sm"
-              : "bg-white border-[#E8ECEA] hover:border-[#D5DDD9] hover:bg-slate-50/70 shadow-2xs"
+              ? "bg-m3-grey-200 border-m3-grey-500 shadow-sm"
+              : "bg-white border-[rgba(145,158,171,0.2)] hover:border-[rgba(145,158,171,0.32)] hover:bg-m3-grey-100/70 shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-slate-600">รายการย้ายทั้งหมด</div>
-          <div className="text-2xl font-black text-slate-900 mt-1 font-mono">{tagStats.total}</div>
+          <div className="text-xs font-bold text-m3-grey-600">รายการย้ายทั้งหมด</div>
+          <div className="text-2xl font-extrabold text-m3-grey-800 mt-1 tabular-nums">{tagStats.total}</div>
         </div>
 
         {/* Pending Card */}
         <div
           onClick={() => setTagFilter("PENDING")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
             tagFilter === "PENDING"
-              ? "bg-amber-100/70 border-amber-500 shadow-sm"
-              : "bg-white border-[#E8ECEA] hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs"
+              ? "bg-[rgba(255,171,0,0.16)] border-m3-warning shadow-sm"
+              : "bg-white border-[rgba(145,158,171,0.2)] hover:border-[rgba(255,171,0,0.32)] hover:bg-[rgba(255,171,0,0.08)] shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-amber-800">⏳ รอนำเข้า Express</div>
-          <div className="text-2xl font-black text-amber-900 mt-1 font-mono">{tagStats.pendingCount}</div>
+          <div className="text-xs font-bold text-m3-warning-dark">รอนำเข้า Express</div>
+          <div className="text-2xl font-extrabold text-m3-warning-dark mt-1 tabular-nums">{tagStats.pendingCount}</div>
         </div>
 
         {/* Imported Card */}
         <div
           onClick={() => setTagFilter("IMPORTED")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
             tagFilter === "IMPORTED"
-              ? "bg-[#DFEDE6]/70 border-[#0F5C3F] shadow-sm"
-              : "bg-white border-[#E8ECEA] hover:border-[#8FB3A3] hover:bg-[#EAF2EE]/40 shadow-2xs"
+              ? "bg-[rgba(0,167,111,0.16)] border-m3-primary shadow-sm"
+              : "bg-white border-[rgba(145,158,171,0.2)] hover:border-[rgba(0,167,111,0.24)] hover:bg-[rgba(0,167,111,0.08)] shadow-2xs"
           }`}
         >
-          <div className="text-xs font-bold text-[#052B1F]">✅ นำเข้าแล้ว</div>
-          <div className="text-2xl font-black text-[#04231A] mt-1 font-mono">{tagStats.importedCount}</div>
+          <div className="text-xs font-bold text-m3-primary-darker">นำเข้าแล้ว</div>
+          <div className="text-2xl font-extrabold text-m3-primary-darker mt-1 tabular-nums">{tagStats.importedCount}</div>
         </div>
       </div>
 
       {/* Filter Controls & Search (Clean Light Box) */}
-      <div className="p-4 bg-white border border-[#E8ECEA] rounded-2xl space-y-3.5 shadow-2xs print:hidden">
+      <div className="p-4 bg-white border border-[rgba(145,158,171,0.2)] rounded-xl space-y-3.5 shadow-2xs print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Search Box */}
           <div className="sm:col-span-5 relative">
-            <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-m3-grey-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -1204,12 +1204,12 @@ export default function ExpressTransferPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาบาร์โค้ด, SKU, สินค้า, แท็ก, โกดัง, เลขเอกสาร..."
-              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-slate-50 border border-[#D5DDD9] rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white transition-all font-medium"
+              className="w-full pl-10 pr-8 py-2.5 min-h-[42px] bg-m3-grey-100 border border-[rgba(145,158,171,0.32)] rounded-xl text-sm text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-secondary focus:bg-white transition-all font-medium"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-800"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-m3-grey-500 hover:text-m3-grey-800"
               >
                 ✕
               </button>
@@ -1261,7 +1261,7 @@ export default function ExpressTransferPage() {
                 type="button"
                 onClick={resetDateFilter}
                 aria-label="ล้างตัวกรองวันที่"
-                className="px-2.5 py-2 min-h-[42px] text-sm text-rose-600 hover:bg-rose-50 rounded-xl font-bold cursor-pointer flex-shrink-0 border border-rose-200"
+                className="px-2.5 py-2 min-h-[42px] text-sm text-m3-error-dark hover:bg-[rgba(255,86,48,0.08)] rounded-xl font-bold cursor-pointer flex-shrink-0 border border-[rgba(255,86,48,0.24)]"
                 title="ล้างตัวกรองวันที่"
               >
                 ✕
@@ -1276,44 +1276,44 @@ export default function ExpressTransferPage() {
         {/* Printable Header */}
         <div className="hidden print:block text-center mb-6 pb-3 border-b-2 border-black">
           <h1 className="text-xl font-bold text-black">ใบสแกนบาร์โค้ดย้ายสินค้า — Express ERP</h1>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-xs text-m3-grey-600 mt-1">
             วันที่พิมพ์: {new Date().toLocaleDateString("th-TH")} | รวม {filteredItems.length} รายการ
           </p>
         </div>
 
         {loading ? (
-          <div className="rounded-2xl p-16 text-center border border-[#E8ECEA] bg-white shadow-sm">
-            <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-600 text-sm font-medium">กำลังโหลดข้อมูลรายการย้ายสินค้า...</p>
+          <div className="rounded-xl p-16 text-center border border-[rgba(145,158,171,0.2)] bg-white shadow-sm">
+            <div className="w-8 h-8 border-3 border-m3-secondary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-m3-grey-600 text-sm font-medium">กำลังโหลดข้อมูลรายการย้ายสินค้า...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-2xl p-16 text-center border border-[#E8ECEA] bg-white shadow-sm">
-            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+          <div className="rounded-xl p-16 text-center border border-[rgba(145,158,171,0.2)] bg-white shadow-sm">
+            <div className="w-14 h-14 rounded-full bg-m3-grey-200 flex items-center justify-center mx-auto mb-3 text-m3-grey-500">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">ไม่พบรายการย้ายสินค้าที่ตรงกับเงื่อนไข</h3>
+            <h3 className="text-base font-bold text-m3-grey-800 mb-1">ไม่พบรายการย้ายสินค้าที่ตรงกับเงื่อนไข</h3>
           </div>
         ) : (
           /* Table View */
-          <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden print:border-black">
+          <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-xs overflow-hidden print:border-black">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/95 border-b border-[#E8ECEA] text-slate-700 text-sm font-bold tracking-normal print:bg-white">
-                    <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-slate-700">ลำดับ</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">เลขที่เอกสาร</th>
-                    <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-slate-700">บาร์โค้ด</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-slate-700">รหัสสินค้า</th>
-                    <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-slate-700">ชื่อสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">คลังสินค้า</th>
-                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-slate-700">ตำแหน่ง</th>
-                    <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-slate-700">จำนวน</th>
-                    <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-slate-700">สถานะ Express</th>
+                  <tr className="bg-m3-grey-100/95 border-b border-[rgba(145,158,171,0.2)] text-m3-grey-700 text-sm font-bold tracking-normal print:bg-white">
+                    <th className="py-3.5 px-3 text-center w-14 text-sm font-bold text-m3-grey-700">ลำดับ</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-m3-grey-700">เลขที่เอกสาร</th>
+                    <th className="py-3.5 px-3 text-center whitespace-nowrap text-sm font-bold text-m3-grey-700">บาร์โค้ด</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-sm font-bold text-m3-grey-700">รหัสสินค้า</th>
+                    <th className="py-3.5 px-3 min-w-[220px] text-sm font-bold text-m3-grey-700">ชื่อสินค้า</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-m3-grey-700">คลังสินค้า</th>
+                    <th className="py-3.5 px-3 whitespace-nowrap text-center text-sm font-bold text-m3-grey-700">ตำแหน่ง</th>
+                    <th className="py-3.5 px-3 text-right whitespace-nowrap text-sm font-bold text-m3-grey-700">จำนวน</th>
+                    <th className="py-3.5 px-3 text-center whitespace-nowrap print:hidden text-sm font-bold text-m3-grey-700">สถานะ Express</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF1EF] text-sm">
+                <tbody className="divide-y divide-[rgba(145,158,171,0.2)] text-sm">
                   {filteredItems.map((item, idx) => {
                     const barcodeValue = item.barcode || item.sku;
                     const isRowCopied = copiedItemId === item.id;
@@ -1328,31 +1328,31 @@ export default function ExpressTransferPage() {
                         key={`${item.id}-${idx}`}
                         className={`transition-colors border-b ${
                           isImported
-                            ? "!bg-[#DFEDE6] hover:!bg-[#C9DFD4]/80 border-[#8FB3A3]"
+                            ? "!bg-[rgba(0,167,111,0.16)] hover:!bg-[rgba(0,167,111,0.24)] border-[rgba(0,167,111,0.24)]"
                             : isSelected
-                            ? "bg-purple-50/50 hover:bg-purple-100/50 border-[#EEF1EF]"
-                            : "hover:bg-slate-50/90 border-[#EEF1EF]"
+                            ? "bg-[rgba(142,51,255,0.08)] hover:bg-[rgba(142,51,255,0.16)] border-[rgba(145,158,171,0.2)]"
+                            : "hover:bg-m3-grey-100/90 border-[rgba(145,158,171,0.2)]"
                         }`}
                       >
                         {/* 1. ลำดับ */}
-                        <td className={`py-3 px-3 text-center font-bold font-mono text-sm text-slate-500 ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
+                        <td className={`py-3 px-3 text-center font-bold tabular-nums text-sm text-m3-grey-600 ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
                           {idx + 1}
                         </td>
 
                         {/* 2. เลขที่เอกสาร */}
-                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
-                          <div className="font-mono font-bold text-slate-900 text-sm">
+                        <td className={`py-3 px-3 whitespace-nowrap ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
+                          <div className="tabular-nums font-bold text-m3-grey-800 text-sm">
                             {item.document_no}
                           </div>
                           {item.created_at && (
-                            <div className="text-xs text-slate-400 font-mono mt-0.5">
+                            <div className="text-xs text-m3-grey-500 tabular-nums mt-0.5">
                               {item.created_at}
                             </div>
                           )}
                         </td>
 
                         {/* 3. บาร์โค้ด (รูปบาร์โค้ด) */}
-                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
+                        <td className={`py-2.5 px-3 whitespace-nowrap text-center ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
                           <div className="flex flex-col items-center justify-center gap-1">
                             <BarcodeSvg
                               value={barcodeValue}
@@ -1364,14 +1364,14 @@ export default function ExpressTransferPage() {
                             <button
                               type="button"
                               onClick={() => handleCopySingleBarcode(barcodeValue)}
-                              className="text-xs font-mono text-slate-500 hover:text-purple-600 px-2 py-0.5 rounded hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-1 print:hidden"
+                              className="text-xs tabular-nums text-m3-grey-600 hover:text-m3-secondary-dark px-2 py-0.5 rounded hover:bg-m3-grey-200 transition-colors cursor-pointer inline-flex items-center gap-1 print:hidden"
                               title="คัดลอกเฉพาะเลขบาร์โค้ด"
                             >
                               {isBarcodeCopied ? (
-                                <span className="text-[#06402B] font-bold">✓ คัดลอกแล้ว</span>
+                                <span className="text-m3-primary-dark font-bold">✓ คัดลอกแล้ว</span>
                               ) : (
                                 <>
-                                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3.5 h-3.5 text-m3-grey-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                   </svg>
                                   <span>คัดลอกเลข</span>
@@ -1382,24 +1382,24 @@ export default function ExpressTransferPage() {
                         </td>
 
                         {/* 4. รหัสสินค้า */}
-                        <td className={`py-3 px-3 whitespace-nowrap font-mono font-bold text-slate-900 text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
+                        <td className={`py-3 px-3 whitespace-nowrap tabular-nums font-bold text-m3-grey-800 text-sm ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
                           {item.sku || "-"}
                         </td>
 
                         {/* 5. ชื่อสินค้า */}
-                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
-                          <div className="text-slate-900 font-semibold text-sm leading-snug" title={item.product_name}>
+                        <td className={`py-3 px-3 min-w-[220px] ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
+                          <div className="text-m3-grey-800 font-semibold text-sm leading-snug" title={item.product_name}>
                             {item.product_name}
                           </div>
                         </td>
 
                         {/* 6. คลังสินค้า (สามารถกดเปลี่ยนโกดังต้นทาง-ปลายทางได้ทันที) */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
-                          <div className="inline-flex items-center gap-1 text-slate-800 font-medium">
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
+                          <div className="inline-flex items-center gap-1 text-m3-grey-800 font-medium">
                             <select
                               value={getWarehouseName(item.from_warehouse_name || item.warehouse_name)}
                               onChange={(e) => handleUpdateRowWarehouse(item, e.target.value, item.to_warehouse_name || "สำนักงานใหญ่")}
-                              className="bg-white hover:bg-slate-50 border border-[#D5DDD9] text-slate-800 text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-slate-400 transition-colors"
+                              className="bg-white hover:bg-m3-grey-100 border border-[rgba(145,158,171,0.32)] text-m3-grey-800 text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-m3-grey-500 transition-colors"
                               title="เลือกโกดังต้นทาง"
                             >
                               {WAREHOUSE_SELECT_OPTIONS.map((w) => (
@@ -1407,12 +1407,12 @@ export default function ExpressTransferPage() {
                               ))}
                             </select>
 
-                            <span className="text-slate-400 font-bold px-0.5">➔</span>
+                            <span className="text-m3-grey-500 font-bold px-0.5">➔</span>
 
                             <select
                               value={getWarehouseName(item.to_warehouse_name || "สำนักงานใหญ่")}
                               onChange={(e) => handleUpdateRowWarehouse(item, item.from_warehouse_name || item.warehouse_name, e.target.value)}
-                              className="bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-950 text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-purple-400 transition-colors"
+                              className="bg-[rgba(142,51,255,0.08)] hover:bg-[rgba(142,51,255,0.16)] border border-[rgba(142,51,255,0.32)] text-m3-secondary-dark text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer shadow-sm hover:border-m3-secondary transition-colors"
                               title="เลือกโกดังปลายทาง"
                             >
                               {WAREHOUSE_SELECT_OPTIONS.map((w) => (
@@ -1423,32 +1423,32 @@ export default function ExpressTransferPage() {
                         </td>
 
                         {/* 7. ตำแหน่ง */}
-                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
-                          <span className="font-mono font-bold text-slate-800 text-sm">
+                        <td className={`py-3 px-3 whitespace-nowrap text-center text-sm ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
+                          <span className="tabular-nums font-bold text-m3-grey-800 text-sm">
                             {item.location && item.location !== "-" ? item.location : "-"}
                           </span>
                         </td>
 
                         {/* 8. จำนวน */}
-                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
-                          <span className="font-mono font-bold text-slate-900 text-base">
-                            {item.quantity.toLocaleString()} <span className="font-normal text-slate-500 text-xs">ชิ้น</span>
+                        <td className={`py-3 px-3 text-right whitespace-nowrap ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
+                          <span className="tabular-nums font-bold text-m3-grey-800 text-base">
+                            {item.quantity.toLocaleString()} <span className="font-normal text-m3-grey-600 text-xs">ชิ้น</span>
                           </span>
                         </td>
 
                         {/* 8. สถานะ Express */}
-                        <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-[#DFEDE6]" : ""}`}>
+                        <td className={`py-3 px-3 text-center whitespace-nowrap print:hidden ${isImported ? "!bg-[rgba(0,167,111,0.16)]" : ""}`}>
                           <select
                             value={effectiveStatus}
                             onChange={(e) => handleSetStatus(item, e.target.value as ExpressSyncStatus)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer outline-none ${
                               isImported
-                                ? "bg-[#EAF2EE] text-[#052B1F] border-[#8FB3A3] hover:bg-[#DFEDE6]"
-                                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                                ? "bg-[rgba(0,167,111,0.08)] text-m3-primary-darker border-[rgba(0,167,111,0.24)] hover:bg-[rgba(0,167,111,0.16)]"
+                                : "bg-[rgba(255,171,0,0.08)] text-m3-warning-dark border-[rgba(255,171,0,0.32)] hover:bg-[rgba(255,171,0,0.16)]"
                             }`}
                           >
-                            <option value="PENDING">⏳ รอนำเข้า</option>
-                            <option value="IMPORTED">✅ นำเข้าแล้ว</option>
+                            <option value="PENDING">รอนำเข้า</option>
+                            <option value="IMPORTED">นำเข้าแล้ว</option>
                           </select>
                         </td>
                       </tr>
@@ -1463,11 +1463,11 @@ export default function ExpressTransferPage() {
 
       {/* Batch Tag Input Modal (Clean Light Design) */}
       {showTagModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white border border-[#E8ECEA] rounded-2xl p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>🏷️ กำหนดชื่อแท็กสำหรับ Express</span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#053425]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-m3-grey-800/40">
+          <div className="w-full max-w-md bg-white border border-[rgba(145,158,171,0.2)] rounded-xl p-5 space-y-4 shadow-m3-dropdown animate-in fade-in zoom-in-95">
+            <h3 className="text-base font-bold text-m3-grey-800 flex items-center gap-2">
+              <span>กำหนดชื่อแท็กสำหรับ Express</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[rgba(0,167,111,0.16)] text-m3-primary-darker">
                 {selectedItemIds.size} รายการ
               </span>
             </h3>
@@ -1477,21 +1477,21 @@ export default function ExpressTransferPage() {
               value={customTagInput}
               onChange={(e) => setCustomTagInput(e.target.value)}
               placeholder="ระบุชื่อแท็ก..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-[#D5DDD9] rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white"
+              className="w-full px-3.5 py-2.5 bg-m3-grey-100 border border-[rgba(145,158,171,0.32)] rounded-xl text-sm text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-secondary focus:bg-white"
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowTagModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 text-xs font-bold cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
                 onClick={() => handleBatchTag(customTagInput)}
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-m3-secondary hover:bg-m3-secondary-dark text-white text-xs font-bold shadow-sm cursor-pointer"
               >
                 บันทึกแท็ก
               </button>

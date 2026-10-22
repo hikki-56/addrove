@@ -225,7 +225,7 @@ export default function UsersPage() {
         <button
           id="btn-add-staff"
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer flex-shrink-0 active:scale-95 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-xs sm:text-sm shadow-md shadow-m3-primary/20 cursor-pointer flex-shrink-0 active:scale-95 transition-all"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -237,7 +237,7 @@ export default function UsersPage() {
       {/* Filters Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-m3-grey-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -245,7 +245,7 @@ export default function UsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อพนักงาน, อีเมล..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm transition-all"
           />
         </div>
 
@@ -253,7 +253,7 @@ export default function UsersPage() {
           <select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#0F5C3F] focus:bg-white cursor-pointer transition-all"
+            className="px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 text-xs sm:text-sm font-semibold focus:outline-none focus:border-m3-grey-800 focus:bg-white cursor-pointer transition-all"
           >
             <option value="">ทุกบทบาท</option>
             <option value="ADMIN">ผู้ดูแลระบบ (Admin)</option>
@@ -266,77 +266,77 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-[#E8ECEA] shadow-xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-[rgba(145,158,171,0.2)] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-[#E8ECEA]">
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">ชื่อ-นามสกุล</th>
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">อีเมล</th>
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">บทบาท (Role)</th>
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">สิทธิ์โกดัง</th>
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider">สถานะ</th>
-                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-right">จัดการ</th>
+              <tr className="bg-m3-grey-100 text-m3-grey-600 border-b border-[rgba(145,158,171,0.2)]">
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">ชื่อ-นามสกุล</th>
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">อีเมล</th>
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">บทบาท (Role)</th>
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">สิทธิ์โกดัง</th>
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">สถานะ</th>
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF1EF] text-xs sm:text-sm">
+            <tbody className="divide-y divide-[rgba(145,158,171,0.2)] text-xs sm:text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-500 font-medium">
+                  <td colSpan={6} className="text-center py-12 text-m3-grey-600 font-medium">
                     กำลังโหลดข้อมูลพนักงาน...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-500 font-medium">
+                  <td colSpan={6} className="text-center py-12 text-m3-grey-600 font-medium">
                     ไม่พบข้อมูลพนักงาน
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((u) => (
-                  <tr key={u.user_id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-3.5 font-bold text-slate-900 text-sm">
+                  <tr key={u.user_id} className="hover:bg-m3-grey-100/80 transition-colors">
+                    <td className="px-5 py-3.5 font-bold text-m3-grey-800 text-sm whitespace-nowrap">
                       {u.full_name}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600 font-mono">
+                    <td className="px-5 py-3.5 text-m3-grey-600 tabular-nums">
                       {u.email}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       {u.role === "ADMIN" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#053425] border border-[#C9DFD4]">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border border-[rgba(0,167,111,0.24)]">
                           ผู้ดูแลระบบ
                         </span>
                       )}
                       {u.role === "APPROVER" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[rgba(255,171,0,0.16)] text-m3-warning-dark border border-[rgba(255,171,0,0.24)]">
                           ผู้อนุมัติ
                         </span>
                       )}
                       {u.role === "WAREHOUSE_STAFF" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border border-[rgba(0,167,111,0.24)]">
                           พนักงานคลัง
                         </span>
                       )}
                       {u.role === "PACKER" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[rgba(0,184,217,0.08)] text-m3-info-dark border border-[rgba(0,184,217,0.24)]">
                           พนักงานแพ็กของ
                         </span>
                       )}
                       {u.role === "VIEWER" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-[#E8ECEA]">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)]">
                           ผู้ชม
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600 text-xs font-medium">
+                    <td className="px-5 py-3.5 text-m3-grey-600 text-xs font-medium">
                       {parseWhDisplay(u.warehouse_access)}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                           u.active
-                            ? "bg-[#DFEDE6] text-[#052B1F] border border-[#C9DFD4]"
-                            : "bg-slate-100 text-slate-600 border border-[#E8ECEA]"
+                            ? "bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border border-[rgba(0,167,111,0.24)]"
+                            : "bg-m3-grey-200 text-m3-grey-600 border border-[rgba(145,158,171,0.2)]"
                         }`}
                       >
                         {u.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
@@ -346,7 +346,7 @@ export default function UsersPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(u)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-[#E8ECEA]"
+                          className="px-3 py-1.5 rounded-lg bg-m3-grey-200 hover:bg-m3-grey-300 text-m3-grey-700 text-xs font-semibold transition-colors cursor-pointer border border-[rgba(145,158,171,0.2)]"
                         >
                           แก้ไข
                         </button>
@@ -354,8 +354,8 @@ export default function UsersPage() {
                           onClick={() => handleToggleActive(u)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
                             u.active
-                              ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200"
-                              : "bg-[#EAF2EE] hover:bg-[#DFEDE6] text-[#053425] border-[#C9DFD4]"
+                              ? "bg-[rgba(255,86,48,0.08)] hover:bg-[rgba(255,86,48,0.16)] text-m3-error-dark border-[rgba(255,86,48,0.24)]"
+                              : "bg-[rgba(0,167,111,0.08)] hover:bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border-[rgba(0,167,111,0.24)]"
                           }`}
                         >
                           {u.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
@@ -372,19 +372,19 @@ export default function UsersPage() {
 
       {/* Add Staff Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-[#E8ECEA] shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
-            <h3 className="text-base font-bold text-slate-900 mb-4">เพิ่มพนักงานใหม่</h3>
+        <div className="fixed inset-0 bg-m3-grey-800/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full border border-[rgba(145,158,171,0.2)] shadow-m3-dropdown scale-in max-h-[90dvh] overflow-y-auto">
+            <h3 className="text-base font-bold text-m3-grey-800 mb-4">เพิ่มพนักงานใหม่</h3>
 
             {addError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+              <div className="mb-4 p-3 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-xs font-medium">
                 {addError}
               </div>
             )}
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label htmlFor="add-fullname" className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                <label htmlFor="add-fullname" className="block text-xs font-semibold text-m3-grey-700 mb-1">ชื่อ-นามสกุล</label>
                 <input
                   id="add-fullname"
                   type="text"
@@ -392,12 +392,12 @@ export default function UsersPage() {
                   value={addFullName}
                   onChange={(e) => setAddFullName(e.target.value)}
                   placeholder="เช่น สมชาย ใจดี"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <label htmlFor="add-email" className="block text-xs font-semibold text-slate-700 mb-1">อีเมล (สำหรับเข้าสู่ระบบ)</label>
+                <label htmlFor="add-email" className="block text-xs font-semibold text-m3-grey-700 mb-1">อีเมล (สำหรับเข้าสู่ระบบ)</label>
                 <input
                   id="add-email"
                   type="email"
@@ -405,12 +405,12 @@ export default function UsersPage() {
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                   placeholder="staff@company.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <label htmlFor="add-password" className="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                <label htmlFor="add-password" className="block text-xs font-semibold text-m3-grey-700 mb-1">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
                 <input
                   id="add-password"
                   type="password"
@@ -419,17 +419,17 @@ export default function UsersPage() {
                   value={addPassword}
                   onChange={(e) => setAddPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <label htmlFor="add-role" className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
+                <label htmlFor="add-role" className="block text-xs font-semibold text-m3-grey-700 mb-1">บทบาท (Role)</label>
                 <select
                   id="add-role"
                   value={addRole}
                   onChange={(e) => setAddRole(e.target.value as UserRole)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
                   <option value="PACKER">พนักงานแพ็กของ (หยิบ/แพ็ก/ของขึ้นรถ)</option>
@@ -440,15 +440,15 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <div className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
+                <div className="block text-xs font-semibold text-m3-grey-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setAddWhAccess(["*"])}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       addWhAccess.includes("*")
-                        ? "bg-[#06402B] text-white shadow-xs"
-                        : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
+                        ? "bg-m3-primary text-white shadow-xs"
+                        : "bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)] hover:bg-m3-grey-300"
                     }`}
                   >
                     ทุกโกดัง (*)
@@ -460,8 +460,8 @@ export default function UsersPage() {
                       onClick={() => toggleWhAccess(w.id, addWhAccess, setAddWhAccess)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         !addWhAccess.includes("*") && addWhAccess.includes(w.id)
-                          ? "bg-[#06402B] text-white shadow-xs"
-                          : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
+                          ? "bg-m3-primary text-white shadow-xs"
+                          : "bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)] hover:bg-m3-grey-300"
                       }`}
                     >
                       {w.name}
@@ -470,18 +470,18 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#E8ECEA]">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[rgba(145,158,171,0.2)]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-700 hover:bg-m3-grey-100 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={addSaving}
-                  className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-xs sm:text-sm shadow-md shadow-m3-primary/20 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {addSaving ? "กำลังบันทึก..." : "บันทึกพนักงาน"}
                 </button>
@@ -493,42 +493,42 @@ export default function UsersPage() {
 
       {/* Edit Staff Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full border border-[#E8ECEA] shadow-xl scale-in max-h-[90dvh] overflow-y-auto">
-            <h3 className="text-base font-bold text-slate-900 mb-4">แก้ไขสิทธิ์พนักงาน</h3>
+        <div className="fixed inset-0 bg-m3-grey-800/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full border border-[rgba(145,158,171,0.2)] shadow-m3-dropdown scale-in max-h-[90dvh] overflow-y-auto">
+            <h3 className="text-base font-bold text-m3-grey-800 mb-4">แก้ไขสิทธิ์พนักงาน</h3>
 
             {editError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+              <div className="mb-4 p-3 rounded-xl bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark text-xs font-medium">
                 {editError}
               </div>
             )}
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label htmlFor="edit-fullname" className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                <label htmlFor="edit-fullname" className="block text-xs font-semibold text-m3-grey-700 mb-1">ชื่อ-นามสกุล</label>
                 <input
                   id="edit-fullname"
                   type="text"
                   required
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <label htmlFor="edit-email" className="block text-xs font-semibold text-slate-500 mb-1">อีเมล (แก้ไขไม่ได้)</label>
+                <label htmlFor="edit-email" className="block text-xs font-semibold text-m3-grey-600 mb-1">อีเมล (แก้ไขไม่ได้)</label>
                 <input
                   id="edit-email"
                   type="email"
                   disabled
                   value={editingUser.email}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-[#E8ECEA] text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-m3-grey-600 text-xs sm:text-sm cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label htmlFor="edit-password" className="block text-xs font-semibold text-slate-700 mb-1">เปลี่ยนรหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
+                <label htmlFor="edit-password" className="block text-xs font-semibold text-m3-grey-700 mb-1">เปลี่ยนรหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
                 <input
                   id="edit-password"
                   type="password"
@@ -536,17 +536,17 @@ export default function UsersPage() {
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 placeholder-m3-grey-500 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm"
                 />
               </div>
 
               <div>
-                <label htmlFor="edit-role" className="block text-xs font-semibold text-slate-700 mb-1">บทบาท (Role)</label>
+                <label htmlFor="edit-role" className="block text-xs font-semibold text-m3-grey-700 mb-1">บทบาท (Role)</label>
                 <select
                   id="edit-role"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value as UserRole)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E8ECEA] text-slate-900 focus:outline-none focus:border-[#0F5C3F] focus:bg-white focus:ring-2 focus:ring-[#0F5C3F]/20 text-xs sm:text-sm cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-m3-grey-100 border border-[rgba(145,158,171,0.2)] text-m3-grey-800 focus:outline-none focus:border-m3-grey-800 focus:bg-white focus:ring-2 focus:ring-m3-primary/20 text-xs sm:text-sm cursor-pointer"
                 >
                   <option value="WAREHOUSE_STAFF">พนักงานคลัง (รับ/เบิก/ย้ายสินค้าได้)</option>
                   <option value="PACKER">พนักงานแพ็กของ (หยิบ/แพ็ก/ของขึ้นรถ)</option>
@@ -557,15 +557,15 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <div className="block text-xs font-semibold text-slate-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
+                <div className="block text-xs font-semibold text-m3-grey-700 mb-2">สิทธิ์เข้าถึงโกดัง</div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setEditWhAccess(["*"])}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       editWhAccess.includes("*")
-                        ? "bg-[#06402B] text-white shadow-xs"
-                        : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
+                        ? "bg-m3-primary text-white shadow-xs"
+                        : "bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)] hover:bg-m3-grey-300"
                     }`}
                   >
                     ทุกโกดัง (*)
@@ -577,8 +577,8 @@ export default function UsersPage() {
                       onClick={() => toggleWhAccess(w.id, editWhAccess, setEditWhAccess)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         !editWhAccess.includes("*") && editWhAccess.includes(w.id)
-                          ? "bg-[#06402B] text-white shadow-xs"
-                          : "bg-slate-100 text-slate-700 border border-[#E8ECEA] hover:bg-slate-200"
+                          ? "bg-m3-primary text-white shadow-xs"
+                          : "bg-m3-grey-200 text-m3-grey-700 border border-[rgba(145,158,171,0.2)] hover:bg-m3-grey-300"
                       }`}
                     >
                       {w.name}
@@ -587,18 +587,18 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#E8ECEA]">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[rgba(145,158,171,0.2)]">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2.5 rounded-xl bg-white border border-[#E8ECEA] text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-white border border-[rgba(145,158,171,0.2)] text-m3-grey-700 hover:bg-m3-grey-100 text-xs sm:text-sm font-semibold cursor-pointer active:scale-95"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={editSaving}
-                  className="px-5 py-2.5 rounded-xl bg-[#06402B] hover:bg-[#053425] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#06402B]/20 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-xs sm:text-sm shadow-md shadow-m3-primary/20 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {editSaving ? "กำลังอัปเดต..." : "บันทึกการแก้ไข"}
                 </button>

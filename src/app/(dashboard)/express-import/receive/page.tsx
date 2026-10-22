@@ -531,10 +531,10 @@ export default function ExpressReceivePage() {
 
   // คลาสปุ่มเลขหน้า — หน้าปัจจุบันพื้นเขียวตัวขาว
   const pageBtnClass = (active: boolean): string =>
-    `min-h-[44px] min-w-[44px] px-3.5 rounded-xl text-base font-bold border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 ${
+    `min-h-[44px] min-w-[44px] px-3.5 rounded-xl text-base font-bold border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2 ${
       active
-        ? "bg-[#06402B] border-[#06402B] text-white shadow-sm shadow-[#06402B]/25"
-        : "border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425]"
+        ? "bg-m3-primary border-m3-primary text-white shadow-sm shadow-m3-primary/25"
+        : "border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-700 hover:border-m3-primary-dark hover:text-m3-primary-darker"
     }`;
 
   // Tagging Stats
@@ -632,25 +632,25 @@ export default function ExpressReceivePage() {
         id: "no",
         header: "ลำดับ",
         enableSorting: false,
-        meta: { th: "text-center w-16 text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center w-16 text-base sm:text-lg font-bold text-m3-grey-800", td: "text-center" },
         // ลำดับที่มองเห็น = ตำแหน่งในลิสต์ที่เรียงแล้ว (นับต่อเนื่องข้ามหน้า)
         cell: ({ row, table }) => {
           const { pageIndex, pageSize } = table.getState().pagination;
           const visibleIndex = table.getPaginationRowModel().rows.findIndex((r) => r.id === row.id);
-          return <span className="disp text-base sm:text-lg font-bold num text-slate-700">{pageIndex * pageSize + visibleIndex + 1}</span>;
+          return <span className="disp text-base sm:text-lg font-bold num text-m3-grey-700">{pageIndex * pageSize + visibleIndex + 1}</span>;
         },
       },
       {
         accessorKey: "document_no",
         header: "เลขที่เอกสาร",
-        meta: { th: "text-left text-base sm:text-lg font-bold text-slate-900", td: "whitespace-nowrap" },
+        meta: { th: "text-left text-base sm:text-lg font-bold text-m3-grey-800", td: "whitespace-nowrap" },
         cell: ({ row }) => {
           const item = row.original;
           return (
             <>
-              <div className="font-mono font-bold text-slate-900 text-lg">{item.document_no}</div>
+              <div className="tabular-nums font-bold text-m3-grey-800 text-lg">{item.document_no}</div>
               {item.document_date && item.document_date !== "-" && (
-                <div className="text-base font-medium text-slate-600 font-mono mt-1">{item.document_date.slice(0, 10)}</div>
+                <div className="text-base font-medium text-m3-grey-600 tabular-nums mt-1">{item.document_date.slice(0, 10)}</div>
               )}
             </>
           );
@@ -660,25 +660,25 @@ export default function ExpressReceivePage() {
         id: "barcode",
         header: "บาร์โค้ด",
         enableSorting: false,
-        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-m3-grey-800", td: "text-center" },
         cell: ({ row }) => {
           const item = row.original;
           const barcodeValue = item.barcode || item.sku;
           const isBarcodeCopied = copiedItemSku === barcodeValue;
           return (
             <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-              <div className="bg-white px-3 py-2 rounded-xl border border-[#D5DDD9] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="bg-white px-3 py-2 rounded-xl border border-[rgba(145,158,171,0.32)] shadow-m3-card">
                 <BarcodeSvg value={barcodeValue} height={48} width={1.5} fontSize={14} showText={true} />
               </div>
               <button
                 type="button"
                 onClick={() => handleCopySingleBarcode(barcodeValue)}
                 aria-label={`คัดลอกเลขบาร์โค้ด ${barcodeValue}`}
-                className="text-base font-bold text-[#344054] hover:text-[#053425] px-3 py-1.5 min-h-[36px] rounded-lg hover:bg-black/[.05] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 print:hidden"
+                className="text-base font-bold text-m3-grey-700 hover:text-m3-primary-darker px-3 py-1.5 min-h-[36px] rounded-lg hover:bg-black/[.05] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2 print:hidden"
                 title="คัดลอกเฉพาะเลขบาร์โค้ด"
               >
                 {isBarcodeCopied ? (
-                  <span className="text-[#053425] font-bold inline-flex items-center gap-1">
+                  <span className="text-m3-primary-darker font-bold inline-flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.5l5 5L19.5 7" />
                     </svg>
@@ -686,7 +686,7 @@ export default function ExpressReceivePage() {
                   </span>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 text-[#475467]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-m3-grey-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                     <span>คัดลอกเลข</span>
@@ -700,15 +700,15 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "sku",
         header: "รหัสสินค้า",
-        meta: { th: "text-left text-base sm:text-lg font-bold text-slate-900", td: "font-mono font-bold text-slate-900 text-base sm:text-lg" },
+        meta: { th: "text-left text-base sm:text-lg font-bold text-m3-grey-800", td: "tabular-nums font-bold text-m3-grey-800 text-base sm:text-lg" },
         cell: ({ getValue }) => getValue<string>() || "-",
       },
       {
         accessorKey: "product_name",
         header: "ชื่อสินค้า",
-        meta: { th: "min-w-[260px] text-left text-base sm:text-lg font-bold text-slate-900", td: "min-w-[260px] whitespace-nowrap" },
+        meta: { th: "min-w-[260px] text-left text-base sm:text-lg font-bold text-m3-grey-800", td: "min-w-[260px] whitespace-nowrap" },
         cell: ({ row }) => (
-          <div className="text-slate-900 font-bold text-lg leading-snug" title={row.original.product_name}>
+          <div className="text-m3-grey-800 font-bold text-lg leading-snug" title={row.original.product_name}>
             {row.original.product_name}
           </div>
         ),
@@ -716,9 +716,9 @@ export default function ExpressReceivePage() {
       {
         id: "warehouse",
         header: "คลังสินค้า",
-        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center whitespace-nowrap" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-m3-grey-800", td: "text-center whitespace-nowrap" },
         cell: ({ row }) => (
-          <div className="inline-flex items-center gap-1.5 text-slate-800 text-base sm:text-lg font-semibold">
+          <div className="inline-flex items-center gap-1.5 text-m3-grey-800 text-base sm:text-lg font-semibold">
             <span>{getWarehouseDisplayName(row.original.target_sheet)}</span>
           </div>
         ),
@@ -726,12 +726,12 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "location",
         header: "ตำแหน่ง",
-        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900", td: "text-center" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-m3-grey-800", td: "text-center" },
         cell: ({ getValue }) => {
           const val = getValue<string>();
           const hasVal = val && val !== "-";
           return (
-            <span className={`font-mono font-bold text-base sm:text-lg ${hasVal ? "text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/70" : "text-slate-400"}`}>
+            <span className={`tabular-nums font-bold text-base sm:text-lg ${hasVal ? "text-m3-grey-800 bg-m3-grey-200 px-3 py-1.5 rounded-lg border border-m3-grey-300/70" : "text-m3-grey-500"}`}>
               {hasVal ? val : "-"}
             </span>
           );
@@ -740,11 +740,11 @@ export default function ExpressReceivePage() {
       {
         accessorKey: "quantity",
         header: "จำนวน",
-        meta: { th: "text-right text-base sm:text-lg font-bold text-slate-900", td: "text-right whitespace-nowrap" },
+        meta: { th: "text-right text-base sm:text-lg font-bold text-m3-grey-800", td: "text-right whitespace-nowrap" },
         cell: ({ getValue }) => (
           <>
-            <span className="disp font-black num text-slate-900 text-[48px] sm:text-[48px]">{Number(getValue()).toLocaleString()}</span>
-            <span className="font-bold text-slate-600 text-base sm:text-lg ml-1.5">ชิ้น</span>
+            <span className="disp font-extrabold num text-m3-grey-800 text-[48px] sm:text-[48px]">{Number(getValue()).toLocaleString()}</span>
+            <span className="font-bold text-m3-grey-600 text-base sm:text-lg ml-1.5">ชิ้น</span>
           </>
         ),
       },
@@ -752,7 +752,7 @@ export default function ExpressReceivePage() {
         id: "status",
         header: "สถานะ Express",
         enableSorting: false,
-        meta: { th: "text-center text-base sm:text-lg font-bold text-slate-900 print:hidden", td: "text-center print:hidden" },
+        meta: { th: "text-center text-base sm:text-lg font-bold text-m3-grey-800 print:hidden", td: "text-center print:hidden" },
         cell: ({ row }) => {
           const item = row.original;
           const tagged = taggedItemsMap.get(item.id);
@@ -766,10 +766,10 @@ export default function ExpressReceivePage() {
               disabled={isSyncing}
               aria-label={`สถานะ Express ของเอกสาร ${item.document_no} สินค้า ${item.product_name}`}
               title={isSyncing ? "กำลังบันทึกสถานะ…" : undefined}
-              className={`px-4 min-h-[46px] rounded-full text-base sm:text-lg font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-wait ${
+              className={`px-4 min-h-[46px] rounded-full text-base sm:text-lg font-bold border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-wait ${
                 isImported
-                  ? "bg-[#DFEDE6] text-[#052B1F] border-[#8FB3A3] hover:bg-[#C9DFD4]/60"
-                  : "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200/60"
+                  ? "bg-[rgba(0,167,111,0.16)] text-m3-primary-darker border-[rgba(0,167,111,0.24)] hover:bg-[rgba(0,167,111,0.24)]"
+                  : "bg-[rgba(255,171,0,0.16)] text-m3-warning-dark border-[rgba(255,171,0,0.32)] hover:bg-[rgba(255,171,0,0.24)]"
               }`}
             >
               <option value="PENDING">รอนำเข้า</option>
@@ -833,7 +833,7 @@ export default function ExpressReceivePage() {
         {/* หัวกระดาษเมื่อพิมพ์ */}
         <div className="hidden print:block text-center mb-6 pb-3 border-b-2 border-black">
           <h1 className="text-xl font-bold text-black">ใบสแกนบาร์โค้ดรับสินค้า — Express ERP</h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-m3-grey-600 mt-1">
             วันที่พิมพ์: {new Date().toLocaleDateString("th-TH")} | รวม {filteredItems.length} รายการ
           </p>
         </div>
@@ -842,7 +842,7 @@ export default function ExpressReceivePage() {
         {fetchError && !loading && (
           <div
             role="alert"
-            className="bg-white rounded-[20px] border border-[#F3C4BA] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 print:hidden"
+            className="bg-white rounded-2xl border border-[#F3C4BA] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 print:hidden"
           >
             <div className="flex items-center gap-2.5 text-[#9B1C1C]">
               <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
@@ -854,7 +854,7 @@ export default function ExpressReceivePage() {
             <button
               type="button"
               onClick={() => pollingFetch(true)}
-              className="min-h-[44px] px-4 rounded-xl border border-[#E8B7AC] bg-white text-[#9B1C1C] text-base font-bold hover:bg-[#FDF3F1] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+              className="min-h-[44px] px-4 rounded-xl border border-[#E8B7AC] bg-white text-[#9B1C1C] text-base font-bold hover:bg-[#FDF3F1] transition-colors cursor-pointer inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -867,11 +867,11 @@ export default function ExpressReceivePage() {
 
         {loading ? (
           <div
-            className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] overflow-hidden"
+            className="m3-card overflow-hidden"
             aria-busy="true"
             aria-label="กำลังโหลดรายการรับสินค้า"
           >
-            <div className="bg-slate-50 border-b border-[#E8ECEA] px-4 py-3.5 flex items-center gap-4">
+            <div className="bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)] px-4 py-3.5 flex items-center gap-4">
               <div className="skeleton h-4 w-8 shrink-0" />
               <div className="skeleton h-4 w-28 hidden sm:block" />
               <div className="skeleton h-4 w-20 mx-auto hidden md:block" />
@@ -879,7 +879,7 @@ export default function ExpressReceivePage() {
               <div className="skeleton h-4 w-20 ml-auto" />
             </div>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="px-4 py-[21px] border-b border-[#EEF1EF] last:border-b-0 flex items-center gap-4">
+              <div key={i} className="px-4 py-[21px] border-b border-[rgba(145,158,171,0.2)] last:border-b-0 flex items-center gap-4">
                 <div className="skeleton h-4 w-8 shrink-0" />
                 <div className="skeleton h-4 w-36 hidden sm:block" />
                 <div className="skeleton h-10 w-24 shrink-0" />
@@ -891,21 +891,21 @@ export default function ExpressReceivePage() {
         ) : filteredItems.length === 0 ? (
           allItems.length === 0 ? (
             /* ไม่มีข้อมูลจากระบบเลย — แยกกรณีคลังที่กรองไว้ (มีทางออก) กับไม่มีข้อมูลจริง */
-            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-black/[.04] flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <div className="bg-white rounded-2xl border border-[rgba(145,158,171,0.2)] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-[rgba(145,158,171,0.08)] flex items-center justify-center mx-auto mb-3 text-m3-grey-500">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M3.5 7.5L12 12l8.5-4.5M12 12v9" />
                 </svg>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-800">ยังไม่มีรายการรับสินค้า</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-m3-grey-800">ยังไม่มีรายการรับสินค้า</h3>
               {selectedWarehouse !== "ALL" ? (
                 <>
-                  <p className="text-base text-slate-500 mt-1.5">ไม่พบรายการในคลังที่เลือก — ลองดูทุกคลังสินค้า</p>
+                  <p className="text-base text-m3-grey-600 mt-1.5">ไม่พบรายการในคลังที่เลือก — ลองดูทุกคลังสินค้า</p>
                   <button
                     type="button"
                     onClick={handleClearAllFilters}
-                    className="min-h-[46px] px-6 mt-4 rounded-xl border border-[#D5DDD9] bg-white text-base font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                    className="min-h-[46px] px-6 mt-4 rounded-xl border border-[rgba(145,158,171,0.32)] bg-white text-base font-bold text-m3-grey-700 hover:bg-[rgba(145,158,171,0.08)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
                   >
                     ล้างตัวกรอง
                   </button>
@@ -914,37 +914,37 @@ export default function ExpressReceivePage() {
             </div>
           ) : tagFilter === "PENDING" && !searchQuery.trim() ? (
             /* กรอง "รอนำเข้า" แล้วว่าง = นำเข้าครบแล้ว */
-            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-[#EAF2EE] border border-[#C9DFD4] flex items-center justify-center mx-auto mb-3 text-[#053425]">
+            <div className="bg-white rounded-2xl border border-[rgba(145,158,171,0.2)] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-[rgba(0,167,111,0.08)] border border-[rgba(0,167,111,0.24)] flex items-center justify-center mx-auto mb-3 text-m3-primary-darker">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12.5l5 5L19.5 7" />
                 </svg>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-800">นำเข้าครบแล้ว</h3>
-              <p className="text-base text-slate-500 mt-1.5 mb-4">ทุกรายการในช่วงเวลานี้นำเข้า Express เรียบร้อย</p>
+              <h3 className="text-lg sm:text-xl font-bold text-m3-grey-800">นำเข้าครบแล้ว</h3>
+              <p className="text-base text-m3-grey-600 mt-1.5 mb-4">ทุกรายการในช่วงเวลานี้นำเข้า Express เรียบร้อย</p>
               <button
                 type="button"
                 onClick={() => setTagFilter("ALL")}
-                className="min-h-[46px] px-6 rounded-xl border border-[#D5DDD9] bg-white text-base font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                className="min-h-[46px] px-6 rounded-xl border border-[rgba(145,158,171,0.32)] bg-white text-base font-bold text-m3-grey-700 hover:bg-[rgba(145,158,171,0.08)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
               >
                 ดูทั้งหมด
               </button>
             </div>
           ) : (
             /* ค้นหา/กรองแล้วไม่เจอ */
-            <div className="bg-white rounded-[20px] border border-[#E8ECEA] p-10 sm:p-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-black/[.04] flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <div className="bg-white rounded-2xl border border-[rgba(145,158,171,0.2)] p-10 sm:p-16 text-center">
+              <div className="w-14 h-14 rounded-full bg-[rgba(145,158,171,0.08)] flex items-center justify-center mx-auto mb-3 text-m3-grey-500">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4">
+              <h3 className="text-lg sm:text-xl font-bold text-m3-grey-800 mb-4">
                 {searchQuery.trim() ? `ไม่พบ "${searchQuery.trim()}"` : "ไม่พบรายการที่ตรงกับตัวกรอง"}
               </h3>
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="min-h-[46px] px-6 rounded-xl border border-[#D5DDD9] bg-white text-base font-bold text-slate-700 hover:bg-black/[.03] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                className="min-h-[46px] px-6 rounded-xl border border-[rgba(145,158,171,0.32)] bg-white text-base font-bold text-m3-grey-700 hover:bg-[rgba(145,158,171,0.08)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
               >
                 ล้างตัวกรอง
               </button>
@@ -952,14 +952,14 @@ export default function ExpressReceivePage() {
           )
         ) : (
           /* ตารางรายการรับสินค้า */
-          <div className="bg-white rounded-[20px] border border-[#E8ECEA] shadow-[0_1px_2px_rgba(16,24,40,0.05)] overflow-hidden print:rounded-none print:shadow-none print:border-black">
+          <div className="m3-card overflow-hidden print:rounded-none print:shadow-none print:border-black">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
                       key={headerGroup.id}
-                      className="bg-slate-50 hover:bg-slate-50 border-b border-[#E8ECEA] print:bg-white"
+                      className="bg-m3-grey-100 hover:bg-m3-grey-100 border-b border-[rgba(145,158,171,0.2)] print:bg-white"
                     >
                       {headerGroup.headers.map((header) => (
                         <TableHead
@@ -970,7 +970,7 @@ export default function ExpressReceivePage() {
                             <button
                               type="button"
                               onClick={header.column.getToggleSortingHandler()}
-                              className="inline-flex items-center gap-1 transition-colors hover:text-slate-900 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425]"
+                              className="inline-flex items-center gap-1 transition-colors hover:text-m3-grey-800 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker"
                               title="คลิกเพื่อเรียงข้อมูล"
                             >
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -996,7 +996,7 @@ export default function ExpressReceivePage() {
                         key={row.id}
                         className={
                           isImported
-                            ? "bg-[#EAF2EE] border-[#C9DFD4] hover:bg-[#DFEDE6]/70"
+                            ? "bg-[rgba(0,167,111,0.08)] border-[rgba(0,167,111,0.24)] hover:bg-[rgba(0,167,111,0.16)]"
                             : undefined
                         }
                       >
@@ -1017,13 +1017,13 @@ export default function ExpressReceivePage() {
 
             {/* แบ่งหน้า — แสดงเมื่อมีมากกว่า 1 หน้า */}
             {totalPages > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[#EEF1EF] print:hidden">
-                <p className="text-base font-semibold text-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[rgba(145,158,171,0.2)] print:hidden">
+                <p className="text-base font-semibold text-m3-grey-700">
                   แสดง {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredItems.length)} จาก{" "}
                   {filteredItems.length.toLocaleString()} รายการ
                 </p>
                 <nav className="flex flex-wrap items-center gap-1.5" aria-label="แบ่งหน้ารายการ">
-                  <label className="flex items-center gap-2 text-base font-semibold text-slate-700 mr-2">
+                  <label className="flex items-center gap-2 text-base font-semibold text-m3-grey-700 mr-2">
                     แถว/หน้า
                     <select
                       value={pageSize}
@@ -1031,7 +1031,7 @@ export default function ExpressReceivePage() {
                         setPageSize(Number(e.target.value));
                         setPage(1);
                       }}
-                      className="min-h-[44px] px-3 rounded-xl text-base font-bold border border-[#E8ECEA] bg-white text-slate-800 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#053425]"
+                      className="min-h-[44px] px-3 rounded-xl text-base font-bold border border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-800 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker"
                     >
                       {[10, 20, 50, 100].map((n) => (
                         <option key={n} value={n}>
@@ -1044,14 +1044,14 @@ export default function ExpressReceivePage() {
                     type="button"
                     onClick={() => setPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-700 hover:border-m3-primary-dark hover:text-m3-primary-darker focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
                   >
                     ‹ ก่อนหน้า
                   </button>
                   {pageWindow[0] > 1 && (
                     <>
                       <button type="button" onClick={() => setPage(1)} className={pageBtnClass(false)}>1</button>
-                      {pageWindow[0] > 2 && <span className="px-1 text-slate-400" aria-hidden="true">…</span>}
+                      {pageWindow[0] > 2 && <span className="px-1 text-m3-grey-500" aria-hidden="true">…</span>}
                     </>
                   )}
                   {pageWindow.map((p) => (
@@ -1068,7 +1068,7 @@ export default function ExpressReceivePage() {
                   {pageWindow[pageWindow.length - 1] < totalPages && (
                     <>
                       {pageWindow[pageWindow.length - 1] < totalPages - 1 && (
-                        <span className="px-1 text-slate-400" aria-hidden="true">…</span>
+                        <span className="px-1 text-m3-grey-500" aria-hidden="true">…</span>
                       )}
                       <button type="button" onClick={() => setPage(totalPages)} className={pageBtnClass(false)}>
                         {totalPages}
@@ -1079,7 +1079,7 @@ export default function ExpressReceivePage() {
                     type="button"
                     onClick={() => setPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[#E8ECEA] bg-white text-slate-700 hover:border-[#5B8A74] hover:text-[#053425] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#053425] focus-visible:ring-offset-2"
+                    className="min-h-[44px] px-4 rounded-xl text-base font-bold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-[rgba(145,158,171,0.2)] bg-white text-m3-grey-700 hover:border-m3-primary-dark hover:text-m3-primary-darker focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary-darker focus-visible:ring-offset-2"
                   >
                     ถัดไป ›
                   </button>

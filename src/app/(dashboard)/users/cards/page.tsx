@@ -105,41 +105,41 @@ export default function EmployeeCardsPage() {
       {/* ส่วนหัว (ซ่อนตอนพิมพ์) */}
       <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#06402B]">บัตรบาร์โค้ดพนักงาน</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-m3-primary-dark">บัตรบาร์โค้ดพนักงาน</h1>
+          <p className="text-sm text-m3-grey-600">
             ใช้บัตรร่วมกับ PIN 4 หลัก
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setSelected(new Set(users.filter((u) => u.has_pin !== false).map((u) => u.user_id)))}
-            className="px-4 py-2.5 rounded-xl border border-[#E8ECEA] text-slate-700 text-sm font-semibold hover:border-[#06402B]/40"
+            className="px-4 py-2.5 rounded-xl border border-[rgba(145,158,171,0.2)] text-m3-grey-700 text-sm font-semibold hover:border-m3-primary/40"
           >
             เลือกทุกคนที่มี PIN
           </button>
           <button
             onClick={printCards}
             disabled={cards.length === 0}
-            className="px-5 py-2.5 rounded-xl bg-[#06402B] text-white text-sm font-semibold disabled:opacity-40"
+            className="px-5 py-2.5 rounded-xl bg-m3-primary text-white text-sm font-semibold disabled:opacity-40"
           >
-            🖨 พิมพ์ {cards.length > 0 ? `(${cards.length} ใบ)` : ""}
+            พิมพ์ {cards.length > 0 ? `(${cards.length} ใบ)` : ""}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="no-print bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
+        <div className="no-print bg-[rgba(255,86,48,0.08)] border border-[rgba(255,86,48,0.24)] text-m3-error-dark rounded-xl px-4 py-3 text-sm">{error}</div>
       )}
-      {loading && <div className="no-print p-8 text-center text-slate-400">กำลังโหลดรายชื่อ…</div>}
+      {loading && <div className="no-print p-8 text-center text-m3-grey-500">กำลังโหลดรายชื่อ…</div>}
 
       {/* รายชื่อให้เลือก (ซ่อนตอนพิมพ์) */}
-      <div className="no-print bg-white rounded-2xl border border-[#E8ECEA] overflow-hidden">
+      <div className="no-print bg-white rounded-xl border border-[rgba(145,158,171,0.2)] overflow-hidden">
         {users.length === 0 && !loading ? (
-          <div className="p-8 text-center text-slate-400">ไม่มีพนักงานที่พิมพ์บัตรได้</div>
+          <div className="p-8 text-center text-m3-grey-500">ไม่มีพนักงานที่พิมพ์บัตรได้</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#F7F9F8] text-left text-slate-500">
+              <tr className="bg-m3-grey-100 text-left text-m3-grey-600">
                 <th className="px-4 py-3 font-medium w-10"></th>
                 <th className="px-4 py-3 font-medium">ชื่อ</th>
                 <th className="px-4 py-3 font-medium">บทบาท</th>
@@ -152,24 +152,24 @@ export default function EmployeeCardsPage() {
                 const code = employeeCardCode(u.user_id);
                 const isSel = selected.has(u.user_id);
                 return (
-                  <tr key={u.user_id} className="border-t border-[#E8ECEA]">
+                  <tr key={u.user_id} className="border-t border-[rgba(145,158,171,0.2)]">
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={isSel}
                         onChange={() => toggle(u.user_id)}
-                        className="w-4.5 h-4.5 accent-[#06402B]"
+                        className="w-4.5 h-4.5 accent-m3-primary"
                         aria-label={`เลือก ${u.full_name}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">{u.full_name || u.email}</td>
-                    <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[u.role] ?? u.role}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{code}</td>
+                    <td className="px-4 py-3 font-semibold text-m3-grey-800">{u.full_name || u.email}</td>
+                    <td className="px-4 py-3 text-m3-grey-600">{ROLE_LABELS[u.role] ?? u.role}</td>
+                    <td className="px-4 py-3 tabular-nums text-xs text-m3-grey-600">{code}</td>
                     <td className="px-4 py-3">
                       {u.has_pin === false ? (
-                        <span className="text-orange-600 text-xs font-semibold">ยังไม่ตั้ง PIN — ตั้งก่อนพิมพ์บัตร</span>
+                        <span className="text-m3-warning-dark text-xs font-semibold">ยังไม่ตั้ง PIN — ตั้งก่อนพิมพ์บัตร</span>
                       ) : (
-                        <span className="text-emerald-700 text-xs">✓ มี PIN</span>
+                        <span className="text-m3-primary-dark text-xs">✓ มี PIN</span>
                       )}
                     </td>
                   </tr>
@@ -183,7 +183,7 @@ export default function EmployeeCardsPage() {
       {/* พรีวิวบัตร — ตอนพิมพ์จะแสดงเฉพาะส่วนนี้ */}
       <div className="card-print-area">
         {cards.length === 0 ? (
-          <p className="no-print text-sm text-slate-400 text-center py-6">
+          <p className="no-print text-sm text-m3-grey-500 text-center py-6">
             ยังไม่ได้เลือกพนักงาน
           </p>
         ) : (
@@ -191,15 +191,15 @@ export default function EmployeeCardsPage() {
             {cards.map((c) => (
               <div
                 key={c.user_id}
-                className="employee-id-card print-sheet bg-white rounded-2xl border-2 border-[#06402B] p-4 flex flex-col items-center gap-1.5"
+                className="employee-id-card print-sheet bg-white rounded-xl border-2 border-m3-primary p-4 flex flex-col items-center gap-1.5"
               >
                 <div className="self-stretch flex items-center justify-between">
-                  <span className="text-[11px] font-black tracking-widest text-[#06402B]">STOCKIFY</span>
-                  <span className="text-[10px] text-slate-400">{c.role}</span>
+                  <span className="text-[11px] font-extrabold tracking-widest text-m3-primary-dark">STOCKIFY</span>
+                  <span className="text-[10px] text-m3-grey-500">{c.role}</span>
                 </div>
-                <div className="text-xl font-extrabold text-slate-900 text-center leading-tight">{c.name}</div>
-                <div className="text-[11px] text-slate-500">{c.warehouse}</div>
-                <div className="mt-1 border border-[#E8ECEA] rounded-lg px-2 py-1.5 bg-white">
+                <div className="text-xl font-extrabold text-m3-grey-800 text-center leading-tight">{c.name}</div>
+                <div className="text-[11px] text-m3-grey-600">{c.warehouse}</div>
+                <div className="mt-1 border border-[rgba(145,158,171,0.2)] rounded-lg px-2 py-1.5 bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={generateCode128PngDataUrl(c.code, { height: 64, scale: 2 })}
@@ -207,8 +207,8 @@ export default function EmployeeCardsPage() {
                     className="h-16 w-auto"
                   />
                 </div>
-                <div className="font-mono text-xs font-bold text-slate-700 tracking-wider">{c.code}</div>
-                <div className="text-[9px] text-slate-400">สแกนบัตร + PIN 4 หลัก ที่หน้าเข้างาน</div>
+                <div className="tabular-nums text-xs font-bold text-m3-grey-700 tracking-wider">{c.code}</div>
+                <div className="text-[9px] text-m3-grey-500">สแกนบัตร + PIN 4 หลัก ที่หน้าเข้างาน</div>
               </div>
             ))}
           </div>

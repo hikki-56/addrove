@@ -87,14 +87,14 @@ export default function ExpressImportWorkspaceHeader({
 
   return (
     <header className="print:hidden">
-      <div className="rounded-2xl border border-[#E0E6E3] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_1px_2px_rgba(16,24,40,0.03)] overflow-hidden transition-all">
+      <div className="rounded-xl border border-[#E0E6E3] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_1px_2px_rgba(16,24,40,0.03)] overflow-hidden transition-all">
         {/* Top Deck: Interactive KPI Filters */}
         <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Left: Menu title — เดิมหน้าไม่มีชื่อเมนู แยก receive/issue ไม่ได้จากตัวหน้าเอง */}
-          <div className="shrink-0 flex items-center gap-2.5 text-[#06402B]">
+          <div className="shrink-0 flex items-center gap-2.5 text-m3-primary-dark">
             <WorkspaceIcon mode={mode} />
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-m3-grey-800 leading-tight">
                 {isReceive ? "รับสินค้า เข้า Express" : "เบิกสินค้า เข้า Express"}
               </h1>
             </div>
@@ -102,7 +102,7 @@ export default function ExpressImportWorkspaceHeader({
 
           {/* Right: Connected KPI Metric Strip */}
           <div className="shrink-0 w-full sm:w-auto">
-            <div className="rounded-xl border border-[#E4EAE6] bg-[#F7F9F8] p-3 sm:p-3.5">
+            <div className="rounded-xl border border-[#E4EAE6] bg-m3-grey-100 p-3 sm:p-3.5">
               <div className="flex items-center gap-2.5 sm:gap-3" role="group" aria-label="กรองรายการตามสถานะ Express">
                 {STATUS_OPTIONS.map((option) => {
                   const isActive = statusFilter === option.key;
@@ -114,13 +114,13 @@ export default function ExpressImportWorkspaceHeader({
                       onClick={() => onStatusFilterChange(option.key)}
                       aria-pressed={isActive}
                       aria-label={`${option.label} ${value.toLocaleString()} รายการ`}
-                      className={`min-w-[115px] sm:min-w-[135px] rounded-xl px-4 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06402B] ${
+                      className={`min-w-[115px] sm:min-w-[135px] rounded-xl px-4 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary ${
                         isActive
                           ? "bg-white border border-[#B7CEC2] shadow-xs"
                           : "border border-transparent hover:bg-white/60 hover:border-[#E0E6E3]"
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-[#344054]">
+                      <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-m3-grey-700">
                         <span
                           className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                             option.key === "PENDING"
@@ -137,8 +137,8 @@ export default function ExpressImportWorkspaceHeader({
                         <div className="skeleton mt-2 h-8 w-14" aria-hidden="true" />
                       ) : (
                         <span
-                          className={`mt-1.5 block font-mono text-3xl sm:text-[72px] font-black leading-none ${
-                            isActive ? "text-[#06402B]" : "text-[#101828]"
+                          className={`mt-1.5 block tabular-nums text-3xl sm:text-[72px] font-extrabold leading-none ${
+                            isActive ? "text-m3-primary-dark" : "text-m3-grey-800"
                           }`}
                         >
                           {value.toLocaleString()}
@@ -157,7 +157,7 @@ export default function ExpressImportWorkspaceHeader({
                     style={{ width: `${loading ? 0 : completionPercent}%` }}
                   />
                 </div>
-                <span className="text-sm font-bold text-[#344054] font-mono whitespace-nowrap">
+                <span className="text-sm font-bold text-m3-grey-700 tabular-nums whitespace-nowrap">
                   {loading ? "…" : `นำเข้า ${completionPercent}%`}
                 </span>
               </div>
@@ -173,7 +173,7 @@ export default function ExpressImportWorkspaceHeader({
               {/* Search Bar */}
               <div className="relative w-full sm:w-80 lg:w-96 shrink-0">
                 <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-[#475467] pointer-events-none"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-m3-grey-700 pointer-events-none"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -187,14 +187,14 @@ export default function ExpressImportWorkspaceHeader({
                   onChange={(e) => onSearchQueryChange(e.target.value)}
                   placeholder="ค้นหาเอกสาร, SKU, บาร์โค้ด…"
                   aria-label="ค้นหารายการ"
-                  className="w-full min-h-[46px] pl-11 pr-9 rounded-xl border border-[#D5DDD9] bg-white py-2.5 text-base sm:text-lg font-medium text-[#101828] placeholder:text-slate-400 focus:border-[#06402B] focus:outline-none focus:ring-2 focus:ring-[#06402B]/15 transition-all"
+                  className="w-full min-h-[46px] pl-11 pr-9 rounded-xl border border-[rgba(145,158,171,0.32)] bg-white py-2.5 text-base sm:text-lg font-medium text-m3-grey-800 placeholder:text-m3-grey-500 focus:border-m3-grey-800 focus:outline-none focus:ring-2 focus:ring-m3-primary/15 transition-all"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => onSearchQueryChange("")}
                     aria-label="ล้างคำค้นหา"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 grid place-items-center transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-m3-grey-500 hover:text-m3-grey-700 hover:bg-m3-grey-200 grid place-items-center transition-colors"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="m18 6-12 12M6 6l12 12" />
@@ -225,10 +225,10 @@ export default function ExpressImportWorkspaceHeader({
                       type="button"
                       onClick={() => onDatePresetChange(option.value)}
                       aria-pressed={isActive}
-                      className={`min-h-[44px] px-4 py-2 rounded-xl text-base font-bold transition-all cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06402B] ${
+                      className={`min-h-[44px] px-4 py-2 rounded-xl text-base font-bold transition-all cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-m3-primary ${
                         isActive
-                          ? "bg-[#06402B] text-white shadow-xs"
-                          : "border border-[#E0E6E3] bg-white text-[#344054] hover:border-[#B7CEC2] hover:text-[#06402B]"
+                          ? "bg-m3-primary text-white shadow-xs"
+                          : "border border-[#E0E6E3] bg-white text-m3-grey-700 hover:border-[#B7CEC2] hover:text-m3-primary-dark"
                       }`}
                     >
                       {option.label}
@@ -244,7 +244,7 @@ export default function ExpressImportWorkspaceHeader({
                 <button
                   type="button"
                   onClick={onClearFilters}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-base font-bold text-[#475467] hover:text-[#9B1C1C] hover:bg-[#FDF3F1] border border-transparent hover:border-[#F3C4BA] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9B1C1C]"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-base font-bold text-m3-grey-700 hover:text-[#9B1C1C] hover:bg-[#FDF3F1] border border-transparent hover:border-[#F3C4BA] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9B1C1C]"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M5.6 15.5A8 8 0 0 0 19 8.5M18.4 8.5A8 8 0 0 0 5 15.5" />
@@ -254,11 +254,11 @@ export default function ExpressImportWorkspaceHeader({
               )}
 
               <div
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#EAF2EE] text-[#06402B] text-base sm:text-lg font-bold font-mono"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[rgba(0,167,111,0.08)] text-m3-primary-dark text-base sm:text-lg font-bold tabular-nums"
                 aria-live="polite"
               >
                 <span>{visibleCount.toLocaleString()}</span>
-                <span className="text-[#475467] font-semibold text-base">/ {totalCount.toLocaleString()} รายการ</span>
+                <span className="text-m3-grey-700 font-semibold text-base">/ {totalCount.toLocaleString()} รายการ</span>
               </div>
             </div>
           </div>
