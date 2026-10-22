@@ -17,6 +17,8 @@ import { getAllowedActions } from "@/features/production/lib/permissions";
 import { buildJobPatch } from "@/features/production/lib/job-form";
 import { formatHistoryDetail, historyActionLabel } from "@/features/production/lib/history";
 import ReportModal from "@/features/production/components/ReportModal";
+import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
+import { ProductionMaterialSummary } from "@/features/production/components/MaterialStockLocations";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ReasonModal, AdjustModal, ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
 import { StatusBadge, PriorityBadge, formatQty, formatDateTime } from "@/features/production/components/ui";
@@ -100,8 +102,8 @@ export default function ProductionJobDetailPage() {
   const canReport = actions.report;
   const canEdit = actions.edit;
   const canCancel = actions.cancel;
-  const canReopen = actions.reopen;
-  const canAdjust = actions.adjust;
+  const canReopen = actions.reopen && !job.material_plan?.backorder_job_no;
+  const canAdjust = actions.adjust && !job.material_plan;
 
   // ทุก action ที่เปลี่ยนข้อมูลผ่าน guard เดียว — กันกดซ้ำ/กดหลาย action พร้อมกัน
   const runAction = (key: string, fn: () => Promise<ProductionApiResult>, closeOnSuccess = true) =>
@@ -123,6 +125,7 @@ export default function ProductionJobDetailPage() {
     <div className="w-full max-w-full pb-28">
       {/* หัวงาน */}
       <div className="mb-5 rounded-xl border border-[#E8ECEA] bg-white p-5 shadow-xs">
+        {(user?.role === "ADMIN" || user?.role === "APPROVER") && <div className="mb-3 flex justify-end"><ProductionPrintButton jobs={[job]} disabled={submitting} /></div>}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -148,6 +151,9 @@ export default function ProductionJobDetailPage() {
             {job.note && (
               <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">📝 {job.note}</p>
             )}
+            {job.material_plan && <p className="mt-2 text-xs font-semibold text-emerald-800">สูตร {job.material_plan.snapshot.bom_id} · {job.material_plan.snapshot.label}</p>}
+            {job.material_plan?.parent_job_no && <p className="mt-2 text-sm">งานค้างจาก <Link className="font-bold text-emerald-800 underline" href={`/production/jobs/${encodeURIComponent(job.material_plan.parent_job_no)}`}>{job.material_plan.parent_job_no}</Link></p>}
+            {job.material_plan?.backorder_job_no && <p className="mt-2 text-sm">สร้างงานค้างแล้ว: {user?.role === "ADMIN" ? <Link className="font-bold text-emerald-800 underline" href={`/production/jobs/${encodeURIComponent(job.material_plan.backorder_job_no)}`}>{job.material_plan.backorder_job_no}</Link> : job.material_plan.backorder_job_no}</p>}
             {job.cancel_reason && (
               <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">เหตุผลยกเลิก: {job.cancel_reason}</p>
             )}
@@ -192,6 +198,7 @@ export default function ProductionJobDetailPage() {
       )}
 
       {/* ประวัติรายงาน */}
+      {job.material_plan && <div className="mb-5"><ProductionMaterialSummary plan={job.material_plan} /></div>}
       <div className="mb-5 overflow-hidden rounded-xl border border-[#E8ECEA] bg-white shadow-xs">
         <div className="border-b border-[#EEF1EF] px-5 py-3.5">
           <h2 className="text-sm font-extrabold text-slate-900">ประวัติรายงานผล ({reports.length} รายการ)</h2>
@@ -229,6 +236,11 @@ export default function ProductionJobDetailPage() {
                     <td className="px-4 py-2.5 text-right font-mono font-black tabular-nums text-slate-900">{formatQty(r.cumulative_good)}</td>
                     <td className="px-4 py-2.5 text-xs font-semibold text-slate-500">
                       {r.kind === "ADJUSTMENT" ? `⚖️ ${r.reason}` : r.defect_cause || r.reason || r.note || "-"}
+                      {r.material_details && <details className="mt-2 min-w-56"><summary className="cursor-pointer text-emerald-800">วัตถุดิบใช้จริง / ของเสีย</summary>
+                        {r.receipt_location_code && <p>รับสินค้าดี: โกดัง 2 · {r.receipt_location_code}</p>}
+                        {r.material_details.map((m, i) => <p key={`${m.sku}-${i}`} className="mt-1">{m.sku}: ใช้ผลิต {m.used_qty} · เสียเพิ่ม {m.scrap_qty} · รวมตัด {m.total_qty} {m.stock_unit}{m.scrap_cause && ` (${m.scrap_cause})`}</p>)}
+                        {r.material_reason && <p>เหตุผลยอดใช้จริง: {r.material_reason}</p>}
+                      </details>}
                     </td>
                   </tr>
                 ))}

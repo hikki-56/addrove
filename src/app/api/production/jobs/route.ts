@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
       status: searchParams.get("status") || undefined,
       q: searchParams.get("q") || undefined,
     });
-    return NextResponse.json({ success: true, data: jobs, total: jobs.length });
+    const visible = guard.actor.role === "APPROVER" ? jobs.filter(j => j.status !== "DRAFT") : jobs;
+    return NextResponse.json({ success: true, data: visible, total: visible.length });
   } catch (error) {
     return productionErrorResponse(error);
   }

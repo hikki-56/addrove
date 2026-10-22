@@ -15,14 +15,14 @@ import { getAllowedActions, showCancelOnPlanningCard } from "@/features/producti
 import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ReasonModal } from "@/features/production/components/ActionModals";
-import { StatusBadge, PriorityBadge, JobNumbers, formatQty, todayYMD } from "@/features/production/components/ui";
+import { formatQty, todayYMD } from "@/features/production/components/ui";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
 // หน้าวางแผนผลิตของ ADMIN (§1–2) — การ์ดโต๊ะ 1–5 + ฉบับร่างแก้/ลบ/ย้ายโต๊ะได้ทันที
 // เลือกหลายงานแล้ว "ยืนยันส่งงานผลิต" (DRAFT → WAITING + แจ้ง APPROVER)
 
-const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "CANCELLED"] as const;
 
 const filterInputClass =
   "w-full rounded-lg border border-[#E8ECEA] bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 focus:border-[#0F5C3F] focus:ring-2 focus:ring-[#0F5C3F]/20 focus:outline-none";
@@ -75,6 +75,7 @@ export default function ProductionPlanningPage() {
   const submitting = guard.pending;
   const [modalError, setModalError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -85,6 +86,7 @@ export default function ProductionPlanningPage() {
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return jobs.filter((j) => {
+      if (j.status === "COMPLETED") return false;
       if (dateFilter && j.production_date !== dateFilter) return false;
       if (tableFilter !== "ALL" && j.table_no !== tableFilter) return false;
       if (statusFilter !== "ALL" && j.status !== statusFilter) return false;
@@ -115,7 +117,7 @@ export default function ProductionPlanningPage() {
         setAddOpen(false);
         setDateFilter(value.production_date);
         setTableFilter(value.table_no);
-        setToast(`เพิ่มงานฉบับร่างเรียบร้อย — แก้ไข/ย้ายโต๊ะได้ทันทีก่อนส่งงาน`);
+        setToast("เพิ่มงานฉบับร่างแล้ว");
         emitProductionUpdated();
       } else {
         setModalError(res.message);
@@ -133,7 +135,8 @@ export default function ProductionPlanningPage() {
       );
       if (res.success) {
         setEditJob(null);
-        setToast("แก้ไขงานเรียบร้อย" + (editJob.status !== "DRAFT" ? " — แจ้งผู้ผลิตแล้ว" : ""));
+        setSubmitError(null);
+        setToast("แก้ไขงานแล้ว");
         emitProductionUpdated();
       } else {
         setModalError(res.message);
@@ -167,7 +170,7 @@ export default function ProductionPlanningPage() {
       );
       if (res.success) {
         setCancelJob(null);
-        setToast("ยกเลิกงานเรียบร้อย — ผลผลิตที่ยืนยันแล้วยังเก็บไว้ครบ");
+        setToast("ยกเลิกงานแล้ว");
         emitProductionUpdated();
       } else {
         setModalError(res.message);
@@ -180,6 +183,7 @@ export default function ProductionPlanningPage() {
     const names = selectedJobs.map((j) => j.job_no).join(", ");
     if (!window.confirm(`ยืนยันส่งงานผลิต ${selectedJobs.length} งาน?\n${names}`)) return;
     return guard.run(async () => {
+      setSubmitError(null);
       const res = await productionApi("/api/production/jobs/submit", "POST", {
         job_nos: selectedJobs.map((j) => j.job_no),
       });
@@ -188,7 +192,7 @@ export default function ProductionPlanningPage() {
         setToast(res.message);
         emitProductionUpdated();
       } else {
-        setToast(res.message);
+        setSubmitError(res.message);
         if (isConflict(res)) emitProductionUpdated();
       }
     }, "submit");
@@ -218,7 +222,13 @@ export default function ProductionPlanningPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900">วางแผนผลิต</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/production/jobs"
+            className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
+          >
+            ประวัติงานผลิต
+          </Link>
           <Link
             href="/production/summary"
             className="rounded-lg border border-[#E8ECEA] bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-all hover:border-[#C8DBD1] hover:bg-slate-50"
@@ -395,13 +405,9 @@ export default function ProductionPlanningPage() {
                                 />
                               )}
                               <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <StatusBadge status={job.status} />
-                                  <PriorityBadge priority={job.priority} />
-                                </div>
-                                <div className="mt-1 truncate text-sm font-bold text-slate-900">{job.product_name}</div>
-                                <div className="font-mono text-[11px] font-semibold text-slate-400">
-                                  {job.job_no} · {job.sku}
+                                <div className="wrap-anywhere text-sm font-bold text-slate-900">{job.product_name}</div>
+                                <div className="mt-1 wrap-anywhere font-mono text-[11px] font-semibold text-slate-500">
+                                  บาร์โค้ด: {job.barcode || "—"}
                                 </div>
                               </div>
                             </div>
@@ -423,8 +429,12 @@ export default function ProductionPlanningPage() {
                             </div>
                           </div>
 
-                          <div className="mt-2.5">
-                            <JobNumbers job={job} compact />
+                          <div className="mt-2.5 rounded-lg bg-[#EAF2EE] px-3 py-2">
+                            <div className="text-[11px] font-semibold text-[#0F5C3F]">จำนวนสั่งผลิต</div>
+                            <div className="mt-0.5 text-sm font-bold text-[#053425]">
+                              <span className="font-mono">{formatQty(job.target_qty)}</span>
+                              <span className="ml-1.5 text-xs">{job.unit}</span>
+                            </div>
                           </div>
 
                           {actions.deleteDraft && (
@@ -463,7 +473,19 @@ export default function ProductionPlanningPage() {
       {/* แถบล่าง: ยืนยันส่งงานผลิตหลายงานพร้อมกัน */}
       {selectedJobs.length > 0 && (
         <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-xl bg-[#06402B] px-5 py-3.5 shadow-2xl">
+          <div className="pointer-events-auto w-full max-w-2xl overflow-hidden rounded-xl bg-[#06402B] shadow-2xl">
+            {submitError && (
+              <div role="alert" className="border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-900">
+                <p className="font-bold">ส่งงานผลิตไม่สำเร็จ</p>
+                <p className="mt-1">{submitError}</p>
+                {selectedJobs.filter(j => !j.material_plan).slice(0, 1).map(j => (
+                  <button key={j.job_no} type="button" disabled={submitting} onClick={() => { setModalError(null); setEditJob(j); }} className="mt-2 rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold hover:bg-rose-100 disabled:opacity-50">
+                    ตรวจวัตถุดิบของ {j.sku} · {j.job_no}
+                  </button>
+                ))}
+              </div>
+            )}
+          <div className="flex items-center justify-between gap-3 px-5 py-3.5">
             <div className="text-sm font-bold text-white">
               เลือก {selectedJobs.length} งานฉบับร่าง
               <span className="ml-2 font-mono text-xs font-semibold text-[#9CC7B4]">
@@ -472,7 +494,7 @@ export default function ProductionPlanningPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setSelected(new Set())}
+                onClick={() => { setSelected(new Set()); setSubmitError(null); }}
                 className="rounded-lg px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
               >
                 ล้าง
@@ -489,6 +511,7 @@ export default function ProductionPlanningPage() {
                 )}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}

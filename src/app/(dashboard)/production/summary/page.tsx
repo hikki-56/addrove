@@ -312,9 +312,6 @@ export default function ProductionSummaryPage() {
               </tbody>
             </table>
           </div>
-          <p className="border-t border-[#EEF1EF] px-4 py-2.5 text-[11px] font-semibold text-slate-400">
-            ยอดขาด/เกินนับเฉพาะสินค้าดี
-          </p>
         </div>
       )}
     </div>

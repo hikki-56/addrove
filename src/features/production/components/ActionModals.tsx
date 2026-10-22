@@ -5,6 +5,7 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty } from "./ui";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
+import { ProductionMaterialSummary } from "./MaterialStockLocations";
 
 // Modal ยืนยันพร้อมเหตุผลบังคับ (ยกเลิกงาน / เปิดงานผลิตต่อ) + Modal ยืนยันทั่วไป (เช่น เริ่มผลิต)
 // + Modal ปรับปรุงยอดผลผลิต (ADMIN)
@@ -25,7 +26,6 @@ interface ReasonModalProps {
 export function ReasonModal({
   open,
   title,
-  hint,
   reasonLabel,
   confirmLabel,
   tone = "primary",
@@ -50,7 +50,6 @@ export function ReasonModal({
       <div className="relative flex max-h-[88dvh] w-full flex-col rounded-t-xl border border-[#E8ECEA] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.18)] animate-in fade-in zoom-in-95 duration-150 sm:max-w-md sm:rounded-xl">
         <div className="border-b border-[#EEF1EF] px-5 py-4">
           <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">{hint}</p>
         </div>
         <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {error && (
@@ -121,7 +120,6 @@ interface ConfirmModalProps {
 export function ConfirmModal({
   open,
   title,
-  hint,
   children,
   confirmLabel,
   tone = "primary",
@@ -145,7 +143,6 @@ export function ConfirmModal({
       >
         <div className="border-b border-[#EEF1EF] px-5 py-4">
           <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          {hint && <p className="mt-1 text-sm font-medium text-slate-500">{hint}</p>}
         </div>
         {(error || children) && (
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
@@ -189,6 +186,7 @@ export function ConfirmModal({
 /** สรุปงานในการ์ดยืนยันเริ่มผลิต — สินค้า โต๊ะ เป้าหมาย หมายเหตุ */
 export function StartJobSummary({ job }: { job: ProductionJob }) {
   return (
+    <div className="space-y-3">
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-xl border border-[#E8ECEA] bg-slate-50 p-4 text-sm">
       <dt className="font-semibold text-slate-400">เลขใบสั่งผลิต</dt>
       <dd className="font-mono font-bold text-slate-900">{job.job_no}</dd>
@@ -209,6 +207,8 @@ export function StartJobSummary({ job }: { job: ProductionJob }) {
         </>
       )}
     </dl>
+    {job.material_plan && <ProductionMaterialSummary plan={job.material_plan} />}
+    </div>
   );
 }
 
@@ -312,7 +312,6 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={submitting}
-              placeholder="เช่น นับซ้ำจริง ต้องลดยอดผลิตดี 5 ชิ้น"
               className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
             />
           </label>

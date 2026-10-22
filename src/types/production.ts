@@ -1,6 +1,8 @@
 // ประเภทข้อมูลระบบสั่งผลิตและรายงานผลผลิต (v2) — ใช้ร่วมกันระหว่าง API และหน้า UI
 // หนึ่งงาน = หนึ่งใบสั่งผลิต = สินค้า 1 ชนิด × โต๊ะผลิต 1 โต๊ะ (ติดตามผลได้ชัดเจน)
 
+import type { ProductionMaterialPlan } from "@/types/production-bom";
+
 export type ProductionJobStatus = "DRAFT" | "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 export type ProductionPriority = "NORMAL" | "URGENT" | "CRITICAL";
@@ -57,9 +59,13 @@ export interface ProductionJob {
   /** จำนวนผลิตเกิน = max(0, ผลิตดีสะสม − เป้าหมาย) */
   over_qty: number;
   report_count: number;
+  material_plan?: ProductionMaterialPlan;
 }
 
 export interface ProductionReport {
+  material_details?: Array<{ sku: string; stock_unit: string; used_qty: number; scrap_qty: number; scrap_cause: string; total_qty: number }>;
+  receipt_location_code?: string;
+  material_reason?: string;
   report_id: string;
   job_no: string;
   /** ลำดับรายงานต่องานเดียวกัน */

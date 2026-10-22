@@ -5,9 +5,11 @@
 // และตาม api-contract §2.4 งานรอผลิตจะปฏิเสธ location ด้วย (CHANGED) — เดิม UI ส่งทุกช่องทุกครั้ง
 import type { ProductionJob, ProductionJobStatus, ProductionPriority } from "@/types/production";
 import { parseQtyInput } from "./quantity";
+import type { ProductionBomSelection } from "@/types/production-bom";
 
 /** ค่าที่ฟอร์มเพิ่ม/แก้ไขงานส่งออกมา (ตรงกับ AddJobFormValue) */
 export interface JobFormInput {
+  bom?: ProductionBomSelection;
   production_date: string;
   table_no: number;
   product_id: string;
@@ -53,12 +55,14 @@ export function buildCreateJobInput(value: JobFormInput) {
   };
   const target = qtyOrUndefined(value.target_qty);
   if (target !== undefined) body.target_qty = target;
+  if (value.bom) body.bom = value.bom;
   return body;
 }
 
 /** body ของ PATCH /api/production/jobs/{job_no} — updated_at + ช่องที่แก้ได้และเปลี่ยนจริง (+ reason) */
 export function buildJobPatch(job: ProductionJob, value: JobFormInput): Record<string, unknown> {
   const patch: Record<string, unknown> = { updated_at: job.updated_at };
+  if (value.bom && (job.status === "DRAFT" || job.status === "WAITING") && JSON.stringify(value.bom) !== JSON.stringify(job.material_plan?.selection)) patch.bom = value.bom;
   const allowed = EDITABLE_FIELDS_BY_STATUS[job.status] ?? [];
   const next: Record<EditableJobField, unknown> = {
     production_date: value.production_date,

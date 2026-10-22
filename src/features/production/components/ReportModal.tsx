@@ -5,6 +5,8 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
 import { formatQty } from "./ui";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
+import MaterialReportFields, { type MaterialReportValue } from "@/features/production/components/MaterialReportFields";
+import type { ProductionMaterialActual } from "@/types/production-bom";
 
 // Modal รายงานผลผลิต (APPROVER) — ยอดเฉพาะรอบนี้ ระบบคำนวณยอดสะสมเอง
 // ก่อนยืนยันมีสรุปยอดรอบนี้ + สะสมเทียบเป้าเสมอ · มีของเสีย → บังคับสาเหตุ
@@ -13,6 +15,10 @@ import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 // (lib/idempotency.ts: คงอยู่ข้ามการปิด/เปิด modal จนกว่าเซิร์ฟเวอร์ยืนยันสำเร็จ)
 
 export interface ReportPayload {
+  materials?: ProductionMaterialActual[];
+  receipt_location_id?: string;
+  material_reason?: string;
+  create_backorder?: boolean;
   good_qty: number;
   defect_qty: number;
   defect_cause: string;
@@ -42,6 +48,8 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
   const [note, setNote] = useState("");
   const [reportKind, setReportKind] = useState<"PARTIAL" | "FINAL">("PARTIAL");
   const [closeReason, setCloseReason] = useState("");
+  const [materialValue, setMaterialValue] = useState<MaterialReportValue | null>(null);
+  const [createBackorder, setCreateBackorder] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -51,6 +59,8 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
       setNote("");
       setReportKind("PARTIAL");
       setCloseReason("");
+      setMaterialValue(null);
+      setCreateBackorder(false);
     }
   }, [open]);
 
@@ -73,7 +83,8 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
   const formError = useMemo(() => {
     if (qtyError) return qtyError;
-    if (good + defect <= 0) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
+    if (job?.material_plan && (!materialValue || materialValue.error)) return materialValue?.error || "กรุณาตรวจรายการวัตถุดิบ";
+    if (good + defect <= 0 && !materialValue?.payload.materials.some(i => i.used_qty + i.scrap_qty > 0) && !(isFinal && (job?.report_count || 0) > 0)) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
     if (defect > 0 && !defectCause.trim()) return "มีของเสีย — ต้องระบุสาเหตุของเสีย";
     if (isFinal && (remainingAfter > 0 || overAfter > 0) && !closeReason.trim()) {
       return remainingAfter > 0
@@ -81,7 +92,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
         : `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`;
     }
     return null;
-  }, [qtyError, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job?.unit]);
+  }, [qtyError, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job, materialValue]);
 
   if (!open || !job) return null;
 
@@ -150,7 +161,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 type="text"
                 value={defectCause}
                 onChange={(e) => setDefectCause(e.target.value)}
-                placeholder="เช่น วัตถุดิบแตกหัก พิมพ์เพี้ยน"
                 className={`mt-1 ${inputClass} border-rose-200 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-400/20`}
               />
             </label>
@@ -175,9 +185,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
               </button>
             ))}
           </div>
-          <p className="-mt-2 text-xs font-semibold text-slate-400">
-            {isFinal ? "จบงานแล้วจะรายงานเพิ่มไม่ได้" : "งานยังไม่จบ"}
-          </p>
 
           {isFinal && (remainingAfter > 0 || overAfter > 0) && (
             <label className="block">
@@ -188,19 +195,22 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 rows={2}
                 value={closeReason}
                 onChange={(e) => setCloseReason(e.target.value)}
-                placeholder={remainingAfter > 0 ? "เช่น วัตถุดิบไม่พอ ต้องปิดงานก่อน" : "เช่น ทำเกินตามคำขอของ ADMIN"}
                 className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
               />
             </label>
           )}
 
+          {job.material_plan && <MaterialReportFields plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
+          {job.material_plan && isFinal && remainingAfter > 0 && <label className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+            <input type="checkbox" disabled={submitting} checked={createBackorder} onChange={e => setCreateBackorder(e.target.checked)} />
+            สร้างงานค้าง {formatQty(remainingAfter)} {job.unit}
+          </label>}
           <label className="block">
-            <span className="text-xs font-bold text-slate-500">หมายเหตุ (ถ้ามี)</span>
+            <span className="text-xs font-bold text-slate-500">หมายเหตุ</span>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น เครื่องหยุด 15 นาทีช่วงบ่าย"
               className={`mt-1 ${inputClass}`}
             />
           </label>
@@ -232,9 +242,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 </span>
               </div>
             </div>
-            <p className="mt-2 text-[11px] font-semibold text-[#4A7A66]">
-              เพิ่มสต็อก {formatQty(good)} {job.unit} เข้าโกดัง 2
-            </p>
           </div>
         </div>
 
@@ -258,6 +265,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 note: note.trim(),
                 report_kind: reportKind,
                 close_reason: closeReason.trim(),
+                ...(job.material_plan ? { ...materialValue?.payload, create_backorder: isFinal && remainingAfter > 0 && createBackorder } : {}),
               })
             }
             className="flex-[1.4] rounded-lg bg-[#06402B] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#06402B]/20 transition-all hover:bg-[#0A5C4E] active:scale-[0.98] disabled:opacity-40"

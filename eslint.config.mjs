@@ -10,10 +10,14 @@ const eslintConfig = [
       "next-env.d.ts",
       "data/**",
       "scratch/**",
+      ".tmp*/**",
+      ".temp*/**",
+      "artifacts/**",
       "node_modules/**",
     ],
   },
   {
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       "@next/next/no-img-element": "off",
       "react-hooks/set-state-in-effect": "off",

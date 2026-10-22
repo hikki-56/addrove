@@ -10,11 +10,11 @@ const checks = [];
 const originalFetch = globalThis.fetch;
 const originalNow = Date.now;
 function load(relative, dependencies, globals = {}) {
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const source = ts.transpileModule(fs.readFileSync(`${root}/${relative}`, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const context = vm.createContext({ module, exports: module.exports,
+  const context = vm.createContext({ module: loadedModule, exports: loadedModule.exports,
     require: name => {
       if (name in dependencies) return dependencies[name];
       throw new Error(`Blocked import in regression harness: ${name}`);
@@ -22,7 +22,7 @@ function load(relative, dependencies, globals = {}) {
     fetch: (...args) => globalThis.fetch(...args), process: { env: {} }, ...globals,
   });
   vm.runInContext(source, context, { filename: relative });
-  return module.exports;
+  return loadedModule.exports;
 }
 function deferred() {
   let resolve;
@@ -31,6 +31,11 @@ function deferred() {
 }
 const note = { sku: "TEST-SKU", qty: 4, custom: "keep", current_step: 1 };
 function row() { return ["fixture-doc", "TRF-fixture", "TRANSFER", "", "2026-10-12", "PENDING", JSON.stringify(note), "fixture-admin", "2026-10-12T00:00:00Z"]; }
+// Keep the real request wrapper on its non-database branch for these fixtures.
+const storageDriver = { getStorageDriver: () => "sheets" };
+const storageTransaction = load("src/server/storage-transaction.ts", {
+  "@/server/repositories/storage-driver": storageDriver,
+});
 
 try {
   const { createTransferStockSnapshot } = load("src/client/transfer-stock-snapshot.ts", {});
@@ -73,7 +78,11 @@ try {
       stored[9] = value;
     },
   };
-  const locking = load("src/server/keyed-lock.ts", { async_hooks: require("node:async_hooks") });
+  const locking = load("src/server/keyed-lock.ts", {
+    async_hooks: require("node:async_hooks"),
+    "@/server/repositories/storage-driver": storageDriver,
+    "@/server/storage-transaction": storageTransaction,
+  });
   const { SheetsDocumentRepository } = load("src/server/repositories/sheets/document.repository.ts", {
     "@/server/google-sheets/client": sheets, "@/server/keyed-lock": locking,
     "@/lib/id": { generateUuid: () => "fixture-only" },
@@ -81,6 +90,7 @@ try {
   const repo = new SheetsDocumentRepository();
   let configuredDocuments = repo;
   const progressRoute = load("src/app/api/movements/transfer/[id]/progress/route.ts", {
+    "@/server/storage-transaction": storageTransaction,
     "@/server/auth-session": { getAuthSession: async () => ({ user: { id: "fixture-staff" } }) },
     "@/server/security": { createActorFromSession: async () => ({ id: "fixture-staff", role: "WAREHOUSE_STAFF" }) },
     "@/server/repositories": { getRepository: () => ({ documents: configuredDocuments }) },
@@ -158,6 +168,7 @@ try {
   const signer = load("src/server/google-sheets/script-signer.ts", { crypto: require("node:crypto") }, { process: { env: signingEnv } });
   const clientEnv = { GOOGLE_SERVICE_ACCOUNT_EMAIL: "fixture@example.invalid", GOOGLE_PRIVATE_KEY: "fixture", GOOGLE_SPREADSHEET_ID: "fixture" };
   const client = load("src/server/google-sheets/client.ts", {
+    "@/server/repositories/storage-driver": storageDriver,
     googleapis: { google: { auth: { GoogleAuth: class {} }, sheets: () => api } },
     "./script-signer": signer,
   }, { process: { env: clientEnv } });

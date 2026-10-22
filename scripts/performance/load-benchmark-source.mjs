@@ -35,8 +35,8 @@ function load(candidate) {
     throw new Error(`Benchmark source is outside the whitelist: ${relative}`);
   }
   if (cache.has(filename)) return cache.get(filename).exports;
-  const module = { exports: {} };
-  cache.set(filename, module);
+  const loadedModule = { exports: {} };
+  cache.set(filename, loadedModule);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     fileName: filename,
@@ -45,15 +45,19 @@ function load(candidate) {
     // This import exists in transfer-stock for admin approval. Employee submit
     // must never reach it; fail loudly instead of silently simulating Sheets.
     if (request === '@/server/google-sheets/client') return sheetsGuard;
+    // This harness measures in-memory repositories and the local lock branch.
+    // Never inherit the app's storage setting or load a database connection.
+    if (request === '@/server/repositories/storage-driver') return { getStorageDriver: () => 'sheets' };
+    if (request === '@/server/storage-transaction') return { withStorageTransaction: denied };
     if (request.startsWith('@/')) return load(path.resolve(root, 'src', request.slice(2)));
     if (request.startsWith('.')) return load(path.resolve(path.dirname(filename), request));
     if (['zod', 'next/server', 'async_hooks', 'crypto'].includes(request)) return requirePackage(request);
     throw new Error(`Benchmark blocked package import: ${request}`);
   };
   vm.runInThisContext(`(function(require,module,exports,__filename,__dirname){${source}\n})`, { filename })(
-    localRequire, module, module.exports, filename, path.dirname(filename),
+    localRequire, loadedModule, loadedModule.exports, filename, path.dirname(filename),
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 
 export { root };

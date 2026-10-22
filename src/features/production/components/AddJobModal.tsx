@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import BomPlanFields from "@/features/production/components/BomPlanFields";
+import type { ProductionCapacity, ProductionBomSelection } from "@/types/production-bom";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import ProductSearchInput from "@/components/ui/ProductSearchInput";
 import type { Product } from "@/types/models";
 import type { ProductionJob, ProductionPriority } from "@/types/production";
 import { PRODUCTION_TABLES } from "@/types/production";
-import { editRuleHint, formatQty } from "./ui";
 import { parseQtyInput } from "@/features/production/lib/quantity";
 import { canEditField } from "@/features/production/lib/job-form";
+import { formatQty } from "./ui";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
-// — เลือกสินค้าจากรายการสินค้าจริงในระบบ (ProductSearchInput → /api/products)
+// — เลือกเฉพาะสินค้าสำเร็จรูปที่มี BOM เปิดใช้งานและมีรายการวัตถุดิบ
 
 export interface AddJobFormValue {
+  bom?: ProductionBomSelection;
   production_date: string;
   table_no: number;
   product_id: string;
@@ -57,6 +60,9 @@ export default function AddJobModal({
   useEscapeKey(open && !submitting, onClose);
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [bomError, setBomError] = useState<string | null>(null);
   const [form, setForm] = useState<AddJobFormValue>({
     production_date: defaultDate || "",
     table_no: defaultTable,
@@ -71,25 +77,33 @@ export default function AddJobModal({
     reason: "",
   });
 
-  // โหลดรายการสินค้าเมื่อเปิด modal — เฉพาะสินค้าที่มีอยู่จริงในโกดัง 2 (คลังผลิต, warehouse_id = wh-02
-  // ให้ตรงกับคลังที่เซิร์ฟเวอร์รับผลผลิตเข้า PRODUCTION_RECEIVE_WAREHOUSE — เดิมใช้ wh-2 ซึ่งไม่มีใน master)
-  // (ไม่ใส่ limit — เรียกแบบไม่มี limit จะได้ data เป็น array ตรง ๆ แบบ legacy)
+  // จับคู่ทะเบียนสินค้ากับสินค้าปลายทางของ BOM ไม่จำกัดว่าต้องมีสต็อกแล้ว
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch("/api/products?active=true&warehouse_id=wh-02", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled || !json.success) return;
+    setProducts([]);
+    setCapacities({});
+    setProductsError(null);
+    Promise.all([
+      fetch("/api/products?active=true&master_only=true", { cache: "no-store" }).then(r => r.json()),
+      fetch(`/api/production/capacities${job?.job_no ? `?job_no=${encodeURIComponent(job.job_no)}` : ""}`, { cache: "no-store" }).then(r => r.json()),
+    ])
+      .then(([json, bomJson]) => {
+        if (cancelled) return;
+        if (!json.success || !bomJson.success) throw new Error("โหลดสินค้าที่มีสูตรการผลิตไม่สำเร็จ กรุณาปิดและเปิดฟอร์มอีกครั้ง");
         // รองรับทั้ง data ตรง ๆ และแบบแบ่งหน้า { items: [...] }
         const list = Array.isArray(json.data) ? json.data : Array.isArray(json.data?.items) ? json.data.items : null;
-        if (list) setProducts(list as Product[]);
+        if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าหรือสูตรการผลิตไม่ถูกต้อง กรุณาลองใหม่");
+        const rows = bomJson.data as ProductionCapacity[];
+        const formulaProducts = new Set(rows.map(f => f.product_id));
+        setCapacities(Object.fromEntries(rows.map(c => [c.product_id, c])));
+        setProducts((list as Product[]).filter(p => formulaProducts.has(p.product_id)));
       })
-      .catch(() => {});
+      .catch(e => { if (!cancelled) setProductsError(e instanceof Error ? e.message : "โหลดสินค้าที่มีสูตรไม่สำเร็จ"); });
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, job?.job_no]);
 
   // รีเซ็ตฟอร์มทุกครั้งที่เปิด
   useEffect(() => {
@@ -107,6 +121,7 @@ export default function AddJobModal({
         note: job.note || "",
         location: job.location || "",
         reason: "",
+        bom: job.material_plan?.selection,
       });
     } else {
       setForm({
@@ -140,13 +155,16 @@ export default function AddJobModal({
   // ตรวจจำนวนเป้าหมายแบบนับตำแหน่งทศนิยมจากข้อความ (สูตรเดิม Math.round(v*100) === v*100 ปฏิเสธ 2.3, 1.15)
   const qtyParse = useMemo(() => parseQtyInput(form.target_qty, { allowEmpty: false, allowZero: false }), [form.target_qty]);
   const qtyInvalid = !qtyParse.ok && !qtyParse.empty;
+  const changeBom = useCallback((bom: ProductionBomSelection | undefined, unit?: string) => setForm(f => ({ ...f, bom, unit: unit || f.unit })), []);
   const formError = useMemo(() => {
     if (!form.production_date) return "กรุณาเลือกวันที่ผลิต";
+    if (productsError) return productsError;
     if (!form.product_id) return "กรุณาเลือกสินค้าจากรายการ";
+    if (bomError) return bomError;
     if (!qtyParse.ok) return qtyParse.empty ? "จำนวนเป้าหมายต้องมากกว่า 0" : `จำนวนเป้าหมาย: ${qtyParse.error}`;
     if (needReason && !form.reason.trim()) return "การแก้ไขงานที่ส่งแล้วต้องระบุเหตุผล";
     return null;
-  }, [form.production_date, form.product_id, qtyParse, needReason, form.reason]);
+  }, [form.production_date, form.product_id, qtyParse, needReason, form.reason, bomError, productsError]);
 
   if (!open) return null;
 
@@ -158,18 +176,12 @@ export default function AddJobModal({
           <h2 className="text-lg font-bold text-slate-900">{isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต (ฉบับร่าง)"}</h2>
           {isEdit && job && (
             <p className="mt-0.5 font-mono text-xs font-semibold text-slate-500">
-              {job.job_no} · {editRuleHint(job.status)}
+              {job.job_no}
             </p>
           )}
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5">
-              <p className="text-sm font-bold text-rose-800">{error}</p>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-xs font-bold text-slate-500">วันที่ผลิต</span>
@@ -183,7 +195,7 @@ export default function AddJobModal({
               />
             </label>
             <label className="block">
-              <span className="text-xs font-bold text-slate-500">โต๊ะผลิต (1–5)</span>
+              <span className="text-xs font-bold text-slate-500">โต๊ะผลิต</span>
               <select
                 value={form.table_no}
                 disabled={!canEditPlanFields}
@@ -199,17 +211,23 @@ export default function AddJobModal({
 
           <div>
             <span className="text-xs font-bold text-slate-500">
-              สินค้า (โกดัง 2)
+              สินค้าสำเร็จรูป
             </span>
             <div className="mt-1">
               {canEditProduct ? (
                 <ProductSearchInput
                   products={products}
-                  placeholder="ค้นหาสินค้า / SKU / บาร์โค้ด"
+                  showStock={false}
+                  renderProductMeta={p => {
+                    const c = capacities[p.product_id];
+                    return <span className={`text-right text-xs font-bold ${c?.quantity === 0 ? "text-rose-700" : c?.quantity != null ? "text-emerald-800" : "text-slate-500"}`}>ผลิตได้ <strong className="font-mono">{c?.quantity == null ? "—" : formatQty(c.quantity)}</strong>{c?.unit ? ` ${c.unit}` : ""}</span>;
+                  }}
+                  placeholder="ค้นหาสินค้าสำเร็จรูป / SKU / บาร์โค้ด"
                   onSelectProduct={(p) =>
                     setForm((f) => ({
                       ...f,
                       product_id: p.product_id,
+                      bom: undefined,
                       product_name: p.product_name,
                       sku: p.sku,
                       unit: p.base_unit || "ชิ้น",
@@ -231,6 +249,8 @@ export default function AddJobModal({
             </div>
           </div>
 
+          <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
+            disabled={isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING"} onChange={changeBom} onValidation={setBomError} />
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="block truncate text-xs font-bold text-[#06402B]">เป้าหมายสินค้าดี</span>
@@ -269,25 +289,23 @@ export default function AddJobModal({
           </div>
 
           <label className="block">
-            <span className="text-xs font-bold text-slate-500">หมายเหตุ (ถ้ามี)</span>
+            <span className="text-xs font-bold text-slate-500">หมายเหตุ</span>
             <textarea
               rows={2}
               value={form.note}
               disabled={false}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              placeholder="เช่น เตรียมวัตถุดิบให้ก่อน 10:00"
               className={`mt-1 ${inputClass} resize-none`}
             />
           </label>
 
           <label className="block">
-            <span className="text-xs font-bold text-slate-500">ตำแหน่งเก็บตอนรับเข้าโกดัง 2 (ไม่บังคับ)</span>
+            <span className="text-xs font-bold text-slate-500">ตำแหน่งเก็บที่เสนอ</span>
             <input
               type="text"
               value={form.location}
               disabled={!canEditLocation}
               onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-              placeholder="เช่น 2A-05"
               className={`mt-1 font-mono ${inputClass} disabled:bg-slate-100 disabled:text-slate-400`}
             />
           </label>
@@ -299,14 +317,15 @@ export default function AddJobModal({
                 rows={2}
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-                placeholder="เช่น ลูกค้าเพิ่มออเดอร์ ต้องเพิ่มเป้าหมาย"
                 className="mt-1 w-full resize-none rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:outline-none"
               />
             </label>
           )}
         </div>
 
-        <div className="flex gap-2.5 border-t border-[#EEF1EF] px-5 py-4">
+        <div className="shrink-0 border-t border-[#EEF1EF] px-5 py-4">
+          {(error || formError) && <p role="alert" className="mb-3 text-sm font-semibold text-rose-800">{error || formError}</p>}
+          <div className="flex gap-2.5">
           <button
             type="button"
             disabled={submitting}
@@ -329,6 +348,7 @@ export default function AddJobModal({
               "เพิ่มงาน (ฉบับร่าง)"
             )}
           </button>
+          </div>
         </div>
       </div>
     </div>

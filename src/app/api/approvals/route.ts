@@ -14,7 +14,7 @@ export const revalidate = 0;
 import { getAuthSession } from "@/server/auth-session";
 import { getDocumentStatus } from "@/server/document-status-store";
 import { isProductionOrderDocument } from "@/server/legacy-prd-filter";
-import { expressStatusMap } from "@/app/api/express-import/status/route";
+import { expressStatusMap } from "@/server/express-status-cache";
 
 export async function GET(req: NextRequest) {
   try {

@@ -19,6 +19,12 @@ import {
   SHEETS,
 } from "@/server/google-sheets/client";
 import { withKeyedLock } from "@/server/keyed-lock";
+import { withStorageTransaction } from "@/server/storage-transaction";
+import { query as databaseQuery } from "@/server/repositories/postgres/database";
+import { getStorageDriver } from "@/server/repositories/storage-driver";
+import { ProductionError } from "@/server/production/production-error";
+export { ProductionError } from "@/server/production/production-error";
+import { attachMaterialPlans, getMaterialPlan, saveMaterialPlan, reserveJobMaterials, releaseMaterialReservations, postMaterialReport, assertMaterialReplay, cloneMaterialPlan } from "@/server/production/production-material.service";
 import { withStockLocks, formatStockLockKey } from "@/server/locking";
 import { executeAtomicOperation } from "@/server/services/stock/atomic-stock-executor";
 import { getRepository } from "@/server/repositories";
@@ -54,15 +60,6 @@ import {
 
 // ---- Error ประจำโมดูล ----
 
-export class ProductionError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: 400 | 404 | 409 = 400
-  ) {
-    super(message);
-    this.name = "ProductionError";
-  }
-}
 
 // ---- helpers ----
 
@@ -322,6 +319,7 @@ export async function listJobs(filters: ListJobsFilters = {}): Promise<Productio
     return a.job_no < b.job_no ? -1 : 1;
   });
 
+  await attachMaterialPlans(filtered);
   return filtered;
 }
 
@@ -364,6 +362,15 @@ export async function getJobDetail(
     history,
   };
   await attachBarcodes([detail.job]);
+  await attachMaterialPlans([detail.job]);
+  if (getStorageDriver() === "postgres" && reports.length) {
+    const materials = await databaseQuery(`SELECT r.*,l.location_code FROM production_material_reports r
+      LEFT JOIN locations l ON l.location_id=r.receipt_location_id WHERE r.report_id=ANY($1::text[])`, [reports.map(r => r.report_id)]);
+    for (const r of reports) {
+      const m = materials.find(m => m.report_id === r.report_id);
+      if (m) { r.material_details = m.materials; r.receipt_location_code = m.location_code || undefined; r.material_reason = m.reason; }
+    }
+  }
   return detail;
 }
 
@@ -444,8 +451,12 @@ async function resolveProductInfo(repo: IStockRepository, productId: string) {
 async function generateJobNo(repo: IStockRepository, productionDate: string): Promise<string> {
   return withKeyedLock(`prd-jobno:${productionDate}`, async () => {
     await ensureProductionSheets();
-    const rows = await readJobRows(true);
     const prefix = `PRD-${productionDate.replace(/-/g, "")}-`;
+    // Deleted PostgreSQL drafts retain their unique job number. Count them too.
+    // The enclosing storage transaction holds the cross-process writer lock.
+    const rows = getStorageDriver() === "postgres"
+      ? (await databaseQuery<{ job_no: string }>("SELECT job_no FROM production_jobs WHERE job_no LIKE $1", [`${prefix}%`])).map(j => ["", j.job_no])
+      : await readJobRows(true);
     let max = 0;
     for (const r of rows) {
       const no = str(r && r[1]);
@@ -458,7 +469,7 @@ async function generateJobNo(repo: IStockRepository, productionDate: string): Pr
   });
 }
 
-export async function createJobs(
+async function createJobsInternal(
   actor: ProductionActor,
   inputs: CreateProductionJobInput[]
 ): Promise<ProductionJob[]> {
@@ -509,6 +520,13 @@ export async function createJobs(
       report_count: 0,
     };
     await appendRows(SHEETS.PRODUCTION_JOBS, [jobToRow(job)]);
+    const materialPlan = await saveMaterialPlan(job, input.bom);
+    if (materialPlan) {
+      job.unit = materialPlan.snapshot.unit;
+      job.material_plan = materialPlan;
+      const loaded = await loadJobRow(job.job_no);
+      await writeJobRow(loaded.index, job);
+    }
     await appendHistory(jobNo, "CREATE", actor, "", { target_qty: job.target_qty, table_no: job.table_no, sku: job.sku });
     created.push(job);
   }
@@ -529,7 +547,7 @@ async function writeJobRow(index: number, base: ReturnType<typeof jobRowToPartia
   clearSheetCache(SHEETS.PRODUCTION_JOBS);
 }
 
-export async function updateJob(
+async function updateJobInternal(
   actor: ProductionActor,
   jobNo: string,
   patch: UpdateProductionJobInput
@@ -637,6 +655,17 @@ export async function updateJob(
       );
     }
 
+    if (patch.bom) {
+      const plan = await saveMaterialPlan(base, patch.bom);
+      if (plan) { base.unit = plan.snapshot.unit; changes.bom_id = plan.snapshot.bom_id; }
+    } else if (changes.product) {
+      if (await getMaterialPlan(base.job_no)) throw new ProductionError("เปลี่ยนสินค้าแล้วต้องเลือกสูตรใหม่ด้วย");
+    }
+    const materialDemandChanged = changes.product !== undefined || changes.target_qty !== undefined || changes.bom_id !== undefined;
+    if (base.status !== "DRAFT" && materialDemandChanged && await getMaterialPlan(base.job_no)) {
+      const detail = await getJobDetail(base.job_no);
+      await reserveJobMaterials(repo, { job_no: base.job_no, remaining_qty: Math.max(0, base.target_qty - (detail?.job.produced_good || 0)) });
+    }
     if (Object.keys(changes).length === 0) {
       throw new ProductionError("ไม่มีข้อมูลที่ต้องแก้ไข", 400);
     }
@@ -689,7 +718,7 @@ function columnLetter(n: number): string {
   return out;
 }
 
-export async function deleteDraft(actor: ProductionActor, jobNo: string): Promise<void> {
+async function deleteDraftInternal(actor: ProductionActor, jobNo: string): Promise<void> {
   await withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const rows = await readJobRows(true);
     const idx = rows.findIndex((r) => r && str(r[1]).trim().toLowerCase() === jobNo.trim().toLowerCase());
@@ -713,7 +742,7 @@ export async function deleteDraft(actor: ProductionActor, jobNo: string): Promis
 
 // ---- ส่งงาน / เริ่มผลิต ----
 
-export async function submitJobs(
+async function submitJobsInternal(
   actor: ProductionActor,
   jobNos: string[]
 ): Promise<{ submitted: ProductionJob[]; skipped: { job_no: string; reason: string }[] }> {
@@ -730,6 +759,7 @@ export async function submitJobs(
         return null;
       }
       assertTransition(base.status, "WAITING");
+      await reserveJobMaterials(getRepository(), { job_no: base.job_no, remaining_qty: base.target_qty });
       base.status = "WAITING";
       base.submitted_at = nowIso;
       base.updated_at = nowIso;
@@ -744,7 +774,7 @@ export async function submitJobs(
   return { submitted, skipped };
 }
 
-export async function startJob(actor: ProductionActor, jobNo: string): Promise<ProductionJob> {
+async function startJobInternal(actor: ProductionActor, jobNo: string): Promise<ProductionJob> {
   return withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const { index, base } = await loadJobRow(jobNo);
     if (base.status === "IN_PROGRESS") {
@@ -772,7 +802,7 @@ export interface ReportResult {
   replayed: boolean;
 }
 
-export async function reportProduction(
+async function reportProductionInternal(
   actor: ProductionActor,
   jobNo: string,
   input: ReportProductionInput
@@ -781,6 +811,15 @@ export async function reportProduction(
   return withKeyedLock(key, async () => {
     const { index, base } = await loadJobRow(jobNo);
 
+    // Replay is checked before status, so retrying a confirmed final report is safe.
+    const replayRows = await readReportRows(true);
+    const replay = replayRows.find(r => r && str(r[16]).trim() === input.idempotency_key);
+    if (replay) {
+      const prior = reportRowToReport(replay);
+      if (prior.job_no !== base.job_no || prior.good_qty !== round2(input.good_qty) || prior.defect_qty !== round2(input.defect_qty) || prior.report_kind !== input.report_kind) throw new ProductionError("รหัสยืนยันถูกใช้กับรายงานอื่นแล้ว", 409);
+      await assertMaterialReplay(base.job_no, prior.report_id, input);
+      return { report: prior, job: (await getJobDetail(base.job_no))!.job, replayed: true };
+    }
     if (base.status !== "IN_PROGRESS") {
       throw new ProductionError(
         `งานสถานะ ${PRODUCTION_JOB_STATUS_LABELS[base.status]} ไม่สามารถรายงานผลได้ — ต้องเริ่มผลิตก่อน และหลังจบ/ยกเลิกต้องรอ ADMIN เปิดงานใหม่`,
@@ -790,7 +829,7 @@ export async function reportProduction(
 
     const good = round2(input.good_qty);
     const defect = round2(input.defect_qty);
-    if (good + defect <= 0) {
+    if (good + defect <= 0 && !(input.materials?.some(i => i.used_qty + i.scrap_qty > 0) || input.report_kind === "FINAL")) {
       throw new ProductionError("กรุณากรอกจำนวนผลิตดีหรือของเสียอย่างน้อย 1 รายการ");
     }
     if (defect > 0 && !input.defect_cause?.trim()) {
@@ -819,6 +858,10 @@ export async function reportProduction(
     const overAfter = round2(Math.max(0, newGood - base.target_qty));
 
     const isFinal = input.report_kind === "FINAL";
+    if (input.create_backorder && (!isFinal || remainingAfter <= 0)) throw new ProductionError("สร้างงานค้างได้เมื่อจบงานโดยสินค้าดียังไม่ครบเป้าเท่านั้น");
+    const materialPlan = await getMaterialPlan(base.job_no);
+    if (getStorageDriver() === "postgres" && !materialPlan) throw new ProductionError("งานนี้ยังไม่มีสูตรวัตถุดิบ กรุณาให้ Admin ผูกสูตรก่อนเริ่มผลิต");
+    if (good + defect <= 0 && !input.materials?.some(i => i.used_qty + i.scrap_qty > 0) && progress.report_count === 0) throw new ProductionError("ยังไม่มีผลผลิตให้จบงาน");
     let closeReason = input.close_reason || "";
     if (isFinal && (remainingAfter > 0 || overAfter > 0) && !closeReason.trim()) {
       throw new ProductionError(
@@ -864,7 +907,9 @@ export async function reportProduction(
 
       // 2) เพิ่มสต็อกสินค้าดีรายงานนี้เข้าโกดัง 2 (ครั้งเดียว — กันซ้ำภายใน)
       let stockDoc: Document | null = null;
-      if (good > 0) {
+      if (materialPlan) {
+        stockDoc = await postMaterialReport(repo, jobForStock, report, input, input, actor.id);
+      } else if (good > 0) {
         stockDoc = await postReportStockToWh2({ repo }, { job: jobForStock, report, actorId: actor.id });
       }
 
@@ -876,6 +921,19 @@ export async function reportProduction(
         base.close_reason = closeReason;
       }
       await writeJobRow(index, base);
+      if (isFinal) await releaseMaterialReservations(base.job_no);
+      else if (materialPlan) await reserveJobMaterials(repo, { job_no: base.job_no, remaining_qty: remainingAfter }, false);
+      if (input.create_backorder && materialPlan) {
+        const jobNo = await generateJobNo(repo, bangkokToday());
+        const child: ProductionJob = { ...jobForStock, job_id: `prj-${crypto.randomUUID()}`, job_no: jobNo, production_date: bangkokToday(), status: "DRAFT", target_qty: remainingAfter,
+          note: `งานค้างจาก ${base.job_no}`, location: "", created_by: actor.id, created_by_name: actor.name, created_at: nowIso, updated_at: nowIso,
+          submitted_at: "", started_at: "", started_by_name: "", completed_at: "", cancelled_at: "", cancelled_by_name: "", cancel_reason: "", close_reason: "", reopen_reason: "", reopen_count: 0,
+          produced_good: 0, defect_total: 0, remaining_qty: remainingAfter, over_qty: 0, report_count: 0 };
+        await appendRows(SHEETS.PRODUCTION_JOBS, [jobToRow(child)]);
+        await cloneMaterialPlan(base.job_no, child.job_no, report.report_id);
+        await appendHistory(child.job_no, "BACKORDER", actor, closeReason, { parent_job_no: base.job_no, target_qty: remainingAfter });
+        clearSheetCache(SHEETS.PRODUCTION_JOBS);
+      }
 
       // 4) ประวัติ + แจ้ง ADMIN
       await appendHistory(
@@ -934,7 +992,7 @@ export async function reportProduction(
 
 // ---- ยกเลิก / เปิดใหม่ ----
 
-export async function cancelJob(actor: ProductionActor, jobNo: string, reason: string): Promise<ProductionJob> {
+async function cancelJobInternal(actor: ProductionActor, jobNo: string, reason: string): Promise<ProductionJob> {
   return withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const { index, base } = await loadJobRow(jobNo);
     if (base.status === "CANCELLED") {
@@ -946,6 +1004,7 @@ export async function cancelJob(actor: ProductionActor, jobNo: string, reason: s
     base.cancelled_at = nowIso;
     base.cancelled_by_name = actor.name;
     base.cancel_reason = reason;
+    await releaseMaterialReservations(base.job_no);
     base.updated_at = nowIso;
     await writeJobRow(index, base);
 
@@ -958,13 +1017,16 @@ export async function cancelJob(actor: ProductionActor, jobNo: string, reason: s
   });
 }
 
-export async function reopenJob(actor: ProductionActor, jobNo: string, reason: string): Promise<ProductionJob> {
+async function reopenJobInternal(actor: ProductionActor, jobNo: string, reason: string): Promise<ProductionJob> {
   return withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const { index, base } = await loadJobRow(jobNo);
     if (base.status !== "COMPLETED") {
       throw new ProductionError("เปิดงานผลิตต่อได้เฉพาะงานที่จบแล้วเท่านั้น", 409);
     }
     assertTransition(base.status, "IN_PROGRESS");
+    const previous = await getJobDetail(base.job_no);
+    if (previous?.job.material_plan?.backorder_job_no) throw new ProductionError("งานนี้มีใบงานค้างแล้ว กรุณาทำต่อในใบงานค้างเพื่อไม่ผลิตซ้ำ");
+    if (previous?.job.material_plan) await reserveJobMaterials(getRepository(), previous.job);
     const nowIso = new Date().toISOString();
     base.status = "IN_PROGRESS";
     base.reopen_reason = reason;
@@ -981,13 +1043,14 @@ export async function reopenJob(actor: ProductionActor, jobNo: string, reason: s
 
 // ---- ปรับปรุงยอดผลผลิต (ADMIN) ----
 
-export async function adjustProduction(
+async function adjustProductionInternal(
   actor: ProductionActor,
   jobNo: string,
   input: AdjustProductionInput
 ): Promise<ReportResult> {
   return withKeyedLock(`prd-job:${jobNo.trim().toLowerCase()}`, async () => {
     const { base } = await loadJobRow(jobNo);
+    if (await getMaterialPlan(base.job_no)) throw new ProductionError("งานที่ตัดวัตถุดิบแล้วต้องตรวจรายการใช้จริงและตำแหน่งรับเข้า ไม่สามารถปรับเฉพาะยอดสินค้าดีรวมได้");
     if (base.status === "DRAFT" || base.status === "WAITING") {
       throw new ProductionError("งานที่ยังไม่เริ่มผลิตไม่มียอดผลผลิตให้ปรับปรุง", 409);
     }
@@ -1106,6 +1169,16 @@ export async function adjustProduction(
 }
 
 // ---- การแจ้งเตือน ----
+
+export const createJobs = (...args: Parameters<typeof createJobsInternal>) => withStorageTransaction(() => createJobsInternal(...args));
+export const deleteDraft = (...args: Parameters<typeof deleteDraftInternal>) => withStorageTransaction(() => deleteDraftInternal(...args));
+export const updateJob = (...args: Parameters<typeof updateJobInternal>) => withStorageTransaction(() => updateJobInternal(...args));
+export const submitJobs = (...args: Parameters<typeof submitJobsInternal>) => withStorageTransaction(() => submitJobsInternal(...args));
+export const startJob = (...args: Parameters<typeof startJobInternal>) => withStorageTransaction(() => startJobInternal(...args));
+export const reportProduction = (...args: Parameters<typeof reportProductionInternal>) => withStorageTransaction(() => reportProductionInternal(...args));
+export const cancelJob = (...args: Parameters<typeof cancelJobInternal>) => withStorageTransaction(() => cancelJobInternal(...args));
+export const reopenJob = (...args: Parameters<typeof reopenJobInternal>) => withStorageTransaction(() => reopenJobInternal(...args));
+export const adjustProduction = (...args: Parameters<typeof adjustProductionInternal>) => withStorageTransaction(() => adjustProductionInternal(...args));
 
 export async function listNotifications(
   role: "ADMIN" | "APPROVER",

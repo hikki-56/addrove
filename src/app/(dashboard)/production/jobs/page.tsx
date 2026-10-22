@@ -13,6 +13,7 @@ import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
 import { getAllowedActions } from "@/features/production/lib/permissions";
 import { ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
+import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
 import { StatusBadge, PriorityBadge, JobNumbers, formatQty } from "@/features/production/components/ui";
 import type { ProductionJob } from "@/types/production";
 import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
@@ -115,8 +116,9 @@ export default function ProductionJobsPage() {
 
   return (
     <div className="w-full max-w-full pb-10">
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-slate-900">งานผลิต</h1>
+        {(isAdmin || isApprover) && <ProductionPrintButton jobs={filtered} disabled={loading} />}
       </div>
 
       {toast && (

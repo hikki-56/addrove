@@ -6,7 +6,16 @@ import { PRODUCTION_TABLES } from "@/types/production";
 const qty = z.coerce
   .number({ message: "กรุณากรอกจำนวนเป็นตัวเลข" })
   .min(0, "จำนวนห้ามติดลบ")
-  .refine((v) => Math.round(v * 100) === v * 100, "รับทศนิยมได้ไม่เกิน 2 ตำแหน่ง");
+  .refine((v) => Number.isFinite(v) && Math.abs(Math.round(v * 100) - v * 100) < 1e-7, "รับทศนิยมได้ไม่เกิน 2 ตำแหน่ง");
+
+export const productionBomSelectionSchema = z.object({
+  bom_id: z.string().trim().min(1),
+  fg_factor: z.number().positive().finite().optional(),
+  material_factors: z.record(z.string(), z.number().positive().finite()).optional(),
+  material_roles: z.record(z.string(), z.union([z.literal(0), z.literal(1)])).optional(),
+  revision: z.string().optional(),
+  all_materials_confirmed: z.boolean().optional(),
+});
 
 const tableNo = z.coerce
   .number({ message: "กรุณาเลือกโต๊ะผลิต" })
@@ -23,6 +32,7 @@ export const createProductionJobSchema = z.object({
   priority: z.enum(["NORMAL", "URGENT", "CRITICAL"]).default("NORMAL"),
   note: z.string().trim().max(500, "หมายเหตุยาวเกินไป (สูงสุด 500 ตัวอักษร)").optional().default(""),
   location: z.string().trim().max(50, "ตำแหน่งเก็บยาวเกินไป").optional().default(""),
+  bom: productionBomSelectionSchema.optional(),
 });
 
 export const createProductionJobsSchema = z.object({
@@ -42,6 +52,7 @@ export const updateProductionJobSchema = z.object({
   priority: z.enum(["NORMAL", "URGENT", "CRITICAL"]).optional(),
   note: z.string().trim().max(500, "หมายเหตุยาวเกินไป (สูงสุด 500 ตัวอักษร)").optional(),
   location: z.string().trim().max(50, "ตำแหน่งเก็บยาวเกินไป").optional(),
+  bom: productionBomSelectionSchema.optional(),
   /** บังคับเมื่อแก้งานที่ส่งแล้ว/เริ่มผลิตแล้ว */
   reason: z.string().trim().max(500, "เหตุผลยาวเกินไป (สูงสุด 500 ตัวอักษร)").optional().default(""),
 });
@@ -51,6 +62,15 @@ export const submitProductionJobsSchema = z.object({
 });
 
 export const reportProductionSchema = z.object({
+  receipt_location_id: z.string().trim().max(100).optional(),
+  material_reason: z.string().trim().max(500).optional(),
+  create_backorder: z.boolean().optional(),
+  materials: z.array(z.object({
+    item_id: z.number().int().positive(),
+    used_qty: z.number().nonnegative().finite(),
+    scrap_qty: z.number().nonnegative().finite(),
+    scrap_cause: z.string().trim().max(500),
+  })).optional(),
   good_qty: qty,
   defect_qty: qty,
   defect_cause: z.string().trim().max(500).optional().default(""),
