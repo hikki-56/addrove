@@ -33,7 +33,7 @@ export default function ProductionReportSlipSheet({ slip }: { slip: ProductionRe
       {slip.materials.length > 0 && <>
         <h3>วัตถุดิบใช้จริง / ของเสีย{slip.receipt_location_code ? ` · รับสินค้าดี: โกดัง 2 · ${slip.receipt_location_code}` : ""}</h3>
         <table className="production-work-order-materials">
-          <thead><tr><th className="production-work-order-index">ลำดับ</th><th>วัตถุดิบ</th><th className="production-report-num">เบิก</th><th className="production-report-num">เสีย</th><th className="production-report-num">ตัดสต็อก</th><th>หน่วย</th><th>สาเหตุ</th></tr></thead>
+          <thead><tr><th className="production-work-order-index">ลำดับ</th><th>วัตถุดิบ</th><th className="production-report-num">ใช้ได้</th><th className="production-report-num">เสีย</th><th className="production-report-num">รวมใช้ไป</th><th>หน่วย</th><th>สาเหตุ</th></tr></thead>
           <tbody>{slip.materials.map((m, i) => <tr key={`${m.sku}-${i}`}>
             <td className="production-work-order-index">{i + 1}</td>
             <td><strong>{m.sku}</strong>{m.name && <div>{m.name}</div>}</td>

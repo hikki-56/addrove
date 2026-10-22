@@ -12,9 +12,6 @@ export interface MaterialReportValue {
 interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void }
 type Edit = { used?: string; scrap?: string; cause?: string };
 
-// ยอดเบิกเริ่มต้น = ตามสูตร (จากยอดดี) + ของเสีย เพราะของเสียรวมอยู่ในที่เบิก
-const defaultUsed = (expected: number, scrap: string) => { const n = Number(scrap); return Math.round((expected + (Number.isFinite(n) && n > 0 ? n : 0)) * 1e6) / 1e6; };
-
 export default function MaterialReportFields({ plan, good, defect, disabled, onChange }: Props) {
   const [edits, setEdits] = useState<Record<number, Edit>>({});
   const [location, setLocation] = useState("");
@@ -35,18 +32,17 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     let error = preview.issues[0] || null;
     const materials = preview.materials.map(i => {
       const expected = good > 0 ? i.stock_qty || 0 : 0;
+      const used = edits[i.item_id]?.used ?? String(expected);
       const scrap = edits[i.item_id]?.scrap ?? "0";
-      const used = edits[i.item_id]?.used ?? String(defaultUsed(expected, scrap));
       const cause = edits[i.item_id]?.cause || "";
       const usedQty = used.trim() === "" ? NaN : Number(used), scrapQty = scrap.trim() === "" ? NaN : Number(scrap);
       if (!isValidProductionStockQuantity(usedQty, i.stock_unit) || !isValidProductionStockQuantity(scrapQty, i.stock_unit)) error ||= `${i.sku}: จำนวนไม่ถูกต้องตามหน่วย ${i.stock_unit}`;
-      if (scrapQty > usedQty) error ||= `${i.name}: ของเสียมากกว่ายอดเบิกไม่ได้`;
       if (scrapQty > 0 && !cause.trim()) error ||= `${i.name}: กรุณาบอกว่าเสียเพราะอะไร`;
       return { item_id: i.item_id, used_qty: usedQty, scrap_qty: scrapQty, scrap_cause: cause.trim() };
     });
     if (good > 0 && !location) error ||= "กรุณาเลือกที่เก็บสินค้า";
     if (good > 0 && locationError) error ||= locationError;
-    const changed = materials.some((m, index) => Math.round((m.used_qty - m.scrap_qty) * 1e6) / 1e6 !== (good > 0 ? preview.materials[index].stock_qty || 0 : 0));
+    const changed = materials.some((m, index) => m.used_qty !== (good > 0 ? preview.materials[index].stock_qty || 0 : 0));
     if (changed && !reason.trim()) error ||= "ใช้วัตถุดิบไม่ตรงสูตร กรุณาบอกเหตุผล";
     return { payload: { materials, receipt_location_id: location, material_reason: reason.trim() }, error };
   }, [preview, edits, good, location, locationError, reason]);
@@ -59,9 +55,10 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
       return <div key={i.item_id} className="space-y-2 rounded-lg bg-m3-grey-100 p-3 text-xs">
         <p className="font-bold">{i.name}</p>
         <div className="grid grid-cols-2 gap-2">
-          <label>เบิกมา ({i.stock_unit})<input aria-label={`ใช้ผลิต ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.used ?? String(defaultUsed(expected, edits[i.item_id]?.scrap ?? "0"))} onChange={e => edit(i.item_id, { used: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
-          <label>เสีย (รวมในที่เบิก) ({i.stock_unit})<input aria-label={`เสียก่อนประกอบ ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"} onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
+          <label>ใช้ได้ ({i.stock_unit})<input aria-label={`ใช้ผลิต ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.used ?? String(expected)} onChange={e => edit(i.item_id, { used: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
+          <label>เสีย ({i.stock_unit})<input aria-label={`เสียก่อนประกอบ ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"} onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
         </div>
+        {(() => { const u = Number(edits[i.item_id]?.used ?? expected), sc = Number(edits[i.item_id]?.scrap ?? 0); return Number.isFinite(u + sc) ? <p className="text-sm font-bold text-m3-grey-800">รวมใช้ไป {Math.round((u + sc) * 1e6) / 1e6} {i.stock_unit} <span className="text-xs font-normal text-m3-grey-500">(ใช้ได้ + เสีย = ตัดสต็อก)</span></p> : null; })()}
         {Number(edits[i.item_id]?.scrap || 0) > 0 && <label className="block">เสียเพราะอะไร<input disabled={disabled} value={edits[i.item_id]?.cause || ""} onChange={e => edit(i.item_id, { cause: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
       </div>;
     })}
