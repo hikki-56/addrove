@@ -101,7 +101,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
   const qtyInput =
     "w-full min-w-0 bg-transparent text-right font-m3-disp text-2xl font-bold tabular-nums text-m3-grey-800 placeholder:text-m3-grey-400 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
   const intentText = !isFinal
-    ? "งานยังไม่จบ"
+    ? "ยังทำต่อ"
     : remainingAfter > 0
       ? `จบงานที่ยังขาด ${formatQty(remainingAfter)} ${job.unit}`
       : overAfter > 0
@@ -109,7 +109,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
         : "จบงาน — ครบเป้าหมาย";
   const submitText = (
     <span>
-      {isFinal ? "ยืนยันและจบงาน" : "ยืนยันรายงาน"} (ดี {formatQty(good)} · เสีย {formatQty(defect)})
+      {isFinal ? "บันทึกและจบงาน" : "บันทึก"} (ดี {formatQty(good)} · เสีย {formatQty(defect)})
     </span>
   );
   const handleSubmit = () =>
@@ -160,7 +160,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
             <label className="block">
-              <span className="text-sm font-semibold text-m3-grey-800">ผลิตดีรอบนี้</span>
+              <span className="text-sm font-semibold text-m3-grey-800">ผลิตได้ (ดี)</span>
               <div className={`mt-2 ${qtyBox(!goodParse.ok, true)}`}>
                 <input
                   type="number"
@@ -177,7 +177,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
               </div>
             </label>
             <label className="block">
-              <span className="text-sm font-semibold text-m3-grey-800">ของเสียรอบนี้</span>
+              <span className="text-sm font-semibold text-m3-grey-800">เสีย</span>
               <div className={`mt-2 ${qtyBox(!defectParse.ok, false)}`}>
                 <input
                   type="number"
@@ -207,29 +207,29 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 className={`m3-btn h-12 ${reportKind === k ? "m3-btn-dark" : "m3-btn-outline"}`}
               >
                 {k === "PARTIAL" ? <SolarClipboardList size={18} /> : <SolarFlag size={18} />}
-                {k === "PARTIAL" ? "รายงานบางส่วน" : "จบงาน"}
+                {k === "PARTIAL" ? "ยังทำต่อ" : "จบงานนี้"}
               </button>
             ))}
           </div>
 
           {/* สรุปยอดก่อนยืนยัน — กันกรอกผิด */}
           <div className="rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] p-4">
-            <p className="text-sm font-bold text-m3-grey-800">สรุปรอบนี้</p>
+            <p className="text-sm font-bold text-m3-grey-800">สรุป</p>
             <div className="mt-2.5 space-y-2 text-sm tabular-nums">
               <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">ดีรอบนี้ / เสียรอบนี้</span>
+                <span className="text-m3-grey-600">รอบนี้ ดี / เสีย</span>
                 <span className="shrink-0 font-bold whitespace-nowrap text-m3-grey-800">
                   +{formatQty(good)} / +{formatQty(defect)} {job.unit}
                 </span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">ผลิตดีสะสมหลังรอบนี้ <span className="text-m3-grey-500">(เดิม {formatQty(job.produced_good)})</span></span>
+                <span className="text-m3-grey-600">ดีรวมทั้งหมด <span className="text-m3-grey-500">(ก่อนหน้า {formatQty(job.produced_good)})</span></span>
                 <span className="shrink-0 font-bold whitespace-nowrap text-m3-primary-dark">
                   {formatQty(cumGood)} / {formatQty(target)} {job.unit}
                 </span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">ของเสียสะสม <span className="text-m3-grey-500">(เดิม {formatQty(job.defect_total)})</span></span>
+                <span className="text-m3-grey-600">เสียรวมทั้งหมด <span className="text-m3-grey-500">(ก่อนหน้า {formatQty(job.defect_total)})</span></span>
                 <span className="shrink-0 font-bold whitespace-nowrap text-m3-error-dark">
                   {formatQty(cumDefect)} {job.unit}
                 </span>
@@ -238,7 +238,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
             <p className="mt-3 flex items-center gap-1.5 text-xs text-m3-grey-600">
               <SolarDangerCircle size={16} className="shrink-0 text-m3-grey-500" />
               <span>
-                <b className="font-bold text-m3-grey-800">การส่งที่ตั้งใจ:</b> {intentText}
+                <b className="font-bold text-m3-grey-800">สถานะ:</b> {intentText}
               </span>
             </p>
             <div className="mt-3 space-y-2">
@@ -246,14 +246,14 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                 <M3Banner tone="warning">
                   {isFinal
                     ? `จบงานโดยยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job.unit} — ต้องระบุเหตุผล`
-                    : `ยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job.unit}`}
+                    : `ยังขาดอีก ${formatQty(remainingAfter)} ${job.unit}`}
                 </M3Banner>
               )}
               {overAfter > 0 && (
                 <M3Banner tone={isFinal ? "warning" : "info"}>
                   {isFinal
                     ? `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit} — ต้องระบุเหตุผล`
-                    : `ผลิตเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit}`}
+                    : `เกินเป้า ${formatQty(overAfter)} ${job.unit}`}
                 </M3Banner>
               )}
             </div>
