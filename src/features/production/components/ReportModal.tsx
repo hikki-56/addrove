@@ -84,14 +84,13 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
     if (qtyError) return qtyError;
     if (job?.material_plan && (!materialValue || materialValue.error)) return materialValue?.error || "กรุณาตรวจรายการวัตถุดิบ";
     if (good + defect <= 0 && !materialValue?.payload.materials.some(i => i.used_qty + i.scrap_qty > 0) && !(isFinal && (job?.report_count || 0) > 0)) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
-    if (defect > 0 && !defectCause.trim()) return "มีของเสีย — ต้องระบุสาเหตุของเสีย";
     if (isFinal && (remainingAfter > 0 || overAfter > 0) && !closeReason.trim()) {
       return remainingAfter > 0
         ? `จบงานโดยยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`
         : `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`;
     }
     return null;
-  }, [qtyError, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job, materialValue]);
+  }, [qtyError, good, defect, isFinal, remainingAfter, overAfter, closeReason, job, materialValue]);
 
   if (!open || !job) return null;
 
@@ -197,26 +196,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
           </div>
           {qtyError && <p className="-mt-3 text-xs font-semibold text-m3-error-dark">{qtyError}</p>}
 
-          {defect > 0 && (
-            <M3Field label="สาเหตุของเสีย (จำเป็น)" error={!defectCause.trim()}>
-              <input
-                type="text"
-                value={defectCause}
-                onChange={(e) => setDefectCause(e.target.value)}
-                className={`h-12 ${!defectCause.trim() ? m3Cls.inputError : m3Cls.input}`}
-              />
-            </M3Field>
-          )}
-
-          <M3Field label="หมายเหตุ">
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className={`h-12 ${m3Cls.input}`}
-            />
-          </M3Field>
-
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="ประเภทรายงาน">
             {(["PARTIAL", "FINAL"] as const).map((k) => (
               <button
@@ -275,11 +254,6 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
                   {isFinal
                     ? `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit} — ต้องระบุเหตุผล`
                     : `ผลิตเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit}`}
-                </M3Banner>
-              )}
-              {defect > 0 && (
-                <M3Banner tone="info">
-                  มีของเสีย — ต้องระบุสาเหตุของเสีย{defectCause.trim() ? " (กรอกแล้ว)" : ""}
                 </M3Banner>
               )}
             </div>

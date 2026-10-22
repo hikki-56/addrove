@@ -288,10 +288,6 @@ describe("reportProduction — เป้า 1000 / รายงาน 600+20 แ
   it("สะสมดี 980 เสีย 30 ขาด 20 · สถานะ COMPLETED · สต็อกเพิ่มครั้งเดียวต่อรายงาน", async () => {
     const jobNo = await createStartedJob(1000);
 
-    // รอบ 1: มีของเสียแต่ไม่กรอกสาเหตุ → ปฏิเสธ
-    await expect(
-      reportProduction(APPROVER, jobNo, reportPayload({ good_qty: 600, defect_qty: 20 }))
-    ).rejects.toThrow("สาเหตุของเสีย");
 
     // รอบ 1 ถูกต้อง
     const r1 = await reportProduction(
