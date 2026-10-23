@@ -1,15 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useProductionJobs } from "@/features/production/hooks/use-production-data";
+import {
+  useProductionJobs,
+  emitProductionUpdated,
+} from "@/features/production/hooks/use-production-data";
+import { productionApi } from "@/features/production/lib/api";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
-import { M3Banner, M3Empty, M3Loading } from "@/components/ui/m3";
-import { SolarBox, SolarCheckCircle } from "@/components/icons";
+import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
+import { SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
 import { PRODUCTION_TABLES } from "@/types/production";
 import type { ProductionJob } from "@/types/production";
+import type { ProductionCapacity } from "@/types/production-bom";
+import type { Product } from "@/types/models";
 
 // ยืนยันวัตถุดิบต่อโต๊ะ — ซ้ายสินค้าสำเร็จรูป / ขวาวัตถุดิบที่ใช้ (เลย์เอาต์แบบ /production/formula)
+
+function matchesFgQuery(
+  q: string,
+  parts: { name?: string; sku?: string; code?: string; barcode?: string }
+) {
+  if (!q) return true;
+  const hay = `${parts.name || ""} ${parts.sku || ""} ${parts.code || ""} ${parts.barcode || ""}`.toLowerCase();
+  return hay.includes(q);
+}
 
 export default function ProductionTableConfirmPage() {
   const params = useParams();
@@ -21,12 +36,18 @@ export default function ProductionTableConfirmPage() {
   const [today, setToday] = useState("");
   const [selectedJobNo, setSelectedJobNo] = useState("");
   const [success, setSuccess] = useState(false);
+  const [search, setSearch] = useState("");
+  const [catalog, setCatalog] = useState<Product[]>([]);
+  const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
+  const [catalogError, setCatalogError] = useState("");
+  const [addingId, setAddingId] = useState("");
+  const [addError, setAddError] = useState("");
 
   useEffect(() => {
     setToday(todayYMD());
   }, []);
 
-  const { jobs, loading, error } = useProductionJobs(
+  const { jobs, loading, error, reload } = useProductionJobs(
     {
       date_from: today || undefined,
       date_to: today || undefined,
@@ -35,23 +56,119 @@ export default function ProductionTableConfirmPage() {
     { enabled: valid && today !== "" }
   );
 
+  useEffect(() => {
+    if (!valid) return;
+    let cancelled = false;
+    setCatalogError("");
+    Promise.all([
+      fetch("/api/products?active=true&master_only=true", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/production/capacities", { cache: "no-store" }).then((r) => r.json()),
+    ])
+      .then(([json, bomJson]) => {
+        if (cancelled) return;
+        if (!json.success || !bomJson.success) throw new Error("โหลดสินค้าไม่สำเร็จ");
+        const list = Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json.data?.items)
+            ? json.data.items
+            : null;
+        if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าไม่ถูกต้อง");
+        const rows = bomJson.data as ProductionCapacity[];
+        const formulaProducts = new Set(rows.map((f) => f.product_id));
+        setCapacities(Object.fromEntries(rows.map((c) => [c.product_id, c])));
+        setCatalog((list as Product[]).filter((p) => formulaProducts.has(p.product_id)));
+      })
+      .catch((e) => {
+        if (!cancelled) setCatalogError(e instanceof Error ? e.message : "โหลดสินค้าไม่สำเร็จ");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [valid]);
+
   const tableJobs = useMemo(
     () => (valid ? jobs.filter((j) => j.table_no === tableNo && j.status !== "CANCELLED") : []),
     [jobs, tableNo, valid]
   );
 
+  const query = search.trim().toLowerCase();
+
+  const filteredJobs = useMemo(
+    () =>
+      tableJobs.filter((j) =>
+        matchesFgQuery(query, {
+          name: j.product_name,
+          sku: j.sku,
+          code: j.job_no,
+          barcode: j.barcode,
+        })
+      ),
+    [tableJobs, query]
+  );
+
+  const onTableProductIds = useMemo(() => new Set(tableJobs.map((j) => j.product_id)), [tableJobs]);
+
+  const addableProducts = useMemo(() => {
+    if (!query) return [];
+    return catalog.filter(
+      (p) =>
+        !onTableProductIds.has(p.product_id) &&
+        matchesFgQuery(query, {
+          name: p.product_name,
+          sku: p.sku,
+          code: p.product_id,
+          barcode: p.barcode,
+        })
+    );
+  }, [catalog, onTableProductIds, query]);
+
   useEffect(() => {
-    if (!tableJobs.length) {
-      setSelectedJobNo("");
+    if (!filteredJobs.length) {
+      if (!addableProducts.length) setSelectedJobNo("");
       return;
     }
-    if (!tableJobs.some((j) => j.job_no === selectedJobNo)) {
-      setSelectedJobNo(tableJobs[0].job_no);
+    if (!filteredJobs.some((j) => j.job_no === selectedJobNo)) {
+      setSelectedJobNo(filteredJobs[0].job_no);
     }
-  }, [tableJobs, selectedJobNo]);
+  }, [filteredJobs, addableProducts.length, selectedJobNo]);
 
   const selected: ProductionJob | undefined = tableJobs.find((j) => j.job_no === selectedJobNo);
   const materials = selected?.material_plan?.snapshot.items ?? [];
+
+  const addToTable = useCallback(
+    async (p: Product) => {
+      if (!today || addingId) return;
+      setAddingId(p.product_id);
+      setAddError("");
+      const cap = capacities[p.product_id];
+      const target = cap?.quantity != null && cap.quantity > 0 ? cap.quantity : 1;
+      const res = await productionApi<ProductionJob[]>("/api/production/jobs", "POST", {
+        jobs: [
+          {
+            production_date: today,
+            table_no: tableNo,
+            product_id: p.product_id,
+            target_qty: target,
+            priority: "NORMAL",
+            note: "",
+            location: "",
+            ...(cap?.bom_id ? { bom: { bom_id: cap.bom_id } } : {}),
+          },
+        ],
+      });
+      if (res.success) {
+        const created = Array.isArray(res.data) ? res.data[0] : undefined;
+        emitProductionUpdated();
+        await reload();
+        if (created?.job_no) setSelectedJobNo(created.job_no);
+        setSearch("");
+      } else {
+        setAddError(res.message || "เพิ่มไม่สำเร็จ");
+      }
+      setAddingId("");
+    },
+    [addingId, capacities, reload, tableNo, today]
+  );
 
   const handleConfirm = () => {
     if (success) return;
@@ -78,35 +195,74 @@ export default function ProductionTableConfirmPage() {
           ยืนยันแล้ว
         </M3Banner>
       )}
+      {addError && (
+        <M3Banner tone="error" className="mb-4" role="alert">
+          {addError}
+        </M3Banner>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="m3-card flex min-h-0 flex-col p-4">
           <p className="mb-2 text-sm font-bold text-m3-grey-800">สินค้าสำเร็จรูป</p>
+          <label className="relative mb-3 block">
+            <span className="sr-only">ค้นหาสินค้าสำเร็จรูป</span>
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-m3-grey-500">
+              <SolarMagnifier size={18} />
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ชื่อ / SKU / รหัส"
+              className={`${m3Cls.input} pl-9`}
+            />
+          </label>
           <div className="max-h-[65vh] overflow-y-auto">
             {loading ? (
               <M3Loading label="กำลังโหลด…" />
             ) : error ? (
               <p className="px-2 py-6 text-center text-sm text-m3-error-dark">{error}</p>
-            ) : tableJobs.length === 0 ? (
-              <M3Empty title="ยังไม่มีสินค้า" />
+            ) : filteredJobs.length === 0 && addableProducts.length === 0 ? (
+              <M3Empty
+                title={
+                  query
+                    ? catalogError || "ไม่พบสินค้า"
+                    : "ยังไม่มีสินค้า — ค้นหาเพื่อเพิ่ม"
+                }
+              />
             ) : (
-              tableJobs.map((j) => (
-                <button
-                  key={j.job_no}
-                  type="button"
-                  onClick={() => setSelectedJobNo(j.job_no)}
-                  className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
-                    j.job_no === selectedJobNo
-                      ? "bg-[rgba(0,167,111,0.08)] text-m3-primary"
-                      : "hover:bg-[rgba(145,158,171,0.08)]"
-                  }`}
-                >
-                  <div className="truncate text-sm font-semibold">{j.product_name}</div>
-                  <div className="truncate text-xs text-m3-grey-500">
-                    {j.sku} · {formatQty(j.target_qty)} {j.unit}
-                  </div>
-                </button>
-              ))
+              <>
+                {filteredJobs.map((j) => (
+                  <button
+                    key={j.job_no}
+                    type="button"
+                    onClick={() => setSelectedJobNo(j.job_no)}
+                    className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
+                      j.job_no === selectedJobNo
+                        ? "bg-[rgba(0,167,111,0.08)] text-m3-primary"
+                        : "hover:bg-[rgba(145,158,171,0.08)]"
+                    }`}
+                  >
+                    <div className="truncate text-sm font-semibold">{j.product_name}</div>
+                    <div className="truncate text-xs text-m3-grey-500">
+                      {j.sku} · {formatQty(j.target_qty)} {j.unit}
+                    </div>
+                  </button>
+                ))}
+                {addableProducts.map((p) => (
+                  <button
+                    key={p.product_id}
+                    type="button"
+                    disabled={!!addingId}
+                    onClick={() => void addToTable(p)}
+                    className="mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[rgba(145,158,171,0.08)] disabled:opacity-60"
+                  >
+                    <div className="truncate text-sm font-semibold text-m3-grey-800">{p.product_name}</div>
+                    <div className="truncate text-xs text-m3-primary">
+                      {p.sku} · {addingId === p.product_id ? "กำลังเพิ่ม…" : "แตะเพื่อเพิ่มเข้าโต๊ะ"}
+                    </div>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         </section>
