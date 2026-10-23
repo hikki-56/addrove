@@ -149,7 +149,6 @@ export default function AddJobModal({
   const needReason = isEdit && (editStatus === "WAITING" || editStatus === "IN_PROGRESS");
   // ช่องที่เซิร์ฟเวอร์ไม่รับในสถานะนั้น → ล็อกไว้ (เดิมแก้ได้แต่ถูกปฏิเสธ/ถูกเพิกเฉย)
   const canEditPriority = !isEdit || canEditField(editStatus, "priority");
-  const canEditLocation = !isEdit || canEditField(editStatus, "location");
 
   // ตรวจจำนวนเป้าหมายแบบนับตำแหน่งทศนิยมจากข้อความ (สูตรเดิม Math.round(v*100) === v*100 ปฏิเสธ 2.3, 1.15)
   const qtyParse = useMemo(() => parseQtyInput(form.target_qty, { allowEmpty: false, allowZero: false }), [form.target_qty]);
@@ -314,28 +313,6 @@ export default function AddJobModal({
           ))}
         </div>
       </div>
-
-      <label className="block">
-        <span className={m3Cls.label}>ตำแหน่งเก็บที่เสนอ</span>
-        <input
-          type="text"
-          value={form.location}
-          disabled={!canEditLocation}
-          onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-          className={`mt-1.5 tabular-nums ${m3Cls.input}`}
-        />
-      </label>
-
-      <label className="block">
-        <span className={m3Cls.label}>หมายเหตุ</span>
-        <textarea
-          rows={2}
-          value={form.note}
-          disabled={false}
-          onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-          className={`mt-1.5 resize-none ${m3Cls.input}`}
-        />
-      </label>
 
       {needReason && (
         <label className="block">
