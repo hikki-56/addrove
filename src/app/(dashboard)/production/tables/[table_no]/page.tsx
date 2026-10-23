@@ -8,6 +8,7 @@ import {
 } from "@/features/production/hooks/use-production-data";
 import { productionApi } from "@/features/production/lib/api";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
+import { parseQtyInput } from "@/features/production/lib/quantity";
 import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
 import { SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
 import { PRODUCTION_TABLES } from "@/types/production";
@@ -37,6 +38,7 @@ export default function ProductionTableConfirmPage() {
   const [selectedJobNo, setSelectedJobNo] = useState("");
   const [success, setSuccess] = useState(false);
   const [search, setSearch] = useState("");
+  const [qtyText, setQtyText] = useState("1");
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
   const [catalogError, setCatalogError] = useState("");
@@ -138,17 +140,21 @@ export default function ProductionTableConfirmPage() {
   const addToTable = useCallback(
     async (p: Product) => {
       if (!today || addingId) return;
+      const qtyParse = parseQtyInput(qtyText, { allowEmpty: false, allowZero: false });
+      if (!qtyParse.ok) {
+        setAddError(qtyParse.empty ? "กรอกจำนวน" : qtyParse.error);
+        return;
+      }
       setAddingId(p.product_id);
       setAddError("");
       const cap = capacities[p.product_id];
-      const target = cap?.quantity != null && cap.quantity > 0 ? cap.quantity : 1;
       const res = await productionApi<ProductionJob[]>("/api/production/jobs", "POST", {
         jobs: [
           {
             production_date: today,
             table_no: tableNo,
             product_id: p.product_id,
-            target_qty: target,
+            target_qty: qtyParse.value,
             priority: "NORMAL",
             note: "",
             location: "",
@@ -167,7 +173,7 @@ export default function ProductionTableConfirmPage() {
       }
       setAddingId("");
     },
-    [addingId, capacities, reload, tableNo, today]
+    [addingId, capacities, qtyText, reload, tableNo, today]
   );
 
   const handleConfirm = () => {
@@ -214,6 +220,16 @@ export default function ProductionTableConfirmPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ชื่อ / SKU / รหัส"
               className={`${m3Cls.input} pl-9`}
+            />
+          </label>
+          <label className="mb-3 block">
+            <span className="mb-1 block text-xs font-semibold text-m3-grey-600">จำนวน</span>
+            <input
+              inputMode="decimal"
+              value={qtyText}
+              onChange={(e) => setQtyText(e.target.value)}
+              placeholder="เช่น 10"
+              className={m3Cls.input}
             />
           </label>
           <div className="max-h-[65vh] overflow-y-auto">
