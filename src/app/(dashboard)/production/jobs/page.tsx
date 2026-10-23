@@ -11,8 +11,10 @@ import {
 } from "@/features/production/hooks/use-production-data";
 import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
+import { sendWithIdempotency } from "@/features/production/lib/idempotency";
 import { getAllowedActions } from "@/features/production/lib/permissions";
 import { ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
+import ReportModal, { type ReportPayload } from "@/features/production/components/ReportModal";
 import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
 import {
   StatusBadge,
@@ -80,6 +82,8 @@ export default function ProductionJobsPage() {
   const guard = useSubmitGuard();
   const [startJob, setStartJob] = useState<ProductionJob | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [reportJob, setReportJob] = useState<ProductionJob | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
 
   useEffect(() => {
@@ -119,6 +123,27 @@ export default function ProductionJobsPage() {
         if (isConflict(res)) emitProductionUpdated();
       }
     }, `start:${job.job_no}`);
+
+  const handleReport = (job: ProductionJob, payload: ReportPayload) =>
+    guard.run(async () => {
+      setReportError(null);
+      const res = await sendWithIdempotency(
+        { action: "report", jobNo: job.job_no, round: job.report_count + 1, payload: { ...payload } },
+        (idempotency_key) =>
+          productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/report`, "POST", {
+            ...payload,
+            idempotency_key,
+          })
+      );
+      if (res.success) {
+        setReportJob(null);
+        setToast({ tone: "ok", message: res.message });
+        emitProductionUpdated();
+      } else {
+        setReportError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, `report:${job.job_no}`);
 
   const STATUS_TABS = ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DRAFT"] as const;
   const STATUS_COUNT_TONE: Record<(typeof STATUS_TABS)[number], string> = {
@@ -283,12 +308,32 @@ export default function ProductionJobsPage() {
                       )}
                     </button>
                   )}
+                  {actions.report ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReportError(null);
+                        setReportJob(job);
+                      }}
+                      disabled={guard.pending}
+                      className={`m3-btn h-11 w-full ${!actions.start ? "m3-btn-primary" : "m3-btn-outline"}`}
+                    >
+                      {guard.isPending(`report:${job.job_no}`) ? (
+                        <span className={m3Cls.spinner} />
+                      ) : (
+                        <>
+                          รายงานผล
+                          <SolarArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
+                  ) : null}
                   <Link
                     href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                    className={`m3-btn h-11 w-full ${actions.report && !actions.start ? "m3-btn-primary" : "m3-btn-outline"}`}
+                    className={`m3-btn h-11 w-full ${actions.report ? "m3-btn-text" : actions.start ? "m3-btn-outline" : "m3-btn-primary"}`}
                   >
-                    {actions.report ? "รายงานผล" : "รายละเอียด"}
-                    <SolarArrowRight size={18} />
+                    รายละเอียด
+                    {!actions.report ? <SolarArrowRight size={18} /> : null}
                   </Link>
                 </div>
               </div>
@@ -319,6 +364,18 @@ export default function ProductionJobsPage() {
       >
         {startJob && <StartJobSummary job={startJob} />}
       </ConfirmModal>
+
+      <ReportModal
+        open={!!reportJob}
+        job={reportJob}
+        submitting={guard.pending}
+        error={reportError}
+        onClose={() => {
+          setReportJob(null);
+          setReportError(null);
+        }}
+        onSubmit={(payload) => reportJob && handleReport(reportJob, payload)}
+      />
     </div>
   );
 }
