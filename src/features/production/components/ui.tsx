@@ -77,14 +77,22 @@ export function priorityEdgeClass(priority: ProductionPriority): string {
   return "before:bg-transparent";
 }
 
-/** แถบตัวเลขยอดของงาน: เป้าหมาย / ดีสะสม / เสียสะสม / ยังขาด (ผลิตเกิน → ช่องสุดท้ายเป็น "เกิน") */
+/** แถบตัวเลขยอดของงาน — ก่อนจบงานโชว์เฉพาะเป้า; จบงานแล้วโชว์ ดี/เสีย/ขาด(หรือเกิน) */
 export function JobNumbers({ job, compact = false }: { job: ProductionJob; compact?: boolean }) {
-  const over = (job.over_qty ?? 0) > 0;
+  const done = job.status === "COMPLETED";
+  const over = done && (job.over_qty ?? 0) > 0;
+  if (!done) {
+    return (
+      <div className={`grid gap-1.5 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+        <M3StatTile tone="grey" label={compact ? "เป้า" : "เป้าหมาย"} value={formatQty(job.target_qty)} unit={compact ? undefined : job.unit} />
+      </div>
+    );
+  }
   return (
     <div className={`grid gap-1.5 ${compact ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-4"}`}>
       <M3StatTile tone="grey" label={compact ? "เป้า" : "เป้าหมาย"} value={formatQty(job.target_qty)} unit={compact ? undefined : job.unit} />
-      <M3StatTile tone="primary" label={compact ? "ดี" : "ผลิตดีสะสม"} value={formatQty(job.produced_good)} />
-      <M3StatTile tone="error" label={compact ? "เสีย" : "ของเสียสะสม"} value={formatQty(job.defect_total)} />
+      <M3StatTile tone="primary" label={compact ? "ดี" : "ผลิตดี"} value={formatQty(job.produced_good)} />
+      <M3StatTile tone="error" label={compact ? "เสีย" : "ของเสีย"} value={formatQty(job.defect_total)} />
       {over ? (
         <M3StatTile tone="info" label={compact ? "เกิน" : "ผลิตเกิน"} value={formatQty(job.over_qty)} />
       ) : (
@@ -97,7 +105,7 @@ export function JobNumbers({ job, compact = false }: { job: ProductionJob; compa
 /** ป้ายสัญญาณเพิ่มเติม (D26): จบต่ำกว่าเป้า / ผลิตเกิน — คำนวณจากยอดที่มีอยู่แล้ว */
 export function JobSignalBadges({ job }: { job: ProductionJob }) {
   const under = job.status === "COMPLETED" && job.remaining_qty > 0;
-  const over = (job.over_qty ?? 0) > 0;
+  const over = job.status === "COMPLETED" && (job.over_qty ?? 0) > 0;
   return (
     <>
       {under && (
