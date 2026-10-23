@@ -39,6 +39,8 @@ interface AddJobModalProps {
   job?: ProductionJob;
   defaultTable?: number;
   defaultDate?: string;
+  /** ซ่อนตัวเลือกโต๊ะ/วันที่ (เช่น เปิดจากหน้าโต๊ะ — ค่าอยู่ใน form อยู่แล้ว) */
+  hideTableDate?: boolean;
   submitting: boolean;
   error: string | null;
   onClose: () => void;
@@ -51,6 +53,7 @@ export default function AddJobModal({
   job,
   defaultTable = 1,
   defaultDate,
+  hideTableDate = false,
   submitting,
   error,
   onClose,
@@ -203,35 +206,39 @@ export default function AddJobModal({
     >
       {error && <M3ErrorBanner message={error} />}
 
-      <div>
-        <span className={m3Cls.label}>โต๊ะผลิต</span>
-        <div className="mt-1.5 flex gap-2" role="group" aria-label="โต๊ะผลิต">
-          {PRODUCTION_TABLES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={form.table_no === t}
-              disabled={!canEditPlanFields}
-              onClick={() => setForm((f) => ({ ...f, table_no: Number(t) }))}
-              className={`font-m3-disp ${segBtn(form.table_no === t)}`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      {!hideTableDate && (
+        <>
+          <div>
+            <span className={m3Cls.label}>โต๊ะผลิต</span>
+            <div className="mt-1.5 flex gap-2" role="group" aria-label="โต๊ะผลิต">
+              {PRODUCTION_TABLES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={form.table_no === t}
+                  disabled={!canEditPlanFields}
+                  onClick={() => setForm((f) => ({ ...f, table_no: Number(t) }))}
+                  className={`font-m3-disp ${segBtn(form.table_no === t)}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <label className="block">
-        <span className={m3Cls.label}>วันที่ผลิต</span>
-        <input
-          type="date"
-          value={form.production_date}
-          max="2100-12-31"
-          disabled={!canEditDate}
-          onChange={(e) => setForm((f) => ({ ...f, production_date: e.target.value }))}
-          className={`mt-1.5 ${m3Cls.input}`}
-        />
-      </label>
+          <label className="block">
+            <span className={m3Cls.label}>วันที่ผลิต</span>
+            <input
+              type="date"
+              value={form.production_date}
+              max="2100-12-31"
+              disabled={!canEditDate}
+              onChange={(e) => setForm((f) => ({ ...f, production_date: e.target.value }))}
+              className={`mt-1.5 ${m3Cls.input}`}
+            />
+          </label>
+        </>
+      )}
 
       <div>
         <span className={m3Cls.label}>สินค้าสำเร็จรูป</span>

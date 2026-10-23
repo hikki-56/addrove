@@ -234,6 +234,7 @@ export default function ProductionTableConfirmPage() {
         mode="create"
         defaultTable={tableNo}
         defaultDate={today}
+        hideTableDate
         submitting={guard.pending}
         error={modalError}
         onClose={() => {
