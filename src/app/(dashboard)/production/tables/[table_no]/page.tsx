@@ -1,22 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   useProductionJobs,
   emitProductionUpdated,
 } from "@/features/production/hooks/use-production-data";
+import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi } from "@/features/production/lib/api";
+import { buildCreateJobInput } from "@/features/production/lib/job-form";
+import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
-import { parseQtyInput } from "@/features/production/lib/quantity";
 import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
-import { SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
+import { SolarAddLine, SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
 import { PRODUCTION_TABLES } from "@/types/production";
 import type { ProductionJob } from "@/types/production";
-import type { ProductionCapacity } from "@/types/production-bom";
-import type { Product } from "@/types/models";
 
 // ยืนยันวัตถุดิบต่อโต๊ะ — ซ้ายสินค้าสำเร็จรูป / ขวาวัตถุดิบที่ใช้ (เลย์เอาต์แบบ /production/formula)
+// เพิ่มงานใช้ AddJobModal เดิม (เลือก FG + จำนวน) โดยล็อกบริบทโต๊ะนี้
 
 function matchesFgQuery(
   q: string,
@@ -38,12 +39,9 @@ export default function ProductionTableConfirmPage() {
   const [selectedJobNo, setSelectedJobNo] = useState("");
   const [success, setSuccess] = useState(false);
   const [search, setSearch] = useState("");
-  const [qtyText, setQtyText] = useState("1");
-  const [catalog, setCatalog] = useState<Product[]>([]);
-  const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
-  const [catalogError, setCatalogError] = useState("");
-  const [addingId, setAddingId] = useState("");
-  const [addError, setAddError] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const guard = useSubmitGuard();
 
   useEffect(() => {
     setToday(todayYMD());
@@ -57,36 +55,6 @@ export default function ProductionTableConfirmPage() {
     },
     { enabled: valid && today !== "" }
   );
-
-  useEffect(() => {
-    if (!valid) return;
-    let cancelled = false;
-    setCatalogError("");
-    Promise.all([
-      fetch("/api/products?active=true&master_only=true", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/production/capacities", { cache: "no-store" }).then((r) => r.json()),
-    ])
-      .then(([json, bomJson]) => {
-        if (cancelled) return;
-        if (!json.success || !bomJson.success) throw new Error("โหลดสินค้าไม่สำเร็จ");
-        const list = Array.isArray(json.data)
-          ? json.data
-          : Array.isArray(json.data?.items)
-            ? json.data.items
-            : null;
-        if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าไม่ถูกต้อง");
-        const rows = bomJson.data as ProductionCapacity[];
-        const formulaProducts = new Set(rows.map((f) => f.product_id));
-        setCapacities(Object.fromEntries(rows.map((c) => [c.product_id, c])));
-        setCatalog((list as Product[]).filter((p) => formulaProducts.has(p.product_id)));
-      })
-      .catch((e) => {
-        if (!cancelled) setCatalogError(e instanceof Error ? e.message : "โหลดสินค้าไม่สำเร็จ");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [valid]);
 
   const tableJobs = useMemo(
     () => (valid ? jobs.filter((j) => j.table_no === tableNo && j.status !== "CANCELLED") : []),
@@ -108,73 +76,36 @@ export default function ProductionTableConfirmPage() {
     [tableJobs, query]
   );
 
-  const onTableProductIds = useMemo(() => new Set(tableJobs.map((j) => j.product_id)), [tableJobs]);
-
-  const addableProducts = useMemo(() => {
-    if (!query) return [];
-    return catalog.filter(
-      (p) =>
-        !onTableProductIds.has(p.product_id) &&
-        matchesFgQuery(query, {
-          name: p.product_name,
-          sku: p.sku,
-          code: p.product_id,
-          barcode: p.barcode,
-        })
-    );
-  }, [catalog, onTableProductIds, query]);
-
   useEffect(() => {
     if (!filteredJobs.length) {
-      if (!addableProducts.length) setSelectedJobNo("");
+      setSelectedJobNo("");
       return;
     }
     if (!filteredJobs.some((j) => j.job_no === selectedJobNo)) {
       setSelectedJobNo(filteredJobs[0].job_no);
     }
-  }, [filteredJobs, addableProducts.length, selectedJobNo]);
+  }, [filteredJobs, selectedJobNo]);
 
   const selected: ProductionJob | undefined = tableJobs.find((j) => j.job_no === selectedJobNo);
   const materials = selected?.material_plan?.snapshot.items ?? [];
 
-  const addToTable = useCallback(
-    async (p: Product) => {
-      if (!today || addingId) return;
-      const qtyParse = parseQtyInput(qtyText, { allowEmpty: false, allowZero: false });
-      if (!qtyParse.ok) {
-        setAddError(qtyParse.empty ? "กรอกจำนวน" : qtyParse.error);
-        return;
-      }
-      setAddingId(p.product_id);
-      setAddError("");
-      const cap = capacities[p.product_id];
+  const handleAdd = (value: AddJobFormValue) =>
+    guard.run(async () => {
+      setModalError(null);
+      const payload = buildCreateJobInput({ ...value, table_no: tableNo });
       const res = await productionApi<ProductionJob[]>("/api/production/jobs", "POST", {
-        jobs: [
-          {
-            production_date: today,
-            table_no: tableNo,
-            product_id: p.product_id,
-            target_qty: qtyParse.value,
-            priority: "NORMAL",
-            note: "",
-            location: "",
-            ...(cap?.bom_id ? { bom: { bom_id: cap.bom_id } } : {}),
-          },
-        ],
+        jobs: [payload],
       });
       if (res.success) {
+        setAddOpen(false);
         const created = Array.isArray(res.data) ? res.data[0] : undefined;
         emitProductionUpdated();
         await reload();
         if (created?.job_no) setSelectedJobNo(created.job_no);
-        setSearch("");
       } else {
-        setAddError(res.message || "เพิ่มไม่สำเร็จ");
+        setModalError(res.message);
       }
-      setAddingId("");
-    },
-    [addingId, capacities, qtyText, reload, tableNo, today]
-  );
+    }, "create");
 
   const handleConfirm = () => {
     if (success) return;
@@ -201,15 +132,23 @@ export default function ProductionTableConfirmPage() {
           ยืนยันแล้ว
         </M3Banner>
       )}
-      {addError && (
-        <M3Banner tone="error" className="mb-4" role="alert">
-          {addError}
-        </M3Banner>
-      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="m3-card flex min-h-0 flex-col p-4">
-          <p className="mb-2 text-sm font-bold text-m3-grey-800">สินค้าสำเร็จรูป</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-m3-grey-800">สินค้าสำเร็จรูป</p>
+            <button
+              type="button"
+              onClick={() => {
+                setModalError(null);
+                setAddOpen(true);
+              }}
+              className="m3-btn m3-btn-sm m3-btn-dark"
+            >
+              <SolarAddLine size={16} />
+              เพิ่ม
+            </button>
+          </div>
           <label className="relative mb-3 block">
             <span className="sr-only">ค้นหาสินค้าสำเร็จรูป</span>
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-m3-grey-500">
@@ -222,63 +161,31 @@ export default function ProductionTableConfirmPage() {
               className={`${m3Cls.input} pl-9`}
             />
           </label>
-          <label className="mb-3 block">
-            <span className="mb-1 block text-xs font-semibold text-m3-grey-600">จำนวน</span>
-            <input
-              inputMode="decimal"
-              value={qtyText}
-              onChange={(e) => setQtyText(e.target.value)}
-              placeholder="เช่น 10"
-              className={m3Cls.input}
-            />
-          </label>
           <div className="max-h-[65vh] overflow-y-auto">
             {loading ? (
               <M3Loading label="กำลังโหลด…" />
             ) : error ? (
               <p className="px-2 py-6 text-center text-sm text-m3-error-dark">{error}</p>
-            ) : filteredJobs.length === 0 && addableProducts.length === 0 ? (
-              <M3Empty
-                title={
-                  query
-                    ? catalogError || "ไม่พบสินค้า"
-                    : "ยังไม่มีสินค้า — ค้นหาเพื่อเพิ่ม"
-                }
-              />
+            ) : filteredJobs.length === 0 ? (
+              <M3Empty title={query ? "ไม่พบสินค้า" : "ยังไม่มีสินค้า"} />
             ) : (
-              <>
-                {filteredJobs.map((j) => (
-                  <button
-                    key={j.job_no}
-                    type="button"
-                    onClick={() => setSelectedJobNo(j.job_no)}
-                    className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
-                      j.job_no === selectedJobNo
-                        ? "bg-[rgba(0,167,111,0.08)] text-m3-primary"
-                        : "hover:bg-[rgba(145,158,171,0.08)]"
-                    }`}
-                  >
-                    <div className="truncate text-sm font-semibold">{j.product_name}</div>
-                    <div className="truncate text-xs text-m3-grey-500">
-                      {j.sku} · {formatQty(j.target_qty)} {j.unit}
-                    </div>
-                  </button>
-                ))}
-                {addableProducts.map((p) => (
-                  <button
-                    key={p.product_id}
-                    type="button"
-                    disabled={!!addingId}
-                    onClick={() => void addToTable(p)}
-                    className="mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[rgba(145,158,171,0.08)] disabled:opacity-60"
-                  >
-                    <div className="truncate text-sm font-semibold text-m3-grey-800">{p.product_name}</div>
-                    <div className="truncate text-xs text-m3-primary">
-                      {p.sku} · {addingId === p.product_id ? "กำลังเพิ่ม…" : "แตะเพื่อเพิ่มเข้าโต๊ะ"}
-                    </div>
-                  </button>
-                ))}
-              </>
+              filteredJobs.map((j) => (
+                <button
+                  key={j.job_no}
+                  type="button"
+                  onClick={() => setSelectedJobNo(j.job_no)}
+                  className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
+                    j.job_no === selectedJobNo
+                      ? "bg-[rgba(0,167,111,0.08)] text-m3-primary"
+                      : "hover:bg-[rgba(145,158,171,0.08)]"
+                  }`}
+                >
+                  <div className="truncate text-sm font-semibold">{j.product_name}</div>
+                  <div className="truncate text-xs text-m3-grey-500">
+                    {j.sku} · {formatQty(j.target_qty)} {j.unit}
+                  </div>
+                </button>
+              ))
             )}
           </div>
         </section>
@@ -321,6 +228,22 @@ export default function ProductionTableConfirmPage() {
           </button>
         </div>
       </div>
+
+      <AddJobModal
+        open={addOpen}
+        mode="create"
+        defaultTable={tableNo}
+        defaultDate={today}
+        submitting={guard.pending}
+        error={modalError}
+        onClose={() => {
+          if (!guard.pending) {
+            setAddOpen(false);
+            setModalError(null);
+          }
+        }}
+        onSubmit={handleAdd}
+      />
     </div>
   );
 }
