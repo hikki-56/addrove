@@ -25,7 +25,7 @@ import {
 import {
   M3Banner,
   M3ErrorBanner,
-  M3IconCircle,
+  M3Field,
   M3Loading,
   M3NumberTile,
   isStaleDataMessage,
@@ -34,16 +34,19 @@ import {
 import {
   SolarAddLine,
   SolarArrowRight,
+  SolarChartBars,
   SolarCheckCircle,
-  SolarDangerCircle,
   SolarFlag,
+  SolarMagnifier,
 } from "@/components/icons";
 import type { ProductionJob } from "@/types/production";
-import { PRODUCTION_TABLES } from "@/types/production";
+import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 
-// หน้าวางแผนผลิตของ ADMIN (§1–2) — การ์ดโต๊ะ 1–5 + ฉบับร่างแก้/ลบ/ย้ายโต๊ะได้ทันที
+// หน้าวางแผนผลิต (§1–2) — การ์ดโต๊ะ 1–5 + ฉบับร่างแก้/ลบ/ย้ายโต๊ะได้ทันที
 // เลือกหลายงานแล้ว "ยืนยันส่งงานผลิต" (DRAFT → WAITING + แจ้ง APPROVER)
-// ซ่อนแถบปุ่มบน / ตัวกรอง / แท็บสถานะ — คงค่าเริ่มต้นเงียบ ๆ ให้รายการโต๊ะยังโหลดได้
+// แถบปุ่มบน / ตัวกรอง / แท็บสถานะ ซ่อนเมื่อ role === ADMIN (พนักงานยังเห็นตามเดิม)
+
+const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "CANCELLED"] as const;
 
 export default function ProductionPlanningPage() {
   const { user } = useTabAuth();
@@ -52,8 +55,8 @@ export default function ProductionPlanningPage() {
   const [dateFilter, setDateFilter] = useState("");
   const [today, setToday] = useState("");
   const [tableFilter, setTableFilter] = useState<number | "ALL">("ALL");
-  const statusFilter = "ALL";
-  const q = "";
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -70,16 +73,16 @@ export default function ProductionPlanningPage() {
       table_no: tableFilter,
       status: statusFilter,
     },
-    { enabled: isAdmin && today !== "" }
+    { enabled: today !== "" }
   );
 
   // อัปเดตอัตโนมัติทุก 30 วิขณะแท็บมองเห็น (หยุดเมื่อซ่อนแท็บ · กลับมาแล้วโหลดทันที)
   usePollingWhenVisible(
     useCallback(
       (initial?: boolean) => {
-        if (!initial && isAdmin) reload();
+        if (!initial) reload();
       },
-      [isAdmin, reload]
+      [reload]
     ),
     PRODUCTION_POLL_MS
   );
@@ -230,32 +233,50 @@ export default function ProductionPlanningPage() {
     }, "submit");
   };
 
+  // ตัวนับสถานะ (D26 — แสดงผลอย่างเดียว คำนวณจากรายการที่กรองแล้ว)
+  const statusCounts = useMemo(() => {
+    const c = { DRAFT: 0, WAITING: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0, under: 0, urgent: 0 };
+    for (const j of filtered) {
+      c[j.status] += 1;
+      if (j.status === "COMPLETED" && j.remaining_qty > 0) c.under += 1;
+      if (j.priority !== "NORMAL" && j.status !== "CANCELLED" && j.status !== "COMPLETED") c.urgent += 1;
+    }
+    return c;
+  }, [filtered]);
   const selectedTables = useMemo(
     () => Array.from(new Set(selectedJobs.map((j) => j.table_no))).sort((x, y) => x - y),
     [selectedJobs]
   );
   const selectedTargetTotal = selectedJobs.reduce((s, j) => s + j.target_qty, 0);
 
-  if (!isAdmin) {
-    return (
-      <div className="w-full max-w-full pb-8">
-        <h1 className="sr-only">วางแผนผลิต</h1>
-        <div className="m3-card flex flex-col items-center px-6 py-16 text-center">
-          <M3IconCircle tone="error">
-            <SolarDangerCircle size={26} />
-          </M3IconCircle>
-          <h2 className="mt-4 text-base font-bold text-m3-grey-800">เฉพาะผู้ดูแลระบบ (Admin)</h2>
-          <Link href="/production/jobs" className="m3-btn m3-btn-primary mt-5 h-11 px-5">
-            ไปหน้างานผลิต
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const chip = "m3-label h-7 px-2.5 text-[13px]";
 
   return (
     <div className="w-full max-w-full pb-32">
       <h1 className="sr-only">วางแผนผลิต</h1>
+      {/* แถบปุ่ม / ตัวกรอง / แท็บสถานะ — โชว์เฉพาะพนักงาน (ไม่ใช่ Admin) */}
+      {!isAdmin && (
+      <div className="mb-5 flex flex-wrap items-center justify-end gap-3 sm:mb-6">
+        <Link href="/production/jobs" className="m3-btn m3-btn-outline">
+          ประวัติงานผลิต
+        </Link>
+        <Link href="/production/summary" className="m3-btn m3-btn-outline">
+          <SolarChartBars size={18} />
+          สรุปผลผลิต
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setAddTable(typeof tableFilter === "number" ? tableFilter : 1);
+            setAddOpen(true);
+          }}
+          className="m3-btn m3-btn-dark"
+        >
+          <SolarAddLine size={18} />
+          เพิ่มงานผลิต
+        </button>
+      </div>
+      )}
 
       {toast && (
         <div className="mb-4">
@@ -286,6 +307,79 @@ export default function ProductionPlanningPage() {
             }
           />
         </div>
+      )}
+
+      {!isAdmin && (
+      <>
+      {/* ตัวกรอง */}
+      <div className="m3-card p-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-[200px_170px_minmax(0,1fr)_190px]">
+          <M3Field label="วันที่ผลิต">
+            <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className={`h-12 ${m3Cls.input}`} />
+          </M3Field>
+          <M3Field label="โต๊ะผลิต">
+            <select
+              value={String(tableFilter)}
+              onChange={(e) => setTableFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
+              className={`h-12 ${m3Cls.input}`}
+            >
+              <option value="ALL">ทุกโต๊ะ</option>
+              {PRODUCTION_TABLES.map((t) => (
+                <option key={t} value={t}>โต๊ะ {t}</option>
+              ))}
+            </select>
+          </M3Field>
+          <label className="relative col-span-2 block lg:col-span-1">
+            <span className="sr-only">ค้นหาสินค้า / เลขใบ</span>
+            <SolarMagnifier size={20} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-m3-grey-500" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="SKU, ชื่อสินค้า, PRD-..."
+              className={`h-12 pl-11 ${m3Cls.input}`}
+            />
+          </label>
+          <M3Field label="สถานะ" className="col-span-2 lg:col-span-1">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`h-12 ${m3Cls.input}`}>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s === "ALL" ? "ทุกสถานะ" : PRODUCTION_JOB_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </M3Field>
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-xs text-m3-grey-600">
+            พบ {filtered.length} งาน · ฉบับร่าง {drafts.length} งาน
+          </p>
+          {(dateFilter !== today || tableFilter !== "ALL" || statusFilter !== "ALL" || q) && (
+            <button
+              onClick={() => {
+                setDateFilter(today);
+                setTableFilter("ALL");
+                setStatusFilter("ALL");
+                setQ("");
+              }}
+              className="m3-btn m3-btn-sm m3-btn-text"
+            >
+              ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2" aria-label="จำนวนงานตามสถานะ">
+        <span className={`${chip} m3-label-default`}>ฉบับร่าง {statusCounts.DRAFT}</span>
+        <span className={`${chip} m3-label-warning`}>รอผลิต {statusCounts.WAITING}</span>
+        <span className={`${chip} m3-label-info`}>กำลังผลิต {statusCounts.IN_PROGRESS}</span>
+        <span className={`${chip} m3-label-success`}>จบงาน {statusCounts.COMPLETED}</span>
+        <span className={`${chip} m3-label-default`}>ยกเลิก {statusCounts.CANCELLED}</span>
+        {statusCounts.under > 0 && <span className={`${chip} m3-label-error`}>จบต่ำกว่าเป้า {statusCounts.under}</span>}
+        {statusCounts.urgent > 0 && <span className={`${chip} m3-label-warning`}>ด่วน {statusCounts.urgent}</span>}
+      </div>
+      </>
       )}
 
       {loading ? (
