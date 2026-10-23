@@ -388,10 +388,13 @@ export default function ProductionPlanningPage() {
               <div key={tableNo} className="m3-card overflow-hidden">
                 <div className="px-4 pt-4 pb-3 sm:px-[18px]">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
+                    <Link
+                      href={`/production/tables/${tableNo}`}
+                      className="flex min-w-0 items-center gap-2.5 rounded-lg outline-offset-2 hover:bg-[rgba(145,158,171,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-m3-primary"
+                    >
                       <M3NumberTile>{tableNo}</M3NumberTile>
                       <span className="text-base font-bold whitespace-nowrap text-m3-grey-800">โต๊ะผลิต {tableNo}</span>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-2.5">
                       {tableDrafts > 0 && (
                         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-m3-grey-600">

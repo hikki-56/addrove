@@ -133,7 +133,9 @@ export default function DashboardHeader({
       ? { parent: "สินค้าทั้งหมด", title: "รายละเอียดสินค้า" }
       : pathname.startsWith("/production/jobs/")
         ? { parent: "งานผลิต", title: "รายละเอียดงานผลิต" }
-        : { parent: "Stockify", title: "ภาพรวม" });
+        : pathname.startsWith("/production/tables/")
+          ? { parent: "วางแผนผลิต", title: "ยืนยันวัตถุดิบ" }
+          : { parent: "Stockify", title: "ภาพรวม" });
 
   const visibleItems = getVisibleNavItems(user, menu_hrefs, can_manage);
 
