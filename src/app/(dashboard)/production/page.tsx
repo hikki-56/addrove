@@ -44,13 +44,11 @@ import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/product
 
 // หน้าวางแผนผลิต (§1–2) — การ์ดโต๊ะ 1–5 + ฉบับร่างแก้/ลบ/ย้ายโต๊ะได้ทันที
 // เลือกหลายงานแล้ว "ยืนยันส่งงานผลิต" (DRAFT → WAITING + แจ้ง APPROVER)
-// แถบปุ่มบน / ตัวกรอง / แท็บสถานะ ซ่อนเมื่อ role === ADMIN (พนักงานยังเห็นตามเดิม)
 
 const STATUS_OPTIONS = ["ALL", "DRAFT", "WAITING", "IN_PROGRESS", "CANCELLED"] as const;
 
 export default function ProductionPlanningPage() {
   const { user } = useTabAuth();
-  const isAdmin = user?.role === "ADMIN";
 
   const [dateFilter, setDateFilter] = useState("");
   const [today, setToday] = useState("");
@@ -254,8 +252,6 @@ export default function ProductionPlanningPage() {
   return (
     <div className="w-full max-w-full pb-32">
       <h1 className="sr-only">วางแผนผลิต</h1>
-      {/* แถบปุ่ม / ตัวกรอง / แท็บสถานะ — โชว์เฉพาะพนักงาน (ไม่ใช่ Admin) */}
-      {!isAdmin && (
       <div className="mb-5 flex flex-wrap items-center justify-end gap-3 sm:mb-6">
         <Link href="/production/jobs" className="m3-btn m3-btn-outline">
           ประวัติงานผลิต
@@ -276,7 +272,6 @@ export default function ProductionPlanningPage() {
           เพิ่มงานผลิต
         </button>
       </div>
-      )}
 
       {toast && (
         <div className="mb-4">
@@ -309,8 +304,6 @@ export default function ProductionPlanningPage() {
         </div>
       )}
 
-      {!isAdmin && (
-      <>
       {/* ตัวกรอง */}
       <div className="m3-card p-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-[200px_170px_minmax(0,1fr)_190px]">
@@ -379,8 +372,6 @@ export default function ProductionPlanningPage() {
         {statusCounts.under > 0 && <span className={`${chip} m3-label-error`}>จบต่ำกว่าเป้า {statusCounts.under}</span>}
         {statusCounts.urgent > 0 && <span className={`${chip} m3-label-warning`}>ด่วน {statusCounts.urgent}</span>}
       </div>
-      </>
-      )}
 
       {loading ? (
         <div className="mt-5">
