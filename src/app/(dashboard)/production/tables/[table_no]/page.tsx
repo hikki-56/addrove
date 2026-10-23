@@ -15,6 +15,7 @@ import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
 import { SolarAddLine, SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
 import { PRODUCTION_TABLES } from "@/types/production";
 import type { ProductionJob } from "@/types/production";
+import { previewProductionBom } from "@/lib/production-bom";
 
 // ยืนยันวัตถุดิบต่อโต๊ะ — ซ้ายสินค้าสำเร็จรูป / ขวาวัตถุดิบที่ใช้ (เลย์เอาต์แบบ /production/formula)
 // เพิ่มงานใช้ AddJobModal เดิม (เลือก FG + จำนวน) โดยล็อกบริบทโต๊ะนี้
@@ -87,7 +88,13 @@ export default function ProductionTableConfirmPage() {
   }, [filteredJobs, selectedJobNo]);
 
   const selected: ProductionJob | undefined = tableJobs.find((j) => j.job_no === selectedJobNo);
-  const materials = selected?.material_plan?.snapshot.items ?? [];
+
+  // ขยาย qty ตามเป้า: recipe_qty = item.qty * target_qty / base_qty * (1+waste%) ผ่าน previewProductionBom
+  const materials = useMemo(() => {
+    const plan = selected?.material_plan;
+    if (!selected || !plan) return [];
+    return previewProductionBom(plan.snapshot, selected.target_qty, plan.selection).materials;
+  }, [selected]);
 
   const handleAdd = (value: AddJobFormValue) =>
     guard.run(async () => {
@@ -206,7 +213,10 @@ export default function ProductionTableConfirmPage() {
                   <div className="text-sm font-semibold text-m3-grey-800">{item.name || item.sku}</div>
                   <div className="mt-0.5 text-xs text-m3-grey-500">
                     {item.sku}
-                    {item.qty != null ? ` · ${formatQty(item.qty)} ${item.unit || item.stock_unit || ""}` : ""}
+                    {` · ${formatQty(item.recipe_qty)} ${item.unit || ""}`}
+                    {item.stock_qty != null && item.unit !== item.stock_unit
+                      ? ` (${formatQty(item.stock_qty)} ${item.stock_unit})`
+                      : ""}
                   </div>
                 </li>
               ))}
