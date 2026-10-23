@@ -59,7 +59,15 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell
+      footer={
+        <>
+          <a href="/employee-login" className="font-semibold text-m3-primary-dark hover:underline">
+            เข้าด้วยรหัสพนักงาน
+          </a>
+        </>
+      }
+    >
       <h1 className="font-m3-disp text-[22px] font-bold text-m3-grey-800">เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h1>
 
       {/* Error message */}

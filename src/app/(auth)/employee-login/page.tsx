@@ -193,7 +193,16 @@ function PinScreen() {
   }, []);
 
   return (
-    <AuthShell footer={<>© {new Date().getFullYear()} Stockify — ระบบจัดการคลังสินค้า</>}>
+    <AuthShell
+      footer={
+        <>
+          <a href="/login" className="font-semibold text-m3-primary-dark hover:underline">
+            เข้าด้วยอีเมลแอดมิน
+          </a>
+          <div className="mt-2">© {new Date().getFullYear()} Stockify — ระบบจัดการคลังสินค้า</div>
+        </>
+      }
+    >
       <div className="flex flex-col items-center text-center">
         <h1 className="font-m3-disp text-[26px] font-bold text-m3-grey-800">กรอกรหัส PIN</h1>
         <p className="mt-1 text-sm text-m3-grey-600">ระบบสำหรับพนักงานคลังสินค้า</p>
