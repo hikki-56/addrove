@@ -363,7 +363,9 @@ export default function TransferStaffWorkflowModal({
             </div>
             {unitsPerCarton && selectedTask.qty > 0 && (
               <p className="-mt-3 text-right text-sm font-semibold tabular-nums text-m3-grey-700">
-                = {Math.floor(selectedTask.qty / unitsPerCarton).toLocaleString()} กล่อง
+                ={" "}
+                <span className="font-m3-disp text-[32px] leading-none font-bold tabular-nums text-m3-grey-800">{Math.floor(selectedTask.qty / unitsPerCarton).toLocaleString()}</span>
+                <span className="ml-1 text-sm font-normal text-m3-grey-600">กล่อง</span>
                 {selectedTask.qty % unitsPerCarton > 0 ? ` + ${(selectedTask.qty % unitsPerCarton).toLocaleString()} ชิ้น` : ""}
                 <span className="ml-1 font-normal text-m3-grey-500">(กล่องละ {unitsPerCarton.toLocaleString()})</span>
               </p>
