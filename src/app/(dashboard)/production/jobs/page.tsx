@@ -279,84 +279,29 @@ export default function ProductionJobsPage() {
                 <M3NumberTile>{group.table_no}</M3NumberTile>
                 <span className="mr-1 text-sm font-bold text-m3-grey-800">โต๊ะ {group.table_no}</span>
               </div>
-              <div className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)]">
-          {group.jobs.map((job) => {
-            const actions = getAllowedActions(job, user?.role);
-            return (
-              <div key={job.job_no} className="flex flex-col py-4 last:pb-0">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <StatusBadge status={job.status} />
-                  <PriorityBadge priority={job.priority} />
-                  <JobSignalBadges job={job} />
-                </div>
-                <div className="mt-2 text-base leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
-                <div className="mt-0.5 truncate text-xs tabular-nums text-m3-grey-500">
-                  {job.job_no} · {job.sku}
-                  {job.note ? ` · ${job.note}` : ""}
-                </div>
-                <div className="mt-3">
-                  <JobNumbers job={job} compact />
-                </div>
-                {job.status === "COMPLETED" && job.remaining_qty > 0 && (
-                  <M3Banner tone="warning" className="mt-3 px-3 py-2">
-                    <span className="text-xs">
-                      จบงานต่ำกว่าเป้าหมาย — ขาด {formatQty(job.remaining_qty)} {job.unit}
-                      {job.close_reason ? ` · เหตุผล: ${job.close_reason}` : ""}
-                    </span>
-                  </M3Banner>
-                )}
-                <div className="mt-4 flex flex-col gap-2">
-                  {actions.start && (
-                    <button
-                      onClick={() => {
-                        setStartError(null);
-                        setStartJob(job);
-                      }}
-                      disabled={guard.pending}
-                      className="m3-btn m3-btn-primary h-11 w-full"
-                    >
-                      {guard.isPending(`start:${job.job_no}`) ? (
-                        <span className={m3Cls.spinner} />
-                      ) : (
-                        <>
-                          <SolarPlayCircle size={18} />
-                          เริ่มผลิต
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {actions.report ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReportError(null);
-                        setReportJob(job);
-                      }}
-                      disabled={guard.pending}
-                      className={`m3-btn h-11 w-full ${!actions.start ? "m3-btn-primary" : "m3-btn-outline"}`}
-                    >
-                      {guard.isPending(`report:${job.job_no}`) ? (
-                        <span className={m3Cls.spinner} />
-                      ) : (
-                        <>
-                          รายงานผล
-                          <SolarArrowRight size={18} />
-                        </>
-                      )}
-                    </button>
-                  ) : null}
-                  <Link
-                    href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                    className={`m3-btn h-11 w-full ${actions.report ? "m3-btn-text" : actions.start ? "m3-btn-outline" : "m3-btn-primary"}`}
-                  >
-                    รายละเอียด
-                    {!actions.report ? <SolarArrowRight size={18} /> : null}
-                  </Link>
-                </div>
+              <div className="mt-3 divide-y divide-[rgba(145,158,171,0.2)] rounded-lg border border-[rgba(145,158,171,0.2)]">
+                {group.jobs.map((job) => (
+                  <div key={job.job_no} className="flex flex-col gap-2 px-3 py-2.5">
+                    <div className="flex items-start gap-2">
+                      <StatusBadge status={job.status} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-m3-grey-800">{job.product_name}</div>
+                        <div className="truncate text-xs tabular-nums text-m3-grey-500">
+                          {job.job_no} · {job.sku}
+                        </div>
+                      </div>
+                    </div>
+                    <JobNumbers job={job} compact />
+                  </div>
+                ))}
               </div>
-            );
-          })}
-              </div>
+              <Link
+                href={`/production/tables/${group.table_no}`}
+                className="m3-btn m3-btn-primary mt-4 h-11 w-full"
+              >
+                รายละเอียด
+                <SolarArrowRight size={18} />
+              </Link>
             </div>
           ))}
         </div>
