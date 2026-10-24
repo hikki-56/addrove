@@ -73,6 +73,39 @@ export default function TransferStaffWorkflowModal({
   const [cameraTarget, setCameraTarget] = useState<"PRODUCT" | "SOURCE_LOCATION" | "DEST_LOCATION" | null>(null);
   const [fetchedLoc, setFetchedLoc] = useState<string>("");
 
+  // จำนวนต่อกล่อง (products.units_per_carton) — ใช้จาก products prop ก่อน ถ้าไม่มีค่อยดึงจาก /api/products เดิม
+  const [fetchedUpc, setFetchedUpc] = useState<number | null>(null);
+  const propUpc = (() => {
+    if (!selectedTask) return null;
+    const norm = (v?: string) => (v || "").trim().toLowerCase().replace(/^prod-/, "");
+    const keys = [norm(selectedTask.sku), norm(selectedTask.product_id)].filter(Boolean);
+    const m = products?.find((p) => keys.includes(norm(p.sku)) || keys.includes(norm(p.product_id)));
+    return m?.units_per_carton ?? null;
+  })();
+  useEffect(() => {
+    setFetchedUpc(null);
+    if (!selectedTask || propUpc) return;
+    const term = (selectedTask.sku || selectedTask.product_id || "").trim();
+    if (!term) return;
+    let active = true;
+    const normTerm = term.toLowerCase().replace(/^prod-/, "");
+    fetch(`/api/products?search=${encodeURIComponent(term)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!active || !json.success || !Array.isArray(json.data)) return;
+        const p = json.data.find((x: Product) =>
+          [x.sku, x.product_id].some((v) => (v || "").trim().toLowerCase().replace(/^prod-/, "") === normTerm)
+        );
+        setFetchedUpc(p?.units_per_carton ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selectedTask, propUpc]);
+  const upcRaw = Number(propUpc || fetchedUpc || 0);
+  const unitsPerCarton = Number.isFinite(upcRaw) && upcRaw > 0 ? upcRaw : null;
+
   useEffect(() => {
     if (!selectedTask) return;
 
@@ -303,6 +336,11 @@ export default function TransferStaffWorkflowModal({
 
           {/* Product & Route Summary Card (M14) */}
           <div className="space-y-4 rounded-2xl bg-m3-grey-100 p-4 sm:p-5">
+            {/* ตำแหน่งปัจจุบัน — บนสุดของการ์ด ตัวหนังสือใหญ่ชัดเจน */}
+            <div className="flex items-baseline gap-2.5 border-b border-dashed border-[rgba(145,158,171,0.32)] pb-4">
+              <span className="text-sm font-semibold text-m3-grey-600">ตำแหน่งปัจจุบัน:</span>
+              <span className="text-2xl font-bold tabular-nums tracking-wide text-m3-grey-800">{fetchedLoc || "ไม่ระบุ"}</span>
+            </div>
             <div className="flex items-start gap-3">
               <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-white text-m3-grey-500">
                 <SolarBox size={28} />
@@ -323,17 +361,19 @@ export default function TransferStaffWorkflowModal({
                 <span className="ml-1 text-sm text-m3-grey-600">ชิ้น</span>
               </span>
             </div>
+            {unitsPerCarton && selectedTask.qty > 0 && (
+              <p className="-mt-3 text-right text-sm font-semibold tabular-nums text-m3-grey-700">
+                = {Math.floor(selectedTask.qty / unitsPerCarton).toLocaleString()} กล่อง
+                {selectedTask.qty % unitsPerCarton > 0 ? ` + ${(selectedTask.qty % unitsPerCarton).toLocaleString()} ชิ้น` : ""}
+                <span className="ml-1 font-normal text-m3-grey-500">(กล่องละ {unitsPerCarton.toLocaleString()})</span>
+              </p>
+            )}
 
             <p className="text-sm text-m3-grey-700">
               จาก <span className="font-bold text-m3-grey-800">{selectedTask.from_warehouse_name}</span>
               {" "}ไป <span className="font-bold text-m3-grey-800">{selectedTask.to_warehouse_name}</span>
             </p>
 
-            {/* ตำแหน่งปัจจุบัน ใต้ จาก...ไป... ตัวหนังสือใหญ่ชัดเจน */}
-            <div className="flex items-baseline gap-2.5 border-t border-dashed border-[rgba(145,158,171,0.32)] pt-4">
-              <span className="text-sm font-semibold text-m3-grey-600">ตำแหน่งปัจจุบัน:</span>
-              <span className="text-2xl font-bold tabular-nums tracking-wide text-m3-grey-800">{fetchedLoc || "ไม่ระบุ"}</span>
-            </div>
           </div>
 
           {/* Error Banner — 16px หนา ตามสเปก W4 (ข้อความที่พนักงานอ่านระหว่างถือของ) */}
