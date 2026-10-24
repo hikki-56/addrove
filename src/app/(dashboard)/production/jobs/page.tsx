@@ -110,6 +110,18 @@ export default function ProductionJobsPage() {
     return c;
   }, [filtered]);
 
+  // รวมงานที่โต๊ะเดียวกัน (และวันเดียวกัน) ไว้ในการ์ดเดียว — คงลำดับเดิม
+  const groupedByTable = useMemo(() => {
+    const map = new Map<string, { key: string; table_no: number; jobs: typeof filtered }>();
+    for (const j of filtered) {
+      const key = `${j.production_date}|${j.table_no}`;
+      const g = map.get(key);
+      if (g) g.jobs.push(j);
+      else map.set(key, { key, table_no: j.table_no, jobs: [j] });
+    }
+    return Array.from(map.values());
+  }, [filtered]);
+
   const handleStart = (job: ProductionJob) =>
     guard.run(async () => {
       setStartError(null);
@@ -258,21 +270,26 @@ export default function ProductionJobsPage() {
         </div>
       ) : (
         <div className="mt-5 grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((job) => {
+          {groupedByTable.map((group) => (
+            <div
+              key={group.key}
+              className={`m3-card relative flex flex-col overflow-hidden p-4 before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-5 ${priorityEdgeClass(group.jobs[0].priority)}`}
+            >
+              <div className="flex flex-wrap items-center gap-1.5">
+                <M3NumberTile>{group.table_no}</M3NumberTile>
+                <span className="mr-1 text-sm font-bold text-m3-grey-800">โต๊ะ {group.table_no}</span>
+              </div>
+              <div className="divide-y divide-dashed divide-[rgba(145,158,171,0.32)]">
+          {group.jobs.map((job) => {
             const actions = getAllowedActions(job, user?.role);
             return (
-              <div
-                key={job.job_no}
-                className={`m3-card relative flex flex-col overflow-hidden p-4 before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-5 ${priorityEdgeClass(job.priority)}`}
-              >
+              <div key={job.job_no} className="flex flex-col py-4 last:pb-0">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <M3NumberTile>{job.table_no}</M3NumberTile>
-                  <span className="mr-1 text-sm font-bold text-m3-grey-800">โต๊ะ {job.table_no}</span>
                   <StatusBadge status={job.status} />
                   <PriorityBadge priority={job.priority} />
                   <JobSignalBadges job={job} />
                 </div>
-                <div className="mt-3 text-base leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
+                <div className="mt-2 text-base leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
                 <div className="mt-0.5 truncate text-xs tabular-nums text-m3-grey-500">
                   {job.job_no} · {job.sku}
                   {job.note ? ` · ${job.note}` : ""}
@@ -339,6 +356,9 @@ export default function ProductionJobsPage() {
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
