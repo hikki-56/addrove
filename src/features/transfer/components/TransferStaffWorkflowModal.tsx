@@ -5,6 +5,7 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { createPortal } from "react-dom";
 import { type TransferNotification, updateTransferTaskProgress, getInStockSourceLocations, isUsableLocationCode } from "@/lib/transfer-notification-utils";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
+import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import type { Product } from "@/types/models";
 import { M3Banner, m3Cls } from "@/components/ui/m3";
 import { SolarBox, SolarCheckCircle, SolarClose } from "@/components/icons";
@@ -69,6 +70,7 @@ export default function TransferStaffWorkflowModal({
   onVerifyDestinationLocationBarcode,
 }: TransferStaffWorkflowModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<"PRODUCT" | "SOURCE_LOCATION" | "DEST_LOCATION" | null>(null);
   const [fetchedLoc, setFetchedLoc] = useState<string>("");
 
   useEffect(() => {
@@ -270,6 +272,7 @@ export default function TransferStaffWorkflowModal({
                 value={staffScanProductInput}
                 onChange={setStaffScanProductInput}
                 onScanSubmit={onVerifyProductBarcode}
+                onOpenScannerModal={() => setCameraTarget("PRODUCT")}
                 inputRef={staffProductInputRef}
                 placeholder={barcode ? `สแกนหรือพิมพ์ ${barcode}...` : "สแกนบาร์โค้ดสินค้า..."}
               />
@@ -291,6 +294,7 @@ export default function TransferStaffWorkflowModal({
                   }
                 }}
                 onScanSubmit={onVerifyDestinationLocationBarcode}
+                onOpenScannerModal={() => setCameraTarget("DEST_LOCATION")}
                 inputRef={staffDestLocationInputRef}
                 placeholder="สแกนตำแหน่งปลายทาง..."
               />
@@ -457,6 +461,7 @@ export default function TransferStaffWorkflowModal({
                   value={staffScanSourceLocationInput}
                   onChange={setStaffScanSourceLocationInput}
                   onScanSubmit={onVerifySourceLocationBarcode}
+                  onOpenScannerModal={() => setCameraTarget("SOURCE_LOCATION")}
                   inputRef={staffSourceLocationInputRef}
                   placeholder={sourceAllocations.length === 0 ? "สแกนตำแหน่งต้นทาง..." : `สแกนตำแหน่งที่ ${sourceAllocations.length + 1}...`}
                 />
@@ -596,6 +601,17 @@ export default function TransferStaffWorkflowModal({
         )}
         </div>
       </div>
+      <CameraBarcodeScannerModal
+        isOpen={cameraTarget !== null}
+        onClose={() => setCameraTarget(null)}
+        onScanSuccess={(code) => {
+          const target = cameraTarget;
+          setCameraTarget(null);
+          if (target === "PRODUCT") onVerifyProductBarcode(code);
+          else if (target === "SOURCE_LOCATION") onVerifySourceLocationBarcode(code);
+          else if (target === "DEST_LOCATION") onVerifyDestinationLocationBarcode(code);
+        }}
+      />
     </div>,
     document.body
   );
