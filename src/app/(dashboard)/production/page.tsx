@@ -467,8 +467,8 @@ export default function ProductionPlanningPage() {
                             isSelected ? "bg-[rgba(0,167,111,0.04)]" : ""
                           } ${job.status === "CANCELLED" ? "opacity-56" : ""}`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          {(actions.submit || (job.status === "COMPLETED" && (job.remaining_qty > 0 || (job.over_qty ?? 0) > 0))) && (
+                            <div className="mb-2.5 flex min-w-0 flex-wrap items-center gap-1.5">
                               {actions.submit && (
                                 <input
                                   type="checkbox"
@@ -480,22 +480,9 @@ export default function ProductionPlanningPage() {
                               )}
                               <JobSignalBadges job={job} />
                             </div>
-                            <div className="flex shrink-0 items-center gap-0.5">
-                              {actions.edit ? (
-                                <button onClick={() => setEditJob(job)} className="m3-btn m3-btn-sm m3-btn-text text-m3-grey-600">
-                                  แก้ไข
-                                </button>
-                              ) : null}
-                              <Link
-                                href={`/production/jobs/${encodeURIComponent(job.job_no)}`}
-                                className="m3-btn m3-btn-sm m3-btn-text"
-                              >
-                                รายละเอียด
-                              </Link>
-                            </div>
-                          </div>
+                          )}
 
-                          <div className="mt-2.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="wrap-anywhere text-[15px] leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
                               <div className="mt-0.5 wrap-anywhere text-xs tabular-nums text-m3-grey-500">
