@@ -495,14 +495,14 @@ export default function ProductionPlanningPage() {
                             </div>
                           </div>
 
-                          <div className="mt-2.5 wrap-anywhere text-[15px] leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
-                          <div className="mt-0.5 wrap-anywhere text-xs tabular-nums text-m3-grey-500">
-                            บาร์โค้ด: {job.barcode || "—"}
-                          </div>
-
-                          <div className="mt-2.5 flex items-baseline justify-between rounded-lg bg-m3-grey-100 px-3 py-2">
-                            <span className="text-[13px] text-m3-grey-600">จำนวนสั่งผลิต</span>
-                            <span>
+                          <div className="mt-2.5 flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="wrap-anywhere text-[15px] leading-snug font-semibold text-m3-grey-800">{job.product_name}</div>
+                              <div className="mt-0.5 wrap-anywhere text-xs tabular-nums text-m3-grey-500">
+                                บาร์โค้ด: {job.barcode || "—"}
+                              </div>
+                            </div>
+                            <span className="shrink-0 whitespace-nowrap">
                               <b className="font-m3-disp text-[22px] font-bold tabular-nums text-m3-grey-800">{formatQty(job.target_qty)}</b>{" "}
                               <span className="text-[13px] text-m3-grey-600">{job.unit}</span>
                             </span>
