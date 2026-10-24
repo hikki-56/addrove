@@ -8,7 +8,9 @@ import {
 } from "@/features/production/hooks/use-production-data";
 import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
-import { buildCreateJobInput } from "@/features/production/lib/job-form";
+import { useTabAuth } from "@/context/TabAuthContext";
+import { getAllowedActions } from "@/features/production/lib/permissions";
+import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
 import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
@@ -43,6 +45,8 @@ export default function ProductionTableConfirmPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const guard = useSubmitGuard();
+  const { user } = useTabAuth();
+  const [editJob, setEditJob] = useState<ProductionJob | null>(null);
 
   useEffect(() => {
     setToday(todayYMD());
@@ -113,6 +117,26 @@ export default function ProductionTableConfirmPage() {
         setModalError(res.message);
       }
     }, "create");
+
+  // แก้ไขงาน — AddJobModal โหมด edit + PATCH เดิมแบบหน้าวางแผน (/production)
+  const handleEdit = (value: AddJobFormValue) =>
+    guard.run(async () => {
+      if (!editJob) return;
+      setModalError(null);
+      const res = await productionApi(
+        `/api/production/jobs/${encodeURIComponent(editJob.job_no)}`,
+        "PATCH",
+        buildJobPatch(editJob, value)
+      );
+      if (res.success) {
+        setEditJob(null);
+        emitProductionUpdated();
+        await reload();
+      } else {
+        setModalError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, "edit");
 
   const draftJobs = useMemo(() => tableJobs.filter((j) => j.status === "DRAFT"), [tableJobs]);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -199,21 +223,38 @@ export default function ProductionTableConfirmPage() {
               <M3Empty title={query ? "ไม่พบสินค้า" : "ยังไม่มีสินค้า"} />
             ) : (
               filteredJobs.map((j) => (
-                <button
+                <div
                   key={j.job_no}
-                  type="button"
-                  onClick={() => setSelectedJobNo(j.job_no)}
-                  className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
+                  className={`mb-1 flex w-full items-center gap-1 rounded-lg transition-colors ${
                     j.job_no === selectedJobNo
                       ? "bg-[rgba(0,167,111,0.08)] text-m3-primary"
                       : "hover:bg-[rgba(145,158,171,0.08)]"
                   }`}
+                >
+                <button
+                  type="button"
+                  onClick={() => setSelectedJobNo(j.job_no)}
+                  className="min-w-0 flex-1 px-3 py-2.5 text-left"
                 >
                   <div className="truncate text-sm font-semibold">{j.product_name}</div>
                   <div className="truncate text-xs text-m3-grey-500">
                     {j.sku} · {formatQty(j.target_qty)} {j.unit}
                   </div>
                 </button>
+                {getAllowedActions(j, user?.role).edit && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalError(null);
+                      setEditJob(j);
+                    }}
+                    className="m3-btn m3-btn-sm m3-btn-text mr-1 shrink-0 text-m3-grey-600"
+                  >
+                    แก้ไข
+                  </button>
+                )}
+                </div>
               ))
             )}
           </div>
@@ -276,6 +317,22 @@ export default function ProductionTableConfirmPage() {
           }
         }}
         onSubmit={handleAdd}
+      />
+
+      <AddJobModal
+        open={!!editJob}
+        mode="edit"
+        job={editJob || undefined}
+        hideTableDate
+        submitting={guard.pending}
+        error={modalError}
+        onClose={() => {
+          if (!guard.pending) {
+            setEditJob(null);
+            setModalError(null);
+          }
+        }}
+        onSubmit={handleEdit}
       />
     </div>
   );
