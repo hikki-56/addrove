@@ -7,7 +7,7 @@ import {
   emitProductionUpdated,
 } from "@/features/production/hooks/use-production-data";
 import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
-import { productionApi } from "@/features/production/lib/api";
+import { productionApi, isConflict } from "@/features/production/lib/api";
 import { buildCreateJobInput } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
@@ -114,12 +114,28 @@ export default function ProductionTableConfirmPage() {
       }
     }, "create");
 
+  const draftJobs = useMemo(() => tableJobs.filter((j) => j.status === "DRAFT"), [tableJobs]);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  // ส่งงานฉบับร่างทั้งหมดของโต๊ะนี้ (วันที่เลือก) — API เดียวกับปุ่ม "ยืนยันส่งงานผลิต" ใน /production
   const handleConfirm = () => {
-    if (success) return;
-    setSuccess(true);
-    window.setTimeout(() => {
-      router.push("/production");
-    }, 900);
+    if (success || draftJobs.length === 0) return;
+    return guard.run(async () => {
+      setConfirmError(null);
+      const res = await productionApi("/api/production/jobs/submit", "POST", {
+        job_nos: draftJobs.map((j) => j.job_no),
+      });
+      if (res.success) {
+        emitProductionUpdated();
+        setSuccess(true);
+        window.setTimeout(() => {
+          router.push("/production");
+        }, 900);
+      } else {
+        setConfirmError(res.message);
+        if (isConflict(res)) emitProductionUpdated();
+      }
+    }, "submit");
   };
 
   if (!valid) {
@@ -137,6 +153,12 @@ export default function ProductionTableConfirmPage() {
       {success && (
         <M3Banner tone="success" className="mb-4" role="status">
           ยืนยันแล้ว
+        </M3Banner>
+      )}
+
+      {confirmError && (
+        <M3Banner tone="error" className="mb-4" role="alert">
+          {confirmError}
         </M3Banner>
       )}
 
@@ -230,7 +252,7 @@ export default function ProductionTableConfirmPage() {
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={success}
+            disabled={success || draftJobs.length === 0 || guard.pending}
             className="m3-btn m3-btn-dark h-12 w-full disabled:opacity-60"
           >
             <SolarCheckCircle size={20} />
