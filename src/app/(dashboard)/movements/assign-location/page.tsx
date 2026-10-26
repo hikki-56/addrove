@@ -15,7 +15,7 @@ import type { Product } from "@/types/models";
 type BalanceEntry = { warehouse_id: string; location_id: string; location_name: string; quantity: number };
 
 type LocQty = { location_code: string; quantity: number };
-type Row = { key: string; to_location_id: string; qty: string };
+type Row = { key: string; to_location_id: string; qty: string; pcs: string };
 
 const norm = (s?: string | null) => (s || "").trim().toLowerCase();
 
@@ -45,7 +45,9 @@ export default function AssignLocationPage() {
   const perBox = product?.units_per_carton && product.units_per_carton > 0 ? product.units_per_carton : 0;
   const toPieces = useCallback((v: string) => (perBox ? Number(v) * perBox : Number(v)), [perBox]);
   const available = stock.filter((s) => !s.location_code.trim()).reduce((a, s) => a + s.quantity, 0);
-  const assigned = rows.reduce((a, r) => a + (toPieces(r.qty) || 0), 0);
+  // ชิ้นของแถว: มีจำนวนบรรจุ → ใช้ช่องชิ้น (แก้ได้), ไม่มี → ใช้จำนวนเดิม
+  const rowPieces = useCallback((r: Row) => (perBox ? Number(r.pcs) : Number(r.qty)), [perBox]);
+  const assigned = rows.reduce((a, r) => a + (rowPieces(r) || 0), 0);
 
   const loadStock = useCallback(async (p: Product, whId: string) => {
     setLoadingStock(true);
@@ -86,12 +88,12 @@ export default function AssignLocationPage() {
       if (!loc || !loc.location_code.trim()) return setError(`ไม่พบตำแหน่ง "${locCode.trim()}" ในโกดังนี้`), false;
       const code = loc.location_code.trim().toUpperCase();
       if (rows.some((r) => r.to_location_id === code)) return setError(`ตำแหน่ง ${code} มีในรายการแล้ว`), false;
-      setRows((rs) => [...rs, { key: uuidv4(), to_location_id: code, qty: qtyStr }]);
+      setRows((rs) => [...rs, { key: uuidv4(), to_location_id: code, qty: qtyStr, pcs: qtyStr.trim() === "" ? "" : String(toPieces(qtyStr)) }]);
       setLocInput("");
       setQtyInput("");
       return true;
     },
-    [findLocation, rows]
+    [findLocation, rows, toPieces]
   );
 
   const handleLocationScan = useCallback(
@@ -135,8 +137,8 @@ export default function AssignLocationPage() {
   );
 
   const errors = useMemo(
-    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: toPieces(r.qty) })), available),
-    [rows, available, toPieces]
+    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: rowPieces(r) })), available),
+    [rows, available, rowPieces]
   );
 
   const save = async () => {
@@ -151,7 +153,7 @@ export default function AssignLocationPage() {
           warehouse_id: activeWhId,
           product_id: product.product_id,
           idempotency_key: uuidv4(),
-          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: toPieces(r.qty) })),
+          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: rowPieces(r) })),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -272,9 +274,23 @@ export default function AssignLocationPage() {
                 min={1}
                 placeholder={perBox ? "กล่อง" : undefined}
                 value={r.qty}
-                onChange={(e) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, qty: e.target.value } : x)))}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, qty: v, pcs: v.trim() === "" ? "" : String(toPieces(v)) } : x)));
+                }}
               />
-              {perBox > 0 && <span className="text-sm text-m3-grey-700 whitespace-nowrap">= {(toPieces(r.qty) || 0).toLocaleString()} ชิ้น</span>}
+              {perBox > 0 && (
+                <input
+                  className="w-24 border rounded-lg px-2 py-1"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  placeholder="ชิ้น"
+                  aria-label="ชิ้น"
+                  value={r.pcs}
+                  onChange={(e) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, pcs: e.target.value } : x)))}
+                />
+              )}
               <button type="button" className="text-red-600 text-sm" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}>
                 ลบ
               </button>
