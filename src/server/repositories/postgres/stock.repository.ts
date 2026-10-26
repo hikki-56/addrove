@@ -257,6 +257,13 @@ export class PostgresStockSummaryRepository {
         return allocations;
     }
     async findAll(warehouseId?: string): Promise<StockSummary[]> { return query("SELECT * FROM stock_summary WHERE ($1::text IS NULL OR warehouse_id=$1) ORDER BY source_row", [warehouseId ? await resolveWarehouseId(warehouseId) : null]); }
+    async setRackCount(productId: string, warehouseId: string, locationId: string, rackCount: number | null): Promise<void> {
+        const wh = await resolveWarehouseId(warehouseId);
+        const loc = await resolveLocationId(wh, locationId);
+        if (!loc)
+            throw new InvalidStockLocationError(`ไม่พบตำแหน่ง ${locationId}`);
+        await query("UPDATE stock_summary SET rack_count=$4 WHERE product_id=$1 AND warehouse_id=$2 AND location_id=$3", [await resolveProductId(productId), wh, loc, rackCount]);
+    }
     async findByProductAndLocation(productId: string, warehouseId: string, locationId: string): Promise<StockSummary | null> {
         const wh = await resolveWarehouseId(warehouseId);
         const loc = await resolveLocationId(wh, locationId);

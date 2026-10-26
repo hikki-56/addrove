@@ -15,7 +15,7 @@ import type { Product } from "@/types/models";
 type BalanceEntry = { warehouse_id: string; location_id: string; location_name: string; quantity: number };
 
 type LocQty = { location_code: string; quantity: number };
-type Row = { key: string; to_location_id: string; qty: string };
+type Row = { key: string; to_location_id: string; qty: string; rack: string };
 
 const norm = (s?: string | null) => (s || "").trim().toLowerCase();
 
@@ -83,7 +83,7 @@ export default function AssignLocationPage() {
       if (!loc || !loc.location_code.trim()) return setError(`ไม่พบตำแหน่ง "${locCode.trim()}" ในโกดังนี้`), false;
       const code = loc.location_code.trim().toUpperCase();
       if (rows.some((r) => r.to_location_id === code)) return setError(`ตำแหน่ง ${code} มีในรายการแล้ว`), false;
-      setRows((rs) => [...rs, { key: uuidv4(), to_location_id: code, qty: qtyStr }]);
+      setRows((rs) => [...rs, { key: uuidv4(), to_location_id: code, qty: qtyStr, rack: "" }]);
       setLocInput("");
       setQtyInput("");
       return true;
@@ -131,8 +131,9 @@ export default function AssignLocationPage() {
     [product, findLocation, products, activeWhId, loadStock, setScanFeedback]
   );
 
+  const toRack = (v: string) => (v.trim() === "" ? null : Number(v));
   const errors = useMemo(
-    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty) })), available),
+    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty), rack_count: toRack(r.rack) })), available),
     [rows, available]
   );
 
@@ -148,7 +149,7 @@ export default function AssignLocationPage() {
           warehouse_id: activeWhId,
           product_id: product.product_id,
           idempotency_key: uuidv4(),
-          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty) })),
+          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty), rack_count: toRack(r.rack) })),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -266,6 +267,16 @@ export default function AssignLocationPage() {
                 min={1}
                 value={r.qty}
                 onChange={(e) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, qty: e.target.value } : x)))}
+              />
+              <input
+                className="w-24 border rounded-lg px-2 py-1"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                placeholder="จำนวนราง"
+                aria-label="จำนวนราง"
+                value={r.rack}
+                onChange={(e) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, rack: e.target.value } : x)))}
               />
               <button type="button" className="text-red-600 text-sm" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}>
                 ลบ
