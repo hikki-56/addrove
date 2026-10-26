@@ -25,6 +25,8 @@ export async function moveStock(
   deps: StockUseCaseDeps,
   input: MoveStockInput & { user_id: string; role?: string; correlation_id?: string }
 ): Promise<Document> {
+  // No source location = stock in the warehouse's unassigned ("ไม่ระบุ", location_code '') location.
+  // The repository resolves "" to that location, so the balance check and MOVE_OUT always run.
   const fromLoc = (input.from_location_id || "").trim();
   const toLoc = input.to_location_id;
 
@@ -34,7 +36,7 @@ export async function moveStock(
   }
 
   const lockKeys = [
-    ...(fromLoc ? [formatStockLockKey(input.warehouse_id, fromLoc, input.product_id)] : []),
+    formatStockLockKey(input.warehouse_id, fromLoc, input.product_id),
     formatStockLockKey(input.warehouse_id, toLoc, input.product_id),
   ];
 
@@ -88,7 +90,7 @@ export async function moveStock(
       }
 
       // 3. Check stock balance at from_location_id if specified
-      if (input.from_location_id) {
+      {
         const balance = await repo.movements.getBalance(
           input.product_id,
           warehouse.warehouse_id,
@@ -111,22 +113,18 @@ export async function moveStock(
         created_by: input.user_id,
       });
 
-      // 5. Create movements (OUT from fromLoc if specified, IN to to_location_id)
+      // 5. Create movements (OUT from fromLoc — unassigned when empty — and IN to to_location_id)
       const movements: Omit<StockMovement, "movement_id" | "created_at">[] = [
-        ...(fromLoc
-          ? [
-              {
-                document_id: doc.document_id,
-                product_id: input.product_id,
-                warehouse_id: warehouse.warehouse_id,
-                location_id: fromLoc,
-                qty_change: -input.qty,
-                movement_type: "MOVE_OUT" as const,
-                idempotency_key: `${input.idempotency_key}-0`,
-                created_by: input.user_id,
-              },
-            ]
-          : []),
+        {
+          document_id: doc.document_id,
+          product_id: input.product_id,
+          warehouse_id: warehouse.warehouse_id,
+          location_id: fromLoc,
+          qty_change: -input.qty,
+          movement_type: "MOVE_OUT" as const,
+          idempotency_key: `${input.idempotency_key}-0`,
+          created_by: input.user_id,
+        },
         {
           document_id: doc.document_id,
           product_id: input.product_id,
