@@ -41,8 +41,11 @@ export default function AssignLocationPage() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // มีจำนวนบรรจุต่อลัง → ใส่เป็นกล่อง แล้วคำนวณเป็นชิ้น
+  const perBox = product?.units_per_carton && product.units_per_carton > 0 ? product.units_per_carton : 0;
+  const toPieces = useCallback((v: string) => (perBox ? Number(v) * perBox : Number(v)), [perBox]);
   const available = stock.filter((s) => !s.location_code.trim()).reduce((a, s) => a + s.quantity, 0);
-  const assigned = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
+  const assigned = rows.reduce((a, r) => a + (toPieces(r.qty) || 0), 0);
 
   const loadStock = useCallback(async (p: Product, whId: string) => {
     setLoadingStock(true);
@@ -133,8 +136,8 @@ export default function AssignLocationPage() {
 
   const toRack = (v: string) => (v.trim() === "" ? null : Number(v));
   const errors = useMemo(
-    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty), rack_count: toRack(r.rack) })), available),
-    [rows, available]
+    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: toPieces(r.qty), rack_count: toRack(r.rack) })), available),
+    [rows, available, toPieces]
   );
 
   const save = async () => {
@@ -149,7 +152,7 @@ export default function AssignLocationPage() {
           warehouse_id: activeWhId,
           product_id: product.product_id,
           idempotency_key: uuidv4(),
-          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: Number(r.qty), rack_count: toRack(r.rack) })),
+          rows: rows.map((r) => ({ to_location_id: r.to_location_id, qty: toPieces(r.qty), rack_count: toRack(r.rack) })),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -247,11 +250,14 @@ export default function AssignLocationPage() {
               type="number"
               inputMode="numeric"
               min={1}
-              placeholder="จำนวน"
+              placeholder={perBox ? "จำนวนกล่อง" : "จำนวน"}
               value={qtyInput}
               onChange={(e) => setQtyInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addRow(locInput, qtyInput)}
             />
+            {perBox > 0 && qtyInput.trim() !== "" && (
+              <span className="self-center text-sm text-m3-grey-700 whitespace-nowrap">= {toPieces(qtyInput).toLocaleString()} ชิ้น</span>
+            )}
             <button type="button" className="px-4 rounded-lg bg-m3-primary text-white font-bold" onClick={() => addRow(locInput, qtyInput)}>
               เพิ่ม
             </button>
@@ -265,9 +271,11 @@ export default function AssignLocationPage() {
                 type="number"
                 inputMode="numeric"
                 min={1}
+                placeholder={perBox ? "กล่อง" : undefined}
                 value={r.qty}
                 onChange={(e) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, qty: e.target.value } : x)))}
               />
+              {perBox > 0 && <span className="text-sm text-m3-grey-700 whitespace-nowrap">= {(toPieces(r.qty) || 0).toLocaleString()} ชิ้น</span>}
               <input
                 className="w-24 border rounded-lg px-2 py-1"
                 type="number"
