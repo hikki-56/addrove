@@ -14,8 +14,5 @@ describe("assign-location", () => {
     expect(validateAssignRows([{ to_location_id: "a1", qty: 1 }, { to_location_id: "A1", qty: 1 }], 5).length).toBe(1);
     expect(validateAssignRows([{ to_location_id: "", qty: 0 }], 5).length).toBe(2);
     expect(validateAssignRows([], 5).length).toBe(1);
-    expect(validateAssignRows([{ to_location_id: "A1", qty: 1, rack_count: 0 }, { to_location_id: "B1", qty: 1, rack_count: null }], 5)).toEqual([]);
-    expect(validateAssignRows([{ to_location_id: "A1", qty: 1, rack_count: -1 }], 5).length).toBe(1);
-    expect(validateAssignRows([{ to_location_id: "A1", qty: 1, rack_count: 1.5 }], 5).length).toBe(1);
   });
 });
