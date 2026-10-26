@@ -2,6 +2,7 @@ import React from "react";
 import type { UserRole } from "@/types/models";
 import { canManageUserMenus, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
 import { BOM_EDITOR_HREF, canEditBom } from "@/lib/bom-editor";
+import { ASSIGN_LOCATION_HREF, canAssignLocation } from "@/lib/assign-location";
 
 export interface NavItem {
   href: string;
@@ -89,6 +90,15 @@ export function getSelectableMenuItems(user: MenuUser): NavItem[] {
 export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, canManage = canManageUserMenus(user.email)): NavItem[] {
   const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
   const visible = getSelectableMenuItems(user).filter((item) => allowed === null || allowed.includes(item.href));
+  // "ระบุตำแหน่งสินค้า": พนักงานทุกคน + แอดมินเฉพาะ ty@stockify.com (แอดมินต้องยืนยันผ่าน can_manage)
+  if (canAssignLocation(user.role, user.email) && (user.role !== "ADMIN" || canManage)) {
+    const at = visible.findIndex((i) => i.href === "/movements/move" || i.href === "/staff/move");
+    visible.splice(at >= 0 ? at + 1 : visible.length, 0, {
+      href: ASSIGN_LOCATION_HREF,
+      label: "ระบุตำแหน่งสินค้า",
+      icon: <Icon><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></Icon>,
+    });
+  }
   // "แก้ไขสูตร BOM" ผูกกับบัญชีเดียว ไม่ขึ้นกับการตั้งค่าเมนูรายผู้ใช้
   // (ต้องให้เซิร์ฟเวอร์ยืนยันบัญชีผ่าน can_manage ด้วย — ไม่เชื่อ email ฝั่ง client อย่างเดียว)
   if (canManage && canEditBom(user.email)) {
