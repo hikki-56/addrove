@@ -29,6 +29,8 @@ export default function AssignLocationPage() {
   const [scanFeedback, setScanFeedback] = useScanFeedback();
   const [barcode, setBarcode] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
+  // กล้องตัวเดียว ใช้ได้ทั้งช่องสแกนสินค้าและช่องตำแหน่ง
+  const [cameraTarget, setCameraTarget] = useState<"product" | "location">("product");
   const [product, setProduct] = useState<Product | null>(null);
   const [stock, setStock] = useState<LocQty[]>([]);
   const [loadingStock, setLoadingStock] = useState(false);
@@ -87,6 +89,20 @@ export default function AssignLocationPage() {
       return true;
     },
     [findLocation, rows]
+  );
+
+  const handleLocationScan = useCallback(
+    (code: string, playSound = false) => {
+      const loc = findLocation(code);
+      if (!loc || !loc.location_code.trim()) {
+        setLocInput("");
+        setScanFeedback({ type: "error", message: `✕ ไม่พบตำแหน่ง "${code.trim()}" ในโกดังนี้`, scannedCode: code.trim() }, playSound);
+        return;
+      }
+      setLocInput(loc.location_code.trim().toUpperCase());
+      setScanFeedback({ type: "success", message: `✓ ตำแหน่ง ${loc.location_code.trim().toUpperCase()}`, scannedCode: code.trim() }, playSound);
+    },
+    [findLocation, setScanFeedback]
   );
 
   const handleScan = useCallback(
@@ -181,7 +197,10 @@ export default function AssignLocationPage() {
         value={barcode}
         onChange={setBarcode}
         onScanSubmit={(c) => void handleScan(c)}
-        onOpenScannerModal={() => setCameraOpen(true)}
+        onOpenScannerModal={() => {
+          setCameraTarget("product");
+          setCameraOpen(true);
+        }}
         placeholder={product ? "สแกนตำแหน่ง หรือสินค้าตัวใหม่..." : "สแกนบาร์โค้ดสินค้า..."}
       />
       {scanFeedback && (
@@ -210,19 +229,20 @@ export default function AssignLocationPage() {
             ระบุได้จาก &quot;ไม่ระบุ&quot;: <b>{available.toLocaleString()}</b> · ใส่แล้ว <b>{assigned.toLocaleString()}</b> · เหลือ <b>{(available - assigned).toLocaleString()}</b>
           </div>
 
+          <BarcodeScanInput
+            value={locInput}
+            onChange={setLocInput}
+            onScanSubmit={(c) => handleLocationScan(c)}
+            onOpenScannerModal={() => {
+              setCameraTarget("location");
+              setCameraOpen(true);
+            }}
+            autoFocus={false}
+            placeholder="สแกน / พิมพ์ตำแหน่ง..."
+          />
           <div className="flex gap-2">
             <input
-              className="flex-1 min-w-0 border rounded-lg px-3 py-2 uppercase"
-              placeholder="ตำแหน่ง"
-              list="assign-loc-list"
-              value={locInput}
-              onChange={(e) => setLocInput(e.target.value)}
-            />
-            <datalist id="assign-loc-list">
-              {locations.filter((l) => l.location_code.trim()).map((l) => <option key={l.location_id} value={l.location_code} />)}
-            </datalist>
-            <input
-              className="w-24 border rounded-lg px-3 py-2"
+              className="flex-1 min-w-0 border rounded-lg px-3 py-2"
               type="number"
               inputMode="numeric"
               min={1}
@@ -273,7 +293,8 @@ export default function AssignLocationPage() {
         onClose={() => setCameraOpen(false)}
         onScanSuccess={async (text, playSound) => {
           setCameraOpen(false);
-          await handleScan(text, playSound);
+          if (cameraTarget === "location") handleLocationScan(text, playSound);
+          else await handleScan(text, playSound);
         }}
       />
     </div>
