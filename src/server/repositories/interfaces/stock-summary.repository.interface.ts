@@ -13,8 +13,6 @@ export interface IStockSummaryRepository {
     qty: number,
     preferredLocation: string
   ): Promise<Array<{ location_id: string; qty: number }>>;
-  /** บันทึกจำนวนราง (stock_summary.rack_count) ของสินค้า ณ ตำแหน่ง */
-  setRackCount?(productId: string, warehouseId: string, locationId: string, rackCount: number | null): Promise<void>;
   applyChanges(
     changes: { productId: string; warehouseId: string; locationId: string; delta: number }[]
   ): Promise<void>;

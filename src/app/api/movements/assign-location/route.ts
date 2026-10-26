@@ -23,7 +23,7 @@ const BodySchema = z.object({
   idempotency_key: z.string().min(1),
   note: z.string().max(500).default(""),
   rows: z
-    .array(z.object({ to_location_id: z.string().trim().min(1), qty: z.number().int().positive(), rack_count: z.number().int().min(0).nullable().optional() }))
+    .array(z.object({ to_location_id: z.string().trim().min(1), qty: z.number().int().positive() }))
     .min(1)
     .max(50),
 });
@@ -100,9 +100,6 @@ async function handlePOST(req: NextRequest) {
             correlation_id: actor.correlationId,
           }
         );
-        if (row.rack_count != null && repo.stockSummary.setRackCount) {
-          await repo.stockSummary.setRackCount(input.product_id, input.warehouse_id, row.to_location_id.toUpperCase(), row.rack_count);
-        }
         documents.push({ to_location_id: row.to_location_id, qty: row.qty, document_id: doc.document_id });
       } catch (e) {
         // withStorageRequest ย้อนกลับทุกแถวเมื่อคืน 4xx/5xx — ไม่มีการบันทึกบางส่วน
