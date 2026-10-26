@@ -17,6 +17,8 @@ export function canAssignLocation(role?: UserRole | string | null, email?: strin
 export interface AssignRow {
   to_location_id: string;
   qty: number;
+  /** จำนวนราง (ไม่บังคับ) — จำนวนเต็ม >= 0 */
+  rack_count?: number | null;
 }
 
 /** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน) */
@@ -29,6 +31,7 @@ export function validateAssignRows(rows: AssignRow[], available: number): string
     if (!code) errors.push(`แถวที่ ${i + 1}: กรุณาระบุตำแหน่ง`);
     else if (seen.has(code)) errors.push(`แถวที่ ${i + 1}: ตำแหน่ง ${code} ซ้ำ`);
     seen.add(code);
+    if (r.rack_count != null && (!Number.isInteger(r.rack_count) || r.rack_count < 0)) errors.push(`แถวที่ ${i + 1}: จำนวนรางต้องเป็นจำนวนเต็ม 0 ขึ้นไป`);
     if (!Number.isInteger(r.qty) || r.qty <= 0) errors.push(`แถวที่ ${i + 1}: จำนวนต้องเป็นจำนวนเต็มมากกว่า 0`);
   });
   const total = rows.reduce((s, r) => s + (Number.isFinite(r.qty) ? r.qty : 0), 0);
