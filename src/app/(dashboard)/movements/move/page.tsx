@@ -134,6 +134,7 @@ export default function MovePage() {
         value={barcodeInput}
         onChange={setBarcodeInput}
         onScanSubmit={handleScanBarcode}
+        onOpenScannerModal={() => setIsCameraOpen(true)}
         placeholder={
           step === 1
             ? "สแกนบาร์โค้ดสินค้า..."
