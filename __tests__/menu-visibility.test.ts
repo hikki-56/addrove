@@ -1,5 +1,6 @@
 import { canManageUserMenus, parseMenuHrefs, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
 import { BOM_EDITOR_HREF } from "@/lib/bom-editor";
+import { ASSIGN_LOCATION_HREF } from "@/lib/assign-location";
 import { getVisibleNavItems, getSelectableMenuItems } from "@/components/layout/nav-items";
 
 const admin = { role: "ADMIN" as const, email: "other@stockify.com", name: "ทิชากร" };
@@ -18,7 +19,8 @@ test("unset settings preserve existing menus; empty settings hide all optional m
   expect(hrefs(admin, null)).toContain("/products");
   expect(hrefs(admin, [])).toEqual([]);
   expect(hrefs(admin, ["/products"])).toEqual(["/products"]);
-  expect(hrefs(owner, [])).toEqual([BOM_EDITOR_HREF, MENU_SETTINGS_HREF]);
+  expect(hrefs(owner, [])).toEqual([ASSIGN_LOCATION_HREF, BOM_EDITOR_HREF, MENU_SETTINGS_HREF]);
+  expect(hrefs(admin, null)).not.toContain(ASSIGN_LOCATION_HREF);
   expect(hrefs(admin, null)).not.toContain(BOM_EDITOR_HREF);
   expect(getVisibleNavItems(owner, [], false)).toEqual([]);
 });
@@ -31,7 +33,8 @@ test("legacy milk defaults apply until an explicit menu list is saved", () => {
 
 test("selected menu lists cannot expand role or system-menu privileges", () => {
   const staff = { ...admin, role: "WAREHOUSE_STAFF" as const };
-  expect(getVisibleNavItems(staff, ["/staff/receive", "/users", "/express-import/issue", MENU_SETTINGS_HREF]).map(({ href }) => href)).toEqual(["/staff/receive"]);
+  expect(getVisibleNavItems(staff, ["/staff/receive", "/users", "/express-import/issue", MENU_SETTINGS_HREF]).map(({ href }) => href)).toEqual(["/staff/receive", ASSIGN_LOCATION_HREF]);
+  expect(getVisibleNavItems(staff, null).map(({ href }) => href)).toContain(ASSIGN_LOCATION_HREF);
   expect(getSelectableMenuItems(staff).some(({ href }) => href === "/movements/receive")).toBe(false);
   expect(hrefs(admin, ["/users", "/login-logs"])).toEqual([]);
   expect(hrefs(owner, ["/users"])).toContain("/users");
