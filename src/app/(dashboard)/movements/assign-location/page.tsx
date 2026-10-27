@@ -139,8 +139,8 @@ export default function AssignLocationPage() {
   );
 
   const errors = useMemo(
-    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: rowPieces(r) })), available),
-    [rows, available, rowPieces]
+    () => validateAssignRows(rows.map((r) => ({ to_location_id: r.to_location_id, qty: rowPieces(r) }))),
+    [rows, rowPieces]
   );
 
   const save = async () => {
@@ -244,7 +244,7 @@ export default function AssignLocationPage() {
             ))}
           </div>
           <div className="text-sm text-m3-grey-700">
-            ระบุได้จาก &quot;ไม่ระบุ&quot;: <b>{available.toLocaleString()}</b> · ใส่แล้ว <b>{assigned.toLocaleString()}</b> · เหลือ <b>{(available - assigned).toLocaleString()}</b>
+            ระบุได้จาก &quot;ไม่ระบุ&quot;: <b>{available.toLocaleString()}</b> · ใส่แล้ว <b>{assigned.toLocaleString()}</b> · {available - assigned < 0 ? (<>เกิน <b>{(assigned - available).toLocaleString()}</b></>) : (<>เหลือ <b>{(available - assigned).toLocaleString()}</b></>)}
           </div>
 
           <BarcodeScanInput

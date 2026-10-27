@@ -19,8 +19,15 @@ export interface AssignRow {
   qty: number;
 }
 
-/** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน) */
-export function validateAssignRows(rows: AssignRow[], available: number): string[] {
+/** แบ่งจำนวนแถวเป็นย้ายจาก "ไม่ระบุ" + เพิ่มส่วนเกิน (ADJUST) */
+export function splitAssignQty(qty: number, available: number): { move: number; adjust: number } {
+  const avail = Math.max(0, available);
+  const move = Math.min(qty, avail);
+  return { move, adjust: qty - move };
+}
+
+/** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน). อนุญาตให้รวมเกินยอด "ไม่ระบุ" */
+export function validateAssignRows(rows: AssignRow[]): string[] {
   const errors: string[] = [];
   if (!rows.length) errors.push("กรุณาเพิ่มตำแหน่งอย่างน้อย 1 รายการ");
   const seen = new Set<string>();
@@ -31,7 +38,5 @@ export function validateAssignRows(rows: AssignRow[], available: number): string
     seen.add(code);
     if (!Number.isInteger(r.qty) || r.qty <= 0) errors.push(`แถวที่ ${i + 1}: จำนวนต้องเป็นจำนวนเต็มมากกว่า 0`);
   });
-  const total = rows.reduce((s, r) => s + (Number.isFinite(r.qty) ? r.qty : 0), 0);
-  if (total > available) errors.push(`จำนวนรวม (${total}) เกินยอด "ไม่ระบุ" ที่มีอยู่ (${available})`);
   return errors;
 }
