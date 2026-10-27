@@ -135,7 +135,7 @@ export default function StaffDashboard() {
             className={tileClass}
             style={{ animationDelay: "225ms" }}
           >
-            <span className={`${iconTileClass} bg-[rgba(0,167,111,0.08)] text-m3-primary`}>
+            <span className={`${iconTileClass} bg-[rgba(255,171,0,0.12)] text-m3-warning`}>
               <SolarMapPoint size={36} />
             </span>
             <h2 className={labelClass}>
