@@ -40,6 +40,8 @@ export default function AssignLocationPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  // แถวที่บันทึกล่าสุด — ใช้พิมพ์หลังบันทึก (แถวบนจอถูกล้าง)
+  const [lastSaved, setLastSaved] = useState<{ product_id: string; rows: Row[] } | null>(null);
 
   // มีจำนวนบรรจุต่อลัง → ใส่เป็นกล่อง แล้วคำนวณเป็นชิ้น
   const perBox = product?.units_per_carton && product.units_per_carton > 0 ? product.units_per_carton : 0;
@@ -159,6 +161,7 @@ export default function AssignLocationPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) throw new Error(json.message || "บันทึกไม่สำเร็จ");
       setMessage(`บันทึกแล้ว ${rows.length} ตำแหน่ง (${assigned.toLocaleString()} ชิ้น)`);
+      setLastSaved({ product_id: product.product_id, rows });
       setRows([]);
       window.dispatchEvent(new Event("stockify-stock-updated"));
       void refreshData();
@@ -170,6 +173,15 @@ export default function AssignLocationPage() {
     }
   };
 
+  const sheetRows = rows.length ? rows : lastSaved && product && lastSaved.product_id === product.product_id ? lastSaved.rows : [];
+  const sheetTotal = sheetRows.reduce((a, r) => a + (rowPieces(r) || 0), 0);
+  const boxText = (pcs: number) => {
+    if (!perBox) return "";
+    const box = Math.floor(pcs / perBox);
+    const rem = pcs - box * perBox;
+    return rem ? `${box.toLocaleString()} กล่อง + ${rem.toLocaleString()} ชิ้น` : `${box.toLocaleString()} กล่อง`;
+  };
+
   if (!user) return null;
   if (!allowed) {
     return <div className="max-w-xl mx-auto p-6 text-center text-m3-grey-700">ไม่มีสิทธิ์ใช้เมนูนี้</div>;
@@ -177,7 +189,8 @@ export default function AssignLocationPage() {
 
   const card = "bg-white rounded-xl p-4 border border-[rgba(145,158,171,0.2)] shadow-sm space-y-3";
   return (
-    <div className="max-w-full sm:max-w-xl md:max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-4">
+    <>
+    <div className="print:hidden max-w-full sm:max-w-xl md:max-w-2xl mx-auto px-2 sm:px-4 pb-20 sm:pb-8 space-y-4">
       <h1 className="text-lg font-bold text-m3-grey-800">ระบุตำแหน่งสินค้า</h1>
 
       <div className={card}>
@@ -307,6 +320,14 @@ export default function AssignLocationPage() {
           >
             {saving ? "กำลังบันทึก..." : "บันทึก"}
           </button>
+          <button
+            type="button"
+            disabled={sheetRows.length === 0}
+            className="w-full py-3 rounded-lg border border-m3-primary text-m3-primary font-bold disabled:opacity-50"
+            onClick={() => window.print()}
+          >
+            พิมพ์
+          </button>
         </div>
       )}
 
@@ -322,5 +343,46 @@ export default function AssignLocationPage() {
         }}
       />
     </div>
+
+    {product && sheetRows.length > 0 && (
+      <div className="assign-print-area print-sheet hidden print:block font-sans text-black p-4">
+        <h1 className="text-xl font-bold mb-1">ระบุตำแหน่งสินค้า</h1>
+        <div className="font-bold">{product.product_name}</div>
+        <div className="text-sm">รหัส {product.sku}{product.barcode && product.barcode !== "-" ? ` · บาร์โค้ด ${product.barcode}` : ""}</div>
+        <div className="text-sm mb-3">โกดัง {warehouses.find((w) => w.warehouse_id === activeWhId)?.warehouse_name || activeWhId}</div>
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="border border-black px-2 py-1 text-left">ตำแหน่ง</th>
+              <th className="border border-black px-2 py-1 text-right">จำนวน (ชิ้น)</th>
+              {perBox > 0 && <th className="border border-black px-2 py-1 text-right">กล่อง</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {sheetRows.map((r) => (
+              <tr key={r.key}>
+                <td className="border border-black px-2 py-1">{r.to_location_id}</td>
+                <td className="border border-black px-2 py-1 text-right">{(rowPieces(r) || 0).toLocaleString()}</td>
+                {perBox > 0 && <td className="border border-black px-2 py-1 text-right">{boxText(rowPieces(r) || 0)}</td>}
+              </tr>
+            ))}
+            <tr className="font-bold">
+              <td className="border border-black px-2 py-1">รวม</td>
+              <td className="border border-black px-2 py-1 text-right">{sheetTotal.toLocaleString()}</td>
+              {perBox > 0 && <td className="border border-black px-2 py-1 text-right">{boxText(sheetTotal)}</td>}
+            </tr>
+          </tbody>
+        </table>
+        <div className="text-xs mt-3">พิมพ์เมื่อ {new Date().toLocaleString("th-TH")} · โดย {user.name || user.email}</div>
+      </div>
+    )}
+    <style>{`
+      @media print {
+        body * { visibility: hidden !important; }
+        .assign-print-area, .assign-print-area * { visibility: visible !important; }
+        .assign-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+      }
+    `}</style>
+    </>
   );
 }
