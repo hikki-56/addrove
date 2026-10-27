@@ -5,7 +5,7 @@ import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { moveStock, mapStockErrorToResponse, getStockBalances } from "@/server/services/stock";
-import { canAssignLocation, validateAssignRows } from "@/lib/assign-location";
+import { canAssignLocation, validateAssignRows, splitAssignQty } from "@/lib/assign-location";
 import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 import {
   successResponse,
@@ -29,9 +29,9 @@ const BodySchema = z.object({
 });
 
 /**
- * ระบุตำแหน่งสินค้า: ย้ายจำนวนจากตำแหน่ง "ไม่ระบุ" ไปยังแต่ละตำแหน่ง
- * ใช้ moveStock เดิมทีละแถวในทรานแซกชันเดียว (withStorageRequest)
- * (from_location_id = "" = ตำแหน่งไม่ระบุ) ยอดรวมจึงไม่เปลี่ยน
+ * ระบุตำแหน่งสินค้า: ย้ายจากตำแหน่ง "ไม่ระบุ" ไปยังแต่ละตำแหน่ง
+ * ส่วนที่เกินยอด "ไม่ระบุ" บันทึก ADJUST เข้าตำแหน่งนั้นโดยตรง (ระบุตำแหน่ง (เพิ่มส่วนเกิน))
+ * ทั้ง MOVE และ ADJUST อยู่ในทรานแซกชันเดียว (withStorageRequest)
  */
 async function handlePOST(req: NextRequest) {
   try {
@@ -39,7 +39,6 @@ async function handlePOST(req: NextRequest) {
     const actor = await createActorFromSession(req, session);
     if (!session?.user?.id || !actor) return unauthorizedResponse();
 
-    // ADMIN: ตรวจอีเมลจากฐานข้อมูล (ไม่เชื่อ token อย่างเดียว) — เหมือนเมนูแก้ไขสูตร BOM
     let email: string | null = null;
     if (actor.role === "ADMIN") {
       const dbUser = await getRepository().users.findById(session.user.id).catch(() => null);
@@ -62,7 +61,6 @@ async function handlePOST(req: NextRequest) {
     }
 
     const repo = getRepository();
-    // ตรวจยอดรวมกับยอด "ไม่ระบุ" ก่อนบันทึกแถวแรก กันบันทึกได้บางส่วน
     const [balances, rawLocs] = await Promise.all([
       getStockBalances({ repo }),
       repo.locations.findAll().catch(() => []),
@@ -72,37 +70,85 @@ async function handlePOST(req: NextRequest) {
       if (l?.location_id) codeById.set(l.location_id, (l.location_code || "").trim());
     }
     const wh = normalizeWarehouseId(input.warehouse_id);
-    const available = (balances.find((b) => b.product_id === input.product_id)?.by_warehouse || [])
+    let remaining = (balances.find((b) => b.product_id === input.product_id)?.by_warehouse || [])
       .filter((e) => normalizeWarehouseId(e.warehouse_id) === wh)
       .filter((e) => !e.location_id || codeById.get(e.location_id) === "" || e.location_name.trim() === "ไม่ระบุ")
       .reduce((s, e) => s + e.quantity, 0);
-    const errors = validateAssignRows(input.rows, available);
+    const errors = validateAssignRows(input.rows);
     if (errors.length) return errorResponse(errors.join("\n"));
 
     const today = new Date().toISOString().slice(0, 10);
     const documents = [];
     for (const [i, row] of input.rows.entries()) {
       try {
-        const doc = await moveStock(
-          { repo },
-          {
-            warehouse_id: input.warehouse_id,
-            product_id: input.product_id,
-            from_location_id: "",
-            to_location_id: row.to_location_id.toUpperCase(),
-            qty: row.qty,
+        const loc = row.to_location_id.toUpperCase();
+        const { move, adjust } = splitAssignQty(row.qty, remaining);
+        remaining = Math.max(0, remaining - move);
+        let moveDocId: string | undefined;
+        let adjustDocId: string | undefined;
+
+        if (move > 0) {
+          const doc = await moveStock(
+            { repo },
+            {
+              warehouse_id: input.warehouse_id,
+              product_id: input.product_id,
+              from_location_id: "",
+              to_location_id: loc,
+              qty: move,
+              reference_no: "",
+              document_date: today,
+              note: input.note || "ระบุตำแหน่งสินค้า",
+              idempotency_key: `${input.idempotency_key}:r${i + 1}`,
+              user_id: actor.id,
+              role: actor.role,
+              correlation_id: actor.correlationId,
+            }
+          );
+          moveDocId = doc.document_id;
+        }
+
+        if (adjust > 0) {
+          const doc = await repo.documents.create({
+            document_type: "ADJUST",
             reference_no: "",
             document_date: today,
-            note: input.note || "ระบุตำแหน่งสินค้า",
-            idempotency_key: `${input.idempotency_key}:r${i + 1}`,
-            user_id: actor.id,
-            role: actor.role,
-            correlation_id: actor.correlationId,
-          }
-        );
-        documents.push({ to_location_id: row.to_location_id, qty: row.qty, document_id: doc.document_id });
+            status: "POSTED",
+            note: input.note || "ระบุตำแหน่ง (เพิ่มส่วนเกิน)",
+            created_by: actor.id,
+          });
+          await repo.movements.batchCreate([
+            {
+              document_id: doc.document_id,
+              product_id: input.product_id,
+              warehouse_id: input.warehouse_id,
+              location_id: loc,
+              qty_change: adjust,
+              movement_type: "ADJUST",
+              idempotency_key: `${input.idempotency_key}:r${i + 1}:adj`,
+              created_by: actor.id,
+            },
+          ]);
+          await repo.stockSummary.applyChanges([
+            {
+              productId: input.product_id,
+              warehouseId: input.warehouse_id,
+              locationId: loc,
+              delta: adjust,
+            },
+          ]);
+          adjustDocId = doc.document_id;
+        }
+
+        documents.push({
+          to_location_id: row.to_location_id,
+          qty: row.qty,
+          moved: move,
+          adjusted: adjust,
+          document_id: moveDocId || adjustDocId,
+          adjust_document_id: adjustDocId,
+        });
       } catch (e) {
-        // withStorageRequest ย้อนกลับทุกแถวเมื่อคืน 4xx/5xx — ไม่มีการบันทึกบางส่วน
         const msg = e instanceof Error ? e.message : "บันทึกไม่สำเร็จ";
         const res = mapStockErrorToResponse(e);
         const status = res?.status && res.status >= 400 ? res.status : 400;
