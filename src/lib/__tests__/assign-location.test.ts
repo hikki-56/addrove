@@ -1,4 +1,9 @@
-import { canAssignLocation, validateAssignRows, assignAdjustDelta } from "@/lib/assign-location";
+import {
+  canAssignLocation,
+  validateAssignRows,
+  assignAdjustDelta,
+  buildAssignSnapshot,
+} from "@/lib/assign-location";
 
 describe("assign-location", () => {
   it("allows staff roles and only ty@stockify.com among admins", () => {
@@ -20,5 +25,19 @@ describe("assign-location", () => {
     expect(assignAdjustDelta(100, 100)).toBe(0);
     expect(assignAdjustDelta(50, 80)).toBe(-30);
     expect(assignAdjustDelta(10, 0)).toBe(10);
+  });
+  it("builds warehouse snapshot: entered set, others (incl. ไม่ระบุ) to 0", () => {
+    const plan = buildAssignSnapshot(
+      [{ to_location_id: "A1", qty: 100 }],
+      [
+        { location_key: "A1", location_id: "loc-a1", quantity: 40 },
+        { location_key: "B2", location_id: "loc-b2", quantity: 30 },
+        { location_key: "", location_id: "loc-unassigned", quantity: 25 },
+      ]
+    );
+    const byId = Object.fromEntries(plan.map((p) => [p.location_id, p]));
+    expect(byId["loc-a1"]).toMatchObject({ target: 100, delta: 60 });
+    expect(byId["loc-b2"]).toMatchObject({ target: 0, delta: -30 });
+    expect(byId["loc-unassigned"]).toMatchObject({ target: 0, delta: -25 });
   });
 });

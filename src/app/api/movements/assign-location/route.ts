@@ -5,7 +5,12 @@ import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { mapStockErrorToResponse } from "@/server/services/stock";
-import { canAssignLocation, validateAssignRows, assignAdjustDelta } from "@/lib/assign-location";
+import {
+  canAssignLocation,
+  validateAssignRows,
+  buildAssignSnapshot,
+} from "@/lib/assign-location";
+import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 import {
   successResponse,
   errorResponse,
@@ -28,8 +33,9 @@ const BodySchema = z.object({
 });
 
 /**
- * ระบุตำแหน่งสินค้า: ตั้งยอด stock_summary ของแต่ละตำแหน่ง = จำนวนที่กรอก
- * โดย ADJUST ส่วนต่าง (entered − current) ที่ตำแหน่งนั้น — ไม่ดึงจาก "ไม่ระบุ" และไม่บวกทับยอดเดิม
+ * ระบุตำแหน่งสินค้า: สแนปช็อตยอดในโกดัง — ตำแหน่งที่กรอก = จำนวนที่กรอก
+ * ตำแหน่งอื่นของสินค้าในโกดังเดียวกัน (รวม "ไม่ระบุ") = 0
+ * บันทึก ADJUST ส่วนต่างต่อตำแหน่งในทรานแซกชันเดียว
  */
 async function handlePOST(req: NextRequest) {
   try {
@@ -62,27 +68,41 @@ async function handlePOST(req: NextRequest) {
     if (errors.length) return errorResponse(errors.join("\n"));
 
     const repo = getRepository();
+    const wh = normalizeWarehouseId(input.warehouse_id);
+    const [summaries, rawLocs] = await Promise.all([
+      repo.stockSummary.findAll(input.warehouse_id),
+      repo.locations.findAll(input.warehouse_id).catch(() => []),
+    ]);
+    const codeById = new Map<string, string>();
+    for (const l of Array.isArray(rawLocs) ? rawLocs : []) {
+      if (l?.location_id) codeById.set(l.location_id, (l.location_code || "").trim().toUpperCase());
+    }
+    const currents = summaries
+      .filter((s) => s.product_id === input.product_id && normalizeWarehouseId(s.warehouse_id) === wh)
+      .map((s) => ({
+        location_id: s.location_id,
+        location_key: codeById.get(s.location_id) ?? "",
+        quantity: Number(s.quantity) || 0,
+      }));
+
+    const plan = buildAssignSnapshot(input.rows, currents);
     const today = new Date().toISOString().slice(0, 10);
     const documents = [];
-
-    for (const [i, row] of input.rows.entries()) {
+    let i = 0;
+    for (const step of plan) {
+      i += 1;
+      if (step.delta === 0) {
+        documents.push({
+          to_location_id: step.location_key || step.location_id,
+          qty: step.target,
+          previous_qty: step.current,
+          delta: 0,
+          document_id: null,
+        });
+        continue;
+      }
       try {
-        const loc = row.to_location_id.toUpperCase();
-        const current = Number(
-          await repo.movements.getBalance(input.product_id, input.warehouse_id, loc)
-        ) || 0;
-        const delta = assignAdjustDelta(row.qty, current);
-        if (delta === 0) {
-          documents.push({
-            to_location_id: row.to_location_id,
-            qty: row.qty,
-            previous_qty: current,
-            delta: 0,
-            document_id: null,
-          });
-          continue;
-        }
-
+        const loc = step.location_key || step.location_id;
         const doc = await repo.documents.create({
           document_type: "ADJUST",
           reference_no: "",
@@ -97,9 +117,9 @@ async function handlePOST(req: NextRequest) {
             product_id: input.product_id,
             warehouse_id: input.warehouse_id,
             location_id: loc,
-            qty_change: delta,
+            qty_change: step.delta,
             movement_type: "ADJUST",
-            idempotency_key: `${input.idempotency_key}:r${i + 1}`,
+            idempotency_key: `${input.idempotency_key}:s${i}`,
             created_by: actor.id,
           },
         ]);
@@ -108,14 +128,14 @@ async function handlePOST(req: NextRequest) {
             productId: input.product_id,
             warehouseId: input.warehouse_id,
             locationId: loc,
-            delta,
+            delta: step.delta,
           },
         ]);
         documents.push({
-          to_location_id: row.to_location_id,
-          qty: row.qty,
-          previous_qty: current,
-          delta,
+          to_location_id: loc,
+          qty: step.target,
+          previous_qty: step.current,
+          delta: step.delta,
           document_id: doc.document_id,
         });
       } catch (e) {
@@ -123,7 +143,7 @@ async function handlePOST(req: NextRequest) {
         const res = mapStockErrorToResponse(e);
         const status = res?.status && res.status >= 400 ? res.status : 400;
         return errorResponse(
-          `แถวที่ ${i + 1} (${row.to_location_id}) ไม่สำเร็จ: ${msg} — ยังไม่มีรายการใดถูกบันทึก`,
+          `ตำแหน่ง ${step.location_key || step.location_id} ไม่สำเร็จ: ${msg} — ยังไม่มีรายการใดถูกบันทึก`,
           status
         );
       }

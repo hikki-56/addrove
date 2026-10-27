@@ -24,6 +24,55 @@ export function assignAdjustDelta(entered: number, current: number): number {
   return entered - current;
 }
 
+export interface SnapshotCurrent {
+  location_key: string; // location_code upper หรือ location_id
+  location_id: string;
+  quantity: number;
+}
+
+export interface SnapshotTarget {
+  location_id: string;
+  location_key: string;
+  target: number;
+  current: number;
+  delta: number;
+}
+
+/**
+ * สแนปช็อตโกดัง: ตำแหน่งที่กรอก = ยอดที่กรอก, ตำแหน่งอื่นของสินค้าในโกดังเดียวกัน (รวมไม่ระบุ) = 0
+ */
+export function buildAssignSnapshot(
+  rows: AssignRow[],
+  currents: SnapshotCurrent[]
+): SnapshotTarget[] {
+  const entered = new Map<string, number>();
+  for (const r of rows) {
+    const key = r.to_location_id.trim().toUpperCase();
+    if (key) entered.set(key, r.qty);
+  }
+  const byKey = new Map<string, SnapshotCurrent>();
+  for (const c of currents) {
+    const key = (c.location_key || c.location_id).trim().toUpperCase();
+    byKey.set(key, c);
+    byKey.set(c.location_id.trim().toUpperCase(), c);
+  }
+  const out = new Map<string, SnapshotTarget>();
+  // ตำแหน่งที่มียอดอยู่แล้ว → ตั้งตามที่กรอก หรือ 0
+  for (const c of currents) {
+    const key = (c.location_key || "").trim().toUpperCase() || c.location_id.trim().toUpperCase();
+    const target = entered.has(key) ? entered.get(key)! : entered.has(c.location_id.trim().toUpperCase()) ? entered.get(c.location_id.trim().toUpperCase())! : 0;
+    const delta = assignAdjustDelta(target, c.quantity);
+    out.set(c.location_id, { location_id: c.location_id, location_key: key, target, current: c.quantity, delta });
+  }
+  // ตำแหน่งที่กรอกแต่ยังไม่มีใน summary
+  for (const [key, qty] of entered) {
+    const existing = byKey.get(key);
+    if (existing) continue;
+    out.set(key, { location_id: key, location_key: key, target: qty, current: 0, delta: qty });
+  }
+  return [...out.values()];
+}
+
 /** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน). จำนวน = ยอดที่ตั้งที่ตำแหน่งนั้น */
 export function validateAssignRows(rows: AssignRow[]): string[] {
   const errors: string[] = [];
