@@ -19,14 +19,12 @@ export interface AssignRow {
   qty: number;
 }
 
-/** แบ่งจำนวนแถวเป็นย้ายจาก "ไม่ระบุ" + เพิ่มส่วนเกิน (ADJUST) */
-export function splitAssignQty(qty: number, available: number): { move: number; adjust: number } {
-  const avail = Math.max(0, available);
-  const move = Math.min(qty, avail);
-  return { move, adjust: qty - move };
+/** ส่วนต่างที่ต้อง ADJUST เพื่อตั้งยอดตำแหน่ง = จำนวนที่นับ − ยอดปัจจุบัน (0 = ไม่ต้องบันทึก) */
+export function assignAdjustDelta(entered: number, current: number): number {
+  return entered - current;
 }
 
-/** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน). อนุญาตให้รวมเกินยอด "ไม่ระบุ" */
+/** ตรวจแถวก่อนบันทึก — คืนข้อความผิดพลาด (ว่าง = ผ่าน). จำนวน = ยอดที่ตั้งที่ตำแหน่งนั้น */
 export function validateAssignRows(rows: AssignRow[]): string[] {
   const errors: string[] = [];
   if (!rows.length) errors.push("กรุณาเพิ่มตำแหน่งอย่างน้อย 1 รายการ");
