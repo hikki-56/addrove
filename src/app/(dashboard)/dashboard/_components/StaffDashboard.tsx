@@ -117,7 +117,7 @@ export default function StaffDashboard() {
             className={tileClass}
             style={{ animationDelay: "180ms" }}
           >
-            <span className={`${iconTileClass} bg-[rgba(0,167,111,0.08)] text-m3-primary`}>
+            <span className={`${iconTileClass} bg-[rgba(32,101,209,0.12)] text-[#2065D1]`}>
               <SolarNavigationArrow size={36} />
             </span>
             <h2 className={labelClass}>
