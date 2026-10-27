@@ -46,7 +46,6 @@ export default function AssignLocationPage() {
   // มีจำนวนบรรจุต่อลัง → ใส่เป็นกล่อง แล้วคำนวณเป็นชิ้น
   const perBox = product?.units_per_carton && product.units_per_carton > 0 ? product.units_per_carton : 0;
   const toPieces = useCallback((v: string) => (perBox ? Number(v) * perBox : Number(v)), [perBox]);
-  const available = stock.filter((s) => !s.location_code.trim()).reduce((a, s) => a + s.quantity, 0);
   // ชิ้นของแถว: มีจำนวนบรรจุ → ใช้ช่องชิ้น (แก้ได้), ไม่มี → ใช้จำนวนเดิม
   const rowPieces = useCallback((r: Row) => (perBox ? Number(r.pcs) : Number(r.qty)), [perBox]);
   const assigned = rows.reduce((a, r) => a + (rowPieces(r) || 0), 0);
@@ -244,7 +243,7 @@ export default function AssignLocationPage() {
             ))}
           </div>
           <div className="text-sm text-m3-grey-700">
-            ระบุได้จาก &quot;ไม่ระบุ&quot;: <b>{available.toLocaleString()}</b> · ใส่แล้ว <b>{assigned.toLocaleString()}</b> · {available - assigned < 0 ? (<>เกิน <b>{(assigned - available).toLocaleString()}</b></>) : (<>เหลือ <b>{(available - assigned).toLocaleString()}</b></>)}
+            ใส่แล้ว <b>{assigned.toLocaleString()}</b> ชิ้น (ตั้งยอดตามที่นับต่อตำแหน่ง · ไม่ดึงจากตำแหน่งอื่น)
           </div>
 
           <BarcodeScanInput
