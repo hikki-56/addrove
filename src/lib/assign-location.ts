@@ -25,7 +25,7 @@ export function assignAdjustDelta(entered: number, current: number): number {
 }
 
 export interface SnapshotCurrent {
-  location_key: string; // location_code upper หรือ location_id
+  location_key: string; // location_code ("" = ไม่ระบุ) — ห้ามใส่ location_id แทนรหัสว่าง
   location_id: string;
   quantity: number;
 }
@@ -50,25 +50,27 @@ export function buildAssignSnapshot(
     const key = r.to_location_id.trim().toUpperCase();
     if (key) entered.set(key, r.qty);
   }
-  const byKey = new Map<string, SnapshotCurrent>();
+  // location_key = location_code ("" = ไม่ระบุ). อย่าใส่ location_id แทนรหัสว่าง — ADJUST ต้องใช้ location_id จริง
+  const byCode = new Map<string, SnapshotCurrent>();
   for (const c of currents) {
-    const key = (c.location_key || c.location_id).trim().toUpperCase();
-    byKey.set(key, c);
-    byKey.set(c.location_id.trim().toUpperCase(), c);
+    byCode.set((c.location_key || "").trim().toUpperCase(), c);
   }
   const out = new Map<string, SnapshotTarget>();
-  // ตำแหน่งที่มียอดอยู่แล้ว → ตั้งตามที่กรอก หรือ 0
   for (const c of currents) {
-    const key = (c.location_key || "").trim().toUpperCase() || c.location_id.trim().toUpperCase();
-    const target = entered.has(key) ? entered.get(key)! : entered.has(c.location_id.trim().toUpperCase()) ? entered.get(c.location_id.trim().toUpperCase())! : 0;
+    const code = (c.location_key || "").trim().toUpperCase();
+    const target = entered.has(code) ? entered.get(code)! : 0;
     const delta = assignAdjustDelta(target, c.quantity);
-    out.set(c.location_id, { location_id: c.location_id, location_key: key, target, current: c.quantity, delta });
+    out.set(c.location_id, {
+      location_id: c.location_id,
+      location_key: code,
+      target,
+      current: c.quantity,
+      delta,
+    });
   }
-  // ตำแหน่งที่กรอกแต่ยังไม่มีใน summary
-  for (const [key, qty] of entered) {
-    const existing = byKey.get(key);
-    if (existing) continue;
-    out.set(key, { location_id: key, location_key: key, target: qty, current: 0, delta: qty });
+  for (const [code, qty] of entered) {
+    if (byCode.has(code)) continue;
+    out.set(code, { location_id: code, location_key: code, target: qty, current: 0, delta: qty });
   }
   return [...out.values()];
 }

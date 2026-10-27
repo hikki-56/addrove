@@ -94,6 +94,7 @@ async function handlePOST(req: NextRequest) {
       if (step.delta === 0) {
         documents.push({
           to_location_id: step.location_key || step.location_id,
+          location_id: step.location_id,
           qty: step.target,
           previous_qty: step.current,
           delta: 0,
@@ -102,7 +103,8 @@ async function handlePOST(req: NextRequest) {
         continue;
       }
       try {
-        const loc = step.location_key || step.location_id;
+        // ใช้ location_id จาก stock_summary โดยตรง (ไม่ระบุ = loc-…-unassigned) — ห้ามใช้รหัสว่าง/uppercase id
+        const loc = step.location_id;
         const doc = await repo.documents.create({
           document_type: "ADJUST",
           reference_no: "",
@@ -132,7 +134,8 @@ async function handlePOST(req: NextRequest) {
           },
         ]);
         documents.push({
-          to_location_id: loc,
+          to_location_id: step.location_key || step.location_id,
+          location_id: loc,
           qty: step.target,
           previous_qty: step.current,
           delta: step.delta,
