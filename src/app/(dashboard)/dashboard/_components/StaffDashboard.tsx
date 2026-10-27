@@ -20,6 +20,7 @@ import {
   SolarBox,
   SolarBuildings,
   SolarInboxIn,
+  SolarMapPoint,
   SolarNavigationArrow,
   SolarTransferHorizontal,
 } from "@/components/icons";
@@ -87,7 +88,7 @@ export default function StaffDashboard() {
           </span>
         </div>
 
-        {/* 4 Centered Square Buttons (2x2 Grid) */}
+        {/* Staff home tiles (2-col grid) */}
         <div className="grid grid-cols-2 auto-rows-fr gap-3.5 sm:gap-4 w-full">
 
           {/* Square 1: รับสินค้าเข้าโกดัง */}
@@ -121,6 +122,24 @@ export default function StaffDashboard() {
             </span>
             <h2 className={labelClass}>
               <span>จัดตำแหน่ง</span>
+              <span className="block">สินค้า</span>
+            </h2>
+            <StaffNavigationPending />
+          </Link>
+
+          {/* Square: ระบุตำแหน่งสินค้า */}
+          <Link
+            href={`/movements/assign-location?warehouse_id=${activeWh}`}
+            prefetch={true}
+            id="staff-btn-assign-location"
+            className={tileClass}
+            style={{ animationDelay: "225ms" }}
+          >
+            <span className={`${iconTileClass} bg-[rgba(0,167,111,0.08)] text-m3-primary`}>
+              <SolarMapPoint size={36} />
+            </span>
+            <h2 className={labelClass}>
+              <span>ระบุตำแหน่ง</span>
               <span className="block">สินค้า</span>
             </h2>
             <StaffNavigationPending />
