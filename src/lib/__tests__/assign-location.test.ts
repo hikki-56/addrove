@@ -40,4 +40,20 @@ describe("assign-location", () => {
     expect(byId["loc-b2"]).toMatchObject({ target: 0, delta: -30 });
     expect(byId["loc-unassigned"]).toMatchObject({ target: 0, delta: -25 });
   });
+  it("zeros ไม่ระบุ using real location_id, keeps empty location_key", () => {
+    const plan = buildAssignSnapshot(
+      [{ to_location_id: "1K23-1B", qty: 300 }],
+      [
+        { location_key: "1K23-1B", location_id: "loc-import-abc", quantity: 0 },
+        { location_key: "", location_id: "loc-wh-01-unassigned", quantity: 3480 },
+      ]
+    );
+    const un=plan.find((p) => p.location_id === "loc-wh-01-unassigned");
+    expect(un).toMatchObject({ location_key: "", target: 0, current: 3480, delta: -3480 });
+    const named=plan.find((p) => p.location_id === "loc-import-abc");
+    expect(named).toMatchObject({ location_key: "1K23-1B", target: 300, delta: 300 });
+    // writers must use location_id for ไม่ระบุ, never uppercased id as code
+    expect(un!.location_id).toBe("loc-wh-01-unassigned");
+    expect(un!.location_key).toBe("");
+  });
 });
