@@ -129,7 +129,7 @@ function Drawer({ title, subtitle, onClose, children }: { title: string; subtitl
             <h2 className="text-lg font-bold text-m3-grey-800">{title}</h2>
             {subtitle ? <p className="mt-0.5 truncate text-xs font-semibold text-m3-grey-500">{subtitle}</p> : null}
           </div>
-          <button type="button" aria-label="ปิด" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-full text-m3-grey-600 hover:bg-m3-grey-200">
+          <button type="button" aria-label="ปิด" onClick={onClose} className="-mr-2 inline-flex size-11 items-center justify-center rounded-full text-m3-grey-600 hover:bg-m3-grey-200">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path d="M6 6l12 12M18 6 6 18" />
             </svg>
@@ -373,20 +373,20 @@ export default function AssignLocationRequestsPage() {
     ) : null;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-2 pb-20 sm:px-4 sm:pb-8">
+    <div className="mx-auto w-full min-w-0 max-w-7xl pb-20 sm:px-4 sm:pb-8">
       <div className="space-y-3">
         {error && !approveFor && !rejectFor && !draft && <M3Banner tone="error" role="alert">{error}</M3Banner>}
         {message && <M3Banner tone="success" role="status">{message}</M3Banner>}
       </div>
 
       {/* แท็บ — มือถือเป็นเม็ดยา (M01) */}
-      <div className="mt-3 flex gap-2 overflow-x-auto md:hidden">
+      <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] md:hidden">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${tab === t.id ? "bg-m3-grey-800 text-white" : "bg-m3-grey-200 text-m3-grey-600"}`}
+            className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-bold ${tab === t.id ? "bg-m3-grey-800 text-white" : "bg-m3-grey-200 text-m3-grey-600"}`}
           >
             {t.label} {counts[t.id]}
           </button>
@@ -513,7 +513,7 @@ export default function AssignLocationRequestsPage() {
                   <div className="flex items-center gap-2">
                     <span className={`m3-label ${STATUS_TONE[g.status]}`}>{STATUS_LABEL[g.status]}</span>
                     {g.edited && <EditedChip />}
-                    <button type="button" aria-label="ประวัติ" onClick={() => void openHistory(g)} className="ml-auto inline-flex size-8 items-center justify-center rounded-full text-m3-grey-600 hover:bg-m3-grey-200">
+                    <button type="button" aria-label="ประวัติ" onClick={() => void openHistory(g)} className="-my-2 -mr-2 ml-auto inline-flex size-11 items-center justify-center rounded-full text-m3-grey-600 hover:bg-m3-grey-200">
                       <HistoryIcon />
                     </button>
                   </div>
@@ -551,12 +551,12 @@ export default function AssignLocationRequestsPage() {
             </div>
 
             {pages > 1 && (
-              <div className="flex items-center justify-end gap-3 px-6 py-3 text-sm text-m3-grey-600">
+              <div className="flex items-center justify-center gap-2 px-2 py-3 text-sm text-m3-grey-600 md:justify-end md:gap-3 md:px-6">
                 <span>
                   {page * PAGE_SIZE + 1}–{Math.min(list.length, (page + 1) * PAGE_SIZE)} จาก {list.length}
                 </span>
-                <button type="button" aria-label="ก่อนหน้า" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="m3-btn m3-btn-sm m3-btn-text">‹</button>
-                <button type="button" aria-label="ถัดไป" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)} className="m3-btn m3-btn-sm m3-btn-text">›</button>
+                <button type="button" aria-label="ก่อนหน้า" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="m3-btn m3-btn-text size-11 p-0">‹</button>
+                <button type="button" aria-label="ถัดไป" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)} className="m3-btn m3-btn-text size-11 p-0">›</button>
               </div>
             )}
           </>
@@ -640,7 +640,7 @@ export default function AssignLocationRequestsPage() {
                 type="button"
                 aria-pressed={rejectChip === r}
                 onClick={() => setRejectChip((c) => (c === r ? "" : r))}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${rejectChip === r ? "bg-[rgba(0,167,111,0.16)] text-m3-primary-dark" : "bg-m3-grey-200 text-m3-grey-700"}`}
+                className={`min-h-11 rounded-lg px-3 text-sm font-semibold sm:min-h-9 ${rejectChip === r ? "bg-[rgba(0,167,111,0.16)] text-m3-primary-dark" : "bg-m3-grey-200 text-m3-grey-700"}`}
               >
                 {r}
               </button>

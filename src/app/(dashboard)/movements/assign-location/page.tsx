@@ -293,10 +293,10 @@ export default function AssignLocationPage() {
 
   return (
     <>
-    <div className="print:hidden mx-auto w-full max-w-6xl px-2 pb-20 sm:px-4 sm:pb-8">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+    <div className="print:hidden mx-auto w-full min-w-0 max-w-6xl pb-20 sm:px-4 sm:pb-8">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         {/* ฟอร์มหลัก */}
-        <div className="m3-card space-y-5 bg-white p-4 sm:p-6">
+        <div className="m3-card min-w-0 space-y-5 bg-white p-4 sm:p-6">
           <div className="hidden items-center gap-3 sm:flex">
             <Step n={1} label="สินค้า" state={stepState(1)} />
             <span className="h-px flex-1 bg-m3-grey-300" />
@@ -399,9 +399,9 @@ export default function AssignLocationPage() {
                     />
                   </M3Field>
                   {perBox > 0 && qtyInput.trim() !== "" && (
-                    <span className="self-center whitespace-nowrap text-sm font-semibold text-m3-grey-600">= {toPieces(qtyInput).toLocaleString()} ชิ้น</span>
+                    <span className="shrink-0 self-center whitespace-nowrap text-sm font-semibold text-m3-grey-600">= {toPieces(qtyInput).toLocaleString()} ชิ้น</span>
                   )}
-                  <button type="button" className="m3-btn m3-btn-dark h-11 px-5" onClick={() => addRow(locInput, qtyInput)}>
+                  <button type="button" className="m3-btn m3-btn-dark h-11 shrink-0 px-4 sm:px-5" onClick={() => addRow(locInput, qtyInput)}>
                     เพิ่ม
                   </button>
                 </div>
@@ -409,17 +409,17 @@ export default function AssignLocationPage() {
 
               {rows.length > 0 && (
                 <div className="overflow-hidden rounded-xl border border-[rgba(145,158,171,0.2)]">
-                  <div className="flex items-center gap-2 bg-m3-grey-200 px-4 py-2 text-xs font-semibold text-m3-grey-600">
-                    <span className="flex-1">ตำแหน่ง</span>
-                    {perBox > 0 && <span className="w-24">กล่อง</span>}
-                    <span className="w-24">{perBox ? "= ชิ้น" : "ชิ้น"}</span>
-                    <span className="w-8" />
+                  <div className="flex items-center gap-2 bg-m3-grey-200 px-3 py-2 text-xs font-semibold text-m3-grey-600 sm:px-4">
+                    <span className="min-w-0 flex-1">ตำแหน่ง</span>
+                    {perBox > 0 && <span className="w-20 sm:w-24">กล่อง</span>}
+                    <span className="w-20 sm:w-24">{perBox ? "= ชิ้น" : "ชิ้น"}</span>
+                    <span className="w-11 sm:w-8" />
                   </div>
                   {rows.map((r) => (
-                    <div key={r.key} className="flex items-center gap-2 border-t border-[rgba(145,158,171,0.2)] px-4 py-2">
-                      <span className="flex-1 font-m3-disp font-bold text-m3-grey-800">{r.to_location_id}</span>
+                    <div key={r.key} className="flex items-center gap-2 border-t border-[rgba(145,158,171,0.2)] px-3 py-2 sm:px-4">
+                      <span className="min-w-0 flex-1 truncate font-m3-disp font-bold text-m3-grey-800">{r.to_location_id}</span>
                       <input
-                        className="w-24 rounded-lg border border-[rgba(145,158,171,0.32)] px-2 py-1.5 text-sm"
+                        className="h-11 w-20 rounded-lg border border-[rgba(145,158,171,0.32)] px-2 text-base sm:h-9 sm:w-24 sm:text-sm"
                         type="number"
                         inputMode="numeric"
                         min={1}
@@ -433,7 +433,7 @@ export default function AssignLocationPage() {
                       />
                       {perBox > 0 && (
                         <input
-                          className="w-24 rounded-lg border border-[rgba(145,158,171,0.32)] px-2 py-1.5 text-sm"
+                          className="h-11 w-20 rounded-lg border border-[rgba(145,158,171,0.32)] px-2 text-base sm:h-9 sm:w-24 sm:text-sm"
                           type="number"
                           inputMode="numeric"
                           min={1}
@@ -446,7 +446,7 @@ export default function AssignLocationPage() {
                       <button
                         type="button"
                         aria-label={`ลบ ${r.to_location_id}`}
-                        className="inline-flex size-8 items-center justify-center rounded-lg text-m3-error hover:bg-[rgba(255,86,48,0.08)]"
+                        className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-m3-error sm:size-8 hover:bg-[rgba(255,86,48,0.08)]"
                         onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}
                       >
                         <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -507,7 +507,7 @@ export default function AssignLocationPage() {
                 </M3Banner>
               )}
 
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="sticky bottom-0 z-10 -mx-4 grid grid-cols-2 gap-2 border-t border-[rgba(145,158,171,0.2)] bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:m-0 sm:flex sm:justify-end sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
                 <button
                   type="button"
                   disabled={sheetRows.length === 0}
@@ -522,7 +522,7 @@ export default function AssignLocationPage() {
                 <button
                   type="button"
                   disabled={saving || rows.length === 0 || errors.length > 0}
-                  className="m3-btn m3-btn-primary h-11 gap-2 px-5"
+                  className="m3-btn m3-btn-primary order-first col-span-2 h-12 gap-2 px-5 sm:order-none sm:h-11"
                   onClick={save}
                 >
                   <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
@@ -531,13 +531,13 @@ export default function AssignLocationPage() {
                   {saving ? "กำลังส่งคำขอ..." : "ส่งขออนุมัติ"}
                 </button>
               </div>
-              <p className="text-right text-xs text-m3-grey-500">สต็อกยังไม่เปลี่ยนจนกว่า ADMIN จะอนุมัติ</p>
+              <p className="text-center text-xs text-m3-grey-500 sm:text-right">สต็อกยังไม่เปลี่ยนจนกว่า ADMIN จะอนุมัติ</p>
             </>
           )}
         </div>
 
         {/* คำขอของฉัน */}
-        <aside className="m3-card bg-white p-0">
+        <aside className="m3-card min-w-0 bg-white p-0">
           <div className="flex items-center gap-2 px-5 pt-5 pb-2">
             <h2 className="text-base font-bold text-m3-grey-800">คำขอของฉัน</h2>
             <span className="m3-label m3-label-default">{groupRequests(myReqs).length}</span>
