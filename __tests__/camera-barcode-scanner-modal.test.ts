@@ -18,7 +18,7 @@ jest.mock("react", () => ({
 }));
 jest.mock("@/hooks/use-escape-key", () => ({ useEscapeKey: jest.fn() }));
 jest.mock("@/client/feedback", () => ({
-  feedbackSuccess: jest.fn(), feedbackError: jest.fn(), prepareFeedbackAudio: jest.fn(),
+  feedbackSuccess: jest.fn(), feedbackError: jest.fn(), prepareFeedbackAudio: jest.fn(), playSuccessSound: jest.fn(), setCameraScanActive: jest.fn(),
 }));
 jest.mock("html5-qrcode", () => ({
   Html5Qrcode: jest.fn().mockImplementation(() => ({
