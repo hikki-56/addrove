@@ -65,10 +65,66 @@ function vibrate(pattern: number | number[]) {
   }
 }
 
-/** สแกนถูก/สำเร็จ — บี๊ปใส 1 ครั้ง + สั่นสั้น */
-export function feedbackSuccess() {
+// ป้ายเด้งมุมขวาบน "สแกนสำเร็จ/ไม่สำเร็จ" — แสดงเฉพาะตอนเปิดกล้องสแกน (CameraBarcodeScannerModal)
+let cameraScanOpen = 0;
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** CameraBarcodeScannerModal เรียกตอนเปิด/ปิด */
+export function setCameraScanActive(active: boolean) {
+  cameraScanOpen = Math.max(0, cameraScanOpen + (active ? 1 : -1));
+}
+
+function scanToast(ok: boolean) {
+  if (!cameraScanOpen || typeof document === "undefined") return;
+  try {
+    let el = document.getElementById("stockify-scan-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "stockify-scan-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "assertive");
+      Object.assign(el.style, {
+        position: "fixed",
+        top: "calc(env(safe-area-inset-top, 0px) + 16px)",
+        right: "16px",
+        zIndex: "100001",
+        padding: "12px 18px",
+        borderRadius: "12px",
+        color: "#fff",
+        fontSize: "18px",
+        fontWeight: "700",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+        pointerEvents: "none",
+        transition: "opacity 150ms, transform 150ms",
+      });
+      document.body.appendChild(el);
+    }
+    el.textContent = ok ? "✓ สแกนสำเร็จ" : "✕ สแกนไม่สำเร็จ";
+    el.style.background = ok ? "#118D57" : "#B71D18";
+    el.style.opacity = "1";
+    el.style.transform = "translateY(0)";
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      if (el) {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(-8px)";
+      }
+    }, ok ? 1200 : 2000);
+  } catch {
+    // ป้ายเป็นส่วนเสริม — ห้ามพังงานหลัก
+  }
+}
+
+/** เสียงสำเร็จอย่างเดียว (ปุ่มทดสอบเสียง) — ไม่แสดงป้าย */
+export function playSuccessSound() {
   tone(1000, 120);
   vibrate(80);
+}
+
+/** สแกนถูก/สำเร็จ — บี๊ปใส 1 ครั้ง + สั่นสั้น */
+export function feedbackSuccess() {
+  playSuccessSound();
+  scanToast(true);
 }
 
 /** สแกนผิด/เกิดข้อผิดพลาด — บัซซ์ต่ำ 2 ครั้ง + สั่นยาว */
@@ -76,6 +132,7 @@ export function feedbackError() {
   tone(220, 160, 0, "square");
   tone(180, 200, 200, "square");
   vibrate([120, 60, 120]);
+  scanToast(false);
 }
 
 /** จบขั้นตอน (ปิดกล่อง/ปิดรอบ) — บี๊บ-บี๊บขึ้นทำนอง */

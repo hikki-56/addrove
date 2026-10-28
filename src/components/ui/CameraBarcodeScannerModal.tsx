@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { feedbackError, feedbackSuccess, prepareFeedbackAudio } from "@/client/feedback";
+import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
 interface DetectedBarcode { rawValue: string }
@@ -47,6 +47,13 @@ export default function CameraBarcodeScannerModal({
   }, [onScan, onScanSuccess, onClose, feedbackHandledByCaller]);
 
   useEscapeKey(isOpen, onClose);
+
+  // ป้ายเด้ง "สแกนสำเร็จ/ไม่สำเร็จ" ขวาบน ทำงานเฉพาะตอนเปิดกล้อง
+  useEffect(() => {
+    if (!isOpen) return;
+    setCameraScanActive(true);
+    return () => setCameraScanActive(false);
+  }, [isOpen]);
 
   const isContinuousRef = useRef<boolean>(true);
   const lastScannedCodeRef = useRef<{ code: string; time: number }>({ code: "", time: 0 });
@@ -325,7 +332,7 @@ export default function CameraBarcodeScannerModal({
         <div className="p-4 border-t border-[rgba(145,158,171,0.2)] bg-m3-grey-100 space-y-3">
           <div className="flex items-center justify-between gap-2 text-xs text-m3-grey-600">
             <span>{isProcessing ? "กำลังตรวจสอบรหัส..." : isScanningLive ? "พร้อมสแกน • สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง" : "สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง"}</span>
-            <button type="button" onClick={feedbackSuccess} className="shrink-0 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white px-2 py-1 font-bold text-m3-grey-800 cursor-pointer hover:bg-[rgba(145,158,171,0.08)]">ทดสอบเสียง</button>
+            <button type="button" onClick={playSuccessSound} className="shrink-0 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white px-2 py-1 font-bold text-m3-grey-800 cursor-pointer hover:bg-[rgba(145,158,171,0.08)]">ทดสอบเสียง</button>
           </div>
           <div role="status" aria-live="polite">
             <ScanFeedbackBanner feedback={scanError || feedback || null} />
