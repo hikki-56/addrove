@@ -52,9 +52,18 @@ export default function BarcodeScanInput({
     }
   };
 
+  // มือถือ: ปุ่ม Enter/Go บนคีย์บอร์ดเสมือนบางเครื่อง (Android IME = keyCode 229) ไม่ส่ง keydown "Enter"
+  // แต่จะ submit ฟอร์มแทน — รับทางนี้ด้วย (เดสก์ท็อป/สแกนเนอร์ยังผ่าน keydown + preventDefault เหมือนเดิม จึงไม่ยิงซ้ำ)
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (disabled || isProcessing) return;
+    const raw = (refToUse.current?.value ?? value).trim();
+    if (raw) onScanSubmit(raw);
+  };
+
   return (
     <div className={`relative flex items-center gap-2 ${className}`}>
-      <div className="relative flex-1 overflow-hidden rounded-xl border border-[rgba(145,158,171,0.32)] bg-white shadow-m3-card transition-colors focus-within:border-m3-grey-800 focus-within:ring-1 focus-within:ring-m3-grey-800">
+      <form noValidate onSubmit={handleSubmit} className="relative flex-1 overflow-hidden rounded-xl border border-[rgba(145,158,171,0.32)] bg-white shadow-m3-card transition-colors focus-within:border-m3-grey-800 focus-within:ring-1 focus-within:ring-m3-grey-800">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-m3-grey-600">
           <SolarTagBarcode size={24} />
         </div>
@@ -66,6 +75,8 @@ export default function BarcodeScanInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          enterKeyHint="go"
+          autoComplete="off"
           placeholder={placeholder}
           readOnly={disabled || isProcessing}
           aria-busy={isProcessing}
@@ -112,7 +123,7 @@ export default function BarcodeScanInput({
             </button>
           )}
         </div>
-      </div>
+      </form>
     </div>
   );
 }
