@@ -64,7 +64,7 @@ afterAll(async () => {
 test("all schema migrations are rerunnable and server-only RLS is enabled", async () => {
     await mockDb.exec(fs.readFileSync(path.join(root, "supabase/migrations/20261012000000_complete_stockify_storage.sql"), "utf8"));
     const rows = await query("SELECT relname,relrowsecurity FROM pg_class JOIN pg_namespace n ON n.oid=relnamespace WHERE n.nspname='public' AND relkind='r'");
-    expect(rows).toHaveLength(26);
+    expect(rows).toHaveLength(28);
     expect(rows.every(row => row.relrowsecurity)).toBe(true);
     await mockDb.exec("SET ROLE anon;");
     try {

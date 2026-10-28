@@ -89,3 +89,14 @@ export function validateAssignRows(rows: AssignRow[]): string[] {
   });
   return errors;
 }
+
+export const ASSIGN_LOCATION_REQUESTS_HREF = "/movements/assign-location/requests";
+
+/**
+ * ผู้อนุมัติคำขอระบุตำแหน่ง: ผู้ใช้ role ADMIN ทุกคน
+ * ฝั่ง API ต้องใช้ role จาก DB เสมอ ไม่เชื่อ client/session
+ */
+export function canApproveAssignLocation(role?: UserRole | string | null): boolean {
+  return role === "ADMIN";
+}
+
