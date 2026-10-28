@@ -17,12 +17,15 @@ import {
 import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { NavIcon, SolarAltArrowDown, StockifyLogo, StockifyMark } from "@/components/icons";
+import { ASSIGN_LOCATION_HREF, ASSIGN_LOCATION_REQUESTS_HREF } from "@/lib/assign-location";
 
 // ลำดับเมนู "การทำรายการ" — เรียงตามความถี่การใช้งาน (งานลงมือก่อน ประวัติตามหลัง)
 const OPERATION_ORDER = [
   "/movements/receive",
   "/movements/transfer",
   "/movements/move",
+  ASSIGN_LOCATION_HREF,
+  ASSIGN_LOCATION_REQUESTS_HREF,
   "/stock-counts",
   "/temporary-stock-cuts",
   "/movements/receive/history",
@@ -239,6 +242,8 @@ export default function Sidebar({
         "/staff/receive",
         "/staff/transfer",
         "/staff/move",
+        ASSIGN_LOCATION_HREF,
+        ASSIGN_LOCATION_REQUESTS_HREF,
         "/stock-counts",
         "/temporary-stock-cuts",
       ].includes(i.href)

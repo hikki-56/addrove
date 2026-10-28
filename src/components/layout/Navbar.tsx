@@ -54,6 +54,8 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/movements/transfer": { parent: "การเคลื่อนไหว", title: "เบิกสินค้า (Admin)" },
   "/movements/transfer/history": { parent: "การเคลื่อนไหว", title: "ประวัติเบิกสินค้า" },
   "/movements/move": { parent: "การเคลื่อนไหว", title: "ย้ายตำแหน่งสินค้า (Admin)" },
+  "/movements/assign-location": { parent: "การทำรายการ", title: "ระบุตำแหน่งสินค้า" },
+  "/movements/assign-location/requests": { parent: "การทำรายการ", title: "คำขอระบุตำแหน่ง" },
   "/staff/receive": { parent: "พนักงาน", title: "สแกนรับสินค้าเข้าคลัง" },
   "/staff/transfer": { parent: "พนักงาน", title: "รายการที่ต้องไปเบิกสินค้า" },
   "/staff/move": { parent: "พนักงาน", title: "สแกนจัดตำแหน่งสินค้า" },

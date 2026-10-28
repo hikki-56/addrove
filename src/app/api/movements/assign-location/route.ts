@@ -11,6 +11,7 @@ import {
   buildAssignSnapshot,
 } from "@/lib/assign-location";
 import { normalizeWarehouseId } from "@/lib/warehouse-utils";
+import { createAssignRequests, AssignRequestError } from "@/server/services/location-assign-requests";
 import {
   successResponse,
   errorResponse,
@@ -35,7 +36,7 @@ const BodySchema = z.object({
 /**
  * ระบุตำแหน่งสินค้า: สแนปช็อตยอดในโกดัง — ตำแหน่งที่กรอก = จำนวนที่กรอก
  * ตำแหน่งอื่นของสินค้าในโกดังเดียวกัน (รวม "ไม่ระบุ") = 0
- * บันทึก ADJUST ส่วนต่างต่อตำแหน่งในทรานแซกชันเดียว
+ * ไม่เขียนสต็อกทันที — สร้างคำขอรออนุมัติ; อนุมัติแล้วจึง ADJUST ตั้งยอด (ดู requests/[id]/approve)
  */
 async function handlePOST(req: NextRequest) {
   try {
@@ -85,73 +86,23 @@ async function handlePOST(req: NextRequest) {
         quantity: Number(s.quantity) || 0,
       }));
 
-    const plan = buildAssignSnapshot(input.rows, currents);
-    const today = new Date().toISOString().slice(0, 10);
-    const documents = [];
-    let i = 0;
-    for (const step of plan) {
-      i += 1;
-      if (step.delta === 0) {
-        documents.push({
-          to_location_id: step.location_key || step.location_id,
-          location_id: step.location_id,
-          qty: step.target,
-          previous_qty: step.current,
-          delta: 0,
-          document_id: null,
-        });
-        continue;
-      }
-      try {
-        // ใช้ location_id จาก stock_summary โดยตรง (ไม่ระบุ = loc-…-unassigned) — ห้ามใช้รหัสว่าง/uppercase id
-        const loc = step.location_id;
-        const doc = await repo.documents.create({
-          document_type: "ADJUST",
-          reference_no: "",
-          document_date: today,
-          status: "POSTED",
-          note: input.note || "ระบุตำแหน่ง (ตั้งยอดตามที่นับ)",
-          created_by: actor.id,
-        });
-        await repo.movements.batchCreate([
-          {
-            document_id: doc.document_id,
-            product_id: input.product_id,
-            warehouse_id: input.warehouse_id,
-            location_id: loc,
-            qty_change: step.delta,
-            movement_type: "ADJUST",
-            idempotency_key: `${input.idempotency_key}:s${i}`,
-            created_by: actor.id,
-          },
-        ]);
-        await repo.stockSummary.applyChanges([
-          {
-            productId: input.product_id,
-            warehouseId: input.warehouse_id,
-            locationId: loc,
-            delta: step.delta,
-          },
-        ]);
-        documents.push({
-          to_location_id: step.location_key || step.location_id,
-          location_id: loc,
-          qty: step.target,
-          previous_qty: step.current,
-          delta: step.delta,
-          document_id: doc.document_id,
-        });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "บันทึกไม่สำเร็จ";
-        const res = mapStockErrorToResponse(e);
-        const status = res?.status && res.status >= 400 ? res.status : 400;
-        return errorResponse(
-          `ตำแหน่ง ${step.location_key || step.location_id} ไม่สำเร็จ: ${msg} — ยังไม่มีรายการใดถูกบันทึก`,
-          status
-        );
-      }
+        const plan = buildAssignSnapshot(input.rows, currents);
+    // ไม่เขียนสต็อก — สร้างคำขอรออนุมัติ 1 แถวต่อ ตำแหน่งที่ยอดจะเปลี่ยน (รวมแถวที่ถูกตั้งเป็น 0)
+    try {
+      const requests = await createAssignRequests({
+        warehouse_id: input.warehouse_id,
+        product_id: input.product_id,
+        plan,
+        note: input.note,
+        actor_id: actor.id,
+        idempotency_key: input.idempotency_key,
+      });
+      if (!requests.length) return successResponse({ requests: [] }, "ยอดตรงกับที่นับอยู่แล้ว ไม่ต้องขออนุมัติ", 200);
+      return successResponse({ requests }, `ส่งคำขอแล้ว ${requests.length} รายการ — รออนุมัติ`, 201);
+    } catch (e) {
+      if (e instanceof AssignRequestError) return errorResponse(e.message, e.status);
+      throw e;
     }
-    return successResponse({ documents }, "ระบุตำแหน่งสินค้าเรียบร้อยแล้ว", 201);
   } catch (e) {
     console.error("[API AssignLocation] Error:", e);
     return mapStockErrorToResponse(e) || serverErrorResponse(e);
