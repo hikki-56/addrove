@@ -69,13 +69,15 @@ async function handlePOST(req: Request) {
 
     const repo = getRepository();
     let targetUser: User | null = null;
+    let hasBoundIdentity = false;
 
     // A signed employee QR token binds the PIN attempt to one account if valid.
     if (token && typeof token === "string") {
       const payload = verifyEmployeeQrToken(token);
       if (payload && payload.employee_id) {
+        hasBoundIdentity = true;
         const u = await repo.users.findById(payload.employee_id).catch(() => null);
-        if (u && u.active && u.role !== "ADMIN" && checkPinMatch(u, cleanPin)) {
+        if (u && u.active && checkPinMatch(u, cleanPin)) {
           targetUser = u;
         }
       }
@@ -83,20 +85,24 @@ async function handlePOST(req: Request) {
 
     // บัตรบาร์โค้ดประจำตัวพนักงาน (EMP-<user_id>) — ผูก PIN เข้ากับบัญชีเจ้าของบัตร
     // (บัตรเป็นเพียงตัวระบุตัวตน ยังต้องมี PIN ถูกต้องเสมอ)
-    if (!targetUser && cardCode && typeof cardCode === "string") {
+    if (!hasBoundIdentity && cardCode && typeof cardCode === "string") {
+      hasBoundIdentity = true;
       const userId = parseEmployeeCardCode(cardCode);
       if (userId) {
-        const u = await repo.users.findById(userId).catch(() => null);
-        if (u && u.active && u.role !== "ADMIN" && checkPinMatch(u, cleanPin)) {
+        // Printed cards use uppercase IDs; stored IDs may use lowercase.
+        const u = await repo.users.findById(userId).catch(() => null)
+          ?? (await repo.users.findAll()).find((user) => user.user_id.toUpperCase() === userId);
+        if (u && u.active && checkPinMatch(u, cleanPin)) {
           targetUser = u;
         }
       }
     }
 
-    // Warehouse QR codes or Direct PIN Login without bound token identify by unique PIN across active non-admin employees.
-    if (!targetUser) {
+    // Warehouse QR codes and direct PIN login identify any active user by a unique PIN.
+    // A personal card or signed token must only authenticate its own account.
+    if (!hasBoundIdentity) {
       const allUsers = await repo.users.findAll().catch(() => []);
-      const activeEmployees = allUsers.filter((u: User) => u.active && u.role !== "ADMIN");
+      const activeEmployees = allUsers.filter((u: User) => u.active);
       const matchedUsers: User[] = [];
 
       for (const u of activeEmployees) {
@@ -133,13 +139,13 @@ async function handlePOST(req: Request) {
     }
     clearFailedAttempts(rateLimitKey);
 
-    // บาร์โค้ดประจำจุดพนักงานแพ็กของ (section=packer) — เข้าได้เฉพาะบัญชี role PACKER
+    // บาร์โค้ดประจำจุดพนักงานแพ็กของ (section=packer) — PACKER และ ADMIN เข้าได้
     // พนักงานคลังใช้ QR ประจำโกดังของตนเองเข้าระบบตามปกติ
-    if (String(section || "").trim().toLowerCase() === "packer" && targetUser.role !== "PACKER") {
+    if (String(section || "").trim().toLowerCase() === "packer" && !["PACKER", "ADMIN"].includes(targetUser.role)) {
       return NextResponse.json(
         {
           success: false,
-          message: "บาร์โค้ดนี้สำหรับพนักงานแพ็กของเท่านั้น — พนักงานคลังให้สแกน QR ประจำโกดังของตน",
+          message: "บาร์โค้ดนี้สำหรับพนักงานแพ็กของและผู้ดูแลระบบ — พนักงานคลังให้สแกน QR ประจำโกดังของตน",
         },
         { status: 403 }
       );

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     const employee = await getRepository().users.findById(userId);
-    if (!employee || !employee.active || employee.role === "ADMIN") {
+    if (!employee || !employee.active) {
       return NextResponse.json(
         { success: false, message: "ไม่พบพนักงานที่เปิดใช้งาน" },
         { status: 404 }

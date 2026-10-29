@@ -58,8 +58,8 @@ export default function EmployeeCardsPage() {
         const json = await res.json();
         if (!res.ok || json?.success === false) throw new Error(json?.message || "โหลดรายชื่อไม่สำเร็จ");
         const list: EmployeeRow[] = json.data?.users ?? json.data ?? [];
-        // พิมพ์บัตรให้พนักงานหน้างานเท่านั้น (ไม่รวมแอดมิน/บัญชีปิด)
-        const eligible = list.filter((u) => u.active && u.role !== "ADMIN");
+        // พนักงานและแอดมินที่เปิดใช้งานสามารถใช้บัตรร่วมกับ PIN ได้
+        const eligible = list.filter((u) => u.active);
         setUsers(eligible);
       } catch (e) {
         setError(e instanceof Error ? e.message : "โหลดไม่สำเร็จ");
