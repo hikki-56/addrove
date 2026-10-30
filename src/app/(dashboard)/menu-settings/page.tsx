@@ -65,7 +65,7 @@ export default function MenuSettingsPage() {
   const chooseUser = (id: string) => {
     const target = users.find(({ user_id }) => user_id === id);
     setSelectedId(id);
-    const available = new Set(target?.available_menus.map(({ href }) => href));
+    const available = new Set(target?.available_menus.filter(({ locked }) => !locked).map(({ href }) => href));
     setSelectedHrefs((target?.menu_hrefs ?? target?.default_menu_hrefs ?? []).filter((href) => available.has(href)));
     setError("");
     setMessage("");
@@ -101,7 +101,7 @@ export default function MenuSettingsPage() {
   const listedUsers = q
     ? users.filter((u) => u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     : users;
-  const groups: { name: string; items: { href: string; label: string; outside_role?: boolean }[] }[] = [];
+  const groups: { name: string; items: { href: string; label: string; outside_role?: boolean; locked?: boolean }[] }[] = [];
   for (const item of selectedUser?.available_menus ?? []) {
     const name = menuGroup(item.href);
     const g = groups.find((x) => x.name === name);
@@ -197,7 +197,7 @@ export default function MenuSettingsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-m3-grey-600">แสดง <strong className="text-m3-grey-800">{selectedHrefs.length}</strong> จาก {selectedUser.available_menus.length} เมนู</p>
                     <div className="flex gap-2">
-                      <button type="button" disabled={saving} className={smallBtn} onClick={() => { setSelectedHrefs(selectedUser.available_menus.map(({ href }) => href)); setMessage(""); }}>เลือกทั้งหมด</button>
+                      <button type="button" disabled={saving} className={smallBtn} onClick={() => { setSelectedHrefs(selectedUser.available_menus.filter(({ locked }) => !locked).map(({ href }) => href)); setMessage(""); }}>เลือกทั้งหมด</button>
                       <button type="button" disabled={saving} className={smallBtn} onClick={() => { setSelectedHrefs([]); setMessage(""); }}>เอาออกทั้งหมด</button>
                     </div>
                   </div>
@@ -209,6 +209,15 @@ export default function MenuSettingsPage() {
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           {group.items.map((item) => {
                             const checked = selectedHrefs.includes(item.href);
+                            if (item.locked) {
+                              return (
+                                <div key={item.href} aria-disabled="true" className="flex items-center gap-3 rounded-xl border border-dashed border-[rgba(145,158,171,0.24)] bg-m3-grey-100 px-4 py-3.5 text-m3-grey-500">
+                                  <input type="checkbox" checked={false} disabled readOnly className="h-5 w-5 shrink-0" aria-label={`${item.label} (เฉพาะ ty@stockify.com)`} />
+                                  <span className="min-w-0 flex-1 text-sm">{item.label}</span>
+                                  <span className="m3-label m3-label-default shrink-0">เฉพาะ ty</span>
+                                </div>
+                              );
+                            }
                             return (
                               <label key={item.href} className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 cursor-pointer transition-colors ${checked ? "border-[rgba(145,158,171,0.32)] bg-white" : "border-[rgba(145,158,171,0.16)] bg-m3-grey-100 text-m3-grey-500"} hover:border-m3-grey-800`}>
                                 <input type="checkbox" checked={checked} className="h-5 w-5 accent-[#00A76F] shrink-0" onChange={(event) => {

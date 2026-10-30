@@ -100,3 +100,17 @@ test("owner can grant a menu outside the user's role; it is flagged and saved", 
   expect((await PATCH(request({ user_id: "staff", menu_hrefs: ["/staff/receive", "/express-import/receive"] }))).status).toBe(200);
   expect(records[1].menu_hrefs).toEqual(["/staff/receive", "/express-import/receive"]);
 });
+
+test("every user gets the full menu catalog; ty-only system menus are listed but locked and cannot be saved", async () => {
+  records.push({ ...target, user_id: "kaew", email: "kaew@stockify.com", role: "APPROVER", menu_hrefs: ["/production/jobs", "/movements/transfer"] });
+  const { data } = await (await GET(request())).json();
+  const ownerHrefs = data[0].available_menus.map((item: { href: string }) => item.href);
+  const kaew = data.find((item: { user_id: string }) => item.user_id === "kaew");
+  expect(kaew.available_menus.length).toBe(ownerHrefs.length);
+  expect(kaew.available_menus.length).toBeGreaterThan(20);
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/users")).toMatchObject({ locked: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/movements/receive")).toMatchObject({ outside_role: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/movements/receive").locked).toBeUndefined();
+  expect((await PATCH(request({ user_id: "kaew", menu_hrefs: ["/users"] }))).status).toBe(400);
+  expect((await PATCH(request({ user_id: "kaew", menu_hrefs: ["/production/jobs", "/movements/receive"] }))).status).toBe(200);
+});

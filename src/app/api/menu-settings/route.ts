@@ -36,7 +36,7 @@ async function handlePATCH(req: NextRequest) {
     const input = UpdateMenuSettingsSchema.parse(await req.json());
     const target = await repo.users.findById(input.user_id);
     if (!target) return notFoundResponse("ไม่พบข้อมูลพนักงาน");
-    const available = new Set(toUserMenuSettings(target).available_menus.map(({ href }) => href));
+    const available = new Set(toUserMenuSettings(target).available_menus.filter(({ locked }) => !locked).map(({ href }) => href));
     if (input.menu_hrefs?.some((href) => !available.has(href))) {
       return errorResponse("มีเมนูที่ไม่อยู่ในสิทธิ์ของพนักงานคนนี้");
     }

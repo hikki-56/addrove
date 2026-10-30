@@ -7,7 +7,7 @@ export interface UserMenuSettings {
   role: UserRole;
   active: boolean;
   menu_hrefs: string[] | null;
-  available_menus: { href: string; label: string; outside_role?: boolean }[];
+  available_menus: { href: string; label: string; outside_role?: boolean; locked?: boolean }[];
   default_menu_hrefs: string[];
 }
 
