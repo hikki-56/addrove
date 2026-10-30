@@ -107,6 +107,9 @@ export const ASSIGN_MENU_LABELS: Record<string, string> = {
   "/movements/assign-location": "ระบุตำแหน่งสินค้า",
   "/movements/assign-location/requests": "คำขอระบุตำแหน่ง",
 };
+/** สิทธิ์อนุมัติคำขอระบุตำแหน่ง — รายการในตั้งค่าเมนูเท่านั้น (ไม่ใช่ลิงก์ใน sidebar) ค่าเริ่มต้นปิด */
+export const ASSIGN_APPROVE_HREF = "/movements/assign-location/requests#approve";
+export const ASSIGN_APPROVE_LABEL = "อนุมัติคำขอระบุตำแหน่ง";
 /** รายการ "เอาออก" ที่บันทึกใน menu_hrefs เพื่อปิดเมนูที่บทบาทเห็นเป็นค่าเริ่มต้น */
 export function menuExclusion(href: string): string {
   return `/!${href}`;
@@ -119,7 +122,7 @@ export interface AssignLocationAccess {
   assign: boolean;
   /** เห็นเมนูคำขอระบุตำแหน่ง */
   requests: boolean;
-  /** ดูคำขอทุกคน + อนุมัติ/ไม่อนุมัติ/แก้ไขแทน (ADMIN ทุกคน หรือได้รับเมนูคำขอระบุตำแหน่ง) */
+  /** ดูคำขอทุกคน + อนุมัติ/ไม่อนุมัติ (ADMIN ทุกคน หรือได้รับสิทธิ์ "อนุมัติคำขอระบุตำแหน่ง") */
   approve: boolean;
 }
 
@@ -137,10 +140,12 @@ export function getAssignLocationAccess(
   const roleDefault = canAssignLocation(role, email) && (role !== "ADMIN" || verifiedAdmin);
   const has = (h: string) => !!menuHrefs?.includes(h);
   const excluded = (h: string) => !!menuHrefs?.includes(menuExclusion(h));
+  const approve = canApproveAssignLocation(role) || has(ASSIGN_APPROVE_HREF);
   return {
     roleDefault,
     assign: (roleDefault && !excluded(assignHref)) || has(assignHref),
-    requests: (roleDefault && !excluded(requestsHref)) || has(requestsHref),
-    approve: canApproveAssignLocation(role) || has(requestsHref),
+    // ผู้อนุมัติเห็นเมนูคำขอเสมอ (เพื่อเข้าหน้าอนุมัติได้)
+    requests: (roleDefault && !excluded(requestsHref)) || has(requestsHref) || has(ASSIGN_APPROVE_HREF),
+    approve,
   };
 }
