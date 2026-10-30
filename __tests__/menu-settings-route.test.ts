@@ -72,7 +72,7 @@ test("saving affects only the selected account and distinguishes [] from default
 });
 
 test("invalid menu grants and unrelated user updates are rejected", async () => {
-  for (const menu_hrefs of [["/users"], ["/movements/receive"], ["/menu-settings"], ["/unknown"]]) {
+  for (const menu_hrefs of [["/users"], ["/movements/receive"], ["/menu-settings"], ["/unknown"]]) { // /movements/receive is /staff/receive for staff
     expect((await PATCH(request({ user_id: "staff", menu_hrefs }))).status).toBe(400);
   }
   expect((await PATCH(request({ user_id: "staff", menu_hrefs: [], role: "ADMIN" }))).status).toBe(400);
@@ -89,4 +89,14 @@ test("each employee reads only their own latest settings", async () => {
   const { data } = await (await getMine(request())).json();
   expect(data).toEqual({ menu_hrefs: [], can_manage: false });
   expect(users.findAll).not.toHaveBeenCalled();
+});
+
+test("owner can grant a menu outside the user's role; it is flagged and saved", async () => {
+  const response = await GET(request());
+  const { data } = await response.json();
+  const express = data[1].available_menus.find((item: { href: string }) => item.href === "/express-import/receive");
+  expect(express).toMatchObject({ outside_role: true });
+  expect(data[1].available_menus.find((item: { href: string }) => item.href === "/staff/receive")).toMatchObject({ outside_role: false });
+  expect((await PATCH(request({ user_id: "staff", menu_hrefs: ["/staff/receive", "/express-import/receive"] }))).status).toBe(200);
+  expect(records[1].menu_hrefs).toEqual(["/staff/receive", "/express-import/receive"]);
 });

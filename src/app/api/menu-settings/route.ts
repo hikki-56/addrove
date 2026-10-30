@@ -3,6 +3,7 @@ import { z, ZodError } from "zod";
 import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { canManageUserMenus } from "@/lib/menu-visibility";
+import { clearMenuGrantCache } from "@/server/security/menu-grants";
 import { toUserMenuSettings } from "@/server/services/menu-settings.service";
 import { withStorageRequest } from "@/server/storage-transaction";
 import { successResponse, unauthorizedResponse, forbiddenResponse, notFoundResponse, errorResponse, zodErrorResponse, serverErrorResponse } from "@/server/api-response";
@@ -43,6 +44,7 @@ async function handlePATCH(req: NextRequest) {
       menu_hrefs: input.menu_hrefs === null ? null : [...new Set(input.menu_hrefs)],
     });
     if (!updated) return notFoundResponse("ไม่พบข้อมูลพนักงาน");
+    clearMenuGrantCache(target.user_id);
     return successResponse(toUserMenuSettings(updated), "บันทึกเมนูผู้ใช้สำเร็จ");
   } catch (error) {
     if (error instanceof ZodError) return zodErrorResponse(error);

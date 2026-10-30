@@ -318,7 +318,7 @@ export default function Sidebar({
         {renderGroup("inventory", "คลังสินค้า", inventoryNav)}
         {renderGroup("operations", "การทำรายการ", movementNav)}
         {renderGroup("outbound", "ส่งของออก", outboundNav)}
-        {role === "ADMIN" && renderGroup("express", "นำเข้า Express", expressNav)}
+        {renderGroup("express", "นำเข้า Express", expressNav)}
       </nav>
 
       {/* Bottom: ระบบ (.nav-sys) */}

@@ -5,7 +5,7 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import type { MyMenuSettings } from "@/types/menu-settings";
 
-const MenuVisibilityContext = createContext<MyMenuSettings>({ menu_hrefs: [], can_manage: false });
+const MenuVisibilityContext = createContext<MyMenuSettings & { loaded?: boolean }>({ menu_hrefs: [], can_manage: false, loaded: false });
 
 export function MenuVisibilityProvider({ children }: { children: React.ReactNode }) {
   const { user, token } = useTabAuth();
@@ -37,7 +37,7 @@ export function MenuVisibilityProvider({ children }: { children: React.ReactNode
   }, [refresh]);
 
   const value = settings?.userId === user?.id && settings?.token === token
-    ? settings : { menu_hrefs: [], can_manage: false };
+    ? { ...settings, loaded: true } : { menu_hrefs: [], can_manage: false, loaded: false };
   return <MenuVisibilityContext.Provider value={value}>{children}</MenuVisibilityContext.Provider>;
 }
 

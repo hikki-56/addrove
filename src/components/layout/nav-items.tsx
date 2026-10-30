@@ -79,17 +79,35 @@ export interface MenuUser {
   role: UserRole;
 }
 
-/** Available checkboxes cannot grant privileges beyond the user's role. */
-export function getSelectableMenuItems(user: MenuUser): NavItem[] {
+/** Every menu (hrefs as this role would open them). APPROVER also gets the menus outside its default two. */
+export function getAllMenuItems(role: UserRole): NavItem[] {
+  const base = getNavItems(role);
+  if (role !== "APPROVER") return base;
+  return [...base, ...navItems.filter((item) => !base.some((b) => b.href === item.href))];
+}
+
+/** Menus shown when no explicit per-user list is saved (role defaults). */
+export function getRoleMenuItems(user: MenuUser): NavItem[] {
   return getNavItems(user.role).filter((item) =>
     (!item.roles || item.roles.includes(user.role)) &&
     (!SYSTEM_MENU_HREFS.includes(item.href) || isSystemMenuUser(user.email))
   );
 }
 
+/**
+ * Checkboxes in เมนูผู้ใช้: every menu for every user. Ticking a menu outside the role is an
+ * explicit grant (see src/lib/menu-grants.ts). System menus stay restricted to ty@stockify.com.
+ */
+export function getSelectableMenuItems(user: MenuUser): NavItem[] {
+  return getAllMenuItems(user.role).filter((item) =>
+    !SYSTEM_MENU_HREFS.includes(item.href) || isSystemMenuUser(user.email)
+  );
+}
+
 export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, canManage = canManageUserMenus(user.email)): NavItem[] {
   const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
-  const visible = getSelectableMenuItems(user).filter((item) => allowed === null || allowed.includes(item.href));
+  const visible = (menuHrefs ? getSelectableMenuItems(user) : getRoleMenuItems(user))
+    .filter((item) => allowed === null || allowed.includes(item.href));
   // "ระบุตำแหน่งสินค้า": พนักงานทุกคน + แอดมินเฉพาะ ty@stockify.com (แอดมินต้องยืนยันผ่าน can_manage)
   if (canAssignLocation(user.role, user.email) && (user.role !== "ADMIN" || canManage)) {
     const at = visible.findIndex((i) => i.href === "/movements/move" || i.href === "/staff/move");

@@ -27,6 +27,12 @@ export class ForbiddenError extends SecurityError {
   }
 }
 
+/** บทบาทมีสิทธิ์นี้ หรือ ty ให้สิทธิ์ผ่านการติ๊กเมนู (การจำกัดโกดังยังใช้เหมือนเดิม) */
+export function hasPermission(actor: Actor, permission: Permission): boolean {
+  const allowedPermissions = ROLE_PERMISSION_MATRIX[actor.role] || [];
+  return allowedPermissions.includes(permission) || !!actor.grantedPermissions?.includes(permission);
+}
+
 export function isAuthorized(
   actor: Actor | null | undefined,
   permission: Permission,
@@ -35,8 +41,7 @@ export function isAuthorized(
   if (!actor || !actor.role) return false;
 
   // 1. Role Permission Check
-  const allowedPermissions = ROLE_PERMISSION_MATRIX[actor.role] || [];
-  if (!allowedPermissions.includes(permission)) {
+  if (!hasPermission(actor, permission)) {
     return false;
   }
 
@@ -61,8 +66,7 @@ export function authorize(
     throw new UnauthorizedError("กรุณาเข้าสู่ระบบก่อนดำเนินการ");
   }
 
-  const allowedPermissions = ROLE_PERMISSION_MATRIX[actor.role] || [];
-  if (!allowedPermissions.includes(permission)) {
+  if (!hasPermission(actor, permission)) {
     throw new ForbiddenError(`บทบาท ${actor.role} ไม่มีสิทธิ์ดำเนินการ ${permission}`);
   }
 

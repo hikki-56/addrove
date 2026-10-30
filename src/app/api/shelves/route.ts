@@ -1,5 +1,6 @@
 import { withStorageRequest } from "@/server/storage-transaction";
 import { NextRequest } from "next/server";
+import { hasGrantedPermission, PERMISSIONS } from "@/server/security";
 import { getRepository } from "@/server/repositories";
 import { CreateShelfSchema } from "@/types/api";
 import {
@@ -46,10 +47,19 @@ async function handlePOST(req: NextRequest) {
   try {
     const session = await getAuthSession(req);
     if (!session) return unauthorizedResponse();
-    if (session.user.role !== "ADMIN") return forbiddenResponse("เฉพาะ Admin เท่านั้นที่สร้างชั้นวางได้");
+    const isAdmin = session.user.role === "ADMIN";
+    if (!isAdmin && !(await hasGrantedPermission(session.user.id, session.user.role, PERMISSIONS.LOCATION_MANAGE))) {
+      return forbiddenResponse("เฉพาะ Admin หรือผู้ที่ได้รับเมนูนี้เท่านั้นที่สร้างชั้นวางได้");
+    }
     const body = await req.json();
     const input = CreateShelfSchema.parse(body);
     const repo = getRepository();
+    if (!isAdmin) {
+      const location = await repo.locations.findById(input.location_id);
+      if (!location || !hasWarehouseAccess(session.user.warehouse_access, location.warehouse_id)) {
+        return forbiddenResponse("คุณไม่มีสิทธิ์สร้างชั้นวางในโกดังนี้");
+      }
+    }
     const shelf = await repo.shelves.create(input);
     return successResponse(shelf, "สร้างชั้นวางสินค้าสำเร็จ", 201);
   } catch (e) {

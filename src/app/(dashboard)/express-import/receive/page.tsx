@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import { useRouter } from "next/navigation";
 import { useTabAuth } from "@/context/TabAuthContext";
+import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import { getWarehouseName } from "@/lib/warehouse-utils";
 import ExpressImportWorkspaceHeader, {
@@ -82,12 +83,15 @@ function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
 export default function ExpressReceivePage() {
   const router = useRouter();
   const { user, status } = useTabAuth();
+  const { menu_hrefs, loaded: menusLoaded } = useMenuVisibility();
+  // ไม่ใช่แอดมิน: เข้าได้เมื่อ ty ให้เมนูนี้ในตั้งค่าเมนูผู้ใช้ (API ตรวจสิทธิ์ซ้ำฝั่งเซิร์ฟเวอร์)
+  const menuGranted = !!menu_hrefs?.includes("/express-import/receive");
 
   useEffect(() => {
-    if (status !== "loading" && user && user.role !== "ADMIN") {
+    if (status !== "loading" && user && user.role !== "ADMIN" && menusLoaded && !menuGranted) {
       safeNavigate(router, "/dashboard", "replace");
     }
-  }, [status, user, router]);
+  }, [status, user, router, menusLoaded, menuGranted]);
 
   const [apiItems, setApiItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

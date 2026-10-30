@@ -101,7 +101,7 @@ export default function MenuSettingsPage() {
   const listedUsers = q
     ? users.filter((u) => u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     : users;
-  const groups: { name: string; items: { href: string; label: string }[] }[] = [];
+  const groups: { name: string; items: { href: string; label: string; outside_role?: boolean }[] }[] = [];
   for (const item of selectedUser?.available_menus ?? []) {
     const name = menuGroup(item.href);
     const g = groups.find((x) => x.name === name);
@@ -215,7 +215,8 @@ export default function MenuSettingsPage() {
                                   setSelectedHrefs((previous) => event.target.checked ? [...previous, item.href] : previous.filter((href) => href !== item.href));
                                   setMessage("");
                                 }} />
-                                <span className={`text-sm ${checked ? "font-semibold text-m3-grey-800" : ""}`}>{item.label}</span>
+                                <span className={`min-w-0 flex-1 text-sm ${checked ? "font-semibold text-m3-grey-800" : ""}`}>{item.label}</span>
+                                {item.outside_role && <span className="m3-label m3-label-warning shrink-0" title="นอกสิทธิ์ของบทบาท — ติ๊กแล้วจะให้สิทธิ์ใช้หน้านี้เพิ่ม">ให้สิทธิ์เพิ่ม</span>}
                               </label>
                             );
                           })}

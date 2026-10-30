@@ -1,11 +1,14 @@
 import type { NextRequest } from "next/server";
 import type { UserRole } from "@/types/models";
+import type { Permission } from "./permissions";
 
 export interface Actor {
   id: string;
   username: string;
   role: UserRole;
   warehouseAccess?: string;
+  /** สิทธิ์เพิ่มจากเมนูที่ ty ติ๊กให้ (นอกบทบาท) — ดู src/lib/menu-grants.ts */
+  grantedPermissions?: readonly Permission[];
   correlationId: string;
   ipAddress?: string;
   userAgent?: string;
@@ -59,14 +62,21 @@ export async function createActorFromSession(
   req: NextRequest,
   sessionOverride?: SessionLike | null
 ): Promise<Actor | null> {
+  let actor: Actor | null;
   if (sessionOverride !== undefined) {
-    return extractActorFromSession(sessionOverride, req);
+    actor = extractActorFromSession(sessionOverride, req);
+  } else {
+    try {
+      const { getAuthSession } = await import("@/server/auth-session");
+      const session = await getAuthSession(req);
+      actor = extractActorFromSession(session, req);
+    } catch {
+      return null;
+    }
   }
-  try {
-    const { getAuthSession } = await import("@/server/auth-session");
-    const session = await getAuthSession(req);
-    return extractActorFromSession(session, req);
-  } catch {
-    return null;
+  if (actor && actor.role !== "ADMIN") {
+    const { loadGrantedPermissions } = await import("./menu-grants");
+    actor.grantedPermissions = await loadGrantedPermissions(actor.id, actor.role);
   }
+  return actor;
 }

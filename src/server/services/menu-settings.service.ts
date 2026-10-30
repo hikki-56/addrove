@@ -12,7 +12,8 @@ export function toUserMenuSettings(user: User): UserMenuSettings {
     role: user.role,
     active: user.active,
     menu_hrefs: parseMenuHrefs(user.menu_hrefs),
-    available_menus: getSelectableMenuItems(identity).map(({ href, label }) => ({ href, label })),
+    // outside_role = ติ๊กแล้วเป็นการให้สิทธิ์เพิ่ม (หน้า + API ของเมนูนั้นจะยอมรับผู้ใช้คนนี้)
+    available_menus: getSelectableMenuItems(identity).map(({ href, label, roles }) => ({ href, label, outside_role: !!roles && !roles.includes(user.role) })),
     default_menu_hrefs: getVisibleNavItems(identity).filter(({ href }) => href !== MENU_SETTINGS_HREF).map(({ href }) => href),
   };
 }
