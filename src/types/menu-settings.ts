@@ -9,6 +9,7 @@ export interface UserMenuSettings {
   menu_hrefs: string[] | null;
   available_menus: { href: string; label: string; outside_role?: boolean; locked?: boolean }[];
   default_menu_hrefs: string[];
+  current_menu_hrefs?: string[];
 }
 
 export interface MyMenuSettings {

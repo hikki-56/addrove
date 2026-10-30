@@ -11,7 +11,7 @@ async function handleGET(req: NextRequest) {
   try {
     const who = await assignRequestActor(req);
     if (!who) return unauthorizedResponse();
-    if (!who.canApprove && !who.canRequest) return forbiddenResponse("ไม่มีสิทธิ์ดูคำขอระบุตำแหน่ง");
+    if (!who.canApprove && !who.canViewRequests) return forbiddenResponse("ไม่มีสิทธิ์ดูคำขอระบุตำแหน่ง");
     const sp = req.nextUrl.searchParams;
     const s = (sp.get("status") || "PENDING").toUpperCase();
     const status = (STATUSES as readonly string[]).includes(s) ? (s as AssignRequestStatus | "ALL") : "PENDING";

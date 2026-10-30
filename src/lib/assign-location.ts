@@ -100,3 +100,47 @@ export function canApproveAssignLocation(role?: UserRole | string | null): boole
   return role === "ADMIN";
 }
 
+
+/** 2 เมนูระบุตำแหน่ง — ตั้งค่าได้ในเมนูผู้ใช้ (ค่าเริ่มต้นตาม canAssignLocation) */
+export const ASSIGN_MENU_HREFS = ["/movements/assign-location", "/movements/assign-location/requests"] as const;
+export const ASSIGN_MENU_LABELS: Record<string, string> = {
+  "/movements/assign-location": "ระบุตำแหน่งสินค้า",
+  "/movements/assign-location/requests": "คำขอระบุตำแหน่ง",
+};
+/** รายการ "เอาออก" ที่บันทึกใน menu_hrefs เพื่อปิดเมนูที่บทบาทเห็นเป็นค่าเริ่มต้น */
+export function menuExclusion(href: string): string {
+  return `/!${href}`;
+}
+
+export interface AssignLocationAccess {
+  /** ค่าเริ่มต้นตามบทบาท (ก่อนตั้งค่าเมนูผู้ใช้) */
+  roleDefault: boolean;
+  /** เห็นเมนู + ใช้หน้า/สร้างคำขอระบุตำแหน่ง */
+  assign: boolean;
+  /** เห็นเมนูคำขอระบุตำแหน่ง */
+  requests: boolean;
+  /** ดูคำขอทุกคน + อนุมัติ/ไม่อนุมัติ/แก้ไขแทน (ADMIN ทุกคน หรือได้รับเมนูคำขอระบุตำแหน่ง) */
+  approve: boolean;
+}
+
+/**
+ * menuHrefs: null = ค่าเริ่มต้น; มีรายการ = ติ๊กเพิ่ม (href) หรือเอาออก (menuExclusion(href))
+ * verifiedAdmin: ADMIN ต้องยืนยันบัญชีจากเซิร์ฟเวอร์แล้ว (ty) ถึงได้ค่าเริ่มต้น
+ */
+export function getAssignLocationAccess(
+  role: UserRole | string | null | undefined,
+  email: string | null | undefined,
+  menuHrefs: readonly string[] | null | undefined,
+  verifiedAdmin = true
+): AssignLocationAccess {
+  const [assignHref, requestsHref] = ASSIGN_MENU_HREFS;
+  const roleDefault = canAssignLocation(role, email) && (role !== "ADMIN" || verifiedAdmin);
+  const has = (h: string) => !!menuHrefs?.includes(h);
+  const excluded = (h: string) => !!menuHrefs?.includes(menuExclusion(h));
+  return {
+    roleDefault,
+    assign: (roleDefault && !excluded(assignHref)) || has(assignHref),
+    requests: (roleDefault && !excluded(requestsHref)) || has(requestsHref),
+    approve: canApproveAssignLocation(role) || has(requestsHref),
+  };
+}

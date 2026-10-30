@@ -5,6 +5,7 @@ import type { UserRole } from "@/types/models";
 import { PERMISSIONS, type Permission } from "@/server/security/permissions";
 import { getAllMenuItems, SYSTEM_MENU_HREFS } from "@/components/layout/nav-items";
 import { parseMenuHrefs } from "@/lib/menu-visibility";
+import { ASSIGN_LOCATION_HREF, canAssignLocation } from "@/lib/assign-location";
 
 const P = PERMISSIONS;
 const RECEIVE = [P.STOCK_VIEW, P.DOCUMENT_VIEW, P.STOCK_RECEIVE];
@@ -59,6 +60,11 @@ export function getGrantedPermissions(role: UserRole, menuHrefs: unknown): Permi
   const out = new Set<Permission>();
   for (const href of getGrantedMenuHrefs(role, menuHrefs)) {
     for (const p of MENU_GRANT_PERMISSIONS[href] ?? []) out.add(p);
+  }
+  // "ระบุตำแหน่งสินค้า" ที่ให้เพิ่ม (บทบาทไม่มีโดยปกติ เช่น VIEWER) ต้องย้าย/ตั้งยอดสต็อกได้
+  if (role !== "ADMIN" && !canAssignLocation(role, null) && parseMenuHrefs(menuHrefs)?.includes(ASSIGN_LOCATION_HREF)) {
+    out.add(P.STOCK_VIEW);
+    out.add(P.STOCK_MOVE);
   }
   return [...out];
 }

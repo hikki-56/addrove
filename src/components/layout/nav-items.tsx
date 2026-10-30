@@ -2,7 +2,7 @@ import React from "react";
 import type { UserRole } from "@/types/models";
 import { canManageUserMenus, MENU_SETTINGS_HREF } from "@/lib/menu-visibility";
 import { BOM_EDITOR_HREF, canEditBom } from "@/lib/bom-editor";
-import { ASSIGN_LOCATION_HREF, ASSIGN_LOCATION_REQUESTS_HREF, canAssignLocation } from "@/lib/assign-location";
+import { ASSIGN_LOCATION_HREF, ASSIGN_LOCATION_REQUESTS_HREF, getAssignLocationAccess } from "@/lib/assign-location";
 
 export interface NavItem {
   href: string;
@@ -108,18 +108,23 @@ export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, 
   const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
   const visible = (menuHrefs ? getSelectableMenuItems(user) : getRoleMenuItems(user))
     .filter((item) => allowed === null || allowed.includes(item.href));
-  // "ระบุตำแหน่งสินค้า": พนักงานทุกคน + แอดมินเฉพาะ ty@stockify.com (แอดมินต้องยืนยันผ่าน can_manage)
-  if (canAssignLocation(user.role, user.email) && (user.role !== "ADMIN" || canManage)) {
+  // "ระบุตำแหน่งสินค้า" / "คำขอระบุตำแหน่ง": ค่าเริ่มต้น = พนักงานทุกคน + แอดมินเฉพาะ ty (ยืนยันผ่าน can_manage)
+  // ตั้งค่าเมนูผู้ใช้ ติ๊กเพิ่มหรือเอาออกได้ทีละเมนู (ดู getAssignLocationAccess)
+  const access = getAssignLocationAccess(user.role, user.email, menuHrefs ?? null, canManage);
+  const assignItems: NavItem[] = [];
+  if (access.assign) assignItems.push({
+    href: ASSIGN_LOCATION_HREF,
+    label: "ระบุตำแหน่งสินค้า",
+    icon: <Icon><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></Icon>,
+  });
+  if (access.requests) assignItems.push({
+    href: ASSIGN_LOCATION_REQUESTS_HREF,
+    label: "คำขอระบุตำแหน่ง",
+    icon: <Icon><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></Icon>,
+  });
+  if (assignItems.length) {
     const at = visible.findIndex((i) => i.href === "/movements/move" || i.href === "/staff/move");
-    visible.splice(at >= 0 ? at + 1 : visible.length, 0, {
-      href: ASSIGN_LOCATION_HREF,
-      label: "ระบุตำแหน่งสินค้า",
-      icon: <Icon><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></Icon>,
-    }, {
-      href: ASSIGN_LOCATION_REQUESTS_HREF,
-      label: "คำขอระบุตำแหน่ง",
-      icon: <Icon><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></Icon>,
-    });
+    visible.splice(at >= 0 ? at + 1 : visible.length, 0, ...assignItems);
   }
   // "แก้ไขสูตร BOM" ผูกกับบัญชีเดียว ไม่ขึ้นกับการตั้งค่าเมนูรายผู้ใช้
   // (ต้องให้เซิร์ฟเวอร์ยืนยันบัญชีผ่าน can_manage ด้วย — ไม่เชื่อ email ฝั่ง client อย่างเดียว)

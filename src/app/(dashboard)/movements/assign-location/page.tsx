@@ -10,7 +10,7 @@ import { useScanFeedback } from "@/hooks/use-scan-feedback";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import { M3Banner, M3Field, m3Cls } from "@/components/ui/m3";
-import { ASSIGN_LOCATION_REQUESTS_HREF, canAssignLocation, validateAssignRows } from "@/lib/assign-location";
+import { ASSIGN_LOCATION_REQUESTS_HREF, getAssignLocationAccess, validateAssignRows } from "@/lib/assign-location";
 import { normalizeWarehouseId } from "@/lib/warehouse-utils";
 import type { Product } from "@/types/models";
 import {
@@ -68,9 +68,9 @@ function Step({ n, label, state }: { n: number; label: string; state: "done" | "
 
 export default function AssignLocationPage() {
   const { user } = useTabAuth();
-  const { can_manage } = useMenuVisibility();
-  // ADMIN ต้องเป็นบัญชีที่เซิร์ฟเวอร์ยืนยัน (can_manage) ด้วย — API ตรวจซ้ำอีกชั้น
-  const allowed = canAssignLocation(user?.role, user?.email) && (user?.role !== "ADMIN" || can_manage);
+  const { can_manage, menu_hrefs } = useMenuVisibility();
+  // ค่าเริ่มต้นตามบทบาท (ADMIN ต้องเป็น ty ที่เซิร์ฟเวอร์ยืนยัน) + ติ๊กเพิ่ม/เอาออกในตั้งค่าเมนูผู้ใช้ — API ตรวจซ้ำอีกชั้น
+  const allowed = getAssignLocationAccess(user?.role, user?.email, menu_hrefs, can_manage).assign;
 
   const { activeWhId, setActiveWhId, warehouses, locations, allLocations, products, refreshData } = useWarehouseData();
   const [scanFeedback, setScanFeedback] = useScanFeedback();

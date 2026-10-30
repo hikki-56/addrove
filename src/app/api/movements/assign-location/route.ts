@@ -3,10 +3,11 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAuthSession } from "@/server/auth-session";
 import { createActorFromSession, authorize, PERMISSIONS } from "@/server/security";
+import { parseMenuHrefs } from "@/lib/menu-visibility";
 import { getRepository } from "@/server/repositories";
 import { mapStockErrorToResponse } from "@/server/services/stock";
 import {
-  canAssignLocation,
+  getAssignLocationAccess,
   validateAssignRows,
   buildAssignSnapshot,
 } from "@/lib/assign-location";
@@ -44,13 +45,10 @@ async function handlePOST(req: NextRequest) {
     const actor = await createActorFromSession(req, session);
     if (!session?.user?.id || !actor) return unauthorizedResponse();
 
-    let email: string | null = null;
-    if (actor.role === "ADMIN") {
-      const dbUser = await getRepository().users.findById(session.user.id).catch(() => null);
-      if (!dbUser?.active) return forbiddenResponse("เมนูระบุตำแหน่งสินค้าใช้ได้เฉพาะบัญชีที่กำหนด");
-      email = dbUser.email;
-    }
-    if (!canAssignLocation(actor.role, email)) {
+    // role/email/เมนูที่ ty ตั้งให้ อ่านจาก DB (ติ๊กให้เพิ่มหรือเอาออกได้ในตั้งค่าเมนูผู้ใช้)
+    const dbUser = await getRepository().users.findById(session.user.id).catch(() => null);
+    if (!dbUser?.active) return forbiddenResponse("เมนูระบุตำแหน่งสินค้าใช้ได้เฉพาะบัญชีที่กำหนด");
+    if (dbUser.role !== actor.role || !getAssignLocationAccess(dbUser.role, dbUser.email, parseMenuHrefs(dbUser.menu_hrefs)).assign) {
       return forbiddenResponse("เมนูระบุตำแหน่งสินค้าใช้ได้เฉพาะพนักงานและบัญชีผู้ดูแลที่กำหนด");
     }
 

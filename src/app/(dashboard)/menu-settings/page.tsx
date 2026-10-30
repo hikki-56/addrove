@@ -7,6 +7,7 @@ import type { UserRole } from "@/types/models";
 import { M3Banner, M3Empty, M3ErrorState, M3Loading } from "@/components/ui/m3";
 import { SolarAltArrowRight, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
 import { avatarToneClass, userInitials } from "@/components/ui/user-initials";
+import { ASSIGN_MENU_HREFS, menuExclusion } from "@/lib/assign-location";
 
 // ป้ายบทบาท + กลุ่มเมนู ใช้แสดงผลเท่านั้น (ลำดับ/สิทธิ์ยังมาจาก available_menus เดิม)
 const ROLE_LABEL: Partial<Record<UserRole, string>> = {
@@ -66,7 +67,7 @@ export default function MenuSettingsPage() {
     const target = users.find(({ user_id }) => user_id === id);
     setSelectedId(id);
     const available = new Set(target?.available_menus.filter(({ locked }) => !locked).map(({ href }) => href));
-    setSelectedHrefs((target?.menu_hrefs ?? target?.default_menu_hrefs ?? []).filter((href) => available.has(href)));
+    setSelectedHrefs((target?.current_menu_hrefs ?? target?.default_menu_hrefs ?? []).filter((href) => available.has(href)));
     setError("");
     setMessage("");
   };
@@ -86,7 +87,7 @@ export default function MenuSettingsPage() {
       if (!res.ok || !json.success) throw new Error(json.message || "บันทึกไม่สำเร็จ");
       const updated: UserMenuSettings = json.data;
       setUsers((previous) => previous.map((item) => item.user_id === updated.user_id ? updated : item));
-      setSelectedHrefs(updated.menu_hrefs ?? updated.default_menu_hrefs);
+      setSelectedHrefs(updated.current_menu_hrefs ?? updated.default_menu_hrefs);
       setMessage(`บันทึกเมนูของ ${updated.full_name} แล้ว`);
       window.dispatchEvent(new Event("stockify-menu-settings-updated"));
     } catch (err) {
@@ -238,7 +239,7 @@ export default function MenuSettingsPage() {
 
                 <div className="m3-card flex flex-wrap items-center justify-end gap-3 p-4 sm:px-5 max-sm:sticky max-sm:bottom-3">
                   <button type="button" disabled={saving} onClick={() => void save(null)} className="m3-btn m3-btn-outline h-11 px-5 cursor-pointer disabled:opacity-48 max-sm:flex-1">คืนค่าเมนูเริ่มต้น</button>
-                  <button type="button" disabled={saving} onClick={() => void save(selectedHrefs)} className="m3-btn m3-btn-primary h-11 gap-2 px-5 cursor-pointer disabled:opacity-48 max-sm:flex-1">
+                  <button type="button" disabled={saving} onClick={() => void save([...selectedHrefs, ...ASSIGN_MENU_HREFS.filter((href) => !selectedHrefs.includes(href)).map(menuExclusion)])} className="m3-btn m3-btn-primary h-11 gap-2 px-5 cursor-pointer disabled:opacity-48 max-sm:flex-1">
                     {saving ? <span aria-hidden="true" className="inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent" /> : <SolarCheckCircle size={18} />}
                     {saving ? "กำลังบันทึก..." : "บันทึกเมนู"}
                   </button>

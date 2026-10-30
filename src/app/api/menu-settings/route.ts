@@ -4,6 +4,7 @@ import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
 import { canManageUserMenus } from "@/lib/menu-visibility";
 import { clearMenuGrantCache } from "@/server/security/menu-grants";
+import { ASSIGN_MENU_HREFS, menuExclusion } from "@/lib/assign-location";
 import { toUserMenuSettings } from "@/server/services/menu-settings.service";
 import { withStorageRequest } from "@/server/storage-transaction";
 import { successResponse, unauthorizedResponse, forbiddenResponse, notFoundResponse, errorResponse, zodErrorResponse, serverErrorResponse } from "@/server/api-response";
@@ -37,6 +38,8 @@ async function handlePATCH(req: NextRequest) {
     const target = await repo.users.findById(input.user_id);
     if (!target) return notFoundResponse("ไม่พบข้อมูลพนักงาน");
     const available = new Set(toUserMenuSettings(target).available_menus.filter(({ locked }) => !locked).map(({ href }) => href));
+    // "เอาออก" เมนูระบุตำแหน่งที่บทบาทเห็นเป็นค่าเริ่มต้น
+    for (const href of ASSIGN_MENU_HREFS) available.add(menuExclusion(href));
     if (input.menu_hrefs?.some((href) => !available.has(href))) {
       return errorResponse("มีเมนูที่ไม่อยู่ในสิทธิ์ของพนักงานคนนี้");
     }
