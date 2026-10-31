@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { detectWarehouseCode, normalizeWarehouseId } from "@/lib/warehouse-utils";
 import { decode } from "next-auth/jwt";
 import { getAuthSecret } from "@/server/server-secrets";
+import { isPublicPath } from "@/lib/public-paths";
 
 async function isValidSessionToken(token: string): Promise<boolean> {
   for (const salt of ["authjs.session-token", "next-auth.session-token"]) {
@@ -24,18 +25,8 @@ async function isValidSessionToken(token: string): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow root, login, employee-login, warehouses/qr, static files, system health, and auth API endpoints
-  if (
-    pathname === "/" ||
-    pathname === "/login" ||
-    pathname === "/employee-login" ||
-    pathname === "/admin-login" ||
-    pathname === "/warehouses/qr" ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/system") ||
-    pathname.startsWith("/_next") ||
-    pathname.includes(".")
-  ) {
+  // หน้า login, auth API, system health และไฟล์ static — ดู isPublicPath
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
