@@ -402,7 +402,7 @@ export default function ReceiveLineItem({
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div
-              className="hidden items-baseline gap-1 rounded-lg bg-m3-grey-100 px-2.5 py-1.5 text-m3-grey-600 sm:flex"
+              className="flex items-baseline gap-1 rounded-lg bg-m3-grey-100 px-2 py-1 text-m3-grey-600 sm:px-2.5 sm:py-1.5"
               title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} ${packSize ? "แพ็ก" : "กล่อง"}`}
             >
               <span className="font-m3-disp text-base font-bold tabular-nums">{(currentBoxes || 0).toLocaleString()}</span>
