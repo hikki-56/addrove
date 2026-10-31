@@ -19,7 +19,7 @@
 | `production-schema-p1.gs` | `scripts/migrations/production-schema-p1/production-schema-p1.gs` | สคริปต์ migration (Apps Script) — `dryRun()` / `applyMigration()` / `verifyMigration()` / `rollbackMigration()` |
 | `test/run-mock-tests.js` | `scripts/migrations/production-schema-p1/test/run-mock-tests.js` | ชุดทดสอบออฟไลน์ (`node test/run-mock-tests.js`) |
 | `test/print-dry-run.js` | `.../test/print-dry-run.js` | พิมพ์ผล dry run จาก fixture |
-| `test/fixture-live-2026-10-08.json` | `.../test/fixture-live-2026-10-08.json` | fixture จาก export วันนี้ (เฉพาะแท็บผลิต/BOM/โกดัง 9 คอลัมน์แรก — ไม่มี USERS/credential) |
+| `test/fixture-sample.json` | `.../test/fixture-sample.json` | fixture ข้อมูลปลอม โครงสร้างหัวคอลัมน์เหมือนชีตจริง (ไฟล์ export จริง `fixture-live-*.json` เก็บไว้ในเครื่องเท่านั้น ห้าม commit) |
 | `test/sample-dry-run-output*.txt` | `.../test/` | ตัวอย่างผล dry run (ค่าเริ่มต้น / เปิด renumber) |
 | `phase2/README.md`, `phase2/google-apps-script.phase2.patch`, `phase2/production-command.gs`, `phase2/test/run-phase2-tests.js` | `.../phase2/` | **PHASE 2: DO NOT APPLY OR DEPLOY WITHOUT USER APPROVAL** — action `productionCommand` สำหรับ Apps Script หลัก (ยังไม่ apply) |
 

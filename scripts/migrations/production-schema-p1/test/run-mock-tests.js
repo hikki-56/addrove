@@ -8,7 +8,7 @@ const vm = require('vm');
 const assert = require('assert');
 
 const GS = fs.readFileSync(path.join(__dirname, '..', 'production-schema-p1.gs'), 'utf8');
-const FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixture-live-2026-10-08.json'), 'utf8'));
+const FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixture-sample.json'), 'utf8'));
 const LIVE_ID = '1tsndbJWnXPvY3_LQhtzVNPRMJxqjan3ScQXSvIUKPg4';
 
 function revive(v) { return v && typeof v === 'object' && v.__date ? new Date(v.__date + 'T00:00:00+07:00') : v; }

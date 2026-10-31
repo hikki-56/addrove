@@ -1,16 +1,16 @@
-=== DRY RUN — PRD-SCHEMA-P1 on "ไฟ (COPY for migration test)" (1COPYcopyCOPYcopyCOPYcopyCOPYcopyCOPYcopy00)
+=== DRY RUN โ€” PRD-SCHEMA-P1 on "เนเธ (COPY for migration test)" (1COPYcopyCOPYcopyCOPYcopyCOPYcopyCOPYcopy00)
 Options: {"renumberDuplicateJobNo":false,"normalizeProductionDate":true,"applyDataValidation":true,"strictValidation":false,"applyProtection":false,"force":false}
 ABORTS (0): []
-WARNINGS (1): ["Duplicate job_no left as-is (renumberDuplicateJobNo=false): [{\"job_no\":\"PRD-20261007-000001\",\"rows\":[2,3],\"job_ids\":[\"prj-84fa5197-fd44-45e7-8f21-3e14ba4e5cec\",\"prj-6bad8ab8-f009-4cd9-9014-902e2f5adad8\"]}]"]
+WARNINGS (1): ["Duplicate job_no left as-is (renumberDuplicateJobNo=false): [{\"job_no\":\"PRD-20261007-000001\",\"rows\":[2,3],\"job_ids\":[\"prj-sample-0001\",\"prj-sample-0002\"]}]"]
 ACTIONS (31):
   ensureGridColumns ProductionJobs
-  writeHeaders ProductionJobs ["version","ทศนิยมที่อนุญาต","ลบร่างเมื่อ"]
-  createTab ProductionReports ["report_id","เลขใบสั่งผลิต","รอบที่","ชนิด","ประเภทรายงาน","ผลิตดี","ของเสีย","สาเหตุของเสีย","เหตุผล","หมายเหตุ","ลิงก์รูปภาพ","ผู้รายงาน","ชื่อผู้รายงาน","รายงานเมื่อ","ดีสะสม","เสียสะสม","idempotency_key","สถานะรายงาน","job_id","ดีสะสมก่อน","เสียสะสมก่อน","สถานะงานก่อน","สถานะงานหลัง","version งานหลังบันทึก","โกดังรับเข้า","คีย์ movement สต๊อก","สถานะลงสต๊อก","หน่วย"]
-  writeHeaders ProductionHistory ["job_id","version ก่อน","version หลัง","คีย์คำขอ"]
-  createTab ProductionNotifications ["notif_id","ถึงบทบาท","เลขใบสั่งผลิต","ข้อความ","สร้างเมื่อ","ผู้แจ้ง","อ่านแล้วโดย (JSON)","ประเภท","ข้อมูลประกอบ (JSON)","job_id","คีย์กันแจ้งซ้ำ","ถึงผู้ใช้"]
-  createTab ProductionCounters ["counter_key","เลขล่าสุด","อัปเดตเมื่อ","อัปเดตโดย"]
-  createTab ProductionUnitRules ["หน่วย","ทศนิยมที่อนุญาต","สถานะยืนยัน","หมายเหตุ","อัปเดตเมื่อ"]
-  seedRows ProductionUnitRules (11 rows)
+  writeHeaders ProductionJobs ["version","เธ—เธจเธเธดเธขเธกเธ—เธตเนเธญเธเธธเธเธฒเธ•","เธฅเธเธฃเนเธฒเธเน€เธกเธทเนเธญ"]
+  createTab ProductionReports ["report_id","เน€เธฅเธเนเธเธชเธฑเนเธเธเธฅเธดเธ•","เธฃเธญเธเธ—เธตเน","เธเธเธดเธ”","เธเธฃเธฐเน€เธ เธ—เธฃเธฒเธขเธเธฒเธ","เธเธฅเธดเธ•เธ”เธต","เธเธญเธเน€เธชเธตเธข","เธชเธฒเน€เธซเธ•เธธเธเธญเธเน€เธชเธตเธข","เน€เธซเธ•เธธเธเธฅ","เธซเธกเธฒเธขเน€เธซเธ•เธธ","เธฅเธดเธเธเนเธฃเธนเธเธ เธฒเธ","เธเธนเนเธฃเธฒเธขเธเธฒเธ","เธเธทเนเธญเธเธนเนเธฃเธฒเธขเธเธฒเธ","เธฃเธฒเธขเธเธฒเธเน€เธกเธทเนเธญ","เธ”เธตเธชเธฐเธชเธก","เน€เธชเธตเธขเธชเธฐเธชเธก","idempotency_key","เธชเธ–เธฒเธเธฐเธฃเธฒเธขเธเธฒเธ","job_id","เธ”เธตเธชเธฐเธชเธกเธเนเธญเธ","เน€เธชเธตเธขเธชเธฐเธชเธกเธเนเธญเธ","เธชเธ–เธฒเธเธฐเธเธฒเธเธเนเธญเธ","เธชเธ–เธฒเธเธฐเธเธฒเธเธซเธฅเธฑเธ","version เธเธฒเธเธซเธฅเธฑเธเธเธฑเธเธ—เธถเธ","เนเธเธ”เธฑเธเธฃเธฑเธเน€เธเนเธฒ","เธเธตเธขเน movement เธชเธ•เนเธญเธ","เธชเธ–เธฒเธเธฐเธฅเธเธชเธ•เนเธญเธ","เธซเธเนเธงเธข"]
+  writeHeaders ProductionHistory ["job_id","version เธเนเธญเธ","version เธซเธฅเธฑเธ","เธเธตเธขเนเธเธณเธเธญ"]
+  createTab ProductionNotifications ["notif_id","เธ–เธถเธเธเธ—เธเธฒเธ—","เน€เธฅเธเนเธเธชเธฑเนเธเธเธฅเธดเธ•","เธเนเธญเธเธงเธฒเธก","เธชเธฃเนเธฒเธเน€เธกเธทเนเธญ","เธเธนเนเนเธเนเธ","เธญเนเธฒเธเนเธฅเนเธงเนเธ”เธข (JSON)","เธเธฃเธฐเน€เธ เธ—","เธเนเธญเธกเธนเธฅเธเธฃเธฐเธเธญเธ (JSON)","job_id","เธเธตเธขเนเธเธฑเธเนเธเนเธเธเนเธณ","เธ–เธถเธเธเธนเนเนเธเน"]
+  createTab ProductionCounters ["counter_key","เน€เธฅเธเธฅเนเธฒเธชเธธเธ”","เธญเธฑเธเน€เธ”เธ•เน€เธกเธทเนเธญ","เธญเธฑเธเน€เธ”เธ•เนเธ”เธข"]
+  createTab ProductionUnitRules ["เธซเธเนเธงเธข","เธ—เธจเธเธดเธขเธกเธ—เธตเนเธญเธเธธเธเธฒเธ•","เธชเธ–เธฒเธเธฐเธขเธทเธเธขเธฑเธ","เธซเธกเธฒเธขเน€เธซเธ•เธธ","เธญเธฑเธเน€เธ”เธ•เน€เธกเธทเนเธญ"]
+  seedRows ProductionUnitRules (5 rows)
   setTextFormat ProductionJobs col C
   writeCells ProductionJobs (2 cells: normalize production_date)
   writeCells ProductionJobs (4 cells: backfill version/decimal_places)
@@ -34,4 +34,4 @@ ACTIONS (31):
   dataValidation ProductionCounters col B
   dataValidation ProductionUnitRules col B
   dataValidation ProductionUnitRules col C
-FINDINGS: {"duplicateJobId":[],"duplicateJobNo":[{"job_no":"PRD-20261007-000001","rows":[2,3],"job_ids":["prj-84fa5197-fd44-45e7-8f21-3e14ba4e5cec","prj-6bad8ab8-f009-4cd9-9014-902e2f5adad8"]}],"invalidStatus":[],"invalidTable":[],"nonPositiveTarget":[],"badVersion":[],"productionDateNotIso":[],"historyUnlinked":[],"reportFindings":[]}
+FINDINGS: {"duplicateJobId":[],"duplicateJobNo":[{"job_no":"PRD-20261007-000001","rows":[2,3],"job_ids":["prj-sample-0001","prj-sample-0002"]}],"invalidStatus":[],"invalidTable":[],"nonPositiveTarget":[],"badVersion":[],"productionDateNotIso":[],"historyUnlinked":[],"reportFindings":[]}

@@ -1,4 +1,4 @@
-// Prints the dry-run log the migration would produce on a copy of the live sheet (fixture as of 2026-10-08).
+// Prints the dry-run log the migration would produce on a copy of the live sheet (synthetic sample fixture with the same shape as the live sheet).
 // Repo destination: scripts/migrations/production-schema-p1/test/print-dry-run.js
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');

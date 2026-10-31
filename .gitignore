@@ -73,3 +73,6 @@ Desktop.ini
 # local archives / exports
 *.bundle
 
+
+# real Sheet exports must never be committed
+scripts/migrations/**/fixture-live-*.json
