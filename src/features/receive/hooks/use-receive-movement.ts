@@ -234,7 +234,7 @@ export function useReceiveMovement({
       setError("");
     }
     return packSize > 0
-      ? `เพิ่ม 1 แพ็ก (${packSize} ${product.base_unit}) — รวม ${qty} ${product.base_unit}`
+      ? `เพิ่ม 1 กล่อง (${packSize} ${product.base_unit}) — รวม ${qty} ${product.base_unit}`
       : `รวม ${boxes} กล่อง — ยังไม่มีจำนวนบรรจุ กรุณากรอกจำนวนเอง`;
   }, [getValues, setValue, moveLineToTop, insertLine]);
 

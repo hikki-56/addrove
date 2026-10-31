@@ -403,10 +403,10 @@ export default function ReceiveLineItem({
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div
               className="flex items-baseline gap-1 rounded-lg bg-m3-grey-100 px-2 py-1 text-m3-grey-600 sm:px-2.5 sm:py-1.5"
-              title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} ${packSize ? "แพ็ก" : "กล่อง"}`}
+              title={`สแกนไปแล้ว ${(currentBoxes || 0).toLocaleString()} กล่อง`}
             >
               <span className="font-m3-disp text-base font-bold tabular-nums">{(currentBoxes || 0).toLocaleString()}</span>
-              <span className="text-xs">{packSize ? "แพ็ก" : "กล่อง"}</span>
+              <span className="text-xs">กล่อง</span>
             </div>
 
             <div className="flex items-baseline gap-1 text-m3-grey-800">
@@ -425,11 +425,11 @@ export default function ReceiveLineItem({
       {isExpanded && (
         <div className="fade-in space-y-3 border-t border-dashed border-[rgba(145,158,171,0.32)] px-4 pt-4 pb-4 sm:px-5 sm:pb-5">
           {packSize ? (
-            <span className="m3-label m3-label-info">แพ็ก {packSize.toLocaleString()} {baseUnit}</span>
+            <span className="m3-label m3-label-info">กล่อง {packSize.toLocaleString()} {baseUnit}</span>
           ) : null}
           <p className="text-sm text-m3-grey-600">
             {packSize
-              ? `สแกน 1 ครั้ง = 1 แพ็ก (${packSize.toLocaleString()} ${baseUnit}) · แก้จำนวนตามของจริงได้`
+              ? `สแกน 1 ครั้ง = 1 กล่อง (${packSize.toLocaleString()} ${baseUnit}) · แก้จำนวนตามของจริงได้`
               : "ยังไม่มีจำนวนบรรจุ — กรุณากรอกจำนวนตามของจริง"}
           </p>
           {renderSlot({
