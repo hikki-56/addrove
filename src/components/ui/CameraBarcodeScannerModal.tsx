@@ -6,11 +6,6 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
-interface DetectedBarcode { rawValue: string }
-type BarcodeDetectorConstructor = new (options: { formats: string[] }) => {
-  detect: (image: HTMLImageElement) => Promise<DetectedBarcode[]>;
-};
-
 interface CameraBarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,7 +24,6 @@ export default function CameraBarcodeScannerModal({
   feedbackHandledByCaller = false,
   feedback,
 }: CameraBarcodeScannerModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const [cameraError, setCameraError] = useState<string>("");
@@ -39,7 +33,6 @@ export default function CameraBarcodeScannerModal({
   const [scanError, setScanError] = useState<ScanFeedback | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const processingRef = useRef(false);
-  const fileScanRef = useRef(false);
   const callbacksRef = useRef({ onScan, onScanSuccess, onClose, feedbackHandledByCaller });
 
   useEffect(() => {
@@ -149,7 +142,7 @@ export default function CameraBarcodeScannerModal({
             aspectRatio: 1.777778,
           },
           (decodedText) => {
-            if (isSubscribed && decodedText && !processingRef.current && !fileScanRef.current) {
+            if (isSubscribed && decodedText && !processingRef.current) {
               const now = Date.now();
               // Prevent duplicate camera triggers for same code within 1.5 seconds in continuous mode
               if (
@@ -175,7 +168,7 @@ export default function CameraBarcodeScannerModal({
         console.warn("Live camera start failed:", err);
         if (isSubscribed) {
           setCameraError(
-            "ไม่สามารถเปิดวิดีโอกล้องสดบน HTTP หรือเบราว์เซอร์นี้ได้ โปรดใช้ปุ่ม '📷 ถ่ายรูปด้วยกล้องมือถือ' เพื่อถ่ายสแกนด่วน"
+            "ไม่สามารถเปิดวิดีโอกล้องสดบน HTTP หรือเบราว์เซอร์นี้ได้ โปรดพิมพ์รหัสบาร์โค้ดด้านล่าง หรือลองเปิดกล้องอีกครั้ง"
           );
         }
       }
@@ -192,72 +185,10 @@ export default function CameraBarcodeScannerModal({
     };
   }, [isOpen, submitScan]);
 
-  // Decode barcode from captured photo file using Html5Qrcode scanFile
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const input = e.currentTarget;
-    if (!file || processingRef.current || fileScanRef.current) return;
-    prepareFeedbackAudio();
-    fileScanRef.current = true;
-    setIsProcessing(true);
-    setScanError(null);
-    let decodedText = "";
-    let tempScanner: Html5Qrcode | null = null;
-
-    try {
-      const { Html5Qrcode } = await import("html5-qrcode");
-      tempScanner = new Html5Qrcode("html5qr-temp-file-reader");
-      decodedText = await tempScanner.scanFile(file, false);
-    } catch (err) {
-      console.warn("Html5Qrcode scanFile error:", err);
-    } finally {
-      try {
-        tempScanner?.clear();
-      } catch (err) {
-        console.warn("Photo scanner cleanup error:", err);
-      }
-    }
-
-    // Secondary fallback using BarcodeDetector API if available
-    let objectUrl: string | undefined;
-    try {
-      const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
-      if (!decodedText && Detector) {
-        const img = new Image();
-        objectUrl = URL.createObjectURL(file);
-        img.src = objectUrl;
-        await img.decode();
-        const formats = ["qr_code", "ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e"];
-        const detector = new Detector({ formats });
-        const barcodes = await detector.detect(img);
-
-        if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-          decodedText = barcodes[0].rawValue;
-        }
-      }
-    } catch (err) {
-      console.warn("BarcodeDetector fallback error:", err);
-    } finally {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      input.value = "";
-      fileScanRef.current = false;
-      setIsProcessing(false);
-    }
-
-    if (decodedText) {
-      await submitScan(decodedText, true);
-    } else {
-      feedbackError();
-      setScanError({ type: "error", message: "สแกนไม่เข้า: ไม่พบบาร์โค้ดในรูป กรุณาถ่ายใหม่ให้รหัสสว่างและชัดเจน หรือพิมพ์รหัสด้านล่าง" });
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
     <div onPointerDownCapture={prepareFeedbackAudio} onKeyDownCapture={prepareFeedbackAudio} className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-m3-grey-800/50 fade-in">
-      {/* Hidden container required by Html5Qrcode.scanFile */}
-      <div id="html5qr-temp-file-reader" className="hidden" />
 
       <div className="relative w-full max-w-lg bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-hidden flex flex-col max-h-[90dvh]">
         {/* Header */}
@@ -313,17 +244,6 @@ export default function CameraBarcodeScannerModal({
               </div>
               <p className="text-xs text-m3-grey-600 leading-relaxed font-medium max-w-xs">{cameraError}</p>
 
-              {/* Native mobile camera capture button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 px-4 rounded-xl bg-m3-primary hover:bg-m3-primary-darker text-white font-bold text-sm shadow-md shadow-m3-primary/20 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                </svg>
-                <span>📷 ถ่ายรูปสแกนบาร์โค้ดด้วยกล้องมือถือ</span>
-              </button>
             </div>
           )}
         </div>
@@ -337,30 +257,6 @@ export default function CameraBarcodeScannerModal({
           <div role="status" aria-live="polite">
             <ScanFeedbackBanner feedback={scanError || feedback || null} />
           </div>
-          {/* Native camera file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            disabled={isProcessing}
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-m3-grey-200 border border-[rgba(145,158,171,0.2)] text-xs font-bold text-m3-grey-700 cursor-pointer transition-all shadow-xs active:scale-95"
-            >
-              <svg className="w-4 h-4 text-m3-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              </svg>
-              <span>📷 ถ่ายรูปสแกนบาร์โค้ดด้วยกล้องมือถือ</span>
-            </button>
-          </div>
-
           {/* Manual Input Fallback */}
           <div className="flex gap-2">
             <input
