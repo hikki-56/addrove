@@ -25,6 +25,7 @@ function menuGroup(href: string): string {
   if (href === "/dashboard") return "ภาพรวม";
   if (INVENTORY_HREFS.includes(href)) return "คลังสินค้า";
   if (href.startsWith("/outbound")) return "ส่งของออก";
+  if (href.startsWith("/production")) return "การผลิต";
   if (href.startsWith("/express-import")) return "นำเข้า Express";
   if (SYSTEM_HREFS.includes(href)) return "ระบบ";
   return "การทำรายการ";

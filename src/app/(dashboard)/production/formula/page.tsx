@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { M3Banner, M3Empty, M3ErrorState, M3Field, M3IconCircle, M3Loading, m3Cls } from "@/components/ui/m3";
 import { SolarAddLine, SolarCloseCircle, SolarDangerCircle, SolarMagnifier, SolarPen } from "@/components/icons";
-import { canEditBom, filterBomFormulas, validateBomDraft, type BomEditorFormula, type BomEditorItem } from "@/lib/bom-editor";
+import { canAccessBomEditor, canEditBom, filterBomFormulas, validateBomDraft, type BomEditorFormula, type BomEditorItem } from "@/lib/bom-editor";
+import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 
-// แก้ไขสูตร BOM — เฉพาะบัญชี BOM_EDITOR_EMAIL (เซิร์ฟเวอร์ตรวจซ้ำที่ /api/production/boms/editor)
+// แก้ไขสูตร BOM — typo เสมอ หรือบัญชีที่ถูกติ๊กเมนูนี้ (เซิร์ฟเวอร์ตรวจซ้ำที่ /api/production/boms/editor)
 interface DraftItem extends Omit<BomEditorItem, "qty" | "waste_percentage"> { key: string; qty: string; waste_percentage: string }
 interface Draft { unit: string; base_qty: string; items: DraftItem[] }
 
@@ -19,7 +20,8 @@ const toDraft = (f: BomEditorFormula): Draft => ({
 
 export default function BomFormulaEditorPage() {
   const { user, status } = useTabAuth();
-  const allowed = canEditBom(user?.email);
+  const { menu_hrefs, loaded: menusLoaded } = useMenuVisibility();
+  const allowed = canAccessBomEditor(user?.email, menu_hrefs);
   const [formulas, setFormulas] = useState<BomEditorFormula[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -92,7 +94,7 @@ export default function BomFormulaEditorPage() {
     }
   };
 
-  if (status === "loading") return <M3Loading label="กำลังตรวจสอบสิทธิ์…" />;
+  if (status === "loading" || (user && !canEditBom(user.email) && !menusLoaded)) return <M3Loading label="กำลังตรวจสอบสิทธิ์…" />;
   if (!allowed) {
     return (
       <div className="w-full max-w-full pb-8">

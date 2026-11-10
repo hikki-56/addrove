@@ -11,10 +11,23 @@ test("only menus outside the role grant extra permissions", () => {
   expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/express-import/receive"])).toEqual([PERMISSIONS.EXPRESS_IMPORT_VIEW, PERMISSIONS.EXPRESS_IMPORT_MANAGE]);
 });
 
+test("ticking the BOM editor menu does not grant production planning permissions", () => {
+  expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/production/formula"])).toEqual([]);
+  expect(getGrantedPermissions("ADMIN", ["/production/formula"])).toEqual([]);
+  expect(getGrantedMenuHrefs("WAREHOUSE_STAFF", ["/production/formula"])).toEqual([]);
+});
+
 test("system menus and unknown hrefs never grant anything", () => {
-  expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/users", "/login-logs", "/menu-settings", "/unknown"])).toEqual([]);
+  expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/users", "/login-logs", "/users/cards", "/menu-settings", "/unknown"])).toEqual([]);
   expect(getGrantedPermissions("WAREHOUSE_STAFF", null)).toEqual([]);
   expect(getGrantedPermissions("WAREHOUSE_STAFF", "not-json")).toEqual([]);
+});
+
+test("ticking express transfer or outbound upload grants the matching API permissions", () => {
+  expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/express-import/transfer"])).toEqual([PERMISSIONS.EXPRESS_IMPORT_VIEW, PERMISSIONS.EXPRESS_IMPORT_MANAGE]);
+  expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/outbound/upload"])).toEqual([PERMISSIONS.STOCK_VIEW, PERMISSIONS.OUTBOUND_IMPORT]);
+  // already in the VIEWER role default — must not escalate
+  expect(getGrantedPermissions("VIEWER", ["/outbound/upload"])).toEqual([PERMISSIONS.STOCK_VIEW, PERMISSIONS.OUTBOUND_IMPORT]);
 });
 
 test("authorize honors explicit grants but still enforces warehouse access", () => {

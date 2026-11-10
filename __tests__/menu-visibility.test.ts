@@ -22,6 +22,10 @@ test("unset settings preserve existing menus; empty settings hide all optional m
   expect(hrefs(owner, [])).toEqual([ASSIGN_LOCATION_HREF, ASSIGN_LOCATION_REQUESTS_HREF, BOM_EDITOR_HREF, MENU_SETTINGS_HREF]);
   expect(hrefs(admin, null)).not.toContain(ASSIGN_LOCATION_HREF);
   expect(hrefs(admin, null)).not.toContain(BOM_EDITOR_HREF);
+  expect(hrefs(admin, [BOM_EDITOR_HREF])).toEqual([BOM_EDITOR_HREF]);
+  expect(hrefs(owner, null)).toContain(BOM_EDITOR_HREF);
+  expect(hrefs(owner, ["/products"])).toEqual(expect.arrayContaining(["/products", BOM_EDITOR_HREF]));
+  expect(hrefs(owner, ["/products"]).filter((href) => href === BOM_EDITOR_HREF)).toHaveLength(1);
   expect(getVisibleNavItems(owner, [], false)).toEqual([]);
 });
 
@@ -37,10 +41,17 @@ test("every non-system menu is selectable for every role; ticking one outside th
   expect(getVisibleNavItems(staff, null).map(({ href }) => href)).toContain(ASSIGN_LOCATION_HREF);
   expect(getVisibleNavItems(staff, null).map(({ href }) => href)).not.toContain("/express-import/issue");
   expect(getSelectableMenuItems(staff).some(({ href }) => href === "/movements/receive")).toBe(false);
-  expect(getSelectableMenuItems(staff).map(({ href }) => href)).toEqual(expect.arrayContaining(["/staff/receive", "/approvals", "/locations", "/production"]));
+  expect(getSelectableMenuItems(staff).map(({ href }) => href)).toEqual(expect.arrayContaining(["/staff/receive", "/approvals", "/locations", "/production", "/express-import/transfer", "/outbound/upload", BOM_EDITOR_HREF]));
+  expect(hrefs(staff, [BOM_EDITOR_HREF])).toContain(BOM_EDITOR_HREF);
+  expect(hrefs(staff, null)).not.toContain(BOM_EDITOR_HREF);
   expect(getSelectableMenuItems(staff).map(({ href }) => href)).not.toContain("/users");
+  expect(getSelectableMenuItems(staff).map(({ href }) => href)).not.toContain("/users/cards");
+  expect(hrefs(staff, ["/outbound/upload", "/express-import/transfer"])).toEqual(expect.arrayContaining(["/outbound/upload", "/express-import/transfer"]));
+  expect(hrefs(admin, null)).not.toContain("/outbound/upload");
+  expect(hrefs(admin, null)).toContain("/express-import/transfer");
   expect(hrefs(admin, ["/users", "/login-logs"])).toEqual([]);
   expect(hrefs(owner, ["/users"])).toContain("/users");
+  expect(hrefs(owner, ["/users/cards"])).toContain("/users/cards");
 });
 
 test("APPROVER keeps its two default menus and can be granted any other", () => {

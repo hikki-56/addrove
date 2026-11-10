@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthSession } from "@/server/auth-session";
 import { getRepository } from "@/server/repositories";
-import { canEditBom, validateBomDraft } from "@/lib/bom-editor";
+import { canAccessBomEditor, validateBomDraft } from "@/lib/bom-editor";
+import { parseMenuHrefs } from "@/lib/menu-visibility";
 import { forbiddenResponse, unauthorizedResponse, errorResponse } from "@/server/api-response";
 import { withStorageRequest } from "@/server/storage-transaction";
 import { parseBody, productionErrorResponse } from "@/server/production/production-route-helpers";
@@ -30,7 +31,9 @@ async function guardBomEditor(req: NextRequest): Promise<NextResponse | null> {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return unauthorizedResponse();
   const actor = await getRepository().users.findById(session.user.id);
-  if (!actor?.active || !canEditBom(actor.email)) return forbiddenResponse("เมนูแก้ไขสูตร BOM ใช้ได้เฉพาะบัญชีผู้ดูแลที่กำหนด");
+  if (!actor?.active || !canAccessBomEditor(actor.email, parseMenuHrefs(actor.menu_hrefs))) {
+    return forbiddenResponse("เมนูแก้ไขสูตร BOM ใช้ได้เฉพาะบัญชีที่กำหนด หรือที่ได้รับเมนูนี้ในตั้งค่าเมนูผู้ใช้");
+  }
   return null;
 }
 

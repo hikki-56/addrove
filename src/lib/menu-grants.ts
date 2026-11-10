@@ -22,6 +22,7 @@ export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/production": [P.PRODUCTION_VIEW, P.PRODUCTION_MANAGE],
   "/production/jobs": [P.PRODUCTION_VIEW, P.PRODUCTION_REPORT],
   "/production/summary": [P.PRODUCTION_VIEW],
+  // แก้สูตร BOM ตรวจจากเมนูที่ติ๊ก / typo โดยตรงใน /api/production/boms/editor — ไม่ให้ PRODUCTION_MANAGE
   "/movements/move": MOVE,
   "/staff/move": MOVE,
   "/movements/transfer": TRANSFER,
@@ -41,6 +42,8 @@ export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/shelves/qr": [P.STOCK_VIEW, P.LOCATION_MANAGE],
   "/express-import/receive": EXPRESS,
   "/express-import/issue": EXPRESS,
+  "/express-import/transfer": EXPRESS,
+  "/outbound/upload": [P.STOCK_VIEW, P.OUTBOUND_IMPORT],
 };
 
 /** เมนูที่ติ๊กให้แต่ไม่อยู่ในบทบาท (= การให้สิทธิ์เพิ่ม) */

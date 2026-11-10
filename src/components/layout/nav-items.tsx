@@ -128,7 +128,7 @@ export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, 
   }
   // "แก้ไขสูตร BOM" ผูกกับบัญชีเดียว ไม่ขึ้นกับการตั้งค่าเมนูรายผู้ใช้
   // (ต้องให้เซิร์ฟเวอร์ยืนยันบัญชีผ่าน can_manage ด้วย — ไม่เชื่อ email ฝั่ง client อย่างเดียว)
-  if (canManage && canEditBom(user.email)) {
+  if (canManage && canEditBom(user.email) && !visible.some((item) => item.href === BOM_EDITOR_HREF)) {
     visible.push({
       href: BOM_EDITOR_HREF,
       label: "แก้ไขสูตร BOM",
@@ -246,6 +246,18 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    // ค่าเริ่มต้นปิดทุกบทบาท — typo เห็นเมนูนี้เสมอจากบล็อก canEditBom ใน getVisibleNavItems
+    href: "/production/formula",
+    label: "แก้ไขสูตร BOM",
+    icon: (
+      <Icon>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </Icon>
+    ),
+    roles: [],
+  },
+  {
     href: "/movements/move",
     label: "จัดตำแหน่งสินค้า",
     icon: (
@@ -326,6 +338,20 @@ export const navItems: NavItem[] = [
       </Icon>
     ),
     roles: ["ADMIN", "MANAGER", "VIEWER"],
+  },
+  {
+    // ค่าเริ่มต้นปิดทุกบทบาท (ไม่โผล่ sidebar จนกว่าจะติ๊ก) — หน้านี้เข้าได้จากปุ่มใน /outbound อยู่แล้ว
+    href: "/outbound/upload",
+    label: "นำเข้าบิลจากไฟล์ Express",
+    icon: (
+      <Icon>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 2v6h6" />
+        <path d="M12 18v-6" />
+        <path d="m9 15 3-3 3 3" />
+      </Icon>
+    ),
+    roles: [],
   },
   {
     href: "/outbound/work-orders",
@@ -522,11 +548,36 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    href: "/users/cards",
+    label: "บัตรบาร์โค้ดพนักงาน",
+    icon: (
+      <Icon>
+        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z" />
+        <path d="M16 11h.01" />
+        <path d="M12 11H8" />
+      </Icon>
+    ),
+    roles: ["ADMIN"],
+  },
+  {
     href: "/express-import/receive",
     label: "รับสินค้า เข้า Express",
     icon: (
       <Icon>
         <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+      </Icon>
+    ),
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/express-import/transfer",
+    label: "ย้ายสินค้า เข้า Express",
+    icon: (
+      <Icon>
+        <path d="M8 7h12" />
+        <path d="m16 3 4 4-4 4" />
+        <path d="M16 17H4" />
+        <path d="m8 21-4-4 4-4" />
       </Icon>
     ),
     roles: ["ADMIN"],

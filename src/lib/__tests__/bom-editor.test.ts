@@ -1,4 +1,4 @@
-import { BOM_EDITOR_EMAIL, canEditBom, filterBomFormulas, validateBomDraft, type BomEditorInput } from "@/lib/bom-editor";
+import { BOM_EDITOR_EMAIL, BOM_EDITOR_HREF, canAccessBomEditor, canEditBom, filterBomFormulas, validateBomDraft, type BomEditorInput } from "@/lib/bom-editor";
 
 const base = (): BomEditorInput => ({
   bom_id: "BOM-1", revision: "r1", unit: "ชุด", base_qty: 1,
@@ -13,6 +13,13 @@ describe("canEditBom", () => {
   });
   it("denies others and missing emails", () => {
     for (const e of ["milk@stockify.com", "ty@stockify.co", "ty", "", null, undefined]) expect(canEditBom(e)).toBe(false);
+  });
+  it("lets typo through always, and others only when the formula menu is granted", () => {
+    expect(canAccessBomEditor("ty@stockify.com", null)).toBe(true);
+    expect(canAccessBomEditor("ty@stockify.com", [])).toBe(true);
+    expect(canAccessBomEditor("staff@stockify.com", null)).toBe(false);
+    expect(canAccessBomEditor("staff@stockify.com", ["/production"])).toBe(false);
+    expect(canAccessBomEditor("staff@stockify.com", [BOM_EDITOR_HREF])).toBe(true);
   });
 });
 

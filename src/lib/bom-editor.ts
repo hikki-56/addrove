@@ -1,11 +1,16 @@
 // สิทธิ์และตรรกะล้วน (pure) ของหน้า "แก้ไขสูตร BOM" — ใช้ร่วมกันทั้ง client และ server
 
-/** บัญชีเดียวที่เห็นเมนูและแก้ไขสูตร BOM ได้ (ตรวจซ้ำฝั่งเซิร์ฟเวอร์ทุกครั้ง) */
+/** บัญชีที่เห็นเมนูและแก้ไขสูตร BOM ได้เสมอ (ตรวจซ้ำฝั่งเซิร์ฟเวอร์ทุกครั้ง) */
 export const BOM_EDITOR_EMAIL = "ty@stockify.com";
 export const BOM_EDITOR_HREF = "/production/formula";
 
 export function canEditBom(email?: string | null): boolean {
   return typeof email === "string" && email.trim().toLowerCase() === BOM_EDITOR_EMAIL;
+}
+
+/** typo เสมอ หรือบัญชีที่ถูกติ๊กเมนูนี้ในตั้งค่าเมนูผู้ใช้ */
+export function canAccessBomEditor(email?: string | null, menuHrefs?: readonly string[] | null): boolean {
+  return canEditBom(email) || !!menuHrefs?.includes(BOM_EDITOR_HREF);
 }
 
 export interface BomEditorItem {

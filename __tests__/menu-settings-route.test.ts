@@ -109,8 +109,25 @@ test("every user gets the full menu catalog; ty-only system menus are listed but
   expect(kaew.available_menus.length).toBe(ownerHrefs.length);
   expect(kaew.available_menus.length).toBeGreaterThan(20);
   expect(kaew.available_menus.find((item: { href: string }) => item.href === "/users")).toMatchObject({ locked: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/users/cards")).toMatchObject({ locked: true });
+  expect(kaew.available_menus.map((item: { href: string }) => item.href)).toEqual(expect.arrayContaining([
+    "/express-import/transfer",
+    "/outbound/upload",
+    "/users/cards",
+    "/production/formula",
+  ]));
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/production/formula")).toMatchObject({ outside_role: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/production/formula").locked).toBeUndefined();
+  const ownerFormula = data[0].available_menus.find((item: { href: string }) => item.href === "/production/formula");
+  expect(ownerFormula?.locked).toBeUndefined();
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/express-import/transfer")).toMatchObject({ outside_role: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/outbound/upload")).toMatchObject({ outside_role: true });
+  expect(kaew.available_menus.find((item: { href: string }) => item.href === "/outbound/upload").locked).toBeUndefined();
   expect(kaew.available_menus.find((item: { href: string }) => item.href === "/movements/receive")).toMatchObject({ outside_role: true });
   expect(kaew.available_menus.find((item: { href: string }) => item.href === "/movements/receive").locked).toBeUndefined();
   expect((await PATCH(request({ user_id: "kaew", menu_hrefs: ["/users"] }))).status).toBe(400);
   expect((await PATCH(request({ user_id: "kaew", menu_hrefs: ["/production/jobs", "/movements/receive"] }))).status).toBe(200);
+  expect((await PATCH(request({ user_id: "kaew", menu_hrefs: ["/production/formula"] }))).status).toBe(200);
+  expect(records.find((u) => u.user_id === "kaew")?.menu_hrefs).toEqual(["/production/formula"]);
+
 });
