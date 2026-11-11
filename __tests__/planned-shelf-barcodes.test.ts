@@ -1,4 +1,4 @@
-import { buildPlannedShelfPrintPages, filterPlannedLocations, getPlannedBuildingFloor } from "@/lib/planned-locations";
+import { buildPlannedShelfPrintPages, buildShelfLetterLabels, filterPlannedLocations, getPlannedBuildingFloor } from "@/lib/planned-locations";
 import type { PlannedLocation } from "@/types/planned-location";
 
 const filters = { warehouse: "", buildingFloor: "", shelfLevel: "", side: "", search: "" };
@@ -7,6 +7,17 @@ const items: PlannedLocation[] = [
   { planned_location_id: "new-b", warehouse_id: "wh-06", warehouse_name: "ออฟฟิศ", warehouse_prefix: "K6", block_number: 31, rack_side: "B", shelf_level: 2, location_code: "K6-31-BL2", description: "ชั้นอาคาร 3", building_floor: 3 },
   { planned_location_id: "new-c", warehouse_id: "wh-01", warehouse_name: "โกดัง 1", warehouse_prefix: "K1", block_number: 22, rack_side: "C", shelf_level: 3, location_code: "K1-22-CL3", description: "", building_floor: null },
 ];
+
+test("standalone letter sheets repeat only selected letters and paginate without losing copies", () => {
+  const labels = buildShelfLetterLabels(["C", "A", "A"], 5);
+  expect(labels).toEqual(["A", "C", "A", "C", "A", "C", "A", "C", "A", "C"]);
+  expect(buildPlannedShelfPrintPages(labels).map((page) => page.length)).toEqual([9, 1]);
+  expect(buildShelfLetterLabels(["A", "B", "C"], 100)).toHaveLength(300);
+  expect(buildShelfLetterLabels([], 3)).toEqual([]);
+  for (const copies of [0, -1, 1.5, 101, Number.NaN, Number.POSITIVE_INFINITY]) {
+    expect(buildShelfLetterLabels(["A"], copies)).toEqual([]);
+  }
+});
 
 test("building floors are read from their description, never guessed from block or shelf numbers", () => {
   expect(getPlannedBuildingFloor("ร่าง | ชั้นอาคาร 2 | ล็อก 22 | ชั้นวาง L1")).toBe(2);

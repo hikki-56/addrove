@@ -8,6 +8,7 @@ import { generateShelfBarcodeStickerDataUrl } from "@/lib/barcode-utils";
 import { filterPlannedLocations, PLANNED_SHELF_SIDE_NAMES, type PlannedLocationFilters } from "@/lib/planned-locations";
 import type { PlannedLocation } from "@/types/planned-location";
 import PlannedShelfPrintPreview from "./PlannedShelfPrintPreview";
+import ShelfLetterLabels from "./ShelfLetterLabels";
 import "./planned-shelf-barcodes.css";
 
 const initialFilters: PlannedLocationFilters = { warehouse: "", buildingFloor: "", shelfLevel: "", side: "", search: "" };
@@ -103,6 +104,7 @@ export default function PlannedShelfBarcodes() {
         </div>
       </section>
 
+      <ShelfLetterLabels />
       {error && <div className="planned-shelf-error" role="alert"><span>{error}</span><button type="button" onClick={() => setReload((n) => n + 1)}>ลองใหม่</button></div>}
       {loading ? <div className="planned-shelf-empty" role="status">กำลังโหลดตำแหน่งชั้นวางชุดใหม่…</div>
         : !error && !filtered.length ? <div className="planned-shelf-panel planned-shelf-empty"><SolarTagBarcode size={44} /><h3>{locations.length ? "ไม่พบตำแหน่งที่ค้นหา" : "ยังไม่มีตำแหน่งชั้นวางชุดใหม่"}</h3><p>{locations.length ? "ลองเปลี่ยนตัวกรองหรือคำค้นหา" : "รายการที่เตรียมไว้จะแสดงในหน้านี้"}</p></div>

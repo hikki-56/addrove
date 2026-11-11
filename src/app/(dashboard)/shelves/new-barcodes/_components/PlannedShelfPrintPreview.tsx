@@ -4,16 +4,18 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { buildPlannedShelfPrintPages } from "@/lib/planned-locations";
+import { buildPlannedShelfPrintPages, type ShelfLetter } from "@/lib/planned-locations";
 import type { PlannedLocation } from "@/types/planned-location";
 
-export default function PlannedShelfPrintPreview({ locations, onClose }: {
-  locations: PlannedLocation[];
+type PlannedShelfPrintPreviewProps = {
   onClose: () => void;
-}) {
+} & ({ locations: PlannedLocation[]; letterLabels?: never } | { letterLabels: ShelfLetter[]; locations?: never });
+
+export default function PlannedShelfPrintPreview({ locations = [], letterLabels, onClose }: PlannedShelfPrintPreviewProps) {
   const root = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
-  const pages = buildPlannedShelfPrintPages(locations);
+  const labels: (PlannedLocation | ShelfLetter)[] = letterLabels ?? locations;
+  const pages = buildPlannedShelfPrintPages(labels);
   useEscapeKey(true, onClose);
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export default function PlannedShelfPrintPreview({ locations, onClose }: {
       }}>
       <div className="planned-shelf-print-toolbar">
         <div>
-          <h2 id="planned-shelf-print-title">ตัวอย่างก่อนพิมพ์บาร์โค้ดชั้นวางใหม่</h2>
-          <p>{locations.length.toLocaleString("th-TH")} ป้าย · {pages.length} หน้า · A4 แนวนอน · 9 ป้ายต่อหน้า</p>
+          <h2 id="planned-shelf-print-title">{letterLabels ? "ตัวอย่างก่อนพิมพ์ป้าย A / B / C" : "ตัวอย่างก่อนพิมพ์บาร์โค้ดชั้นวางใหม่"}</h2>
+          <p>{labels.length.toLocaleString("th-TH")} ป้าย · {pages.length} หน้า · A4 แนวนอน · 9 ป้ายต่อหน้า</p>
         </div>
         <div className="planned-shelf-actions">
           <button type="button" ref={close} className="m3-btn m3-btn-outline" onClick={onClose}>ปิดตัวอย่าง</button>
@@ -53,7 +55,11 @@ export default function PlannedShelfPrintPreview({ locations, onClose }: {
       <div className="planned-shelf-print-pages">
         {pages.map((page, index) => (
           <div className="planned-shelf-print-page" key={index}>
-            {page.map((location) => (
+            {page.map((location, labelIndex) => typeof location === "string" ? (
+              <article className="planned-shelf-print-label planned-shelf-letter-label is-highlighted" key={`${location}-${labelIndex}`}>
+                <strong>{location}</strong>
+              </article>
+            ) : (
               <article className={`planned-shelf-print-label${location.block_number >= 21 && location.block_number <= 23 ? " is-highlighted" : ""}`} key={location.planned_location_id}>
                 <strong aria-label={location.location_code}>
                   <span>{location.warehouse_prefix}</span>
