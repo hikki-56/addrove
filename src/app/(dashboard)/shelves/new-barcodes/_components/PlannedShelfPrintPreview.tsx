@@ -54,7 +54,7 @@ export default function PlannedShelfPrintPreview({ locations, onClose }: {
         {pages.map((page, index) => (
           <div className="planned-shelf-print-page" key={index}>
             {page.map((location) => (
-              <article className="planned-shelf-print-label" key={location.planned_location_id}>
+              <article className={`planned-shelf-print-label${location.block_number >= 21 && location.block_number <= 23 ? " is-highlighted" : ""}`} key={location.planned_location_id}>
                 <strong aria-label={location.location_code}>
                   <span>{location.warehouse_prefix}</span>
                   <span>{location.location_code.slice(location.warehouse_prefix.length + 1)}</span>
