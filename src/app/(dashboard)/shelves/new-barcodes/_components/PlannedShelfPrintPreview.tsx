@@ -9,9 +9,10 @@ import type { PlannedLocation } from "@/types/planned-location";
 
 type PlannedShelfPrintPreviewProps = {
   onClose: () => void;
-} & ({ locations: PlannedLocation[]; letterLabels?: never } | { letterLabels: ShelfLetter[]; locations?: never });
+} & ({ locations: PlannedLocation[]; letterLabels?: never; letterTextColor?: never }
+  | { letterLabels: ShelfLetter[]; locations?: never; letterTextColor?: "black" | "white" });
 
-export default function PlannedShelfPrintPreview({ locations = [], letterLabels, onClose }: PlannedShelfPrintPreviewProps) {
+export default function PlannedShelfPrintPreview({ locations = [], letterLabels, letterTextColor = "black", onClose }: PlannedShelfPrintPreviewProps) {
   const root = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const labels: (PlannedLocation | ShelfLetter)[] = letterLabels ?? locations;
@@ -57,7 +58,7 @@ export default function PlannedShelfPrintPreview({ locations = [], letterLabels,
           <div className="planned-shelf-print-page" key={index}>
             {page.map((location, labelIndex) => typeof location === "string" ? (
               <article className="planned-shelf-print-label planned-shelf-letter-label is-highlighted" key={`${location}-${labelIndex}`}>
-                <strong>{location}</strong>
+                <strong style={{ color: letterTextColor === "white" ? "#fff" : "#000" }}>{location}</strong>
               </article>
             ) : (
               <article className={`planned-shelf-print-label${location.block_number >= 21 && location.block_number <= 23 ? " is-highlighted" : ""}`} key={location.planned_location_id}>

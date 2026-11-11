@@ -8,6 +8,7 @@ import PlannedShelfPrintPreview from "./PlannedShelfPrintPreview";
 export default function ShelfLetterLabels() {
   const [letters, setLetters] = useState<ShelfLetter[]>(["A", "B", "C"]);
   const [copies, setCopies] = useState("3");
+  const [textColor, setTextColor] = useState<"black" | "white">("black");
   const [printing, setPrinting] = useState<ShelfLetter[] | null>(null);
   const labels = buildShelfLetterLabels(letters, Number(copies));
 
@@ -38,9 +39,15 @@ export default function ShelfLetterLabels() {
         <label className="planned-shelf-letter-copies">จำนวนต่ออักษร (1–100)
           <input type="number" min={1} max={100} step={1} value={copies} onChange={(event) => setCopies(event.target.value)} />
         </label>
+        <label className="planned-shelf-letter-copies">สีตัวอักษร
+          <select value={textColor} onChange={(event) => setTextColor(event.target.value === "white" ? "white" : "black")}>
+            <option value="black">สีดำ</option>
+            <option value="white">สีขาว</option>
+          </select>
+        </label>
         <p className="planned-shelf-letter-total" role="status">รวม {labels.length} ป้าย</p>
       </div>
-      {printing && <PlannedShelfPrintPreview letterLabels={printing} onClose={() => setPrinting(null)} />}
+      {printing && <PlannedShelfPrintPreview letterLabels={printing} letterTextColor={textColor} onClose={() => setPrinting(null)} />}
     </section>
   );
 }

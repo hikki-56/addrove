@@ -17,7 +17,7 @@
 .planned-shelf-letter-choices label { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border: 1px solid #dfe3e8; border-radius: 8px; cursor: pointer; }
 .planned-shelf-letter-choices span { font-family: var(--font-barlow),sans-serif; font-size: 28px; font-weight: 800; color: #1c252e; }
 .planned-shelf-letter-copies { display: flex; flex-direction: column; gap: 8px; }
-.planned-shelf-letter-copies input { width: 150px; height: 46px; border: 1px solid #dfe3e8; border-radius: 8px; padding: 0 12px; font-size: 16px; color: #1c252e; background: white; }
+.planned-shelf-letter-copies input, .planned-shelf-letter-copies select { width: 150px; height: 46px; border: 1px solid #dfe3e8; border-radius: 8px; padding: 0 12px; font-size: 16px; color: #1c252e; background: white; }
 .planned-shelf-letter-total { align-self: center; color: #637381; font-size: 13px; }
 .planned-shelf-filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) minmax(200px,1.5fr); gap: 14px; margin-top: 24px; }
 .planned-shelf-filters > label { display: flex; flex-direction: column; gap: 7px; color: #637381; font-size: 12px; font-weight: 600; min-width: 0; }
