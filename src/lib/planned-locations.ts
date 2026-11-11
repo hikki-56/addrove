@@ -3,6 +3,7 @@ import type { PlannedLocation } from "@/types/planned-location";
 export const PLANNED_SHELF_BARCODES_HREF = "/shelves/new-barcodes";
 export const PLANNED_SHELF_SIDE_NAMES = { A: "ซ้าย", B: "ขวา", C: "กลาง" } as const;
 export type ShelfLetter = keyof typeof PLANNED_SHELF_SIDE_NAMES;
+export type ShelfLetterLayout = "nine-per-page" | "full-page";
 
 export function buildShelfLetterLabels(letters: ShelfLetter[], copies: number): ShelfLetter[] {
   if (!Number.isInteger(copies) || copies < 1 || copies > 100) return [];

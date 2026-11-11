@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { SolarPrinter } from "@/components/icons";
-import { buildShelfLetterLabels, type ShelfLetter } from "@/lib/planned-locations";
+import { buildShelfLetterLabels, type ShelfLetter, type ShelfLetterLayout } from "@/lib/planned-locations";
 import PlannedShelfPrintPreview from "./PlannedShelfPrintPreview";
 
 export default function ShelfLetterLabels() {
   const [letters, setLetters] = useState<ShelfLetter[]>(["A", "B", "C"]);
   const [copies, setCopies] = useState("3");
   const [textColor, setTextColor] = useState<"black" | "white">("black");
+  const [layout, setLayout] = useState<ShelfLetterLayout>("nine-per-page");
   const [printing, setPrinting] = useState<ShelfLetter[] | null>(null);
   const labels = buildShelfLetterLabels(letters, Number(copies));
 
@@ -17,7 +18,7 @@ export default function ShelfLetterLabels() {
       <div className="planned-shelf-heading">
         <div>
           <div className="planned-shelf-title"><h2 id="shelf-letter-title">ป้ายตัวอักษรชั้นวาง A / B / C</h2></div>
-          <p>ตัวอักษรแยกใบ ขนาดใหญ่ สำหรับติดชั้นวาง · A4 แนวนอน 9 ป้ายต่อหน้า</p>
+          <p>ตัวอักษรแยกใบ ขนาดใหญ่ สำหรับติดชั้นวาง · A4 แนวนอน · {layout === "full-page" ? "ตัวอักษรละ 1 หน้า" : "9 ป้ายต่อหน้า"}</p>
         </div>
         <div className="planned-shelf-actions">
           <button type="button" className="m3-btn m3-btn-primary" disabled={!labels.length} onClick={() => setPrinting(labels)}>
@@ -36,6 +37,12 @@ export default function ShelfLetterLabels() {
             </label>
           ))}</div>
         </fieldset>
+        <label className="planned-shelf-letter-copies planned-shelf-letter-layout">รูปแบบป้าย
+          <select value={layout} onChange={(event) => setLayout(event.target.value === "full-page" ? "full-page" : "nine-per-page")}>
+            <option value="nine-per-page">9 ป้ายต่อหน้า</option>
+            <option value="full-page">เต็มหน้า A4 แนวนอน</option>
+          </select>
+        </label>
         <label className="planned-shelf-letter-copies">จำนวนต่ออักษร (1–100)
           <input type="number" min={1} max={100} step={1} value={copies} onChange={(event) => setCopies(event.target.value)} />
         </label>
@@ -47,7 +54,7 @@ export default function ShelfLetterLabels() {
         </label>
         <p className="planned-shelf-letter-total" role="status">รวม {labels.length} ป้าย</p>
       </div>
-      {printing && <PlannedShelfPrintPreview letterLabels={printing} letterTextColor={textColor} onClose={() => setPrinting(null)} />}
+      {printing && <PlannedShelfPrintPreview letterLabels={printing} letterTextColor={textColor} letterLayout={layout} onClose={() => setPrinting(null)} />}
     </section>
   );
 }

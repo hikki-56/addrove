@@ -4,19 +4,20 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { buildPlannedShelfPrintPages, type ShelfLetter } from "@/lib/planned-locations";
+import { buildPlannedShelfPrintPages, type ShelfLetter, type ShelfLetterLayout } from "@/lib/planned-locations";
 import type { PlannedLocation } from "@/types/planned-location";
 
 type PlannedShelfPrintPreviewProps = {
   onClose: () => void;
-} & ({ locations: PlannedLocation[]; letterLabels?: never; letterTextColor?: never }
-  | { letterLabels: ShelfLetter[]; locations?: never; letterTextColor?: "black" | "white" });
+} & ({ locations: PlannedLocation[]; letterLabels?: never; letterTextColor?: never; letterLayout?: never }
+  | { letterLabels: ShelfLetter[]; locations?: never; letterTextColor?: "black" | "white"; letterLayout?: ShelfLetterLayout });
 
-export default function PlannedShelfPrintPreview({ locations = [], letterLabels, letterTextColor = "black", onClose }: PlannedShelfPrintPreviewProps) {
+export default function PlannedShelfPrintPreview({ locations = [], letterLabels, letterTextColor = "black", letterLayout = "nine-per-page", onClose }: PlannedShelfPrintPreviewProps) {
   const root = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const labels: (PlannedLocation | ShelfLetter)[] = letterLabels ?? locations;
-  const pages = buildPlannedShelfPrintPages(labels);
+  const fullPage = !!letterLabels && letterLayout === "full-page";
+  const pages = fullPage ? labels.map((label) => [label]) : buildPlannedShelfPrintPages(labels);
   useEscapeKey(true, onClose);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function PlannedShelfPrintPreview({ locations = [], letterLabels,
       <div className="planned-shelf-print-toolbar">
         <div>
           <h2 id="planned-shelf-print-title">{letterLabels ? "ตัวอย่างก่อนพิมพ์ป้าย A / B / C" : "ตัวอย่างก่อนพิมพ์บาร์โค้ดชั้นวางใหม่"}</h2>
-          <p>{labels.length.toLocaleString("th-TH")} ป้าย · {pages.length} หน้า · A4 แนวนอน · 9 ป้ายต่อหน้า</p>
+          <p>{labels.length.toLocaleString("th-TH")} ป้าย · {pages.length} หน้า · A4 แนวนอน · {fullPage ? "ตัวอักษรละ 1 หน้า" : "9 ป้ายต่อหน้า"}</p>
         </div>
         <div className="planned-shelf-actions">
           <button type="button" ref={close} className="m3-btn m3-btn-outline" onClick={onClose}>ปิดตัวอย่าง</button>
@@ -55,7 +56,7 @@ export default function PlannedShelfPrintPreview({ locations = [], letterLabels,
       </div>
       <div className="planned-shelf-print-pages">
         {pages.map((page, index) => (
-          <div className="planned-shelf-print-page" key={index}>
+          <div className={`planned-shelf-print-page${fullPage ? " is-full-page" : ""}`} key={index}>
             {page.map((location, labelIndex) => typeof location === "string" ? (
               <article className="planned-shelf-print-label planned-shelf-letter-label" key={`${location}-${labelIndex}`}>
                 <strong style={{ color: letterTextColor === "white" ? "#fff" : "#000" }}>{location}</strong>
