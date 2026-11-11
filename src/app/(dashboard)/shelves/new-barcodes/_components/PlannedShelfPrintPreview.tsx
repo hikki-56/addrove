@@ -55,11 +55,13 @@ export default function PlannedShelfPrintPreview({ locations, onClose }: {
           <div className="planned-shelf-print-page" key={index}>
             {page.map((location) => (
               <article className="planned-shelf-print-label" key={location.planned_location_id}>
-                <strong>{location.location_code}</strong>
+                <strong aria-label={location.location_code}>
+                  <span>{location.warehouse_prefix}</span>
+                  <span>{location.location_code.slice(location.warehouse_prefix.length + 1)}</span>
+                </strong>
                 <div className="planned-shelf-print-barcode">
                   <BarcodeSvg value={location.location_code} width={2} height={64} showText={false} disableZoom className="w-full border-0 bg-white p-0 shadow-none" />
                 </div>
-                <p>{location.warehouse_name}</p>
               </article>
             ))}
           </div>
