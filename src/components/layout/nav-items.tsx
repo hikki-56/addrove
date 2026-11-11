@@ -354,6 +354,12 @@ export const navItems: NavItem[] = [
     roles: [],
   },
   {
+    href: "/outbound/office",
+    label: "เบิกไปออฟฟิศ",
+    icon: <Icon><path d="M3 10h18l-2-7H5l-2 7Z" /><path d="M4 10v11h16V10M9 21v-7h6v7M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /></Icon>,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/outbound/work-orders",
     label: "กล่อง Q (QR Code)",
     icon: (
@@ -451,6 +457,12 @@ export const navItems: NavItem[] = [
       </div>
     ),
     roles: ["ADMIN", "VIEWER", "WAREHOUSE_STAFF"],
+  },
+  {
+    href: "/products/office",
+    label: "สินค้าออฟฟิศ",
+    icon: <Icon><path d="M3 10h18l-2-7H5l-2 7Z" /><path d="M4 10v11h16V10M9 21v-7h6v7M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /></Icon>,
+    roles: ["ADMIN", "MANAGER", "VIEWER", "WAREHOUSE_STAFF", "STAFF", "PACKER"],
   },
   {
     href: "/approvals",

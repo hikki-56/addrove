@@ -35,6 +35,8 @@ const roleLabel: Record<UserRole, string> = {
 };
 
 const pathTitles: Record<string, { parent: string; title: string }> = {
+  "/outbound/office": { parent: "ส่งของออก", title: "เบิกไปออฟฟิศ" },
+  "/products/office": { parent: "คลังสินค้า", title: "สินค้าออฟฟิศ" },
   "/dashboard": { parent: "หน้าหลัก", title: "ภาพรวมระบบ" },
   "/products": { parent: "คลังสินค้า", title: "สินค้าทั้งหมด" },
   "/products/new": { parent: "สินค้าทั้งหมด", title: "เพิ่มสินค้าใหม่" },

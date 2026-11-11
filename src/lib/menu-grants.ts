@@ -30,6 +30,8 @@ export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/temporary-stock-cuts": [P.STOCK_VIEW],
   "/movements/transfer/history": [P.STOCK_VIEW, P.DOCUMENT_VIEW],
   "/outbound": [P.STOCK_VIEW, P.OUTBOUND_IMPORT, P.OUTBOUND_APPROVE],
+  "/outbound/office": [P.STOCK_VIEW, P.DOCUMENT_VIEW, P.OFFICE_TRANSFER],
+  "/products/office": [P.STOCK_VIEW, P.OFFICE_VIEW],
   "/outbound/work-orders": [P.STOCK_VIEW, P.OUTBOUND_APPROVE],
   "/outbound/pick": [P.STOCK_VIEW, P.STOCK_ISSUE, P.OUTBOUND_SHIP],
   "/outbound/pack": [P.STOCK_VIEW, P.STOCK_ISSUE, P.OUTBOUND_SHIP],

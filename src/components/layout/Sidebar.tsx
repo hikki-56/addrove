@@ -224,7 +224,7 @@ export default function Sidebar({
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
   const inventoryNav = visibleItems.filter((i) =>
-    ["/products", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr"].includes(i.href)
+    ["/products", "/products/office", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr"].includes(i.href)
   );
   const movementNav = visibleItems
     .filter((i) =>
@@ -254,7 +254,7 @@ export default function Sidebar({
     ["/express-import/receive", "/express-import/issue", "/express-import"].includes(i.href)
   );
   const outboundNav = visibleItems.filter((i) =>
-    ["/outbound", "/outbound/work-orders", "/outbound/pick", "/outbound/pack", "/outbound/loading"].includes(i.href)
+    ["/outbound", "/outbound/office", "/outbound/work-orders", "/outbound/pick", "/outbound/pack", "/outbound/loading"].includes(i.href)
   );
 
   const badgeFor = (href: string): number | undefined => {

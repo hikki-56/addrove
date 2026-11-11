@@ -6,6 +6,8 @@ export const PERMISSIONS = {
   STOCK_ISSUE: "stock.issue",
   STOCK_MOVE: "stock.move",
   STOCK_TRANSFER_CREATE: "stock.transfer.create",
+  OFFICE_TRANSFER: "stock.office.transfer",
+  OFFICE_VIEW: "stock.office.view",
   STOCK_TRANSFER_COMPLETE: "stock.transfer.complete",
   STOCK_TRANSFER_CANCEL: "stock.transfer.cancel",
   STOCK_REVERSE: "stock.reverse",
@@ -48,6 +50,8 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 // Role to Permission Matrix (Strict Principle of Least Privilege)
 export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
   ADMIN: [
+    PERMISSIONS.OFFICE_VIEW,
+    PERMISSIONS.OFFICE_TRANSFER,
     PERMISSIONS.STOCK_RECEIVE,
     PERMISSIONS.STOCK_ISSUE,
     PERMISSIONS.STOCK_MOVE,
@@ -79,6 +83,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.PRODUCTION_REPORT,
   ],
   MANAGER: [
+    PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_RECEIVE,
     PERMISSIONS.STOCK_ISSUE,
     PERMISSIONS.STOCK_MOVE,
@@ -111,6 +116,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.PRODUCTION_REPORT,
   ],
   WAREHOUSE_STAFF: [
+    PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_RECEIVE,
     PERMISSIONS.STOCK_ISSUE,
     PERMISSIONS.STOCK_MOVE,
@@ -122,12 +128,14 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
   ],
   // พนักงานแพ็กของ — ทำงานเฉพาะสายส่งของออก: หยิบ → แพ็ก → ขึ้นรถ
   PACKER: [
+    PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_VIEW,
     PERMISSIONS.STOCK_ISSUE,
     PERMISSIONS.DOCUMENT_VIEW,
     PERMISSIONS.OUTBOUND_SHIP,
   ],
   STAFF: [
+    PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_RECEIVE,
     PERMISSIONS.STOCK_ISSUE,
     PERMISSIONS.STOCK_MOVE,
@@ -136,6 +144,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.DOCUMENT_VIEW,
   ],
   VIEWER: [
+    PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_VIEW,
     PERMISSIONS.DOCUMENT_VIEW,
   ],

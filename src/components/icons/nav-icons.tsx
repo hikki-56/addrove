@@ -2,6 +2,7 @@
 // (nav-items คงไว้เหมือนเดิมทั้งรายการ/สิทธิ์/ลำดับ — map นี้เปลี่ยนแค่หน้าตาไอคอน
 //  เมนูที่ไม่มีใน map จะใช้ไอคอนเดิมจาก nav-items)
 import type { ComponentType } from "react";
+import { OfficeShopIcon } from "./OfficeShopIcon";
 import {
   SolarBill,
   SolarBox,
@@ -35,6 +36,8 @@ import {
 export const NAV_ICONS: Record<string, ComponentType<SolarIconProps>> = {
   "/dashboard": SolarHome,
   "/products": SolarBox,
+  "/products/office": OfficeShopIcon,
+  "/outbound/office": OfficeShopIcon,
   "/approvals": SolarDocumentCheck,
   "/locations": SolarMapPoint,
   "/warehouses/qr": SolarQrCode,
