@@ -57,7 +57,7 @@
 .planned-shelf-print-page { width: 281mm; min-height: 194mm; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: repeat(3,62mm); gap: 4mm; padding: 0; margin-bottom: 20px; background: #fff; }
 .planned-shelf-print-label { display: flex; align-items: center; justify-content: center; flex-direction: column; min-width: 0; gap: 10px; padding: 3mm; border: 1px dashed #c4cdd5; border-radius: 8px; background: white; text-align: center; break-inside: avoid; }
 .planned-shelf-print-label.is-highlighted { background: #ffeb3b; }
-.planned-shelf-print-label.planned-shelf-letter-label { background: #ffa000; }
+.planned-shelf-print-label.planned-shelf-letter-label { background: transparent; }
 .planned-shelf-print-label > strong { display: flex; flex-direction: column; align-items: center; font-family: var(--font-barlow),sans-serif; font-size: 42px; font-weight: 800; line-height: 1.05; letter-spacing: .02em; white-space: nowrap; color: #000; }
 .planned-shelf-print-label.planned-shelf-letter-label > strong { font-size: 128px; line-height: 1; }
 .planned-shelf-print-barcode { display: flex; justify-content: center; align-items: center; width: 100%; background: #fff; padding: 2mm 4mm; }

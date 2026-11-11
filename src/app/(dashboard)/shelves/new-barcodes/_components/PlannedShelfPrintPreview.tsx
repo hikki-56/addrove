@@ -57,7 +57,7 @@ export default function PlannedShelfPrintPreview({ locations = [], letterLabels,
         {pages.map((page, index) => (
           <div className="planned-shelf-print-page" key={index}>
             {page.map((location, labelIndex) => typeof location === "string" ? (
-              <article className="planned-shelf-print-label planned-shelf-letter-label is-highlighted" key={`${location}-${labelIndex}`}>
+              <article className="planned-shelf-print-label planned-shelf-letter-label" key={`${location}-${labelIndex}`}>
                 <strong style={{ color: letterTextColor === "white" ? "#fff" : "#000" }}>{location}</strong>
               </article>
             ) : (
