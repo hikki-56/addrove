@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import BarcodeSvg from "@/components/ui/BarcodeSvg";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { buildPlannedShelfPrintPages, PLANNED_SHELF_SIDE_NAMES } from "@/lib/planned-locations";
+import { buildPlannedShelfPrintPages } from "@/lib/planned-locations";
 import type { PlannedLocation } from "@/types/planned-location";
 
 export default function PlannedShelfPrintPreview({ locations, onClose }: {
@@ -59,7 +59,7 @@ export default function PlannedShelfPrintPreview({ locations, onClose }: {
                 <div className="planned-shelf-print-barcode">
                   <BarcodeSvg value={location.location_code} width={2} height={64} showText={false} disableZoom className="w-full border-0 bg-white p-0 shadow-none" />
                 </div>
-                <p>{location.warehouse_name} · ล็อก {location.block_number} · {PLANNED_SHELF_SIDE_NAMES[location.rack_side]} · ชั้นวาง L{location.shelf_level}</p>
+                <p>{location.warehouse_name}</p>
               </article>
             ))}
           </div>

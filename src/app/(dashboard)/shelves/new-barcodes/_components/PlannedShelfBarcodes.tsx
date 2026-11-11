@@ -120,7 +120,6 @@ export default function PlannedShelfBarcodes() {
                   <div className="planned-shelf-card-top"><label><input type="checkbox" checked={selected.has(location.planned_location_id)} onChange={() => toggleOne(location.planned_location_id)} aria-label={`เลือก ${location.location_code}`} /><span>{location.warehouse_name}</span></label>{location.building_floor !== null && <span>ชั้นอาคาร {location.building_floor}</span>}</div>
                   <h3>{location.location_code}</h3>
                   <div className="planned-shelf-barcode"><BarcodeSvg value={location.location_code} width={2} height={66} showText={false} disableZoom className="w-full border-0 bg-white p-0 shadow-none" /></div>
-                  <p>ล็อก {location.block_number} · {location.rack_side} {PLANNED_SHELF_SIDE_NAMES[location.rack_side]} · ชั้นวาง L{location.shelf_level}</p>
                   <button type="button" className="planned-shelf-download" onClick={() => download(location)} aria-label={`ดาวน์โหลดป้าย ${location.location_code}`}>ดาวน์โหลด PNG</button>
                 </article>
               ))}

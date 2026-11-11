@@ -31,7 +31,6 @@
 .planned-shelf-card-top label { display: inline-flex; align-items: center; gap: 8px; color: #637381; cursor: pointer; }
 .planned-shelf-card h3 { font-family: var(--font-barlow),sans-serif; font-size: clamp(22px,2.2vw,32px); font-weight: 800; letter-spacing: .02em; margin: 18px 0 14px; white-space: nowrap; }
 .planned-shelf-barcode { width: 100%; padding: 8px 16px; background: #fff; border: 1px solid rgba(145,158,171,.18); border-radius: 8px; }
-.planned-shelf-card p { margin-top: 12px; font-size: 12px; color: #637381; }
 .planned-shelf-download { margin-top: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0,167,111,.08); }
 .planned-shelf-footer { justify-content: space-between; flex-wrap: wrap; color: #919eab; font-size: 12px; margin-top: 24px; }
 .planned-shelf-footer a { color: #007867; text-decoration: underline; }
