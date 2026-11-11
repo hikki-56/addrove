@@ -35,6 +35,7 @@ const roleLabel: Record<UserRole, string> = {
 };
 
 const pathTitles: Record<string, { parent: string; title: string }> = {
+  "/shelves/new-barcodes": { parent: "คลังสินค้า", title: "บาร์โค้ดชั้นวางสินค้าใหม่" },
   "/outbound/office": { parent: "ส่งของออก", title: "เบิกไปออฟฟิศ" },
   "/products/office": { parent: "คลังสินค้า", title: "สินค้าออฟฟิศ" },
   "/dashboard": { parent: "หน้าหลัก", title: "ภาพรวมระบบ" },

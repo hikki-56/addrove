@@ -224,7 +224,7 @@ export default function Sidebar({
 
   const mainNav = visibleItems.filter((i) => ["/dashboard"].includes(i.href));
   const inventoryNav = visibleItems.filter((i) =>
-    ["/products", "/products/office", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr"].includes(i.href)
+    ["/products", "/products/office", "/approvals", "/stock", "/locations", "/warehouses/qr", "/shelves/qr", "/shelves/new-barcodes"].includes(i.href)
   );
   const movementNav = visibleItems
     .filter((i) =>

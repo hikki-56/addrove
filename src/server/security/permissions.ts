@@ -8,6 +8,7 @@ export const PERMISSIONS = {
   STOCK_TRANSFER_CREATE: "stock.transfer.create",
   OFFICE_TRANSFER: "stock.office.transfer",
   OFFICE_VIEW: "stock.office.view",
+  PLANNED_LOCATION_VIEW: "planned-location.view",
   STOCK_TRANSFER_COMPLETE: "stock.transfer.complete",
   STOCK_TRANSFER_CANCEL: "stock.transfer.cancel",
   STOCK_REVERSE: "stock.reverse",
@@ -50,6 +51,7 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 // Role to Permission Matrix (Strict Principle of Least Privilege)
 export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
   ADMIN: [
+    PERMISSIONS.PLANNED_LOCATION_VIEW,
     PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.OFFICE_TRANSFER,
     PERMISSIONS.STOCK_RECEIVE,

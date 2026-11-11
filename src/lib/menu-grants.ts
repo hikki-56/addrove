@@ -42,6 +42,7 @@ export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/locations": [P.STOCK_VIEW, P.LOCATION_MANAGE],
   "/warehouses/qr": [P.STOCK_VIEW],
   "/shelves/qr": [P.STOCK_VIEW, P.LOCATION_MANAGE],
+  "/shelves/new-barcodes": [P.STOCK_VIEW, P.PLANNED_LOCATION_VIEW],
   "/express-import/receive": EXPRESS,
   "/express-import/issue": EXPRESS,
   "/express-import/transfer": EXPRESS,

@@ -535,6 +535,12 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    href: "/shelves/new-barcodes",
+    label: "บาร์โค้ดชั้นวางสินค้าใหม่",
+    icon: <Icon><path d="M4 4v16M8 4v16M12 4v16M16 4v16M20 4v16" /></Icon>,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/users",
     label: "จัดการพนักงาน",
     icon: (

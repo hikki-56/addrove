@@ -1,0 +1,66 @@
+.planned-shelf-workspace { padding-top: 16px; padding-bottom: 32px; color: #1c252e; }
+.planned-shelf-panel { background: white; border: 1px solid rgba(145,158,171,.16); border-radius: 16px; box-shadow: 0 12px 24px -4px rgba(145,158,171,.08); }
+.planned-shelf-controls { padding: 24px; margin-bottom: 20px; }
+.planned-shelf-heading, .planned-shelf-title, .planned-shelf-actions, .planned-shelf-summary, .planned-shelf-summary-actions, .planned-shelf-footer { display: flex; align-items: center; gap: 12px; }
+.planned-shelf-heading { justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.planned-shelf-title { flex-wrap: wrap; gap: 8px; }
+.planned-shelf-title > svg { color: #00a76f; }
+.planned-shelf-title h2 { font-size: 18px; font-weight: 700; }
+.planned-shelf-badge { color: #007867; background: rgba(0,167,111,.12); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; }
+.planned-shelf-heading p { margin-top: 6px; font-size: 13px; color: #637381; }
+.planned-shelf-actions { flex-wrap: wrap; }
+.planned-shelf-actions button { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.planned-shelf-filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) minmax(200px,1.5fr); gap: 14px; margin-top: 24px; }
+.planned-shelf-filters > label { display: flex; flex-direction: column; gap: 7px; color: #637381; font-size: 12px; font-weight: 600; min-width: 0; }
+.planned-shelf-filters select, .planned-shelf-search { width: 100%; min-width: 0; height: 46px; padding: 0 12px; border: 1px solid rgba(145,158,171,.24); border-radius: 8px; color: #1c252e; font-size: 14px; font-weight: 400; background: white; }
+.planned-shelf-search { display: flex; align-items: center; gap: 8px; }
+.planned-shelf-search svg { flex-shrink: 0; color: #919eab; }
+.planned-shelf-search input { min-width: 0; width: 100%; height: 100%; outline: none; background: transparent; }
+.planned-shelf-search input::placeholder { color: #919eab; }
+.planned-shelf-filters select:focus-visible, .planned-shelf-search:focus-within { outline: 2px solid rgba(0,167,111,.25); border-color: #00a76f; }
+.planned-shelf-summary { justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px dashed rgba(145,158,171,.24); margin-top: 20px; padding-top: 16px; font-size: 13px; color: #637381; }
+.planned-shelf-summary strong { color: #1c252e; font-size: 15px; }
+.planned-shelf-summary span { margin-left: 12px; }
+.planned-shelf-summary-actions button, .planned-shelf-download { cursor: pointer; color: #007867; font-size: 12px; font-weight: 600; }
+.planned-shelf-select-all { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; margin-bottom: 16px; cursor: pointer; }
+.planned-shelf-workspace input[type=checkbox] { accent-color: #00a76f; width: 17px; height: 17px; flex-shrink: 0; cursor: pointer; }
+.planned-shelf-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.planned-shelf-card { min-width: 0; display: flex; flex-direction: column; align-items: center; background: #fff; padding: 18px 20px; border: 1px solid rgba(145,158,171,.2); border-radius: 16px; box-shadow: 0 4px 16px rgba(145,158,171,.06); }
+.planned-shelf-card.is-selected { border-color: #00a76f; box-shadow: 0 0 0 1px #00a76f; }
+.planned-shelf-card-top { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px; color: #919eab; font-size: 11px; }
+.planned-shelf-card-top label { display: inline-flex; align-items: center; gap: 8px; color: #637381; cursor: pointer; }
+.planned-shelf-card h3 { font-family: var(--font-barlow),sans-serif; font-size: clamp(22px,2.2vw,32px); font-weight: 800; letter-spacing: .02em; margin: 18px 0 14px; white-space: nowrap; }
+.planned-shelf-barcode { width: 100%; padding: 8px 16px; background: #fff; border: 1px solid rgba(145,158,171,.18); border-radius: 8px; }
+.planned-shelf-card p { margin-top: 12px; font-size: 12px; color: #637381; }
+.planned-shelf-download { margin-top: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0,167,111,.08); }
+.planned-shelf-footer { justify-content: space-between; flex-wrap: wrap; color: #919eab; font-size: 12px; margin-top: 24px; }
+.planned-shelf-footer a { color: #007867; text-decoration: underline; }
+.planned-shelf-empty { min-height: 240px; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #919eab; text-align: center; }
+.planned-shelf-empty h3 { color: #1c252e; font-weight: 700; }
+.planned-shelf-empty p { font-size: 13px; }
+.planned-shelf-error { display: flex; justify-content: space-between; align-items: center; gap: 16px; color: #b71d18; background: #fff2ef; padding: 16px; border-radius: 10px; font-size: 13px; }
+.planned-shelf-error button { cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.planned-shelf-print-open { overflow: hidden !important; }
+#planned-shelf-print-root { position: fixed; inset: 0; z-index: 1000; overflow: auto; background: #f4f6f8; color: #1c252e; }
+.planned-shelf-print-toolbar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 24px; background: white; border-bottom: 1px solid #dfe3e8; }
+.planned-shelf-print-toolbar h2 { font-size: 16px; font-weight: 700; }
+.planned-shelf-print-toolbar p { font-size: 12px; margin-top: 4px; color: #637381; }
+.planned-shelf-print-pages { width: 281mm; margin: 20px auto; }
+.planned-shelf-print-page { width: 281mm; min-height: 194mm; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: repeat(3,62mm); gap: 4mm; padding: 0; margin-bottom: 20px; background: #fff; }
+.planned-shelf-print-label { display: flex; align-items: center; justify-content: center; flex-direction: column; min-width: 0; gap: 10px; padding: 3mm; border: 1px dashed #c4cdd5; border-radius: 8px; background: white; text-align: center; break-inside: avoid; }
+.planned-shelf-print-label > strong { font-family: var(--font-barlow),sans-serif; font-size: 28px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; color: #000; }
+.planned-shelf-print-barcode { width: 100%; background: #fff; padding: 2mm 4mm; }
+.planned-shelf-print-label p { font-size: 10px; color: #454f5b; }
+@media(max-width:1199px) { .planned-shelf-filters { grid-template-columns: repeat(4,minmax(0,1fr)); } .planned-shelf-search-label { grid-column: 1/-1; } .planned-shelf-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:767px) { .planned-shelf-workspace { padding-top: 0; } .planned-shelf-controls { padding: 18px 16px; } .planned-shelf-title h2 { font-size: 16px; } .planned-shelf-heading, .planned-shelf-heading > div, .planned-shelf-heading .planned-shelf-actions { width: 100%; } .planned-shelf-actions button { flex: 1; justify-content: center; } .planned-shelf-filters { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 10px; } .planned-shelf-grid { grid-template-columns: minmax(0,1fr); gap: 14px; } .planned-shelf-card h3 { font-size: 32px; } .planned-shelf-summary span { display: block; margin-left: 0; margin-top: 4px; } .planned-shelf-footer { gap: 12px; } .planned-shelf-print-toolbar { padding: 16px; } .planned-shelf-print-pages { transform-origin: top left; zoom: .33; } }
+@media print {
+  @page planned-shelf-labels { size: A4 landscape; margin: 8mm; }
+  html.planned-shelf-print-open, body.planned-shelf-print-open { overflow: visible !important; height: auto !important; min-height: 0 !important; background: white !important; }
+  body.planned-shelf-print-open > :not(#planned-shelf-print-root) { display: none !important; }
+  #planned-shelf-print-root { position: static !important; overflow: visible !important; background: white !important; }
+  .planned-shelf-print-toolbar { display: none !important; }
+  .planned-shelf-print-pages { width: auto; margin: 0; zoom: 1; }
+  .planned-shelf-print-page { page: planned-shelf-labels; width: 281mm; height: 194mm; min-height: 0; margin: 0; padding: 0; break-after: page; break-inside: avoid; }
+  .planned-shelf-print-page:last-child { break-after: auto; }
+  .planned-shelf-print-label { color: #000; box-shadow: none; }
+}

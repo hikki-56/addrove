@@ -42,6 +42,7 @@ export const NAV_ICONS: Record<string, ComponentType<SolarIconProps>> = {
   "/locations": SolarMapPoint,
   "/warehouses/qr": SolarQrCode,
   "/shelves/qr": SolarTagBarcode,
+  "/shelves/new-barcodes": SolarTagBarcode,
   "/movements/receive": SolarInboxIn,
   "/staff/receive": SolarInboxIn,
   "/movements/transfer": SolarTransferHorizontal,
