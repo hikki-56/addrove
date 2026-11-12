@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import type { Html5Qrcode } from "html5-qrcode";
+import type { CameraCapabilities, Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
@@ -25,10 +25,17 @@ export default function CameraBarcodeScannerModal({
   feedback,
 }: CameraBarcodeScannerModalProps) {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const torchRef = useRef<ReturnType<CameraCapabilities["torchFeature"]> | null>(null);
+  const torchBusyRef = useRef(false);
+  const cameraStopRef = useRef<Promise<void>>(Promise.resolve());
 
   const [cameraError, setCameraError] = useState<string>("");
   const [manualCode, setManualCode] = useState<string>("");
   const [isScanningLive, setIsScanningLive] = useState<boolean>(false);
+  const [isTorchSupported, setIsTorchSupported] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [isTorchChanging, setIsTorchChanging] = useState(false);
+  const [torchError, setTorchError] = useState("");
   const [isContinuous, setIsContinuous] = useState<boolean>(true);
   const [scanError, setScanError] = useState<ScanFeedback | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,18 +64,59 @@ export default function CameraBarcodeScannerModal({
 
   // Stop camera helper
   const stopLiveCamera = async () => {
-    if (html5QrCodeRef.current) {
+    const scanner = html5QrCodeRef.current;
+    html5QrCodeRef.current = null;
+    const torch = torchRef.current;
+    torchRef.current = null;
+    torchBusyRef.current = false;
+    setIsTorchSupported(false);
+    setIsTorchOn(false);
+    setIsTorchChanging(false);
+    setTorchError("");
+    const stopped = cameraStopRef.current.then(async () => {
+      if (!scanner) return;
       try {
-        if (html5QrCodeRef.current.isScanning) {
-          await html5QrCodeRef.current.stop();
+        if (scanner.isScanning) {
+          // Release the light before stopping the video track. Stopping the
+          // track also releases it when a device rejects the off constraint.
+          try {
+            if (torch?.value()) await torch.apply(false);
+          } catch { /* Stopping the track releases unsupported/busy torches. */ }
+          await scanner.stop();
         }
-        html5QrCodeRef.current.clear();
+        scanner.clear();
       } catch (e) {
         console.warn("Stop camera error:", e);
       }
-      html5QrCodeRef.current = null;
-    }
+    });
+    cameraStopRef.current = stopped;
+    await stopped;
     setIsScanningLive(false);
+  };
+
+  const toggleTorch = async () => {
+    const torch = torchRef.current;
+    if (!torch || torchBusyRef.current) return;
+    const next = !isTorchOn;
+    torchBusyRef.current = true;
+    setIsTorchChanging(true);
+    setTorchError("");
+    try {
+      await torch.apply(next);
+      if (torchRef.current !== torch) return;
+      const actual = torch.value();
+      if (actual !== null && actual !== next) throw new Error("Torch did not change");
+      setIsTorchOn(next);
+    } catch {
+      if (torchRef.current === torch) {
+        setTorchError("เปลี่ยนสถานะแฟลชไม่สำเร็จ กรุณาลองอีกครั้ง");
+      }
+    } finally {
+      if (torchRef.current === torch) {
+        torchBusyRef.current = false;
+        setIsTorchChanging(false);
+      }
+    }
   };
 
   const submitScan = useCallback(async (rawCode: string, closeAfterScan = false, playSound = true) => {
@@ -163,6 +211,20 @@ export default function CameraBarcodeScannerModal({
 
         if (isSubscribed) {
           setIsScanningLive(true);
+          try {
+            const capabilities = scanner.getRunningTrackCapabilities() as MediaTrackCapabilities & { torch?: boolean };
+            const torch = scanner.getRunningTrackCameraCapabilities().torchFeature();
+            const supported = capabilities.torch === true && torch.isSupported();
+            torchRef.current = supported ? torch : null;
+            setIsTorchSupported(supported);
+            setIsTorchOn(supported && torch.value() === true);
+          } catch {
+            // Camera scanning still works when torch capabilities are absent.
+            setIsTorchSupported(false);
+          }
+        } else if (scanner.isScanning) {
+          // The user may close the modal while camera permission is pending.
+          await scanner.stop();
         }
       } catch (err: unknown) {
         console.warn("Live camera start failed:", err);
@@ -190,7 +252,7 @@ export default function CameraBarcodeScannerModal({
   return (
     <div onPointerDownCapture={prepareFeedbackAudio} onKeyDownCapture={prepareFeedbackAudio} className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-m3-grey-800/50 fade-in">
 
-      <div className="relative w-full max-w-lg bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-hidden flex flex-col max-h-[90dvh]">
+      <div role="dialog" aria-modal="true" aria-labelledby="camera-scanner-title" className="relative w-full max-w-lg bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-hidden flex flex-col max-h-[90dvh]">
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-[rgba(145,158,171,0.2)] bg-m3-grey-100 gap-2">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
@@ -201,7 +263,7 @@ export default function CameraBarcodeScannerModal({
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-xs sm:text-sm font-bold text-m3-grey-800 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
+              <h3 id="camera-scanner-title" className="text-xs sm:text-sm font-bold text-m3-grey-800 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
             </div>
           </div>
 
@@ -221,6 +283,8 @@ export default function CameraBarcodeScannerModal({
             </button>
 
             <button
+              type="button"
+              aria-label="ปิดกล้องสแกน"
               onClick={onClose}
               className="p-1 sm:p-1.5 rounded-lg text-m3-grey-500 hover:text-m3-grey-700 hover:bg-m3-grey-300/60 transition-colors cursor-pointer"
             >
@@ -250,6 +314,23 @@ export default function CameraBarcodeScannerModal({
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-[rgba(145,158,171,0.2)] bg-m3-grey-100 space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-pressed={isTorchOn}
+              aria-busy={isTorchChanging}
+              aria-label={isTorchOn ? "ปิดแฟลช" : "เปิดแฟลช"}
+              disabled={!isScanningLive || !isTorchSupported || isTorchChanging}
+              onClick={() => void toggleTorch()}
+              title={!isScanningLive ? "รอกล้องพร้อมใช้งาน" : !isTorchSupported ? "กล้องหรือเบราว์เซอร์นี้ไม่รองรับแฟลช" : undefined}
+              className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isTorchOn ? "border-m3-primary bg-m3-primary text-white" : "border-[rgba(145,158,171,0.32)] bg-white text-m3-grey-800 hover:bg-m3-grey-100"}`}
+            >
+              <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z" /></svg>
+              {isTorchChanging ? "กำลังเปลี่ยนแฟลช..." : isTorchOn ? "ปิดแฟลช" : "เปิดแฟลช"}
+            </button>
+            {isScanningLive && !isTorchSupported && <span className="text-xs text-m3-grey-600">กล้องนี้ไม่รองรับแฟลช</span>}
+          </div>
+          {torchError && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{torchError}</p>}
           <div className="flex items-center justify-between gap-2 text-xs text-m3-grey-600">
             <span>{isProcessing ? "กำลังตรวจสอบรหัส..." : isScanningLive ? "พร้อมสแกน • สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง" : "สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง"}</span>
             <button type="button" onClick={playSuccessSound} className="shrink-0 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white px-2 py-1 font-bold text-m3-grey-800 cursor-pointer hover:bg-[rgba(145,158,171,0.08)]">ทดสอบเสียง</button>
