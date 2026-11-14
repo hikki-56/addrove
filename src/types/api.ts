@@ -102,6 +102,14 @@ export const CreateProductSchema = z.object({
 });
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 
+export const CreateMasterProductSchema = CreateProductSchema.omit({ warehouse_id: true, initial_quantity: true }).extend({
+  sku: z.string().trim().min(1, "กรุณากรอก SKU").max(50),
+  barcode: z.string().trim().max(50).optional().default(""),
+  product_name: z.string().trim().min(1, "กรุณากรอกชื่อสินค้า").max(200),
+  category: z.string().trim().min(1, "กรุณากรอกหมวดหมู่").max(100),
+  base_unit: z.string().trim().min(1, "กรุณากรอกหน่วยนับ").max(20).optional().default("ชิ้น"),
+}).strict();
+
 export const UpdateProductSchema = CreateProductSchema.partial().extend({
   active: z.boolean().optional(),
 });

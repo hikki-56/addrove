@@ -257,7 +257,10 @@ export async function GET(req: NextRequest) {
         warehouseTabs.map((t) => readWarehouseProducts(t.id, t.sheet))
       );
       const allWarehouseProducts = warehouseResults.flat();
-      const rawAll = allWarehouseProducts.length > 0 ? allWarehouseProducts : masterProducts;
+      const stockedSkus = new Set(allWarehouseProducts.map(p => (p.sku || "").trim().toLowerCase().replace(/^prod-/, "")));
+      const catalogOnly = masterProducts.filter(p => !stockedSkus.has((p.sku || "").trim().toLowerCase().replace(/^prod-/, "")))
+        .map(p => ({ ...p, quantity: 0 }));
+      const rawAll = [...allWarehouseProducts, ...catalogOnly];
       products = deduplicateBySku(rawAll, buildStockMaps(allWarehouseProducts));
     }
 

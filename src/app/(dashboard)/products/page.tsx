@@ -7,6 +7,9 @@ import { useRouter } from "next/navigation";
 import CustomSelect from "@/components/ui/CustomSelect";
 import ProductLocationBreakdown from "@/components/products/ProductLocationBreakdown";
 import { SolarBox, SolarBoxClosed, SolarBuildings, SolarMapPoint } from "@/components/icons/solar";
+import { useTabAuth } from "@/context/TabAuthContext";
+import { M3Banner } from "@/components/ui/m3";
+import AddMasterProductModal from "@/app/(dashboard)/products/_components/AddMasterProductModal";
 
 const STATUS_OPTIONS: StockStatus[] = ["NORMAL", "LOW", "OUT", "NEGATIVE"];
 
@@ -17,6 +20,9 @@ const resolveStatus = (p: Product): StockStatus =>
   p.stock_status ?? getStockStatus(Number(p.total_quantity ?? p.quantity ?? 0), Number(p.minimum_stock ?? 0));
 
 export default function ProductsPage() {
+  const { user } = useTabAuth();
+  const [showAddMaster, setShowAddMaster] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -192,7 +198,10 @@ export default function ProductsPage() {
   return (
     <div className="w-full space-y-4 sm:space-y-5 print:hidden">
       {/* Top Action Row */}
-      <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-1">
+      <div className="flex flex-wrap items-center justify-end gap-2.5 sm:gap-3 pt-1">
+        {user?.role === "ADMIN" && <button type="button" onClick={() => { setSuccessMessage(null); setShowAddMaster(true); }} className="m3-btn m3-btn-primary gap-2 cursor-pointer">
+          <span aria-hidden="true">+</span> เพิ่มสินค้าในทะเบียน
+        </button>}
         {/* Action: เพิ่มสินค้าใหม่ */}
         <button
           type="button"
@@ -205,6 +214,17 @@ export default function ProductsPage() {
           <span>เพิ่มสินค้าใหม่</span>
         </button>
       </div>
+
+      {successMessage && <M3Banner tone="success" role="status">{successMessage}</M3Banner>}
+      {showAddMaster && user?.role === "ADMIN" && <AddMasterProductModal onClose={() => setShowAddMaster(false)} onSaved={product => {
+        setShowAddMaster(false);
+        setSuccessMessage(`เพิ่มสินค้า ${product.sku} ในทะเบียนแล้ว`);
+        setGrandProductCount(count => count === null ? null : count + 1);
+        setCategories(rows => [...new Set([...rows, product.category])]);
+        resetFilters();
+        setSearch(product.sku);
+        loadProducts();
+      }} />}
 
       {/* 4 Summary Stat Cards Grid — ตัวเลขรวมทั้งระบบ ไม่เปลี่ยนตามตัวกรอง */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
