@@ -21,6 +21,7 @@ export interface ReceiveLinesTableProps {
   onRemove: (index: number) => void;
   onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
   onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
+  onOpenLocationCamera?: () => void;
   onOpenConfirmModal: () => void;
 }
 
@@ -110,6 +111,7 @@ export default function ReceiveLinesTable({
   onRemove,
   onScanLocation,
   onScanFeedback,
+  onOpenLocationCamera,
   onOpenConfirmModal,
 }: ReceiveLinesTableProps) {
   const watchLines = form.watch("lines") || [];
@@ -150,6 +152,7 @@ export default function ReceiveLinesTable({
         onRemove={onRemove}
         onScanLocation={onScanLocation}
         onScanFeedback={onScanFeedback}
+        onOpenLocationCamera={onOpenLocationCamera}
       />
     );
   };

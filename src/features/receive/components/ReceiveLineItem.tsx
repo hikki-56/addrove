@@ -26,6 +26,7 @@ export interface ReceiveLineItemProps {
   onRemove: (index: number) => void;
   onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
   onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
+  onOpenLocationCamera?: () => void;
 }
 
 export default function ReceiveLineItem({
@@ -43,6 +44,7 @@ export default function ReceiveLineItem({
   onRemove,
   onScanLocation,
   onScanFeedback,
+  onOpenLocationCamera,
 }: ReceiveLineItemProps) {
   const [isExpanded, setIsExpanded] = React.useState(!isConfirmed);
   const { watch, setValue } = form;
@@ -271,6 +273,7 @@ export default function ReceiveLineItem({
             type="button"
             onClick={() => {
               prepareFeedbackAudio();
+              onOpenLocationCamera?.();
               setCameraSlot({ isPrimary, extraIdx });
             }}
             aria-label={`เปิดกล้องสแกนตำแหน่งที่ ${slotNo}`}

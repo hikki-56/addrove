@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useId } from "react";
 import type { CameraCapabilities, Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
@@ -14,6 +14,7 @@ interface CameraBarcodeScannerModalProps {
   /** Validation handlers already play the accepted/rejected result. */
   feedbackHandledByCaller?: boolean;
   feedback?: ScanFeedback | null;
+  presentation?: "modal" | "inline";
 }
 
 export default function CameraBarcodeScannerModal({
@@ -23,7 +24,10 @@ export default function CameraBarcodeScannerModal({
   onScanSuccess,
   feedbackHandledByCaller = false,
   feedback,
+  presentation = "modal",
 }: CameraBarcodeScannerModalProps) {
+  const scannerId = useId();
+  const titleId = `${scannerId}-title`;
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const torchRef = useRef<ReturnType<CameraCapabilities["torchFeature"]> | null>(null);
   const torchBusyRef = useRef(false);
@@ -36,7 +40,7 @@ export default function CameraBarcodeScannerModal({
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isTorchChanging, setIsTorchChanging] = useState(false);
   const [torchError, setTorchError] = useState("");
-  const [isContinuous, setIsContinuous] = useState<boolean>(true);
+  const [isContinuous, setIsContinuous] = useState<boolean>(false);
   const [scanError, setScanError] = useState<ScanFeedback | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const processingRef = useRef(false);
@@ -55,7 +59,7 @@ export default function CameraBarcodeScannerModal({
     return () => setCameraScanActive(false);
   }, [isOpen]);
 
-  const isContinuousRef = useRef<boolean>(true);
+  const isContinuousRef = useRef<boolean>(false);
   const lastScannedCodeRef = useRef<{ code: string; time: number }>({ code: "", time: 0 });
 
   useEffect(() => {
@@ -158,7 +162,7 @@ export default function CameraBarcodeScannerModal({
         // โหลด decoder เมื่อเปิดกล้องเท่านั้น เพื่อไม่ให้ทุกหน้าใช้งานต้องรอไลบรารีนี้
         const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
         // ผู้ใช้อาจปิดกล้องระหว่างดาวน์โหลด — อย่าเริ่มกล้องหลัง modal ถูกปิด
-        if (!isSubscribed || !document.getElementById("html5qr-code-full-region")) return;
+        if (!isSubscribed || !document.getElementById(scannerId)) return;
 
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
@@ -170,7 +174,7 @@ export default function CameraBarcodeScannerModal({
           Html5QrcodeSupportedFormats.CODE_39,
         ];
 
-        const scanner = new Html5Qrcode("html5qr-code-full-region", {
+        const scanner = new Html5Qrcode(scannerId, {
           formatsToSupport,
           verbose: false,
         });
@@ -245,14 +249,19 @@ export default function CameraBarcodeScannerModal({
       clearTimeout(timer);
       void stopLiveCamera();
     };
-  }, [isOpen, submitScan]);
+  }, [isOpen, submitScan, scannerId]);
 
   if (!isOpen) return null;
 
   return (
-    <div onPointerDownCapture={prepareFeedbackAudio} onKeyDownCapture={prepareFeedbackAudio} className="fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-m3-grey-800/50 fade-in">
+    <div onPointerDownCapture={prepareFeedbackAudio} onKeyDownCapture={prepareFeedbackAudio} className={presentation === "inline" ? "w-full" : "fixed inset-0 z-[100000] flex items-center justify-center p-2.5 sm:p-4 bg-m3-grey-800/50 fade-in"}>
 
-      <div role="dialog" aria-modal="true" aria-labelledby="camera-scanner-title" className="relative w-full max-w-lg bg-white border border-[rgba(145,158,171,0.2)] rounded-xl shadow-m3-dropdown overflow-hidden flex flex-col max-h-[90dvh]">
+      <div
+        role={presentation === "inline" ? "region" : "dialog"}
+        aria-modal={presentation === "modal" ? true : undefined}
+        aria-labelledby={titleId}
+        className={`relative flex w-full flex-col overflow-hidden rounded-xl border border-[rgba(145,158,171,0.2)] bg-white ${presentation === "inline" ? "shadow-m3-card" : "max-w-lg max-h-[90dvh] shadow-m3-dropdown"}`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-[rgba(145,158,171,0.2)] bg-m3-grey-100 gap-2">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
@@ -263,7 +272,7 @@ export default function CameraBarcodeScannerModal({
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 id="camera-scanner-title" className="text-xs sm:text-sm font-bold text-m3-grey-800 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
+              <h3 id={titleId} className="text-xs sm:text-sm font-bold text-m3-grey-800 leading-tight truncate">สแกนบาร์โค้ดสินค้า</h3>
             </div>
           </div>
 
@@ -297,7 +306,7 @@ export default function CameraBarcodeScannerModal({
 
         {/* Video Camera Viewport */}
         <div className="relative bg-m3-grey-800 flex-1 min-h-[260px] sm:min-h-[300px] flex items-center justify-center overflow-hidden p-2">
-          <div id="html5qr-code-full-region" className="w-full h-full text-m3-grey-400 text-xs text-center" />
+          <div id={scannerId} className="w-full h-full text-m3-grey-400 text-xs text-center" />
 
           {cameraError && (
             <div className="absolute inset-0 bg-white p-6 text-center space-y-4 flex flex-col items-center justify-center">

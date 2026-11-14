@@ -9,6 +9,7 @@ export interface BarcodeScanInputProps {
   onChange: (val: string) => void;
   onScanSubmit: (code: string) => void;
   onOpenScannerModal?: () => void;
+  isScannerOpen?: boolean;
   placeholder?: string;
   disabled?: boolean;
   isProcessing?: boolean;
@@ -24,6 +25,7 @@ export default function BarcodeScanInput({
   onChange,
   onScanSubmit,
   onOpenScannerModal,
+  isScannerOpen,
   placeholder = "สแกนบาร์โค้ด หรือ พิมพ์รหัสสินค้า/ตำแหน่ง...",
   disabled = false,
   isProcessing = false,
@@ -112,9 +114,10 @@ export default function BarcodeScanInput({
                 onOpenScannerModal();
               }}
               disabled={disabled || isProcessing}
-              aria-label="เปิดกล้องสแกน"
+              aria-label={isScannerOpen ? "ปิดกล้องสแกน" : "เปิดกล้องสแกน"}
+              aria-expanded={isScannerOpen}
               className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-m3-grey-800 text-white transition-transform hover:bg-m3-grey-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-48"
-              title="เปิดกล้องสแกน"
+              title={isScannerOpen ? "ปิดกล้องสแกน" : "เปิดกล้องสแกน"}
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />

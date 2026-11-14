@@ -179,7 +179,10 @@ export default function ReceiveWorkspace() {
             <button
               key={btn.value}
               type="button"
-              onClick={() => setMode(btn.value)}
+              onClick={() => {
+                setIsCameraOpen(false);
+                setMode(btn.value);
+              }}
               aria-current={active ? "page" : undefined}
               className={`relative flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors sm:h-14 sm:rounded-none sm:px-0 sm:after:absolute sm:after:inset-x-0 sm:after:bottom-0 sm:after:h-0.5 sm:after:rounded-full ${
                 active
@@ -296,18 +299,32 @@ export default function ReceiveWorkspace() {
             />
           )}
 
-          <div id="receive-scan-input">
+          <div id="receive-scan-input" className="space-y-3">
             <BarcodeScanInput
               value={barcodeInput}
               onChange={setBarcodeInput}
               onScanSubmit={handleScanBarcode}
-              onOpenScannerModal={() => setIsCameraOpen(true)}
+              onOpenScannerModal={() => setIsCameraOpen(!isCameraOpen)}
+              isScannerOpen={isCameraOpen}
               inputRef={barcodeInputRef}
               placeholder={
                 activePlan
                   ? `กำลังรับตามแผน ${activePlan.document_no} — สแกนเฉพาะสินค้าในแผน / ตำแหน่ง…`
                   : "สแกนบาร์โค้ดสินค้า / ตำแหน่ง / โกดัง…"
               }
+            />
+            <CameraBarcodeScannerModal
+              presentation="inline"
+              feedbackHandledByCaller
+              feedback={scanFeedback}
+              isOpen={isCameraOpen}
+              onClose={() => {
+                setIsCameraOpen(false);
+                barcodeInputRef.current?.focus();
+              }}
+              onScan={(scannedText, playSound) => {
+                return handleScanBarcode(scannedText, playSound);
+              }}
             />
           </div>
 
@@ -335,7 +352,11 @@ export default function ReceiveWorkspace() {
             onRemove={remove}
             onScanLocation={handleScanLocationForLine}
             onScanFeedback={setScanFeedback}
-            onOpenConfirmModal={() => setConfirmModalOpen(true)}
+            onOpenLocationCamera={() => setIsCameraOpen(false)}
+            onOpenConfirmModal={() => {
+              setIsCameraOpen(false);
+              setConfirmModalOpen(true);
+            }}
           />
           </div>
 
@@ -344,7 +365,10 @@ export default function ReceiveWorkspace() {
               form={form}
               fields={fields}
               confirmedLines={confirmedLines}
-              onOpenConfirmModal={() => setConfirmModalOpen(true)}
+              onOpenConfirmModal={() => {
+                setIsCameraOpen(false);
+                setConfirmModalOpen(true);
+              }}
             />
           </div>
           </div>
@@ -358,16 +382,6 @@ export default function ReceiveWorkspace() {
             activeWhName={activeWhName}
             onSubmit={onSubmit}
             planNo={activePlan?.document_no}
-          />
-
-          <CameraBarcodeScannerModal
-            feedbackHandledByCaller
-            feedback={scanFeedback}
-            isOpen={isCameraOpen}
-            onClose={() => setIsCameraOpen(false)}
-            onScan={(scannedText, playSound) => {
-              return handleScanBarcode(scannedText, playSound);
-            }}
           />
 
           <PlanExitConfirmModal
