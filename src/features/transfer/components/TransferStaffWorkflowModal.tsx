@@ -73,6 +73,10 @@ export default function TransferStaffWorkflowModal({
   const [cameraTarget, setCameraTarget] = useState<"PRODUCT" | "SOURCE_LOCATION" | "DEST_LOCATION" | null>(null);
   const [fetchedLoc, setFetchedLoc] = useState<string>("");
 
+  useEffect(() => {
+    setCameraTarget(null);
+  }, [selectedTask?.id, staffStep, scannedToLocation]);
+
   // จำนวนต่อกล่อง (products.units_per_carton) — ใช้จาก products prop ก่อน ถ้าไม่มีค่อยดึงจาก /api/products เดิม
   const [fetchedUpc, setFetchedUpc] = useState<number | null>(null);
   const propUpc = (() => {
@@ -243,7 +247,7 @@ export default function TransferStaffWorkflowModal({
     }
   }, [selectedTask?.id, staffStep]);
 
-  useEscapeKey(!!selectedTask && mounted, onClose);
+  useEscapeKey(!!selectedTask && mounted && cameraTarget === null, onClose);
 
   if (!selectedTask || !mounted) return null;
 
@@ -305,7 +309,8 @@ export default function TransferStaffWorkflowModal({
                 value={staffScanProductInput}
                 onChange={setStaffScanProductInput}
                 onScanSubmit={onVerifyProductBarcode}
-                onOpenScannerModal={() => setCameraTarget("PRODUCT")}
+                onOpenScannerModal={() => setCameraTarget(cameraTarget === "PRODUCT" ? null : "PRODUCT")}
+                isScannerOpen={cameraTarget === "PRODUCT"}
                 inputRef={staffProductInputRef}
                 placeholder={barcode ? `สแกนหรือพิมพ์ ${barcode}...` : "สแกนบาร์โค้ดสินค้า..."}
               />
@@ -327,12 +332,34 @@ export default function TransferStaffWorkflowModal({
                   }
                 }}
                 onScanSubmit={onVerifyDestinationLocationBarcode}
-                onOpenScannerModal={() => setCameraTarget("DEST_LOCATION")}
+                onOpenScannerModal={() => setCameraTarget(cameraTarget === "DEST_LOCATION" ? null : "DEST_LOCATION")}
+                isScannerOpen={cameraTarget === "DEST_LOCATION"}
                 inputRef={staffDestLocationInputRef}
                 placeholder="สแกนตำแหน่งปลายทาง..."
               />
             </div>
           )}
+
+          <CameraBarcodeScannerModal
+            presentation="inline"
+            isOpen={cameraTarget !== null}
+            onClose={() => {
+              const inputRef = cameraTarget === "PRODUCT"
+                ? staffProductInputRef
+                : cameraTarget === "SOURCE_LOCATION"
+                  ? staffSourceLocationInputRef
+                  : staffDestLocationInputRef;
+              setCameraTarget(null);
+              inputRef.current?.focus();
+            }}
+            onScanSuccess={(code) => {
+              const target = cameraTarget;
+              setCameraTarget(null);
+              if (target === "PRODUCT") onVerifyProductBarcode(code);
+              else if (target === "SOURCE_LOCATION") onVerifySourceLocationBarcode(code);
+              else if (target === "DEST_LOCATION") onVerifyDestinationLocationBarcode(code);
+            }}
+          />
 
           {/* Product & Route Summary Card (M14) */}
           <div className="space-y-4 rounded-2xl bg-m3-grey-100 p-4 sm:p-5">
@@ -643,17 +670,6 @@ export default function TransferStaffWorkflowModal({
         )}
         </div>
       </div>
-      <CameraBarcodeScannerModal
-        isOpen={cameraTarget !== null}
-        onClose={() => setCameraTarget(null)}
-        onScanSuccess={(code) => {
-          const target = cameraTarget;
-          setCameraTarget(null);
-          if (target === "PRODUCT") onVerifyProductBarcode(code);
-          else if (target === "SOURCE_LOCATION") onVerifySourceLocationBarcode(code);
-          else if (target === "DEST_LOCATION") onVerifyDestinationLocationBarcode(code);
-        }}
-      />
     </div>,
     document.body
   );
