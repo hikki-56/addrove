@@ -41,7 +41,15 @@ export async function GET(req: NextRequest) {
   try {
     const denied = await guardBomEditor(req);
     if (denied) return denied;
-    return NextResponse.json({ success: true, data: await listBomFormulasForEditor() });
+    const [formulas, products] = await Promise.all([
+      listBomFormulasForEditor(),
+      getRepository().products.findAll({ activeOnly: true }),
+    ]);
+    return NextResponse.json({
+      success: true,
+      data: formulas,
+      products: products.map(({ sku, product_name, barcode, base_unit }) => ({ sku, product_name, barcode, base_unit })),
+    });
   } catch (error) {
     return productionErrorResponse(error);
   }

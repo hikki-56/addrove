@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { M3Banner, M3Empty, M3ErrorState, M3Field, M3IconCircle, M3Loading, m3Cls } from "@/components/ui/m3";
 import { SolarAddLine, SolarCloseCircle, SolarDangerCircle, SolarMagnifier, SolarPen } from "@/components/icons";
 import { canAccessBomEditor, canEditBom, filterBomFormulas, validateBomDraft, type BomEditorFormula, type BomEditorItem } from "@/lib/bom-editor";
 import { useMenuVisibility } from "@/context/MenuVisibilityContext";
+import type { Product } from "@/types/models";
 
 // แก้ไขสูตร BOM — typo เสมอ หรือบัญชีที่ถูกติ๊กเมนูนี้ (เซิร์ฟเวอร์ตรวจซ้ำที่ /api/production/boms/editor)
 interface DraftItem extends Omit<BomEditorItem, "qty" | "waste_percentage"> { key: string; qty: string; waste_percentage: string }
 interface Draft { unit: string; base_qty: string; items: DraftItem[] }
+type MaterialProduct = Pick<Product, "sku" | "product_name" | "barcode" | "base_unit">;
 
 let keySeq = 0;
 const toDraft = (f: BomEditorFormula): Draft => ({
@@ -23,6 +25,8 @@ export default function BomFormulaEditorPage() {
   const { menu_hrefs, loaded: menusLoaded } = useMenuVisibility();
   const allowed = canAccessBomEditor(user?.email, menu_hrefs);
   const [formulas, setFormulas] = useState<BomEditorFormula[]>([]);
+  const [products, setProducts] = useState<MaterialProduct[]>([]);
+  const productListId = useId();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
@@ -40,6 +44,7 @@ export default function BomFormulaEditorPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) throw new Error(json.message || "โหลดสูตรไม่สำเร็จ");
       setFormulas(json.data);
+      setProducts(json.products ?? []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "โหลดสูตรไม่สำเร็จ");
     } finally {
@@ -51,6 +56,9 @@ export default function BomFormulaEditorPage() {
 
   const visible = useMemo(() => filterBomFormulas(formulas, search), [formulas, search]);
   const selected = formulas.find((f) => f.bom_id === selectedId);
+  const productOptions = useMemo(() => products.map((p) => (
+    <option key={p.sku} value={p.sku} label={`${p.product_name}${p.barcode ? ` · ${p.barcode}` : ""}`} />
+  )), [products]);
 
   const choose = (f: BomEditorFormula) => {
     setSelectedId(f.bom_id);
@@ -61,6 +69,15 @@ export default function BomFormulaEditorPage() {
 
   const patchItem = (key: string, patch: Partial<DraftItem>) =>
     setDraft((d) => d && { ...d, items: d.items.map((i) => (i.key === key ? { ...i, ...patch } : i)) });
+
+  const changeMaterial = (key: string, value: string) => {
+    const query = value.trim().toLowerCase();
+    const product = products.find((p) => p.sku.toLowerCase() === query)
+      ?? products.find((p) => p.barcode && p.barcode.toLowerCase() === query);
+    patchItem(key, product
+      ? { sku: product.sku, name: product.product_name, unit: product.base_unit }
+      : { sku: value, name: undefined });
+  };
 
   const save = async () => {
     if (!selected || !draft) return;
@@ -111,6 +128,7 @@ export default function BomFormulaEditorPage() {
   return (
     <div className="w-full max-w-full pb-10">
       <h1 className="mb-5 text-2xl font-bold text-m3-grey-800">แก้ไขสูตร BOM</h1>
+      <datalist id={productListId}>{productOptions}</datalist>
       {message && <M3Banner tone="success" className="mb-4">{message}</M3Banner>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="m3-card flex min-h-0 flex-col p-4">
@@ -155,8 +173,8 @@ export default function BomFormulaEditorPage() {
                   <tbody>
                     {draft.items.map((i) => (
                       <tr key={i.key}>
-                        <td><input aria-label="รหัสวัตถุดิบ" value={i.sku} onChange={(e) => patchItem(i.key, { sku: e.target.value, name: undefined })} className={m3Cls.input} /></td>
-                        <td className="text-sm text-m3-grey-600">{i.name || <span className="text-m3-grey-500">ระบบจะดึงชื่อจาก SKU</span>}</td>
+                        <td><input aria-label="รหัสวัตถุดิบ" list={productListId} autoComplete="off" placeholder="พิมพ์ SKU ชื่อ หรือบาร์โค้ด" value={i.sku} onChange={(e) => changeMaterial(i.key, e.target.value)} className={`${m3Cls.input} min-w-56`} /></td>
+                        <td className="text-sm text-m3-grey-600">{i.name || <span className="text-m3-grey-500">เลือกสินค้าจากรายการแนะนำ</span>}</td>
                         <td><input aria-label="จำนวนใช้" inputMode="decimal" value={i.qty} onChange={(e) => patchItem(i.key, { qty: e.target.value })} className={`${m3Cls.input} w-24`} /></td>
                         <td><input aria-label="หน่วย" value={i.unit} onChange={(e) => patchItem(i.key, { unit: e.target.value })} className={`${m3Cls.input} w-24`} /></td>
                         <td><input aria-label="สูญเสีย %" inputMode="decimal" value={i.waste_percentage} onChange={(e) => patchItem(i.key, { waste_percentage: e.target.value })} className={`${m3Cls.input} w-20`} /></td>
