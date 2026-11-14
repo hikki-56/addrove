@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { M3Banner, M3Empty, M3ErrorState, M3Field, M3IconCircle, M3Loading, m3Cls } from "@/components/ui/m3";
 import { SolarAddLine, SolarCloseCircle, SolarDangerCircle, SolarMagnifier, SolarPen } from "@/components/icons";
-import { canAccessBomEditor, canEditBom, filterBomFormulas, validateBomDraft, type BomEditorFormula, type BomEditorItem } from "@/lib/bom-editor";
+import { canAccessBomEditor, canEditBom, filterBomFormulas, validateBomDraft, type BomEditFilter, type BomEditorFormula, type BomEditorItem } from "@/lib/bom-editor";
 import { useMenuVisibility } from "@/context/MenuVisibilityContext";
 import type { Product } from "@/types/models";
 
@@ -12,6 +12,16 @@ import type { Product } from "@/types/models";
 interface DraftItem extends Omit<BomEditorItem, "qty" | "waste_percentage"> { key: string; qty: string; waste_percentage: string }
 interface Draft { unit: string; base_qty: string; items: DraftItem[] }
 type MaterialProduct = Pick<Product, "sku" | "product_name" | "barcode" | "base_unit">;
+const editTimeFormat = new Intl.DateTimeFormat("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
+const editFilters: { value: BomEditFilter; label: string }[] = [
+  { value: "all", label: "ทั้งหมด" },
+  { value: "unedited", label: "ยังไม่แก้ไข" },
+  { value: "edited", label: "แก้ไขแล้ว" },
+];
+
+function EditStatus({ editedAt }: { editedAt: string | null }) {
+  return <span className={`m3-label shrink-0 ${editedAt ? "m3-label-success" : "m3-label-warning"}`}>{editedAt ? "แก้ไขแล้ว" : "ยังไม่แก้ไข"}</span>;
+}
 
 let keySeq = 0;
 const toDraft = (f: BomEditorFormula): Draft => ({
@@ -30,6 +40,7 @@ export default function BomFormulaEditorPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
+  const [editFilter, setEditFilter] = useState<BomEditFilter>("all");
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -54,7 +65,9 @@ export default function BomFormulaEditorPage() {
 
   useEffect(() => { if (allowed) void load(); }, [allowed, load]);
 
-  const visible = useMemo(() => filterBomFormulas(formulas, search), [formulas, search]);
+  const visible = useMemo(() => filterBomFormulas(formulas, search, editFilter), [formulas, search, editFilter]);
+  const editedCount = formulas.filter((f) => f.edited_at).length;
+  const statusCounts = { all: formulas.length, edited: editedCount, unedited: formulas.length - editedCount };
   const selected = formulas.find((f) => f.bom_id === selectedId);
   const productOptions = useMemo(() => products.map((p) => (
     <option key={p.sku} value={p.sku} label={`${p.product_name}${p.barcode ? ` · ${p.barcode}` : ""}`} />
@@ -136,6 +149,14 @@ export default function BomFormulaEditorPage() {
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-m3-grey-500"><SolarMagnifier size={18} /></span>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="รหัสสูตร, SKU, ชื่อสินค้า หรือวัตถุดิบ" className={`${m3Cls.input} pl-9`} />
           </M3Field>
+          <div role="group" aria-label="กรองสถานะการแก้ไขสูตร" className="mt-3 flex flex-wrap gap-1.5">
+            {editFilters.map((filter) => (
+              <button key={filter.value} type="button" aria-pressed={editFilter === filter.value} onClick={() => setEditFilter(filter.value)}
+                className={`rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${editFilter === filter.value ? "bg-[rgba(0,167,111,0.12)] text-m3-primary-dark" : "bg-m3-grey-100 text-m3-grey-600 hover:bg-m3-grey-200"}`}>
+                {filter.label} ({statusCounts[filter.value]})
+              </button>
+            ))}
+          </div>
           <p className="mt-3 text-xs text-m3-grey-500">ทั้งหมด {formulas.length} สูตร · แสดง {visible.length}</p>
           <div className="mt-2 max-h-[65vh] overflow-y-auto">
             {loading ? <M3Loading label="กำลังโหลดสูตร…" /> : loadError ? (
@@ -143,8 +164,12 @@ export default function BomFormulaEditorPage() {
             ) : visible.length === 0 ? <M3Empty title="ไม่พบสูตรที่ค้นหา" /> : visible.map((f) => (
               <button key={f.bom_id} type="button" onClick={() => choose(f)}
                 className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left transition-colors ${f.bom_id === selectedId ? "bg-[rgba(0,167,111,0.08)] text-m3-primary" : "hover:bg-[rgba(145,158,171,0.08)]"}`}>
-                <div className="truncate text-sm font-semibold">{f.name}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 truncate text-sm font-semibold">{f.name}</div>
+                  <EditStatus editedAt={f.edited_at} />
+                </div>
                 <div className="truncate text-xs text-m3-grey-500">{f.bom_id} · {f.sku} · วัตถุดิบ {f.items.length} รายการ</div>
+                {f.edited_at && <div className="mt-1 text-xs text-m3-grey-500">แก้ไขล่าสุด <time dateTime={f.edited_at}>{editTimeFormat.format(new Date(f.edited_at))}</time></div>}
               </button>
             ))}
           </div>
@@ -158,6 +183,10 @@ export default function BomFormulaEditorPage() {
               <div>
                 <p className="text-lg font-bold text-m3-grey-800">{selected.name}</p>
                 <p className="text-sm text-m3-grey-600">สูตร {selected.bom_id} · SKU {selected.sku}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <EditStatus editedAt={selected.edited_at} />
+                  {selected.edited_at && <p className="text-xs text-m3-grey-500">แก้ไขล่าสุด <time dateTime={selected.edited_at}>{editTimeFormat.format(new Date(selected.edited_at))}</time></p>}
+                </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <M3Field label="จำนวนฐานของสูตร">

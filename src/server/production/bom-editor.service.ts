@@ -6,12 +6,18 @@ import type { BomEditorFormula, BomEditorInput } from "@/lib/bom-editor";
 /** ทุกสูตรที่เปิดใช้งาน รวมสูตรที่วัตถุดิบไม่ครบ (หน้าแก้ไขต้องเห็นเพื่อซ่อมได้) */
 export async function listBomFormulasForEditor(): Promise<BomEditorFormula[]> {
   if (getStorageDriver() !== "postgres") return [];
-  const formulas = await query(`SELECT bom_id,fg_sku,fg_name,fg_unit,base_qty,updated_at FROM bom_formulas WHERE active ORDER BY fg_sku,bom_id`);
+  // Preserve edits made before edited_at existed. Imported headers retain their
+  // original timestamp in cell 8; creating/importing a formula is not an edit.
+  const formulas = await query(`SELECT bom_id,fg_sku,fg_name,fg_unit,base_qty,updated_at,
+    COALESCE(edited_at,CASE WHEN pg_input_is_valid(source_cells->>8,'timestamp with time zone')
+      THEN CASE WHEN updated_at>(source_cells->>8)::timestamptz THEN updated_at END END) AS edited_at
+    FROM bom_formulas WHERE active ORDER BY fg_sku,bom_id`);
   const items = await query(`SELECT bom_item_id,bom_id,rm_sku,rm_name,rm_qty_required,rm_unit,waste_percentage,is_primary
     FROM bom_formula_items WHERE bom_id IN (SELECT bom_id FROM bom_formulas WHERE active) ORDER BY bom_id,bom_item_id`);
   return formulas.map((f) => ({
     bom_id: String(f.bom_id), sku: String(f.fg_sku), name: String(f.fg_name), unit: String(f.fg_unit), base_qty: Number(f.base_qty),
     revision: String(f.updated_at),
+    edited_at: f.edited_at ? String(f.edited_at) : null,
     items: items.filter((i) => i.bom_id === f.bom_id).map((i) => ({
       item_id: Number(i.bom_item_id), sku: String(i.rm_sku), name: String(i.rm_name), qty: Number(i.rm_qty_required),
       unit: String(i.rm_unit), waste_percentage: Number(i.waste_percentage), is_primary: Number(i.is_primary) === 0 ? 0 as const : 1 as const,
@@ -49,5 +55,5 @@ export async function updateBomFormula(input: BomEditorInput): Promise<void> {
     }
   }
   // updated_at เปลี่ยนเสมอ (trigger) → revision ใหม่ และ revision ของ ProductionBomFormula เปลี่ยนตาม
-  await query(`UPDATE bom_formulas SET fg_unit=$2,base_qty=$3,updated_at=now() WHERE bom_id=$1`, [input.bom_id, input.unit.trim(), input.base_qty]);
+  await query(`UPDATE bom_formulas SET fg_unit=$2,base_qty=$3,updated_at=now(),edited_at=now() WHERE bom_id=$1`, [input.bom_id, input.unit.trim(), input.base_qty]);
 }

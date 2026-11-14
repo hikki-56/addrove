@@ -52,4 +52,13 @@ describe("filterBomFormulas", () => {
     expect(filterBomFormulas(list, "wood").map((f) => f.bom_id)).toEqual(["A"]);
     expect(filterBomFormulas(list, "เก้าอี้").map((f) => f.bom_id)).toEqual(["B"]);
   });
+  it("separates saved formulas from untouched imports and combines status with search", () => {
+    const formulas = [{ ...list[0], edited_at: "2026-11-14T08:00:00.000Z" }, { ...list[1], edited_at: null }];
+    expect(filterBomFormulas(formulas, "", "edited").map(f => f.bom_id)).toEqual(["A"]);
+    expect(filterBomFormulas(formulas, "", "unedited").map(f => f.bom_id)).toEqual(["B"]);
+    expect(filterBomFormulas(formulas, "wood", "edited").map(f => f.bom_id)).toEqual(["A"]);
+    expect(filterBomFormulas(formulas, "wood", "unedited")).toEqual([]);
+    expect(filterBomFormulas(formulas, "", "all")).toEqual(formulas);
+    expect(filterBomFormulas(list, "", "unedited")).toEqual(list);
+  });
 });

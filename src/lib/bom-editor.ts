@@ -33,7 +33,11 @@ export interface BomEditorFormula {
   items: BomEditorItem[];
   /** updated_at ของสูตร — กันบันทึกทับข้อมูลที่ผู้อื่นแก้ */
   revision: string;
+  /** เวลาที่บันทึกการแก้ไขสำเร็จ (ไม่รวมการนำเข้าสูตร) */
+  edited_at: string | null;
 }
+
+export type BomEditFilter = "all" | "unedited" | "edited";
 
 export interface BomEditorInput {
   bom_id: string;
@@ -69,10 +73,10 @@ export function validateBomDraft(draft: BomEditorInput): string[] {
 }
 
 /** ค้นหาสูตรด้วยรหัสสูตร / SKU / ชื่อสินค้า / วัตถุดิบ */
-export function filterBomFormulas<T extends Pick<BomEditorFormula, "bom_id" | "sku" | "name" | "items">>(formulas: T[], search: string): T[] {
+export function filterBomFormulas<T extends Pick<BomEditorFormula, "bom_id" | "sku" | "name" | "items"> & { edited_at?: string | null }>(formulas: T[], search: string, editFilter: BomEditFilter = "all"): T[] {
   const q = search.trim().toLowerCase();
-  if (!q) return formulas;
-  return formulas.filter((f) =>
-    [f.bom_id, f.sku, f.name, ...f.items.flatMap((i) => [i.sku, i.name || ""])].some((v) => v.toLowerCase().includes(q))
-  );
+  return formulas.filter((f) => {
+    if (editFilter === "edited" && !f.edited_at || editFilter === "unedited" && f.edited_at) return false;
+    return !q || [f.bom_id, f.sku, f.name, ...f.items.flatMap((i) => [i.sku, i.name || ""])].some((v) => v.toLowerCase().includes(q));
+  });
 }

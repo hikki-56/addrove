@@ -70,6 +70,6 @@ export async function saveProductionBomRoles(input: {
     cells[4] = role === 1 ? "ตัวหลัก" : "ตัวรอง";
     await query("UPDATE bom_formula_items SET is_primary=$3,source_cells=$4::jsonb WHERE bom_id=$1 AND bom_item_id=$2", [input.bom_id, id, role, JSON.stringify(cells)]);
   }
-  await query("UPDATE bom_formulas SET updated_at=now() WHERE bom_id=$1", [input.bom_id]);
+  await query("UPDATE bom_formulas SET updated_at=now(),edited_at=now() WHERE bom_id=$1", [input.bom_id]);
   return (await listProductionBoms(input.product_id)).find(f => f.bom_id === input.bom_id)!;
 }

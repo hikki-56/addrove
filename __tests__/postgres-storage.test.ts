@@ -50,9 +50,18 @@ test("BOM editor adds, updates and removes materials using real catalog names", 
     try {
         const empty = await reload();
         expect(empty.items).toEqual([]);
+        expect(empty.edited_at).toBeNull();
+        await expect(withDatabaseTransaction(async () => {
+            await updateBomFormula({ bom_id: bomId, revision: empty.revision, unit: "ชิ้น", base_qty: 1,
+                items: [{ sku: skus[0], qty: 1, unit: "ชิ้น", waste_percentage: 0, is_primary: 1 }] });
+            throw new Error("Simulated failed save");
+        })).rejects.toThrow("Simulated failed save");
+        expect(await reload()).toEqual(empty);
         await withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: empty.revision, unit: "ชิ้น", base_qty: 1,
             items: [{ sku: skus[0], name: "Untrusted browser name", qty: 2, unit: "ชิ้น", waste_percentage: 0, is_primary: 1 }] }));
         const added = await reload();
+        expect(added.edited_at).not.toBeNull();
+        expect(Number.isFinite(Date.parse(added.edited_at!))).toBe(true);
         expect(added.items).toHaveLength(1);
         expect(added.items[0]).toMatchObject({ sku: skus[0], name: `Catalog ${skus[0]}`, qty: 2 });
         const itemId = added.items[0].item_id;
@@ -70,10 +79,36 @@ test("BOM editor adds, updates and removes materials using real catalog names", 
         expect(final.items[0]).toMatchObject({ item_id: itemId, sku: skus[0], qty: 4 });
         await expect(withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: final.revision, unit: "ชิ้น", base_qty: 1,
             items: [{ sku: "NONEXISTENT-BOM-MATERIAL", qty: 1, unit: "ชิ้น", waste_percentage: 0, is_primary: 1 }] }))).rejects.toThrow("ไม่พบรหัสวัตถุดิบ");
-        expect((await reload()).items).toEqual(final.items);
+        expect(await reload()).toEqual(final);
     } finally {
         await query("DELETE FROM bom_formulas WHERE bom_id=$1", [bomId]);
         await query("DELETE FROM products WHERE sku=ANY($1::text[])", [skus]);
+    }
+});
+
+test("BOM edit status keeps earlier saved formulas and does not label new imports as edited", async () => {
+    const ids = ["BOM-STATUS-IMPORTED", "BOM-STATUS-SAVED", "BOM-STATUS-INVALID-DATE"];
+    const importedAt = "2026-11-01T00:00:00.000Z";
+    const savedAt = "2026-11-02T00:00:00.000Z";
+    const cells = (timestamp: string) => JSON.stringify(["", "TEST", "", "Imported", "ชิ้น", "1", "", "TRUE", timestamp]);
+    try {
+        for (const [index, bomId] of ids.entries()) {
+            await query(`INSERT INTO bom_formulas(bom_id,fg_sku,fg_name,updated_at,source_cells) VALUES($1,'TEST','Status test',$2::timestamptz,$3::jsonb)`,
+                [bomId, index === 1 ? savedAt : importedAt, cells(index === 2 ? "not a timestamp" : importedAt)]);
+        }
+        const loadStatus = async () => (await listBomFormulasForEditor()).filter(f => ids.includes(f.bom_id));
+        const before = await loadStatus();
+        expect(before.find(f => f.bom_id === ids[0])?.edited_at).toBeNull();
+        expect(before.find(f => f.bom_id === ids[1])?.edited_at).toBe(savedAt);
+        expect(before.find(f => f.bom_id === ids[2])?.edited_at).toBeNull();
+        const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261114080000_bom_edit_status.sql"), "utf8");
+        await mockDb.exec(migration);
+        await mockDb.exec(migration);
+        expect(await loadStatus()).toEqual(before);
+        await query("UPDATE bom_formulas SET edited_at=$2::timestamptz WHERE bom_id=$1", [ids[0], savedAt]);
+        expect((await loadStatus()).find(f => f.bom_id === ids[0])?.edited_at).toBe(savedAt);
+    } finally {
+        await query("DELETE FROM bom_formulas WHERE bom_id=ANY($1::text[])", [ids]);
     }
 });
 

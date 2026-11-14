@@ -86,6 +86,7 @@ test("saving selected material roles persists to the formula, preserves source d
   expect(before.items.find(i => i.item_id === f.sharedId)?.role_confirmed).toBe(false);
   const input = { product_id: f.fg.product_id, bom_id: before.bom_id, revision: before.revision!, material_roles: { [f.sharedId]: 0 as const } };
   const saved = await withDatabaseTransaction(() => saveProductionBomRoles(input));
+  expect((await query("SELECT edited_at FROM bom_formulas WHERE bom_id=$1", [input.bom_id]))[0].edited_at).not.toBeNull();
   expect(saved.revision).not.toBe(before.revision);
   const reopened = (await listProductionBoms(f.fg.product_id))[0];
   expect(reopened).toEqual(saved);
