@@ -6,6 +6,15 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
+/** ขนาดกรอบสแกนในวิวกล้อง — ย่อจากเดิม (0.9 x 0.6 ของด้านสั้น) ให้เล็งบาร์โค้ดได้ง่ายขึ้น */
+export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
+  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+  return {
+    width: Math.max(160, Math.floor(minEdge * 0.64)),
+    height: Math.max(100, Math.floor(minEdge * 0.4)),
+  };
+}
+
 interface CameraBarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -184,13 +193,7 @@ export default function CameraBarcodeScannerModal({
           { facingMode: "environment" },
           {
             fps: 25,
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-              return {
-                width: Math.floor(minEdge * 0.9),
-                height: Math.floor(minEdge * 0.6),
-              };
-            },
+            qrbox: cameraScanQrbox,
             aspectRatio: 1.777778,
           },
           (decodedText) => {
@@ -305,8 +308,8 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Video Camera Viewport */}
-        <div className="relative bg-m3-grey-800 flex-1 min-h-[260px] sm:min-h-[300px] flex items-center justify-center overflow-hidden p-2">
-          <div id={scannerId} className="w-full h-full text-m3-grey-400 text-xs text-center" />
+        <div className="stockify-scan-viewport relative bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] flex items-center justify-center overflow-hidden p-2">
+          <div id={scannerId} className="h-full w-full text-center text-xs text-m3-grey-400" />
 
           {cameraError && (
             <div className="absolute inset-0 bg-white p-6 text-center space-y-4 flex flex-col items-center justify-center">

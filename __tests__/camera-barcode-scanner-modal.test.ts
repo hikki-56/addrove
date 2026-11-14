@@ -14,6 +14,7 @@ jest.mock("react", () => ({
   useRef: (initial: unknown) => ({ current: initial }),
   useCallback: (callback: unknown) => callback,
   useEffect: (effect: () => unknown) => { mockEffects.push(effect); },
+  useId: () => "scanner-test",
 }));
 jest.mock("@/hooks/use-escape-key", () => ({ useEscapeKey: jest.fn() }));
 jest.mock("@/client/feedback", () => ({

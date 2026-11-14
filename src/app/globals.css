@@ -1368,3 +1368,33 @@ html .m3-table th:last-child,
 html .m3-table td:last-child { padding-right: 24px; }
 html .m3-table th.m3-num,
 html .m3-table td.m3-num { text-align: right; }
+
+/* Scan viewfinder: smaller html5-qrcode qrbox + red sweeping line */
+.stockify-scan-viewport #qr-shaded-region {
+  overflow: hidden;
+}
+.stockify-scan-viewport #qr-shaded-region::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 10%;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: #ff3b30;
+  box-shadow:
+    0 0 8px 2px rgba(255, 59, 48, 0.9),
+    0 0 16px 6px rgba(255, 59, 48, 0.35);
+  animation: stockify-scan-line 1.8s ease-in-out infinite alternate;
+}
+@keyframes stockify-scan-line {
+  from { top: 10%; }
+  to { top: calc(90% - 2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stockify-scan-viewport #qr-shaded-region::after {
+    animation: none;
+    top: 50%;
+  }
+}
