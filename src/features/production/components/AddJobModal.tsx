@@ -279,7 +279,7 @@ export default function AddJobModal({
       </div>
 
       <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
-        disabled={isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING"} onChange={changeBom} onValidation={setBomError} />
+        disabled={submitting || (isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING")} onChange={changeBom} onValidation={setBomError} />
 
       <label className="block">
         <span className={m3Cls.label}>เป้าหมายสินค้าดี</span>

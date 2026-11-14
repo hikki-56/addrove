@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import type { QueryResultRow } from "pg";
-import { query } from "@/server/repositories/postgres/database";
+import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
+import { listProductionBoms, saveProductionBomRoles } from "@/server/production/production-bom.service";
 import { getRepository } from "@/server/repositories";
 import { createJobs, submitJobs, startJob, reportProduction, cancelJob, reopenJob, getJobDetail, deleteDraft, updateJob } from "@/server/production/production-job.service";
 import { previewMaterialAvailability, listProductionCapacities } from "@/server/production/production-material.service";
@@ -75,6 +76,43 @@ async function fixture(target = 3) {
   const [job] = await createJobs(admin, [input]);
   return { repo, job, fg, main, shared, selection, input, mainId: Number(m.bom_item_id), sharedId: Number(s.bom_item_id) };
 }
+
+test("saving selected material roles persists to the formula, preserves source data and existing job snapshots", async () => {
+  const f = await fixture();
+  const cells = [f.selection.bom_id, f.shared.sku, "barcode", "name", "", 1, "ใบ", "keep note"];
+  await query("UPDATE bom_formula_items SET source_cells=$2::jsonb,is_primary=1 WHERE bom_item_id=$1", [f.sharedId, JSON.stringify(cells)]);
+  const before = (await listProductionBoms(f.fg.product_id))[0];
+  const snapshot = await query("SELECT snapshot FROM production_material_plans WHERE job_no=$1", [f.job.job_no]);
+  expect(before.items.find(i => i.item_id === f.sharedId)?.role_confirmed).toBe(false);
+  const input = { product_id: f.fg.product_id, bom_id: before.bom_id, revision: before.revision!, material_roles: { [f.sharedId]: 0 as const } };
+  const saved = await withDatabaseTransaction(() => saveProductionBomRoles(input));
+  expect(saved.revision).not.toBe(before.revision);
+  const reopened = (await listProductionBoms(f.fg.product_id))[0];
+  expect(reopened).toEqual(saved);
+  expect(reopened.items.find(i => i.item_id === f.sharedId)).toMatchObject({ is_primary: 0, role_confirmed: true });
+  const [row] = await query("SELECT source_cells,rm_qty_required,rm_unit FROM bom_formula_items WHERE bom_item_id=$1", [f.sharedId]);
+  expect(row.source_cells).toEqual(cells.map((cell, index) => index === 4 ? "ตัวรอง" : cell));
+  expect(Number(row.rm_qty_required)).toBe(1);
+  expect(row.rm_unit).toBe("ใบ");
+  expect(await query("SELECT snapshot FROM production_material_plans WHERE job_no=$1", [f.job.job_no])).toEqual(snapshot);
+  await expect(withDatabaseTransaction(() => saveProductionBomRoles(input))).rejects.toMatchObject({ statusCode: 409 });
+  const [newJob] = await createJobs(admin, [{ ...f.input, bom: { ...f.selection, revision: saved.revision } }]);
+  expect(newJob.material_plan?.snapshot.items.find(i => i.item_id === f.sharedId)).toMatchObject({ is_primary: 0, role_confirmed: true });
+});
+
+test("role saving rejects foreign materials and a formula with only secondary materials without partial writes", async () => {
+  const f = await fixture();
+  await query("UPDATE bom_formula_items SET source_cells='[\"legacy\",\"\",\"\",\"\",\"\"]'::jsonb WHERE bom_id=$1", [f.selection.bom_id]);
+  const formula = (await listProductionBoms(f.fg.product_id))[0];
+  const before = await query("SELECT * FROM bom_formula_items WHERE bom_id=$1 ORDER BY bom_item_id", [formula.bom_id]);
+  const input = { product_id: f.fg.product_id, bom_id: formula.bom_id, revision: formula.revision! };
+  await expect(withDatabaseTransaction(() => saveProductionBomRoles({ ...input, material_roles: { [f.mainId]: 1, "999999": 0 } }))).rejects.toThrow("ในสูตรนี้");
+  await expect(withDatabaseTransaction(() => saveProductionBomRoles({ ...input, material_roles: { [f.mainId]: 0, [f.sharedId]: 0 } }))).rejects.toThrow("อย่างน้อยหนึ่งรายการ");
+  expect(await query("SELECT * FROM bom_formula_items WHERE bom_id=$1 ORDER BY bom_item_id", [formula.bom_id])).toEqual(before);
+  const partial = await withDatabaseTransaction(() => saveProductionBomRoles({ ...input, material_roles: { [f.mainId]: 1 } }));
+  expect(partial.items.find(i => i.item_id === f.mainId)).toMatchObject({ is_primary: 1, role_confirmed: true });
+  expect(partial.items.find(i => i.item_id === f.sharedId)?.role_confirmed).toBe(false);
+});
 
 test("material locations show current positive active warehouse 2 stock without changing the frozen BOM", async () => {
   const f = await fixture();

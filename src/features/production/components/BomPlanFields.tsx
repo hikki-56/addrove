@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { previewProductionBom } from "@/lib/production-bom";
+import { M3SubmitLabel, m3Cls } from "@/components/ui/m3";
 import type { ProductionBomFormula, ProductionBomPreview, ProductionBomSelection, ProductionMaterialPlan } from "@/types/production-bom";
 
 interface Props {
@@ -20,7 +21,19 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<ProductionBomPreview | null>(null);
+  const [savingRoles, setSavingRoles] = useState(false);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [rolesSaved, setRolesSaved] = useState(false);
+  const [savedFormula, setSavedFormula] = useState<ProductionBomFormula | null>(null);
+  const saveRequest = useRef<AbortController | null>(null);
   const selected = value?.bom_id;
+  useEffect(() => {
+    setSavingRoles(false);
+    setRolesError(null);
+    setRolesSaved(false);
+    setSavedFormula(null);
+    return () => { saveRequest.current?.abort(); };
+  }, [productId, selected]);
   useEffect(() => {
     let live = true;
     setError(null);
@@ -43,10 +56,10 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       onChange({ bom_id: first.bom_id, revision: first.revision }, first.unit);
     }
   }, [disabled, selected, loadedProductId, productId, formulas, onChange]);
-  const formula = savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
+  const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
   const preview = useMemo(() => formula ? previewProductionBom(formula, targetQty, value) : null, [formula, targetQty, value]);
   const loading = !!productId && loadedProductId !== productId;
-  const validation = !productId ? null : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตรที่เปิดใช้งานและมีวัตถุดิบครบ กรุณาตรวจข้อมูล BOM" : preview?.issues[0] || null);
+  const validation = !productId ? null : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตรที่เปิดใช้งานและมีวัตถุดิบครบ กรุณาตรวจข้อมูล BOM" : preview?.issues[0] || null);
   useEffect(() => { onValidation(validation); }, [validation, onValidation]);
   useEffect(() => {
     let live = true;
@@ -58,10 +71,42 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     }, 300);
     return () => { live = false; clearTimeout(timer); };
   }, [productId, value, targetQty, jobNo, preview, disabled]);
+  const pendingRoles = Object.fromEntries(formula?.items.flatMap(i => {
+    const role = value?.material_roles?.[String(i.item_id)];
+    return i.role_confirmed === false && role !== undefined ? [[String(i.item_id), role]] : [];
+  }) ?? []);
+  const saveRoles = async () => {
+    if (!formula || !value || savingRoles || disabled || !Object.keys(pendingRoles).length) return;
+    const controller = new AbortController();
+    saveRequest.current = controller;
+    setSavingRoles(true);
+    setRolesError(null);
+    setRolesSaved(false);
+    try {
+      const response = await fetch("/api/production/boms", {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+        body: JSON.stringify({ product_id: productId, bom_id: formula.bom_id, revision: formula.revision, material_roles: pendingRoles }),
+      });
+      const json = await response.json();
+      if (controller.signal.aborted) return;
+      if (!response.ok || !json.success) throw new Error(json.message || "บันทึกประเภทวัตถุดิบไม่สำเร็จ");
+      const updated = json.data as ProductionBomFormula;
+      setFormulas(rows => rows.map(f => f.bom_id === updated.bom_id ? updated : f));
+      setSavedFormula(updated);
+      const roles = { ...value.material_roles };
+      for (const id of Object.keys(pendingRoles)) delete roles[id];
+      onChange({ ...value, revision: updated.revision, material_roles: roles }, updated.unit);
+      setRolesSaved(true);
+    } catch (e) {
+      if (!controller.signal.aborted) setRolesError(e instanceof Error ? e.message : "บันทึกประเภทวัตถุดิบไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      if (!controller.signal.aborted) setSavingRoles(false);
+    }
+  };
   if (!productId) return null;
   const factorInput = (unit: string, stockUnit: string, current: number | undefined, change: (n: number | undefined) => void) => (
     <label className="mt-2 block text-xs text-m3-grey-600">1 {unit} =
-      <input aria-label={`อัตราแปลง ${unit} เป็น ${stockUnit}`} type="number" min="0.001" step="any" disabled={disabled} value={current ?? ""}
+      <input aria-label={`อัตราแปลง ${unit} เป็น ${stockUnit}`} type="number" min="0.001" step="any" disabled={disabled || savingRoles} value={current ?? ""}
         onChange={e => change(e.target.value === "" ? undefined : Number(e.target.value))} className="mx-2 h-9 w-24 px-2 text-right tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" />{stockUnit}
     </label>
   );
@@ -83,7 +128,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
           <p className="font-semibold">{i.sku} · {i.name}</p>
           <p className="text-xs text-m3-grey-600">{!i.role_confirmed ? "ยังไม่ระบุหลัก/รอง" : i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {i.stock_qty ?? "—"} {i.stock_unit}</p>
           {!formula.items.find(m => m.item_id === i.item_id)?.role_confirmed && <label className="mt-1 block text-xs">หลัก / รอง
-            <select disabled={disabled} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit)} className="ml-2 h-9 px-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
+            <select aria-label={`หลัก / รอง ${i.sku}`} disabled={disabled || savingRoles} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => { setRolesSaved(false); setRolesError(null); onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit); }} className="ml-2 h-9 px-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
               <option value="" disabled>ระบุประเภท</option><option value="1">ตัวหลัก</option><option value="0">ตัวรอง</option>
             </select>
           </label>}
@@ -94,6 +139,14 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
           {stock && <p className={stock.shortage ? "text-xs font-bold text-m3-error-dark" : "text-xs text-m3-grey-600"}>พร้อมใช้ {stock.available} {i.stock_unit}{stock.shortage ? ` · ขาด ${stock.shortage}` : ""}</p>}
         </div>;
       })}
+      {Object.keys(pendingRoles).length > 0 && <div className="space-y-1.5">
+        <button type="button" disabled={disabled || savingRoles} onClick={saveRoles} className={m3Cls.btnPrimary}>
+          <M3SubmitLabel submitting={savingRoles}>บันทึกประเภท</M3SubmitLabel>
+        </button>
+        <p className="text-xs text-m3-grey-600">บันทึกประเภทหลัก/รองไว้ในสูตรสำหรับการใช้งานครั้งถัดไป</p>
+      </div>}
+      {rolesSaved && <p role="status" className="text-xs font-semibold text-m3-primary-dark">บันทึกประเภทวัตถุดิบแล้ว</p>}
+      {rolesError && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{rolesError}</p>}
       {availability?.main_capacity != null && <p className="text-sm font-bold text-m3-primary-dark">ผลิตได้ {availability.main_capacity} {formula.unit}</p>}
     </>}
     {validation && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{validation}</p>}
