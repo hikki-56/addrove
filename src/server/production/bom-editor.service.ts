@@ -27,7 +27,7 @@ export async function updateBomFormula(input: BomEditorInput): Promise<void> {
   if (String(formula.updated_at) !== input.revision) throw new ProductionError("สูตรนี้ถูกแก้ไขไปแล้ว กรุณารีเฟรชแล้วลองใหม่", 409);
 
   const skus = [...new Set(input.items.map((i) => i.sku.trim()))];
-  const products = await query(`SELECT sku,name,barcode FROM products WHERE active AND sku = ANY($1::text[])`, [skus]);
+  const products = await query(`SELECT sku,product_name AS name,barcode FROM products WHERE active AND sku = ANY($1::text[])`, [skus]);
   const missing = skus.filter((s) => !products.some((p) => p.sku === s));
   if (missing.length) throw new ProductionError(`ไม่พบรหัสวัตถุดิบที่เปิดใช้งาน: ${missing.join(", ")}`, 400);
 

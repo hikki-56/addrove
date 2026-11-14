@@ -9,6 +9,7 @@ import { withStorageRequest } from "@/server/storage-transaction";
 import { createJobs, submitJobs, startJob, reportProduction, deleteDraft, getJobDetail } from "@/server/production/production-job.service";
 import { createProductWithStock } from "@/server/services/create-product";
 import { submitTransferMove, completeTransfer } from "@/server/services/stock/transfer-stock";
+import { listBomFormulasForEditor, updateBomFormula } from "@/server/production/bom-editor.service";
 let mockDb: PGlite;
 let mockConnectionTail = Promise.resolve();
 jest.mock("pg", () => {
@@ -37,6 +38,44 @@ const repo = new PostgresStockRepository();
 const root = path.join(__dirname, "..");
 const oldDriver = process.env.STORAGE_DRIVER;
 const oldUrl = process.env.DATABASE_URL;
+
+test("BOM editor adds, updates and removes materials using real catalog names", async () => {
+    const bomId = "BOM-EDITOR-SAVE-REGRESSION";
+    const skus = ["BOM-EDITOR-RM-1", "BOM-EDITOR-RM-2"];
+    for (const sku of skus) {
+        await repo.products.create({ sku, product_name: `Catalog ${sku}`, barcode: `BAR-${sku}`, category: "test", base_unit: "ชิ้น", minimum_stock: 0, description: "" });
+    }
+    await query("INSERT INTO bom_formulas(bom_id,fg_sku,fg_name,fg_unit,base_qty) VALUES($1,'TEST','Empty test formula','ชิ้น',1)", [bomId]);
+    const reload = async () => (await listBomFormulasForEditor()).find(f => f.bom_id === bomId)!;
+    try {
+        const empty = await reload();
+        expect(empty.items).toEqual([]);
+        await withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: empty.revision, unit: "ชิ้น", base_qty: 1,
+            items: [{ sku: skus[0], name: "Untrusted browser name", qty: 2, unit: "ชิ้น", waste_percentage: 0, is_primary: 1 }] }));
+        const added = await reload();
+        expect(added.items).toHaveLength(1);
+        expect(added.items[0]).toMatchObject({ sku: skus[0], name: `Catalog ${skus[0]}`, qty: 2 });
+        const itemId = added.items[0].item_id;
+        await withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: added.revision, unit: "ชิ้น", base_qty: 1,
+            items: [{ ...added.items[0], qty: 3 }, { sku: skus[1], qty: 5, unit: "ชิ้น", waste_percentage: 0, is_primary: 0 }] }));
+        const updated = await reload();
+        expect(updated.items).toHaveLength(2);
+        expect(updated.items.find(i => i.sku === skus[0])).toMatchObject({ item_id: itemId, qty: 3, name: `Catalog ${skus[0]}` });
+        expect(updated.items.find(i => i.sku === skus[1])).toMatchObject({ qty: 5, name: `Catalog ${skus[1]}` });
+        expect((await query("SELECT rm_barcode FROM bom_formula_items WHERE bom_id=$1 ORDER BY rm_sku", [bomId])).map(r => r.rm_barcode)).toEqual(skus.map(sku => `BAR-${sku}`));
+        await withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: updated.revision, unit: "ชิ้น", base_qty: 1,
+            items: [{ ...updated.items.find(i => i.sku === skus[0])!, qty: 4 }] }));
+        const final = await reload();
+        expect(final.items).toHaveLength(1);
+        expect(final.items[0]).toMatchObject({ item_id: itemId, sku: skus[0], qty: 4 });
+        await expect(withDatabaseTransaction(() => updateBomFormula({ bom_id: bomId, revision: final.revision, unit: "ชิ้น", base_qty: 1,
+            items: [{ sku: "NONEXISTENT-BOM-MATERIAL", qty: 1, unit: "ชิ้น", waste_percentage: 0, is_primary: 1 }] }))).rejects.toThrow("ไม่พบรหัสวัตถุดิบ");
+        expect((await reload()).items).toEqual(final.items);
+    } finally {
+        await query("DELETE FROM bom_formulas WHERE bom_id=$1", [bomId]);
+        await query("DELETE FROM products WHERE sku=ANY($1::text[])", [skus]);
+    }
+});
 
 beforeAll(async () => {
     process.env.STORAGE_DRIVER = "postgres";
