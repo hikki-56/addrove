@@ -1373,6 +1373,24 @@ html .m3-table td.m3-num { text-align: right; }
 .stockify-scan-viewport #qr-shaded-region {
   overflow: hidden;
 }
+
+/*
+ * โหมดกะทัดรัดสูง 144px: html5-qrcode ตั้ง video.width เป็นความกว้างของแม่
+ * แต่ไม่ตั้งสูง — สตรีมแนวตั้งจึงสูงกว่ากล่องมาก overflow ตัดภาพ
+ * กรอบสแกนกับโซน decode อยู่กลางวิดีโอทั้งท่อน (นอกจอ) จึงสแกนไม่ติดและไม่เห็นเส้นแดง
+ *
+ * บังคับวิดีโอให้เต็มกล่อง 144px และใช้ object-fit: fill (ไม่ใช่ cover)
+ * เพราะไลบรารีแปลงพิกัดจาก clientWidth/Height ไป videoWidth/Height แบบอัตราส่วนตรง ๆ
+ * ถ้า cover/contain แล้วขอบถูกครอปหรือมี letterbox พิกัดจะเพี้ยน
+ */
+.stockify-scan-viewport.stockify-scan-compact video {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: fill;
+  object-position: center;
+}
 .stockify-scan-viewport #qr-shaded-region::after {
   content: "";
   position: absolute;

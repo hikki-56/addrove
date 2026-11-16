@@ -15,11 +15,22 @@ export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: numbe
   };
 }
 
-/** กรอบสแกนแบบกะทัดรัดสำหรับวิวกล้องสูง 144px บนหน้ารับเข้า */
+/**
+ * กรอบสแกนของโหมดกะทัดรัด (วิว 144px) — สัดส่วนตามขนาด viewfinder จริงที่ html5-qrcode
+ * วัดจาก video.clientWidth/clientHeight (อย่าใช้กรอบคงที่ 200×72)
+ *
+ * html5-qrcode 2.3.8 บังคับด้านสั้นสุด 50px และจะไม่วาด #qr-shaded-region
+ * (กรอบ + เส้นแดง) ถ้ากรอบสูงหรือกว้างเท่าจอวิดีโอ
+ */
+export const HTML5_QRBOX_MIN_SIZE = 50;
+
 export function cameraScanQrboxCompact(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
+  const margin = 2;
+  const maxWidth = Math.max(0, viewfinderWidth - margin);
+  const maxHeight = Math.max(0, viewfinderHeight - margin);
   return {
-    width: Math.min(200, Math.max(120, viewfinderWidth - 32)),
-    height: Math.min(72, Math.max(48, Math.floor(viewfinderHeight * 0.5))),
+    width: Math.min(Math.max(HTML5_QRBOX_MIN_SIZE, Math.floor(viewfinderWidth * 0.8)), maxWidth),
+    height: Math.min(Math.max(HTML5_QRBOX_MIN_SIZE, Math.floor(viewfinderHeight * 0.6)), maxHeight),
   };
 }
 
@@ -365,7 +376,7 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Video Camera Viewport */}
-        <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? "h-[144px] flex-none p-0" : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
+        <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? "stockify-scan-compact h-[144px] flex-none p-0" : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
           <div id={scannerId} className="h-full w-full text-center text-xs text-m3-grey-400" />
 
           {cameraError && (

@@ -116,6 +116,7 @@ it("default chrome still includes the sound test, typed code field, and close co
   const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
   expect(String(viewport.props.className)).toContain("max-h-[min(280px,48vh)]");
   expect(String(viewport.props.className)).not.toContain("h-[144px]");
+  expect(String(viewport.props.className)).not.toContain("stockify-scan-compact");
 });
 
 it("receive opt-out props hide chrome, keep a compact 144px frame, and render afterViewport", () => {
@@ -135,6 +136,7 @@ it("receive opt-out props hide chrome, keep a compact 144px frame, and render af
   expect(() => find(tree, (node) => node.type === "span" && node.props.children === "ทีละครั้ง")).toThrow("Element not found");
   const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
   expect(String(viewport.props.className)).toContain("h-[144px]");
+  expect(String(viewport.props.className)).toContain("stockify-scan-compact");
   expect(String(viewport.props.className)).not.toContain("max-h-[min(280px,48vh)]");
   const flash = find(tree, (node) => node.type === "button" && node.props["aria-label"] === "เปิดแฟลช");
   expect(String(flash.props.className)).toContain("size-9");
