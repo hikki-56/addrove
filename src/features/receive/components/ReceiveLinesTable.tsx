@@ -5,6 +5,7 @@ import type { UseFormReturn } from "react-hook-form";
 import type { ReceiveDocumentInput } from "@/types/api";
 import type { Location, Product } from "@/types/models";
 import ReceiveLineItem from "./ReceiveLineItem";
+import { lineMatchesLastScan } from "@/features/receive/scan-summary";
 import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import { M3Banner, M3Empty } from "@/components/ui/m3";
 import { SolarBox, SolarCheckCircle } from "@/components/icons";
@@ -22,6 +23,9 @@ export interface ReceiveLinesTableProps {
   onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
   onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
   onOpenLocationCamera?: () => void;
+  onCloseLocationCamera?: () => void;
+  onLocationCameraChange?: (open: boolean) => void;
+  lastScannedId?: string | null;
   onOpenConfirmModal: () => void;
 }
 
@@ -112,6 +116,9 @@ export default function ReceiveLinesTable({
   onScanLocation,
   onScanFeedback,
   onOpenLocationCamera,
+  onCloseLocationCamera,
+  onLocationCameraChange,
+  lastScannedId,
   onOpenConfirmModal,
 }: ReceiveLinesTableProps) {
   const watchLines = form.watch("lines") || [];
@@ -152,7 +159,15 @@ export default function ReceiveLinesTable({
         onRemove={onRemove}
         onScanLocation={onScanLocation}
         onScanFeedback={onScanFeedback}
-        onOpenLocationCamera={onOpenLocationCamera}
+        onOpenLocationCamera={() => {
+          onOpenLocationCamera?.();
+          onLocationCameraChange?.(true);
+        }}
+        onCloseLocationCamera={() => {
+          onCloseLocationCamera?.();
+          onLocationCameraChange?.(false);
+        }}
+        isLatestScan={lineMatchesLastScan(fields[index].product_id, lastScannedId)}
       />
     );
   };

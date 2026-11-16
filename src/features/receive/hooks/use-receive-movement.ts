@@ -577,7 +577,6 @@ export function useReceiveMovement({
       setBarcodeInput("");
       setTimeout(() => {
         setScanFeedback(null);
-        setLastScannedId(null);
       }, 4000);
       isProcessingRef.current = false;
       return;
@@ -860,6 +859,7 @@ export function useReceiveMovement({
     });
     setConfirmedLines({});
     setLocationInputs({});
+    setLastScannedId(null);
   };
 
   // เริ่มเซสชัน "รับตามแผน" — ล้างรายการ/draft เดิมเพื่อไม่ให้ปนกับการรับแบบไม่มีแผน
@@ -877,6 +877,7 @@ export function useReceiveMovement({
     setValue("idempotency_key", uuidv4());
     setConfirmedLines({});
     setLocationInputs({});
+    setLastScannedId(null);
   };
 
   const exitPlanMode = () => {
@@ -887,6 +888,7 @@ export function useReceiveMovement({
     setValue("idempotency_key", uuidv4());
     setConfirmedLines({});
     setLocationInputs({});
+    setLastScannedId(null);
   };
 
   const handleProductSelect = (product: Product) => {
@@ -917,7 +919,6 @@ export function useReceiveMovement({
     setSearchQuery("");
     setTimeout(() => {
       setScanFeedback(null);
-      setLastScannedId(null);
     }, 4000);
   };
 

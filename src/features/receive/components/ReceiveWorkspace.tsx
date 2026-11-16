@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useWarehouseData } from "@/hooks/use-warehouse-data";
 import { useTabAuth } from "@/context/TabAuthContext";
@@ -20,6 +20,7 @@ import PlanProgressPanel from "./PlanProgressPanel";
 import ReceiveRestoreBanner from "./ReceiveRestoreBanner";
 import PlanExitConfirmModal from "./PlanExitConfirmModal";
 import { ReceiveSummaryCard } from "./ReceiveLinesTable";
+import ReceiveScanSummaryStrip from "./ReceiveScanSummaryStrip";
 import { M3Banner } from "@/components/ui/m3";
 import { SolarCalendarPlan, SolarHome, SolarRefresh } from "@/components/icons";
 
@@ -28,9 +29,29 @@ const cardClass =
 
 type ReceiveMode = "INBOX" | "SCAN" | "PLAN_CREATE" | "PLAN_ALL";
 
+function useStickyStuck() {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStuck(!entry.isIntersecting),
+      { threshold: 1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return { sentinelRef, stuck };
+}
+
 export default function ReceiveWorkspace() {
   const [mode, setMode] = useState<ReceiveMode>("SCAN");
   const [planExitOpen, setPlanExitOpen] = useState(false);
+  const [locationCameraOpen, setLocationCameraOpen] = useState(false);
+  const { sentinelRef, stuck } = useStickyStuck();
   const { user: tabUser } = useTabAuth();
   const isAdmin = tabUser?.role === "ADMIN";
 
@@ -76,6 +97,7 @@ export default function ReceiveWorkspace() {
     barcodeInputRef,
     scanFeedback,
     setScanFeedback,
+    lastScannedId,
     confirmedLines,
     toggleConfirmLine,
     handleAddLocationForProduct,
@@ -83,8 +105,6 @@ export default function ReceiveWorkspace() {
     handleScanBarcode,
     confirmModalOpen,
     setConfirmModalOpen,
-    isCameraOpen,
-    setIsCameraOpen,
     onSubmit,
     resetForm,
     watchLines,
@@ -122,6 +142,10 @@ export default function ReceiveWorkspace() {
       return;
     }
     exitPlanMode();
+  };
+
+  const scrollToCamera = () => {
+    document.getElementById("receive-sticky-scan")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleSelectPlan = (plan: (typeof plansHook.plans)[number]) => {
@@ -180,7 +204,6 @@ export default function ReceiveWorkspace() {
               key={btn.value}
               type="button"
               onClick={() => {
-                setIsCameraOpen(false);
                 setMode(btn.value);
               }}
               aria-current={active ? "page" : undefined}
@@ -299,13 +322,12 @@ export default function ReceiveWorkspace() {
             />
           )}
 
-          <div id="receive-scan-input" className="space-y-3">
+          <div id="receive-scan-input">
             <BarcodeScanInput
               value={barcodeInput}
               onChange={setBarcodeInput}
               onScanSubmit={handleScanBarcode}
-              onOpenScannerModal={() => setIsCameraOpen(!isCameraOpen)}
-              isScannerOpen={isCameraOpen}
+              onOpenScannerModal={scrollToCamera}
               inputRef={barcodeInputRef}
               placeholder={
                 activePlan
@@ -313,19 +335,34 @@ export default function ReceiveWorkspace() {
                   : "สแกนบาร์โค้ดสินค้า / ตำแหน่ง / โกดัง…"
               }
             />
+          </div>
+
+          <div>
+          <div ref={sentinelRef} aria-hidden className="h-px w-full -mb-px" />
+          <div
+            id="receive-sticky-scan"
+            className={`sticky top-0 z-20 -mx-4 bg-m3-grey-100 px-4 py-2 md:-mx-6 md:px-6 xl:-mx-10 xl:px-10 ${
+              stuck ? "shadow-[0_8px_16px_-8px_rgba(145,158,171,0.28)]" : ""
+            }`}
+          >
             <CameraBarcodeScannerModal
               presentation="inline"
               feedbackHandledByCaller
               feedback={scanFeedback}
-              isOpen={isCameraOpen}
+              isOpen={!locationCameraOpen}
+              persistOpen
+              compactViewport
+              hideManualInput
+              hideSoundHint
               onClose={() => {
-                setIsCameraOpen(false);
                 barcodeInputRef.current?.focus();
               }}
               onScan={(scannedText, playSound) => {
                 return handleScanBarcode(scannedText, playSound);
               }}
+              afterViewport={<ReceiveScanSummaryStrip lines={watchLines || []} />}
             />
+          </div>
           </div>
 
           {scanFeedback && (
@@ -346,15 +383,15 @@ export default function ReceiveWorkspace() {
             locations={locations}
             products={products}
             activeWhId={activeWhId}
+            lastScannedId={lastScannedId}
             confirmedLines={confirmedLines}
             onToggleConfirm={toggleConfirmLine}
             onAddLocationForProduct={handleAddLocationForProduct}
             onRemove={remove}
             onScanLocation={handleScanLocationForLine}
             onScanFeedback={setScanFeedback}
-            onOpenLocationCamera={() => setIsCameraOpen(false)}
+            onLocationCameraChange={setLocationCameraOpen}
             onOpenConfirmModal={() => {
-              setIsCameraOpen(false);
               setConfirmModalOpen(true);
             }}
           />
@@ -366,7 +403,6 @@ export default function ReceiveWorkspace() {
               fields={fields}
               confirmedLines={confirmedLines}
               onOpenConfirmModal={() => {
-                setIsCameraOpen(false);
                 setConfirmModalOpen(true);
               }}
             />
