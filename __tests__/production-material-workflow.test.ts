@@ -113,12 +113,14 @@ test("recipe management creates a second formula, protects product ownership and
 
 test("management repairs empty recipes and confirms imported material roles without losing notes", async () => {
   const f = await fixture();
-  const emptyId = `EMPTY-${f.selection.bom_id}`;
+  const emptyId = `A-EMPTY-${f.selection.bom_id}`;
   await query("INSERT INTO bom_formulas(bom_id,fg_sku,fg_name) VALUES($1,$2,'Empty recipe')", [emptyId, f.fg.sku]);
   let data = await getBomManagementData(f.fg.product_id);
   const empty = data.formulas.find(formula => formula.bom_id === emptyId)!;
   expect(empty.items).toEqual([]);
-  expect(data.production_formulas.some(formula => formula.bom_id === emptyId)).toBe(false);
+  expect(data.production_formulas.find(formula => formula.bom_id === emptyId)?.items).toEqual([]);
+  expect(data.production_formulas[0].bom_id).toBe(f.selection.bom_id);
+  expect((await listProductionCapacities(f.repo)).find(c => c.product_id === f.fg.product_id)?.bom_id).toBe(f.selection.bom_id);
   await withDatabaseTransaction(() => updateProductBomFormula(f.fg.product_id, { bom_id: emptyId, revision: empty.revision, unit: "ชุด", base_qty: 1,
     items: [{ sku: f.main.sku, qty: 2, unit: "ตัว", waste_percentage: 0, is_primary: 1 }] }));
   await query("UPDATE bom_formula_items SET source_cells=$2::jsonb WHERE bom_item_id=$1", [f.mainId, JSON.stringify([f.selection.bom_id, f.main.sku, "", "old name", "", "2", "ตัว", "keep original note"])]);
@@ -139,6 +141,27 @@ test("invalid recipe creation rolls back its header and does not leave an orphan
   await expect(withDatabaseTransaction(() => createBomFormula(f.fg.product_id, { unit: "ชุด", base_qty: 1,
     items: [{ sku: f.main.sku, qty: 1, unit: "ตัว", waste_percentage: 0, is_primary: 0 }] }))).rejects.toThrow("วัตถุดิบหลัก");
   expect(await query("SELECT bom_id FROM bom_formulas WHERE fg_sku=$1 ORDER BY bom_id", [f.fg.sku])).toEqual(before);
+});
+
+test("incomplete imported recipes stay visible with every material but cannot create production plans", async () => {
+  const f = await fixture();
+  await query("INSERT INTO bom_formula_items(bom_id,rm_sku,rm_name,rm_qty_required,rm_unit,is_primary) VALUES($1,'MISSING-IMPORTED','Original imported material',1,'ชิ้น',0)", [f.selection.bom_id]);
+  const formula = (await listProductionBoms(f.fg.product_id))[0];
+  expect(formula.items).toHaveLength(3);
+  expect(formula.items.find(i => i.sku === 'MISSING-IMPORTED')).toMatchObject({ product_id: '', name: 'Original imported material' });
+  const capacity = (await listProductionCapacities(f.repo)).find(c => c.product_id === f.fg.product_id)!;
+  expect(capacity).toMatchObject({ quantity: null, issue: 'มีสูตร · วัตถุดิบยังจับคู่ไม่ครบ' });
+  const before = await query("SELECT job_no FROM production_jobs ORDER BY job_no");
+  await expect(createJobs(admin, [f.input])).rejects.toThrow('ยังจับคู่ทะเบียนวัตถุดิบ');
+  expect(await query("SELECT job_no FROM production_jobs ORDER BY job_no")).toEqual(before);
+});
+
+test("an empty imported recipe is listed and identified without allowing a production job", async () => {
+  const f = await fixture();
+  await query("DELETE FROM bom_formula_items WHERE bom_id=$1", [f.selection.bom_id]);
+  expect((await listProductionBoms(f.fg.product_id))[0]).toMatchObject({ bom_id: f.selection.bom_id, items: [] });
+  expect((await listProductionCapacities(f.repo)).find(c => c.product_id === f.fg.product_id)).toMatchObject({ quantity: null, issue: 'มีสูตร · ยังไม่มีวัตถุดิบ' });
+  await expect(createJobs(admin, [f.input])).rejects.toThrow('ยังไม่มีรายการวัตถุดิบ');
 });
 
 test("saving selected material roles persists to the formula, preserves source data and existing job snapshots", async () => {

@@ -99,7 +99,8 @@ export default function AddJobModal({
         if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าหรือสูตรการผลิตไม่ถูกต้อง กรุณาลองใหม่");
         const rows = bomJson.data as ProductionCapacity[];
         setCapacities(Object.fromEntries(rows.map(c => [c.product_id, c])));
-        setProducts((list as Product[]).filter(p => p.active));
+        const withFormula = new Set(rows.map(c => c.product_id));
+        setProducts((list as Product[]).filter(p => p.active).sort((a, b) => Number(withFormula.has(b.product_id)) - Number(withFormula.has(a.product_id))));
       })
       .catch(e => { if (!cancelled) setProductsError(e instanceof Error ? e.message : "โหลดสินค้าที่มีสูตรไม่สำเร็จ"); });
     return () => {
@@ -249,7 +250,8 @@ export default function AddJobModal({
               showStock={false}
               renderProductMeta={p => {
                 const c = capacities[p.product_id];
-                if (!c) return <span className="text-xs font-semibold text-m3-grey-500">ยังไม่มีสูตรพร้อมใช้</span>;
+                if (!c) return <span className="text-xs font-semibold text-m3-grey-500">ยังไม่มีสูตร · เพิ่มสูตรได้</span>;
+                if (c.issue || c.quantity == null) return <span className="text-xs font-semibold text-m3-grey-500">{c.issue || "มีสูตร · รอระบุประเภทหรืออัตราแปลง"}</span>;
                 return <span className={`text-right text-xs font-semibold ${c?.quantity === 0 ? "text-m3-error-dark" : c?.quantity != null ? "text-m3-primary-dark" : "text-m3-grey-500"}`}>ผลิตได้ <strong className="font-bold tabular-nums">{c?.quantity == null ? "—" : formatQty(c.quantity)}</strong>{c?.unit ? ` ${c.unit}` : ""}</span>;
               }}
               placeholder="ค้นหาสินค้าสำเร็จรูป / SKU / บาร์โค้ด"

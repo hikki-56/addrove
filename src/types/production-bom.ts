@@ -43,6 +43,8 @@ export interface ProductionCapacity {
   bom_id: string;
   quantity: number | null;
   unit: string;
+  /** Recipe exists but needs catalog or material data before production. */
+  issue?: string;
 }
 
 export interface ProductionMaterialRequirement extends ProductionBomMaterial {

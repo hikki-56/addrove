@@ -28,6 +28,14 @@ test("search capacity is unknown until main units and blank roles are confirmed"
   expect(productionMainCapacity(blank, {}, () => 100)).toBeNull();
   expect(productionMainCapacity(blank, { material_roles: { "1": 1 } }, () => 100)).toBe(25);
 });
+
+test("an unmatched secondary material blocks preview and capacity without disappearing", () => {
+  const incomplete = { ...formula, items: [formula.items[0], { ...formula.items[1], product_id: '' }] };
+  const preview = previewProductionBom(incomplete, 10);
+  expect(preview.materials).toHaveLength(2);
+  expect(preview.issues.join(' ')).toContain('SHARED: ยังจับคู่ทะเบียนวัตถุดิบ');
+  expect(productionMainCapacity(incomplete, {}, () => 100)).toBeNull();
+});
 test("different units require an explicit per-material factor; pairs are never assumed to be pieces", () => {
   const f = { ...formula, items: [{ ...formula.items[0], unit: "คู่", stock_unit: "ชิ้น" }] };
   expect(previewProductionBom(f, 10).materials[0].stock_qty).toBeNull();

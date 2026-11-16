@@ -112,7 +112,9 @@ export async function listProductionCapacities(repo: IStockRepository, excludeJo
     if (products.has(formula.product_id)) continue;
     const matching = saved?.snapshot.bom_id === formula.bom_id ? saved : null;
     products.set(formula.product_id, { product_id: formula.product_id, bom_id: formula.bom_id, unit: matching?.snapshot.unit || formula.unit,
-      quantity: productionMainCapacity(matching?.snapshot || formula, matching?.selection || {}, (id, wh) => wh === warehouseId ? available.get(id) || 0 : 0) });
+      quantity: productionMainCapacity(matching?.snapshot || formula, matching?.selection || {}, (id, wh) => wh === warehouseId ? available.get(id) || 0 : 0),
+      ...(!formula.items.length ? { issue: "มีสูตร · ยังไม่มีวัตถุดิบ" } : formula.items.some(i => !i.product_id) ? { issue: "มีสูตร · วัตถุดิบยังจับคู่ไม่ครบ" } : {}),
+    });
   }
   return [...products.values()];
 }

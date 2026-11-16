@@ -69,7 +69,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : !managedFormulas && savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
   const preview = useMemo(() => formula ? previewProductionBom(formula, targetQty, value) : null, [formula, targetQty, value]);
   const loading = !!productId && loadedProductId !== productId;
-  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตรที่พร้อมใช้งาน กดจัดการสูตรเพื่อเพิ่มหรือแก้ไข BOM" : preview?.issues[0] || null);
+  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตร กดจัดการสูตรเพื่อเพิ่ม BOM" : preview?.issues[0] || null);
   useEffect(() => { onValidation(validation); }, [validation, onValidation]);
   useEffect(() => {
     let live = true;
@@ -156,18 +156,20 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     </label>}
     {formula && <>
       <p className="text-xs">ฐานสูตร {formula.base_qty} {formula.unit}</p>
+      {!formula.items.length && <p className="text-xs font-semibold text-m3-error-dark">มีสูตรแล้ว แต่ยังไม่มีวัตถุดิบ กดจัดการสูตรเพื่อเพิ่มวัตถุดิบก่อนสั่งผลิต</p>}
       {formula.unit !== formula.stock_unit && factorInput(formula.unit, formula.stock_unit, value?.fg_factor, n => onChange({ ...value!, fg_factor: n }, formula.unit))}
       {preview?.materials.map(i => {
         const stock = availability?.materials.find(m => m.item_id === i.item_id);
         return <div key={i.item_id} className="rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
           <p className="font-semibold">{i.sku} · {i.name}</p>
+          {!i.product_id && <p className="text-xs font-semibold text-m3-error-dark">ยังจับคู่ทะเบียนวัตถุดิบไม่ได้ กดจัดการสูตรเพื่อเลือกรหัสที่ถูกต้อง</p>}
           <p className="text-xs text-m3-grey-600">{!i.role_confirmed ? "ยังไม่ระบุหลัก/รอง" : i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {i.stock_qty ?? "—"} {i.stock_unit}</p>
           {!formula.items.find(m => m.item_id === i.item_id)?.role_confirmed && <label className="mt-1 block text-xs">หลัก / รอง
             <select aria-label={`หลัก / รอง ${i.sku}`} disabled={disabled || savingRoles} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => { setRolesSaved(false); setRolesError(null); onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit); }} className="ml-2 h-9 px-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
               <option value="" disabled>ระบุประเภท</option><option value="1">ตัวหลัก</option><option value="0">ตัวรอง</option>
             </select>
           </label>}
-          {i.unit !== i.stock_unit && factorInput(i.unit, i.stock_unit, value?.material_factors?.[String(i.item_id)], n => {
+          {i.product_id && i.unit !== i.stock_unit && factorInput(i.unit, i.stock_unit, value?.material_factors?.[String(i.item_id)], n => {
             const factors = { ...value?.material_factors }; if (n === undefined) delete factors[String(i.item_id)]; else factors[String(i.item_id)] = n;
             onChange({ ...value!, material_factors: factors }, formula.unit);
           })}

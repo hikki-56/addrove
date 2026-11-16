@@ -7,6 +7,7 @@ export function productionMainCapacity(formula: ProductionBomFormula, selection:
   if (!Number.isFinite(formula.base_qty) || formula.base_qty <= 0) return null;
   const totals = new Map<string, { qty: number; available: number }>();
   for (const item of formula.items) {
+    if (!item.product_id) return null;
     const chosen = selection.material_roles?.[String(item.item_id)];
     if (item.role_confirmed === false && chosen === undefined) return null;
     const role = chosen ?? item.is_primary;
@@ -41,6 +42,7 @@ export function previewProductionBom(formula: ProductionBomFormula, targetQty: n
   if (finishedRaw !== null && countUnits.has(formula.stock_unit) && Math.abs(finishedRaw - Math.round(finishedRaw)) > 1e-8) issues.push("จำนวนสินค้ารับเข้าหลังแปลงหน่วยต้องเป็นจำนวนเต็ม");
   if (finishedRaw !== null && Math.abs(finishedRaw - finished!) > 1e-8) issues.push("จำนวนสินค้ารับเข้าละเอียดเกิน 0.001 หน่วย ต้องตรวจอัตราแปลง");
   const materials = formula.items.map(item => {
+    if (!item.product_id) issues.push(`${item.sku}: ยังจับคู่ทะเบียนวัตถุดิบที่เปิดใช้งานไม่ได้ กรุณาจัดการสูตร`);
     if (!item.warehouse_id) issues.push(`${item.sku}: ไม่พบคลังวัตถุดิบที่ระบุในสูตร`);
     const chosenRole = selection.material_roles?.[String(item.item_id)];
     const roleConfirmed = item.role_confirmed !== false || chosenRole !== undefined;
