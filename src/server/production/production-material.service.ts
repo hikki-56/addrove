@@ -143,6 +143,7 @@ export async function assertMaterialReplay(jobNo: string, reportId: string, requ
 }
 
 export interface MaterialReportInput {
+  daily_close?: boolean;
   materials?: ProductionMaterialActual[];
   receipt_location_id?: string;
   material_reason?: string;
@@ -157,11 +158,13 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
   if (preview.issues.length) throw new ProductionError(preview.issues.join(" · "));
   const actual = input.materials || [];
   if (actual.length !== plan.snapshot.items.length || new Set(actual.map(i => i.item_id)).size !== actual.length) throw new ProductionError("กรุณาระบุยอดใช้จริงและของเสียให้ครบทุกวัตถุดิบ ห้ามมีรายการซ้ำ");
+  if (input.daily_close && report.defect_qty > 0 && !actual.some(i => i.scrap_qty > 0)) throw new ProductionError("กรุณาระบุรหัสวัตถุดิบที่เสียและจำนวนที่เสียจริง");
   const details = preview.materials.map(i => {
     const a = actual.find(a => a.item_id === i.item_id);
     if (!a || !isValidProductionStockQuantity(a.used_qty, i.stock_unit) || !isValidProductionStockQuantity(a.scrap_qty, i.stock_unit)) throw new ProductionError(`${i.sku}: จำนวนใช้จริงหรือของเสียไม่ถูกต้องตามหน่วยสต็อก`);
     if (a.scrap_qty > 0 && !a.scrap_cause.trim()) throw new ProductionError(`${i.sku}: มีวัตถุดิบเสียต้องระบุสาเหตุ`);
     const expected = report.good_qty > 0 ? i.stock_qty! : 0;
+    if (input.daily_close && a.used_qty !== expected) throw new ProductionError(`${i.sku}: ยอดใช้ผลิตสินค้าดีต้องตรงตามสูตรของจำนวนผลิตดีจริง`);
     if (a.used_qty !== expected && !input.material_reason?.trim()) throw new ProductionError("ยอดใช้จริงต่างจากสูตร ต้องระบุเหตุผล");
     return { ...i, ...a, expected_qty: expected, total_qty: round(a.used_qty + a.scrap_qty) };
   });

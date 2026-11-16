@@ -41,7 +41,7 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
     return runAction(() => sendWithIdempotency(
       { action: "report", jobNo, round: job.report_count + 1, payload: { ...payload } },
       idempotency_key => productionApi(`/api/production/jobs/${encodeURIComponent(jobNo)}/report`, "POST", { ...payload, idempotency_key }),
-    ), "บันทึกผลผลิตและตำแหน่งจัดเก็บแล้ว");
+    ), "ปิดยอดประจำวันและบันทึกตำแหน่งจัดเก็บแล้ว");
   };
   if (loading) return <M3Loading label="กำลังโหลดผลผลิต…" />;
   if (error || !job) return <M3Banner tone="error">{error || "ไม่พบงานผลิต"}</M3Banner>;
@@ -71,6 +71,7 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
         <p className="font-semibold">{r.kind === "ADJUSTMENT" ? "ปรับปรุงยอด" : `รอบที่ ${r.report_no}`} · ผลิตดี {formatQty(r.good_qty)} · เสีย {formatQty(r.defect_qty)} {job.unit}</p>
         <p className="mt-1 text-m3-grey-600">ตำแหน่งจัดเก็บ: {r.receipt_location_code || (r.good_qty > 0 ? "ไม่ได้ระบุ" : "ไม่มีสินค้าดีรับเข้า")}</p>
         {r.defect_cause && <p className="mt-1 text-xs text-m3-grey-500">สาเหตุของเสีย: {r.defect_cause}</p>}
+        {r.material_details?.filter(m => m.scrap_qty > 0).map(m => <p key={m.sku} className="mt-1 text-xs text-m3-error-dark">วัตถุดิบเสีย: {m.sku} · {formatQty(m.scrap_qty)} {m.stock_unit} · {m.scrap_cause}</p>)}
       </div>)}
     </section>
   </div>;

@@ -133,6 +133,47 @@ test("management repairs empty recipes and confirms imported material roles with
   expect((await getBomManagementData(f.fg.product_id)).production_formulas.some(formula => formula.bom_id === emptyId)).toBe(true);
 });
 
+test("daily close consumes the recipe for 100 good units plus identified scrap, closes 120 planned units and replays safely", async () => {
+  const f = await fixture(120);
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'raw-A', delta: 300 }, { productId: f.shared.product_id, warehouseId: 'wh-02', locationId: 'raw-A', delta: 200 }]);
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  const input = { daily_close: true, good_qty: 100, defect_qty: 20, defect_cause: 'ประกอบเสีย', note: '', photo_url: '', report_kind: 'FINAL' as const,
+    close_reason: 'ปิดยอดประจำวัน ผลิตดี 100 เสีย 20', create_backorder: false, receipt_location_id: 'fg-A', idempotency_key: 'daily-close-120-100-20',
+    materials: [{ item_id: f.mainId, used_qty: 200, scrap_qty: 20, scrap_cause: 'ชิ้นส่วนหลักเสีย' }, { item_id: f.sharedId, used_qty: 100, scrap_qty: 5, scrap_cause: 'ชิ้นส่วนรองเสีย' }] };
+  const first = await reportProduction(actor, f.job.job_no, input);
+  expect(first.job).toMatchObject({ status: 'COMPLETED', produced_good: 100, defect_total: 20 });
+  expect((await reportProduction(actor, f.job.job_no, input)).replayed).toBe(true);
+  const stock = await query("SELECT product_id,quantity FROM stock_summary WHERE location_id='raw-A' AND product_id=ANY($1::text[])", [[f.main.product_id, f.shared.product_id]]);
+  expect(Number(stock.find(s => s.product_id === f.main.product_id)?.quantity)).toBe(110);
+  expect(Number(stock.find(s => s.product_id === f.shared.product_id)?.quantity)).toBe(105);
+  expect(Number((await query("SELECT quantity FROM stock_summary WHERE product_id=$1 AND location_id='fg-A'", [f.fg.product_id]))[0].quantity)).toBe(100);
+  expect(await query('SELECT job_no FROM production_material_reservations WHERE job_no=$1', [f.job.job_no])).toEqual([]);
+  expect(await query('SELECT job_no FROM production_material_plans WHERE parent_job_no=$1', [f.job.job_no])).toEqual([]);
+  const detail = await getJobDetail(f.job.job_no);
+  expect(detail?.reports).toHaveLength(1);
+  expect(detail?.reports[0].material_details).toEqual(expect.arrayContaining([expect.objectContaining({ sku: f.main.sku, used_qty: 200, scrap_qty: 20 }), expect.objectContaining({ sku: f.shared.sku, used_qty: 100, scrap_qty: 5 })]));
+});
+
+test('daily close rejects missing scrap, overridden good usage, partial reports and automatic carry-over without changing stock', async () => {
+  const f = await fixture();
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  const input = { daily_close: true, good_qty: 2, defect_qty: 1, defect_cause: 'ประกอบเสีย', note: '', photo_url: '', report_kind: 'FINAL' as const,
+    close_reason: 'ปิดยอดวันนี้', create_backorder: false, receipt_location_id: 'fg-A',
+    materials: [{ item_id: f.mainId, used_qty: 4, scrap_qty: 1, scrap_cause: 'เสีย' }, { item_id: f.sharedId, used_qty: 2, scrap_qty: 0, scrap_cause: '' }] };
+  const before = await query('SELECT * FROM stock_summary ORDER BY product_id,location_id');
+  const invalid = [
+    { ...input, report_kind: 'PARTIAL' as const }, { ...input, create_backorder: true }, { ...input, defect_cause: '' },
+    { ...input, materials: input.materials.map(i => ({ ...i, scrap_qty: 0 })) },
+    { ...input, material_reason: 'cannot override daily good usage', materials: input.materials.map(i => ({ ...i, used_qty: i.used_qty + 1 })) },
+  ];
+  for (const [index, data] of invalid.entries()) await expect(reportProduction(actor, f.job.job_no, { ...data, idempotency_key: `invalid-daily-close-${index}` })).rejects.toThrow();
+  expect(await query('SELECT * FROM stock_summary ORDER BY product_id,location_id')).toEqual(before);
+  expect((await getJobDetail(f.job.job_no))?.job.status).toBe('IN_PROGRESS');
+  expect((await getJobDetail(f.job.job_no))?.reports).toEqual([]);
+});
+
 test("invalid recipe creation rolls back its header and does not leave an orphan formula", async () => {
   const f = await fixture();
   const before = await query("SELECT bom_id FROM bom_formulas WHERE fg_sku=$1 ORDER BY bom_id", [f.fg.sku]);

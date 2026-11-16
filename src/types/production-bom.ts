@@ -86,9 +86,9 @@ export interface ProductionMaterialPlan {
 
 export interface ProductionMaterialActual {
   item_id: number;
-  /** Includes materials consumed by defective finished units. */
+  /** Daily close: recipe usage for good output. Legacy reports may include defective output. */
   used_qty: number;
-  /** Additional component waste before assembly, excluded from used_qty. */
+  /** Additional material loss by SKU, excluded from used_qty and deducted separately. */
   scrap_qty: number;
   scrap_cause: string;
 }

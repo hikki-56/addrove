@@ -62,6 +62,7 @@ export const submitProductionJobsSchema = z.object({
 });
 
 export const reportProductionSchema = z.object({
+  daily_close: z.boolean().optional(),
   receipt_location_id: z.string().trim().max(100).optional(),
   material_reason: z.string().trim().max(500).optional(),
   create_backorder: z.boolean().optional(),

@@ -827,6 +827,11 @@ async function reportProductionInternal(
       );
     }
 
+    if (input.daily_close) {
+      if (input.report_kind !== "FINAL" || input.create_backorder) throw new ProductionError("ปิดยอดประจำวันต้องจบงานและไม่สร้างงานค้างอัตโนมัติ");
+      if (input.defect_qty > 0 && !input.defect_cause.trim()) throw new ProductionError("กรุณาระบุสาเหตุของเสีย");
+    }
+
     const good = round2(input.good_qty);
     const defect = round2(input.defect_qty);
     if (good + defect <= 0 && !(input.materials?.some(i => i.used_qty + i.scrap_qty > 0) || input.report_kind === "FINAL")) {
