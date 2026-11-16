@@ -7,7 +7,7 @@ import { formatQty } from "./ui";
 import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 import MaterialReportFields, { type MaterialReportValue } from "@/features/production/components/MaterialReportFields";
 import type { ProductionMaterialActual } from "@/types/production-bom";
-import { M3Banner, M3ErrorBanner, M3Field, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
+import { M3Banner, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
 import { SolarClipboardList, SolarClose, SolarDangerCircle, SolarFlag } from "@/components/icons";
 
 // Modal รายงานผลผลิต (APPROVER) — ยอดเฉพาะรอบนี้ ระบบคำนวณยอดสะสมเอง
@@ -36,10 +36,11 @@ interface ReportModalProps {
   error: string | null;
   onClose: () => void;
   onSubmit: (payload: ReportPayload) => void;
+  inline?: boolean;
 }
 
-export default function ReportModal({ open, job, submitting, error, onClose, onSubmit }: ReportModalProps) {
-  useEscapeKey(open && !submitting, onClose);
+export default function ReportModal({ open, job, submitting, error, onClose, onSubmit, inline = false }: ReportModalProps) {
+  useEscapeKey(open && !submitting && !inline, onClose);
 
   const [goodText, setGoodText] = useState("");
   const [defectText, setDefectText] = useState("");
@@ -61,7 +62,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
       setMaterialValue(null);
       setCreateBackorder(false);
     }
-  }, [open]);
+  }, [open, job?.job_no]);
 
   // ไม่ปัดเศษเงียบ ๆ อีกต่อไป — ทศนิยมเกิน 2 ตำแหน่ง/ไม่ใช่ตัวเลข → แจ้ง error และห้ามยืนยัน
   const goodParse = parseQtyInput(goodText);
@@ -82,6 +83,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
   const formError = useMemo(() => {
     if (qtyError) return qtyError;
+    if (defect > 0 && !defectCause.trim()) return "กรุณาระบุสาเหตุของเสีย";
     if (job?.material_plan && (!materialValue || materialValue.error)) return materialValue?.error || "กรุณาตรวจรายการวัตถุดิบ";
     if (good + defect <= 0 && !materialValue?.payload.materials.some(i => i.used_qty + i.scrap_qty > 0) && !(isFinal && (job?.report_count || 0) > 0)) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
     if (isFinal && (remainingAfter > 0 || overAfter > 0) && !closeReason.trim()) {
@@ -90,7 +92,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
         : `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`;
     }
     return null;
-  }, [qtyError, good, defect, isFinal, remainingAfter, overAfter, closeReason, job, materialValue]);
+  }, [qtyError, good, defect, defectCause, isFinal, remainingAfter, overAfter, closeReason, job, materialValue]);
 
   if (!open || !job) return null;
 
@@ -125,16 +127,16 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
 
   // มือถือ = เต็มจอ (M44–46: ปุ่ม X ซ้ายบน + ปุ่มยืนยันใหญ่ด้านล่าง) · ≥sm = dialog 560px (D32–34)
   return (
-    <div className="fixed inset-0 z-50 flex justify-center sm:items-center sm:p-6">
-      <div className={`${m3Cls.overlay} hidden sm:block`} onClick={() => !submitting && onClose()} />
+    <div className={inline ? "" : "fixed inset-0 z-50 flex justify-center sm:items-center sm:p-6"}>
+      {!inline && <div className={`${m3Cls.overlay} hidden sm:block`} onClick={() => !submitting && onClose()} />}
       <div
-        role="dialog"
-        aria-modal="true"
+        role={inline ? "region" : "dialog"}
+        aria-modal={inline ? undefined : true}
         aria-label="รายงานผลผลิต"
-        className="relative flex h-dvh w-full flex-col bg-white animate-in fade-in duration-150 sm:h-auto sm:max-h-[92dvh] sm:max-w-[560px] sm:rounded-2xl sm:shadow-m3-dropdown sm:zoom-in-95"
+        className={inline ? "w-full" : "relative flex h-dvh w-full flex-col bg-white animate-in fade-in duration-150 sm:h-auto sm:max-h-[92dvh] sm:max-w-[560px] sm:rounded-2xl sm:shadow-m3-dropdown sm:zoom-in-95"}
       >
-        <div className="flex items-start gap-3 border-b border-[rgba(145,158,171,0.2)] px-4 py-3 sm:border-0 sm:px-7 sm:pt-6 sm:pb-1">
-          <button
+        <div className={inline ? "mb-4 flex items-start gap-3" : "flex items-start gap-3 border-b border-[rgba(145,158,171,0.2)] px-4 py-3 sm:border-0 sm:px-7 sm:pt-6 sm:pb-1"}>
+          {!inline && <button
             type="button"
             aria-label="ปิด"
             disabled={submitting}
@@ -142,7 +144,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
             className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-m3-grey-800 hover:bg-[rgba(145,158,171,0.08)] sm:order-last sm:-mr-2 sm:ml-0 sm:size-9 sm:text-m3-grey-600"
           >
             <SolarClose size={22} />
-          </button>
+          </button>}
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-m3-grey-800 sm:text-xl">รายงานผลผลิต</h2>
             <p className="mt-0.5 truncate text-xs font-medium tabular-nums text-m3-grey-500">
@@ -155,7 +157,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
           </div>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-6 sm:px-7 sm:pb-2">
+        <div className={inline ? "space-y-5" : "flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-6 sm:px-7 sm:pb-2"}>
           {error && <M3ErrorBanner message={error} />}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
@@ -195,6 +197,10 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
             </label>
           </div>
           {qtyError && <p className="-mt-3 text-xs font-semibold text-m3-error-dark">{qtyError}</p>}
+          {defect > 0 && <label className="block text-sm font-semibold">สาเหตุของเสีย
+            <input disabled={submitting} value={defectCause} onChange={e => setDefectCause(e.target.value)} className={`mt-1.5 ${m3Cls.input}`} />
+          </label>}
+          {inline && job.material_plan && <MaterialReportFields compact plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
 
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="ประเภทรายงาน">
             {(["PARTIAL", "FINAL"] as const).map((k) => (
@@ -275,7 +281,10 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
             </label>
           )}
 
-          {job.material_plan && <MaterialReportFields plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
+          {!inline && job.material_plan && <MaterialReportFields plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
+          {inline && <label className="block text-sm font-semibold">หมายเหตุ
+            <textarea rows={2} disabled={submitting} value={note} onChange={e => setNote(e.target.value)} className={`mt-1.5 ${m3Cls.input}`} />
+          </label>}
           {job.material_plan && isFinal && remainingAfter > 0 && (
             <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-[rgba(255,171,0,0.08)] p-3 text-sm font-semibold text-m3-warning-dark">
               <input type="checkbox" className="mt-0.5 size-4.5 accent-m3-primary" disabled={submitting} checked={createBackorder} onChange={e => setCreateBackorder(e.target.checked)} />
@@ -285,10 +294,11 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
         </div>
 
         {/* มือถือ: ปุ่มยืนยันใหญ่เต็มความกว้าง (ปิดด้วย X ด้านบน) · ≥sm: ยกเลิก + ยืนยัน ชิดขวา */}
-        <div className="border-t border-[rgba(145,158,171,0.2)] px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex sm:justify-end sm:gap-3 sm:border-0 sm:px-7 sm:pt-4 sm:pb-7">
-          <button type="button" disabled={submitting} onClick={onClose} className={`hidden sm:inline-flex ${m3Cls.btnCancel}`}>
-            ยกเลิก
+        <div className={inline ? "mt-5 flex flex-wrap justify-end gap-3" : "border-t border-[rgba(145,158,171,0.2)] px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex sm:justify-end sm:gap-3 sm:border-0 sm:px-7 sm:pt-4 sm:pb-7"}>
+          <button type="button" disabled={submitting} onClick={onClose} className={`${inline ? "inline-flex" : "hidden sm:inline-flex"} ${m3Cls.btnCancel}`}>
+            {inline ? "ล้างข้อมูล" : "ยกเลิก"}
           </button>
+          {inline && formError && <p role="alert" className="w-full text-sm font-semibold text-m3-error-dark">{formError}</p>}
           <button
             type="button"
             disabled={!!formError || submitting}

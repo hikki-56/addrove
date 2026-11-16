@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   useProductionJobs,
   emitProductionUpdated,
@@ -12,14 +12,14 @@ import { useTabAuth } from "@/context/TabAuthContext";
 import { getAllowedActions } from "@/features/production/lib/permissions";
 import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
+import TableProductionResult from "@/features/production/components/TableProductionResult";
 import { formatQty, todayYMD } from "@/features/production/components/ui";
-import { M3Banner, M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
-import { SolarAddLine, SolarBox, SolarCheckCircle, SolarMagnifier } from "@/components/icons";
-import { PRODUCTION_TABLES } from "@/types/production";
+import { M3Empty, M3Loading, m3Cls } from "@/components/ui/m3";
+import { SolarAddLine, SolarBox, SolarMagnifier } from "@/components/icons";
+import { PRODUCTION_JOB_STATUS_LABELS, PRODUCTION_TABLES } from "@/types/production";
 import type { ProductionJob } from "@/types/production";
-import { previewProductionBom } from "@/lib/production-bom";
 
-// ยืนยันวัตถุดิบต่อโต๊ะ — ซ้ายสินค้าสำเร็จรูป / ขวาวัตถุดิบที่ใช้ (เลย์เอาต์แบบ /production/formula)
+// ผลผลิตต่อโต๊ะ — เลือกสินค้าทางซ้าย บันทึกยอดจริงและตำแหน่งทางขวา
 // เพิ่มงานใช้ AddJobModal เดิม (เลือก FG + จำนวน) โดยล็อกบริบทโต๊ะนี้
 
 function matchesFgQuery(
@@ -33,14 +33,13 @@ function matchesFgQuery(
 
 export default function ProductionTableConfirmPage() {
   const params = useParams();
-  const router = useRouter();
   const raw = String(params.table_no ?? "");
   const tableNo = Number(raw);
   const valid = Number.isInteger(tableNo) && (PRODUCTION_TABLES as readonly number[]).includes(tableNo);
 
   const [today, setToday] = useState("");
   const [selectedJobNo, setSelectedJobNo] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [resultBusy, setResultBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -93,13 +92,6 @@ export default function ProductionTableConfirmPage() {
 
   const selected: ProductionJob | undefined = tableJobs.find((j) => j.job_no === selectedJobNo);
 
-  // ขยาย qty ตามเป้า: recipe_qty = item.qty * target_qty / base_qty * (1+waste%) ผ่าน previewProductionBom
-  const materials = useMemo(() => {
-    const plan = selected?.material_plan;
-    if (!selected || !plan) return [];
-    return previewProductionBom(plan.snapshot, selected.target_qty, plan.selection).materials;
-  }, [selected]);
-
   const handleAdd = (value: AddJobFormValue) =>
     guard.run(async () => {
       setModalError(null);
@@ -138,30 +130,6 @@ export default function ProductionTableConfirmPage() {
       }
     }, "edit");
 
-  const draftJobs = useMemo(() => tableJobs.filter((j) => j.status === "DRAFT"), [tableJobs]);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
-
-  // ส่งงานฉบับร่างทั้งหมดของโต๊ะนี้ (วันที่เลือก) — API เดียวกับปุ่ม "ยืนยันส่งงานผลิต" ใน /production
-  const handleConfirm = () => {
-    if (success || draftJobs.length === 0) return;
-    return guard.run(async () => {
-      setConfirmError(null);
-      const res = await productionApi("/api/production/jobs/submit", "POST", {
-        job_nos: draftJobs.map((j) => j.job_no),
-      });
-      if (res.success) {
-        emitProductionUpdated();
-        setSuccess(true);
-        window.setTimeout(() => {
-          router.push("/production");
-        }, 900);
-      } else {
-        setConfirmError(res.message);
-        if (isConflict(res)) emitProductionUpdated();
-      }
-    }, "submit");
-  };
-
   if (!valid) {
     return (
       <div className="w-full max-w-full pb-10">
@@ -174,24 +142,13 @@ export default function ProductionTableConfirmPage() {
     <div className="w-full max-w-full pb-28">
       <h1 className="mb-5 text-2xl font-bold text-m3-grey-800">โต๊ะผลิต {tableNo}</h1>
 
-      {success && (
-        <M3Banner tone="success" className="mb-4" role="status">
-          ยืนยันแล้ว
-        </M3Banner>
-      )}
-
-      {confirmError && (
-        <M3Banner tone="error" className="mb-4" role="alert">
-          {confirmError}
-        </M3Banner>
-      )}
-
       <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="m3-card flex min-h-0 flex-col p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-sm font-bold text-m3-grey-800">สินค้าสำเร็จรูป</p>
             <button
               type="button"
+              disabled={resultBusy || guard.pending || user?.role !== "ADMIN"}
               onClick={() => {
                 setModalError(null);
                 setAddOpen(true);
@@ -209,6 +166,7 @@ export default function ProductionTableConfirmPage() {
             </span>
             <input
               value={search}
+              disabled={resultBusy || guard.pending}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ชื่อ / SKU / รหัส"
               className={`${m3Cls.input} pl-9`}
@@ -233,6 +191,8 @@ export default function ProductionTableConfirmPage() {
                 >
                 <button
                   type="button"
+                  disabled={resultBusy || guard.pending}
+                  aria-pressed={j.job_no === selectedJobNo}
                   onClick={() => setSelectedJobNo(j.job_no)}
                   className="min-w-0 flex-1 px-3 py-2.5 text-left"
                 >
@@ -240,10 +200,12 @@ export default function ProductionTableConfirmPage() {
                   <div className="truncate text-xs text-m3-grey-500">
                     {j.sku} · {formatQty(j.target_qty)} {j.unit}
                   </div>
+                  <div className="mt-1 text-xs text-m3-grey-500">{j.job_no} · {PRODUCTION_JOB_STATUS_LABELS[j.status]} · ดี {formatQty(j.produced_good)} · เสีย {formatQty(j.defect_total)}</div>
                 </button>
                 {getAllowedActions(j, user?.role).edit && (
                   <button
                     type="button"
+                    disabled={resultBusy || guard.pending}
                     onClick={(e) => {
                       e.stopPropagation();
                       setModalError(null);
@@ -261,45 +223,12 @@ export default function ProductionTableConfirmPage() {
         </section>
 
         <section className="m3-card p-4 sm:p-6">
-          <p className="mb-3 text-sm font-bold text-m3-grey-800">วัตถุดิบที่ใช้</p>
           {!selected ? (
             <M3Empty title="เลือกสินค้าทางซ้าย" icon={<SolarBox size={28} />} />
-          ) : materials.length === 0 ? (
-            <M3Empty title="ยังไม่มีวัตถุดิบ" icon={<SolarBox size={28} />} />
           ) : (
-            <ul className="space-y-2">
-              {materials.map((item) => (
-                <li
-                  key={item.item_id}
-                  className="rounded-lg border border-[rgba(145,158,171,0.2)] px-3 py-2.5"
-                >
-                  <div className="text-sm font-semibold text-m3-grey-800">{item.name || item.sku}</div>
-                  <div className="mt-0.5 text-xs text-m3-grey-500">
-                    {item.sku}
-                    {` · ${formatQty(item.recipe_qty)} ${item.unit || ""}`}
-                    {item.stock_qty != null && item.unit !== item.stock_unit
-                      ? ` (${formatQty(item.stock_qty)} ${item.stock_unit})`
-                      : ""}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <TableProductionResult key={selected.job_no} jobNo={selected.job_no} role={user?.role} onBusyChange={setResultBusy} />
           )}
         </section>
-      </div>
-
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-3 sm:px-4">
-        <div className="pointer-events-auto w-full max-w-3xl">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={success || draftJobs.length === 0 || guard.pending}
-            className="m3-btn m3-btn-dark h-12 w-full disabled:opacity-60"
-          >
-            <SolarCheckCircle size={20} />
-            ยืนยัน
-          </button>
-        </div>
       </div>
 
       <AddJobModal

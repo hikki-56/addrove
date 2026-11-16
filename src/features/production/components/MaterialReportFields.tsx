@@ -9,10 +9,10 @@ export interface MaterialReportValue {
   error: string | null;
 }
 
-interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void }
+interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean }
 type Edit = { used?: string; scrap?: string; cause?: string };
 
-export default function MaterialReportFields({ plan, good, defect, disabled, onChange }: Props) {
+export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false }: Props) {
   const [edits, setEdits] = useState<Record<number, Edit>>({});
   const [location, setLocation] = useState("");
   const [reason, setReason] = useState("");
@@ -48,8 +48,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   }, [preview, edits, good, location, locationError, reason]);
   useEffect(() => { onChange(value); }, [value, onChange]);
   const edit = (id: number, change: Edit) => setEdits(old => ({ ...old, [id]: { ...old[id], ...change } }));
-  return <section className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
-    <h3 className="text-sm font-bold">วัตถุดิบที่ใช้</h3>
+  const materialFields = <>
     {preview.materials.map(i => {
       const expected = good > 0 ? i.stock_qty || 0 : 0;
       return <div key={i.item_id} className="space-y-2 rounded-lg bg-m3-grey-100 p-3 text-xs">
@@ -63,10 +62,19 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
       </div>;
     })}
     <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>
-    {good > 0 && <label className="block text-sm font-bold">เก็บสินค้าไว้ที่ (โกดัง 2)
+  </>;
+  const locationField = (compact || good > 0) && <label className="block text-sm font-bold">เก็บสินค้าไว้ที่ (โกดัง 2)
       <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code}</option>)}</select>
       <span className="mt-1 block text-xs font-normal">รับเข้า {Math.round(good * (preview.fg_factor || 0) * 1000) / 1000} {plan.snapshot.stock_unit}</span>
-    </label>}
+    </label>;
+  return <section className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
+    {compact ? <>
+      {locationField}
+      <details className="rounded-lg bg-m3-grey-100 p-3">
+        <summary className="cursor-pointer text-sm font-bold">วัตถุดิบที่ใช้ · {preview.materials.length} รายการ</summary>
+        <div className="mt-3 space-y-3">{materialFields}</div>
+      </details>
+    </> : <><h3 className="text-sm font-bold">วัตถุดิบที่ใช้</h3>{materialFields}{locationField}</>}
     {value.error && <p role="alert" className="text-xs font-bold text-m3-error-dark">{value.error}</p>}
   </section>;
 }
