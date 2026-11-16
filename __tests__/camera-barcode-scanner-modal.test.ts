@@ -105,3 +105,52 @@ it("feedback from typing stays silent while camera results have distinct sounds"
   expect(feedbackSuccess).toHaveBeenCalledTimes(1);
   expect(feedbackError).toHaveBeenCalledTimes(1);
 });
+
+
+it("default chrome still includes the sound test, typed code field, and close control", () => {
+  const tree = CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn() });
+  expect(find(tree, (node) => node.type === "button" && node.props.children === "ทดสอบเสียง")).toBeTruthy();
+  expect(find(tree, (node) => node.type === "button" && node.props.children === "ตกลง")).toBeTruthy();
+  expect(find(tree, (node) => node.type === "button" && node.props["aria-label"] === "ปิดกล้องสแกน")).toBeTruthy();
+  expect(find(tree, (node) => node.type === "span" && node.props.children === "ทีละครั้ง")).toBeTruthy();
+  const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
+  expect(String(viewport.props.className)).toContain("max-h-[min(280px,48vh)]");
+  expect(String(viewport.props.className)).not.toContain("h-[144px]");
+});
+
+it("receive opt-out props hide chrome, keep a compact 144px frame, and render afterViewport", () => {
+  const tree = CameraBarcodeScannerModal({
+    isOpen: true,
+    onClose: jest.fn(),
+    persistOpen: true,
+    compactViewport: true,
+    hideManualInput: true,
+    hideSoundHint: true,
+    afterViewport: React.createElement("div", { "data-testid": "after-viewport" }, "สแกนแล้ว 0 รายการ"),
+  });
+  expect(find(tree, (node) => node.props["data-testid"] === "after-viewport").props.children).toBe("สแกนแล้ว 0 รายการ");
+  expect(() => find(tree, (node) => node.type === "button" && node.props.children === "ทดสอบเสียง")).toThrow("Element not found");
+  expect(() => find(tree, (node) => node.type === "button" && node.props.children === "ตกลง")).toThrow("Element not found");
+  expect(() => find(tree, (node) => node.type === "button" && node.props["aria-label"] === "ปิดกล้องสแกน")).toThrow("Element not found");
+  expect(() => find(tree, (node) => node.type === "span" && node.props.children === "ทีละครั้ง")).toThrow("Element not found");
+  const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
+  expect(String(viewport.props.className)).toContain("h-[144px]");
+  expect(String(viewport.props.className)).not.toContain("max-h-[min(280px,48vh)]");
+  const flash = find(tree, (node) => node.type === "button" && node.props["aria-label"] === "เปิดแฟลช");
+  expect(String(flash.props.className)).toContain("size-9");
+  expect(String(flash.props.className)).toContain("absolute");
+});
+
+it("persistOpen keeps the scan chrome visible while the live camera is paused", () => {
+  const tree = CameraBarcodeScannerModal({
+    isOpen: false,
+    persistOpen: true,
+    compactViewport: true,
+    hideManualInput: true,
+    hideSoundHint: true,
+    onClose: jest.fn(),
+  });
+  expect(find(tree, (node) => node.type === "h3").props.children).toBe("สแกนบาร์โค้ดสินค้า");
+  const closed = CameraBarcodeScannerModal({ isOpen: false, onClose: jest.fn() });
+  expect(closed).toBeNull();
+});

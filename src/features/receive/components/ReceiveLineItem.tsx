@@ -27,6 +27,8 @@ export interface ReceiveLineItemProps {
   onScanLocation: (index: number, code: string, playSound?: boolean) => void | Promise<void>;
   onScanFeedback?: (feedback: ScanFeedback | null, playSound?: boolean) => void;
   onOpenLocationCamera?: () => void;
+  onCloseLocationCamera?: () => void;
+  isLatestScan?: boolean;
 }
 
 export default function ReceiveLineItem({
@@ -45,6 +47,8 @@ export default function ReceiveLineItem({
   onScanLocation,
   onScanFeedback,
   onOpenLocationCamera,
+  onCloseLocationCamera,
+  isLatestScan = false,
 }: ReceiveLineItemProps) {
   const [isExpanded, setIsExpanded] = React.useState(!isConfirmed);
   const { watch, setValue } = form;
@@ -344,6 +348,8 @@ export default function ReceiveLineItem({
       className={`rounded-2xl transition-colors duration-200 ${
         isLocked
           ? "border border-dashed border-[rgba(145,158,171,0.32)] bg-m3-grey-100 opacity-72"
+          : isLatestScan
+          ? "border-[1.5px] border-[#00A76F] bg-[rgba(0,167,111,0.04)] shadow-[0_0_0_3px_rgba(0,167,111,0.08)]"
           : isConfirmed
           ? "border border-[rgba(0,167,111,0.24)] bg-[rgba(0,167,111,0.04)]"
           : "m3-card"
@@ -529,7 +535,10 @@ export default function ReceiveLineItem({
       <CameraBarcodeScannerModal
         feedbackHandledByCaller
         isOpen={cameraSlot !== null}
-        onClose={() => setCameraSlot(null)}
+        onClose={() => {
+          setCameraSlot(null);
+          onCloseLocationCamera?.();
+        }}
         onScan={async (code, playSound) => {
           const clean = code.trim();
           if (!clean || !cameraSlot) return;
