@@ -10,7 +10,10 @@ import { ProductionError } from "@/server/production/production-error";
 export async function listProductionBoms(productId?: string): Promise<ProductionBomFormula[]> {
   if (getStorageDriver() !== "postgres") return [];
   const warehouseId = await getProductionMaterialWarehouseId();
-  const formulas = await query(`SELECT f.*,p.product_id,p.base_unit AS stock_unit FROM bom_formulas f
+  const formulas = await query(`SELECT f.*,p.product_id,p.base_unit AS stock_unit,
+    COALESCE(f.edited_at,CASE WHEN pg_input_is_valid(f.source_cells->>8,'timestamp with time zone')
+      THEN CASE WHEN f.updated_at>(f.source_cells->>8)::timestamptz THEN f.updated_at END END) AS edited_at
+    FROM bom_formulas f
     JOIN products p ON p.sku=f.fg_sku AND p.active
     WHERE f.active AND ($1::text IS NULL OR p.product_id=$1 OR p.sku=$1)
     ORDER BY f.fg_sku,f.bom_id`, [productId || null]);
@@ -28,7 +31,7 @@ export async function listProductionBoms(productId?: string): Promise<Production
     if (!items.length || items.length !== Number(counts.find(c => c.bom_id === f.bom_id)?.total || 0)) return null;
     return { bom_id: String(f.bom_id), product_id: String(f.product_id), sku: String(f.fg_sku), name: String(f.fg_name),
       label: `${f.bom_id} · ${items.filter(i => i.is_primary === 1).map(i => i.name).join(" / ") || f.fg_name}`,
-      unit: String(f.fg_unit), stock_unit: String(f.stock_unit), base_qty: Number(f.base_qty), items,
+      unit: String(f.fg_unit), stock_unit: String(f.stock_unit), base_qty: Number(f.base_qty), items, edited_at: f.edited_at ? String(f.edited_at) : null,
       revision: createHash("sha256").update(JSON.stringify([f.updated_at, f.base_qty, f.fg_unit, f.stock_unit, items])).digest("hex") };
   }).filter((f): f is ProductionBomFormula => f !== null);
 }

@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import type { QueryResultRow } from "pg";
 import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
 import { listProductionBoms, saveProductionBomRoles } from "@/server/production/production-bom.service";
+import { createBomFormula, deleteBomFormula, getBomManagementData, updateProductBomFormula } from "@/server/production/bom-management.service";
 import { getRepository } from "@/server/repositories";
 import { createJobs, submitJobs, startJob, reportProduction, cancelJob, reopenJob, getJobDetail, deleteDraft, updateJob } from "@/server/production/production-job.service";
 import { previewMaterialAvailability, listProductionCapacities } from "@/server/production/production-material.service";
@@ -76,6 +77,69 @@ async function fixture(target = 3) {
   const [job] = await createJobs(admin, [input]);
   return { repo, job, fg, main, shared, selection, input, mainId: Number(m.bom_item_id), sharedId: Number(s.bom_item_id) };
 }
+
+test("recipe management creates a second formula, protects product ownership and preserves existing production snapshots", async () => {
+  const f = await fixture();
+  const snapshots = await query("SELECT snapshot,selection FROM production_material_plans WHERE job_no=$1", [f.job.job_no]);
+  const stock = await query("SELECT * FROM stock_summary WHERE product_id=ANY($1::text[]) ORDER BY product_id,location_id", [[f.main.product_id, f.shared.product_id]]);
+  const bomId = await withDatabaseTransaction(() => createBomFormula(f.fg.product_id, { unit: "ชุด", base_qty: 2,
+    items: [{ sku: f.main.sku, qty: 4, unit: "ตัว", waste_percentage: 0, is_primary: 1 }] }));
+  let data = await getBomManagementData(f.fg.product_id);
+  expect(data.formulas).toHaveLength(2);
+  const created = data.formulas.find(formula => formula.bom_id === bomId)!;
+  expect(created.edited_at).not.toBeNull();
+  expect(created.items[0]).toMatchObject({ sku: f.main.sku, name: f.main.product_name, qty: 4 });
+  expect(data.production_formulas.find(formula => formula.bom_id === bomId)?.items[0].role_confirmed).toBe(true);
+  expect(data.production_formulas.find(formula => formula.bom_id === bomId)?.edited_at).not.toBeNull();
+  const input = { bom_id: bomId, revision: created.revision, unit: "ชุด", base_qty: 2, items: created.items.map(item => ({ ...item, qty: 6 })) };
+  await expect(withDatabaseTransaction(() => updateProductBomFormula(f.shared.product_id, input))).rejects.toMatchObject({ statusCode: 404 });
+  await withDatabaseTransaction(() => updateProductBomFormula(f.fg.product_id, input));
+  await expect(withDatabaseTransaction(() => deleteBomFormula(f.fg.product_id, bomId, created.revision))).rejects.toMatchObject({ statusCode: 409 });
+  data = await getBomManagementData(f.fg.product_id);
+  const updated = data.formulas.find(formula => formula.bom_id === bomId)!;
+  expect(updated.items[0].qty).toBe(6);
+  await withDatabaseTransaction(() => deleteBomFormula(f.fg.product_id, bomId, updated.revision));
+  expect((await query("SELECT active FROM bom_formulas WHERE bom_id=$1", [bomId]))[0].active).toBe(false);
+  expect(await query("SELECT bom_item_id FROM bom_formula_items WHERE bom_id=$1", [bomId])).toHaveLength(1);
+  expect((await listProductionBoms(f.fg.product_id)).some(formula => formula.bom_id === bomId)).toBe(false);
+  const original = (await getBomManagementData(f.fg.product_id)).formulas[0];
+  await withDatabaseTransaction(() => deleteBomFormula(f.fg.product_id, original.bom_id, original.revision));
+  expect((await getBomManagementData(f.fg.product_id)).formulas).toEqual([]);
+  expect(await query("SELECT snapshot,selection FROM production_material_plans WHERE job_no=$1", [f.job.job_no])).toEqual(snapshots);
+  expect(await query("SELECT * FROM stock_summary WHERE product_id=ANY($1::text[]) ORDER BY product_id,location_id", [[f.main.product_id, f.shared.product_id]])).toEqual(stock);
+  await submitJobs(admin, [f.job.job_no]);
+  expect((await getJobDetail(f.job.job_no))?.job.status).toBe("WAITING");
+});
+
+test("management repairs empty recipes and confirms imported material roles without losing notes", async () => {
+  const f = await fixture();
+  const emptyId = `EMPTY-${f.selection.bom_id}`;
+  await query("INSERT INTO bom_formulas(bom_id,fg_sku,fg_name) VALUES($1,$2,'Empty recipe')", [emptyId, f.fg.sku]);
+  let data = await getBomManagementData(f.fg.product_id);
+  const empty = data.formulas.find(formula => formula.bom_id === emptyId)!;
+  expect(empty.items).toEqual([]);
+  expect(data.production_formulas.some(formula => formula.bom_id === emptyId)).toBe(false);
+  await withDatabaseTransaction(() => updateProductBomFormula(f.fg.product_id, { bom_id: emptyId, revision: empty.revision, unit: "ชุด", base_qty: 1,
+    items: [{ sku: f.main.sku, qty: 2, unit: "ตัว", waste_percentage: 0, is_primary: 1 }] }));
+  await query("UPDATE bom_formula_items SET source_cells=$2::jsonb WHERE bom_item_id=$1", [f.mainId, JSON.stringify([f.selection.bom_id, f.main.sku, "", "old name", "", "2", "ตัว", "keep original note"])]);
+  data = await getBomManagementData(f.fg.product_id);
+  const original = data.formulas.find(formula => formula.bom_id === f.selection.bom_id)!;
+  await withDatabaseTransaction(() => updateProductBomFormula(f.fg.product_id, { bom_id: original.bom_id, revision: original.revision, unit: original.unit, base_qty: original.base_qty, items: original.items }));
+  const reopened = (await listProductionBoms(f.fg.product_id)).find(formula => formula.bom_id === original.bom_id)!;
+  expect(reopened.items.find(item => item.item_id === f.mainId)?.role_confirmed).toBe(true);
+  expect((await query("SELECT source_cells FROM bom_formula_items WHERE bom_item_id=$1", [f.mainId]))[0].source_cells[7]).toBe("keep original note");
+  expect((await getBomManagementData(f.fg.product_id)).production_formulas.some(formula => formula.bom_id === emptyId)).toBe(true);
+});
+
+test("invalid recipe creation rolls back its header and does not leave an orphan formula", async () => {
+  const f = await fixture();
+  const before = await query("SELECT bom_id FROM bom_formulas WHERE fg_sku=$1 ORDER BY bom_id", [f.fg.sku]);
+  await expect(withDatabaseTransaction(() => createBomFormula(f.fg.product_id, { unit: "ชุด", base_qty: 1,
+    items: [{ sku: "MISSING-MANAGED-MATERIAL", qty: 1, unit: "ตัว", waste_percentage: 0, is_primary: 1 }] }))).rejects.toThrow("ไม่พบรหัสวัตถุดิบ");
+  await expect(withDatabaseTransaction(() => createBomFormula(f.fg.product_id, { unit: "ชุด", base_qty: 1,
+    items: [{ sku: f.main.sku, qty: 1, unit: "ตัว", waste_percentage: 0, is_primary: 0 }] }))).rejects.toThrow("วัตถุดิบหลัก");
+  expect(await query("SELECT bom_id FROM bom_formulas WHERE fg_sku=$1 ORDER BY bom_id", [f.fg.sku])).toEqual(before);
+});
 
 test("saving selected material roles persists to the formula, preserves source data and existing job snapshots", async () => {
   const f = await fixture();

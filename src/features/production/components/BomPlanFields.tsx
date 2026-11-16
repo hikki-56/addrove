@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { previewProductionBom } from "@/lib/production-bom";
 import { M3SubmitLabel, m3Cls } from "@/components/ui/m3";
 import type { ProductionBomFormula, ProductionBomPreview, ProductionBomSelection, ProductionMaterialPlan } from "@/types/production-bom";
+import type { BomManagementData } from "@/types/bom-management";
+import BomFormulaManager from "./BomFormulaManager";
+import BomEditStatus from "./BomEditStatus";
 
 interface Props {
   productId: string;
@@ -14,9 +17,10 @@ interface Props {
   disabled: boolean;
   onChange: (value: ProductionBomSelection | undefined, unit?: string) => void;
   onValidation: (error: string | null) => void;
+  onFormulasChanged?: () => void;
 }
 
-export default function BomPlanFields({ productId, targetQty, value, savedPlan, jobNo, disabled, onChange, onValidation }: Props) {
+export default function BomPlanFields({ productId, targetQty, value, savedPlan, jobNo, disabled, onChange, onValidation, onFormulasChanged }: Props) {
   const [formulas, setFormulas] = useState<ProductionBomFormula[]>([]);
   const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +29,15 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const [rolesError, setRolesError] = useState<string | null>(null);
   const [rolesSaved, setRolesSaved] = useState(false);
   const [savedFormula, setSavedFormula] = useState<ProductionBomFormula | null>(null);
+  const [managing, setManaging] = useState(false);
+  const [managedFormulas, setManagedFormulas] = useState(false);
+  const [managementMessage, setManagementMessage] = useState("");
   const saveRequest = useRef<AbortController | null>(null);
   const selected = value?.bom_id;
   useEffect(() => {
     setSavingRoles(false);
     setRolesError(null);
     setRolesSaved(false);
-    setSavedFormula(null);
     return () => { saveRequest.current?.abort(); };
   }, [productId, selected]);
   useEffect(() => {
@@ -39,6 +45,10 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     setError(null);
     setFormulas([]);
     setLoadedProductId(null);
+    setSavedFormula(null);
+    setManaging(false);
+    setManagedFormulas(false);
+    setManagementMessage("");
     if (!productId) return;
     fetch(`/api/production/boms?product_id=${encodeURIComponent(productId)}`, { cache: "no-store" })
       .then(r => r.json()).then(json => {
@@ -56,21 +66,38 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       onChange({ bom_id: first.bom_id, revision: first.revision }, first.unit);
     }
   }, [disabled, selected, loadedProductId, productId, formulas, onChange]);
-  const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
+  const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : !managedFormulas && savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
   const preview = useMemo(() => formula ? previewProductionBom(formula, targetQty, value) : null, [formula, targetQty, value]);
   const loading = !!productId && loadedProductId !== productId;
-  const validation = !productId ? null : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตรที่เปิดใช้งานและมีวัตถุดิบครบ กรุณาตรวจข้อมูล BOM" : preview?.issues[0] || null);
+  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตรที่พร้อมใช้งาน กดจัดการสูตรเพื่อเพิ่มหรือแก้ไข BOM" : preview?.issues[0] || null);
   useEffect(() => { onValidation(validation); }, [validation, onValidation]);
   useEffect(() => {
     let live = true;
     setAvailability(null);
-    if (!productId || !value || !preview || preview.issues.length || disabled) return;
+    if (!productId || !value || !preview || preview.issues.length || disabled || managing) return;
     const timer = setTimeout(() => {
       fetch("/api/production/boms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ product_id: productId, target_qty: targetQty, selection: value, job_no: jobNo }) })
         .then(r => r.json()).then(json => { if (live && json.success) setAvailability(json.data); }).catch(() => {});
     }, 300);
     return () => { live = false; clearTimeout(timer); };
-  }, [productId, value, targetQty, jobNo, preview, disabled]);
+  }, [productId, value, targetQty, jobNo, preview, disabled, managing]);
+  const applyManagedFormulas = (data: BomManagementData, bomId?: string) => {
+    if (data.product.product_id !== productId) return;
+    const rows = data.production_formulas;
+    const next = rows.find(f => f.bom_id === bomId) ?? rows[0];
+    setFormulas(rows);
+    setLoadedProductId(productId);
+    setSavedFormula(next ?? null);
+    setManagedFormulas(true);
+    setAvailability(null);
+    setError(null);
+    setRolesSaved(false);
+    setRolesError(null);
+    setManaging(false);
+    setManagementMessage(bomId ? "บันทึกสูตรเรียบร้อยแล้ว" : "ลบสูตรเรียบร้อยแล้ว");
+    onChange(next ? { bom_id: next.bom_id, revision: next.revision } : undefined, next?.unit);
+    onFormulasChanged?.();
+  };
   const pendingRoles = Object.fromEntries(formula?.items.flatMap(i => {
     const role = value?.material_roles?.[String(i.item_id)];
     return i.role_confirmed === false && role !== undefined ? [[String(i.item_id), role]] : [];
@@ -111,12 +138,20 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     </label>
   );
   return <section className="space-y-3 rounded-xl bg-m3-grey-100 p-4">
-    <p className="text-sm font-bold">วัตถุดิบ · โกดัง 2</p>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm font-bold">วัตถุดิบ · โกดัง 2</p>
+      {!managing && <button type="button" disabled={disabled || savingRoles || loading} onClick={() => { setManagementMessage(""); setManaging(true); }} className="m3-btn m3-btn-sm m3-btn-outline">จัดการสูตร · เพิ่ม / แก้ไข / ลบ</button>}
+    </div>
+    {managing ? <BomFormulaManager key={productId} productId={productId} initialBomId={selected} onClose={() => setManaging(false)} onChanged={applyManagedFormulas} /> : <>
+    {managementMessage && <p role="status" className="text-xs font-semibold text-m3-primary-dark">{managementMessage}</p>}
     {formula && formulas.length <= 1 && <p className="text-xs text-m3-grey-600">{formula.bom_id}</p>}
+    {formula && (formulas.some(f => f.bom_id === formula.bom_id)
+      ? <BomEditStatus editedAt={formulas.find(f => f.bom_id === formula.bom_id)?.edited_at} />
+      : <p className="text-xs text-m3-grey-500">สูตรที่เก็บไว้ในใบงาน</p>)}
     {formulas.length > 1 && <label className="block text-xs font-semibold">สูตร
       <select aria-label="สูตรการผลิต" disabled={disabled} value={selected || ""} onChange={e => { const f = formulas.find(f => f.bom_id === e.target.value); onChange(f ? { bom_id: f.bom_id, revision: f.revision } : undefined, f?.unit); }} className="mt-1.5 block h-11 w-full px-3 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
-        {savedPlan && !formulas.some(f => f.bom_id === savedPlan.snapshot.bom_id) && <option value={savedPlan.snapshot.bom_id}>{savedPlan.snapshot.label}</option>}
-        {formulas.map(f => <option key={f.bom_id} value={f.bom_id}>{f.label}</option>)}
+        {!managedFormulas && savedPlan && !formulas.some(f => f.bom_id === savedPlan.snapshot.bom_id) && <option value={savedPlan.snapshot.bom_id}>{savedPlan.snapshot.label}</option>}
+        {formulas.map(f => <option key={f.bom_id} value={f.bom_id}>{f.label} · {f.edited_at ? "แก้ไขแล้ว" : "ยังไม่แก้ไข"}</option>)}
       </select>
     </label>}
     {formula && <>
@@ -150,5 +185,6 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       {availability?.main_capacity != null && <p className="text-sm font-bold text-m3-primary-dark">ผลิตได้ {availability.main_capacity} {formula.unit}</p>}
     </>}
     {validation && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{validation}</p>}
+    </>}
   </section>;
 }

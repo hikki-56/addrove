@@ -15,7 +15,7 @@ import { M3Banner, M3Dialog, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/compo
 import { SolarCheckCircle, SolarFactory, SolarFlag } from "@/components/icons";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
-// — เลือกเฉพาะสินค้าสำเร็จรูปที่มี BOM เปิดใช้งานและมีรายการวัตถุดิบ
+// — เลือกสินค้าจากทะเบียนและสร้างสูตรแรกได้ งานผลิตต้องมีสูตรพร้อมใช้ก่อนบันทึก
 
 export interface AddJobFormValue {
   bom?: ProductionBomSelection;
@@ -65,6 +65,7 @@ export default function AddJobModal({
   const [capacities, setCapacities] = useState<Record<string, ProductionCapacity>>({});
   const [productsError, setProductsError] = useState<string | null>(null);
   const [bomError, setBomError] = useState<string | null>(null);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const [form, setForm] = useState<AddJobFormValue>({
     production_date: defaultDate || "",
     table_no: defaultTable,
@@ -92,20 +93,19 @@ export default function AddJobModal({
     ])
       .then(([json, bomJson]) => {
         if (cancelled) return;
-        if (!json.success || !bomJson.success) throw new Error("โหลดสินค้าที่มีสูตรการผลิตไม่สำเร็จ กรุณาปิดและเปิดฟอร์มอีกครั้ง");
+        if (!json.success || !bomJson.success) throw new Error("โหลดทะเบียนสินค้าและสูตรการผลิตไม่สำเร็จ กรุณาปิดและเปิดฟอร์มอีกครั้ง");
         // รองรับทั้ง data ตรง ๆ และแบบแบ่งหน้า { items: [...] }
         const list = Array.isArray(json.data) ? json.data : Array.isArray(json.data?.items) ? json.data.items : null;
         if (!list || !Array.isArray(bomJson.data)) throw new Error("ข้อมูลสินค้าหรือสูตรการผลิตไม่ถูกต้อง กรุณาลองใหม่");
         const rows = bomJson.data as ProductionCapacity[];
-        const formulaProducts = new Set(rows.map(f => f.product_id));
         setCapacities(Object.fromEntries(rows.map(c => [c.product_id, c])));
-        setProducts((list as Product[]).filter(p => formulaProducts.has(p.product_id)));
+        setProducts((list as Product[]).filter(p => p.active));
       })
       .catch(e => { if (!cancelled) setProductsError(e instanceof Error ? e.message : "โหลดสินค้าที่มีสูตรไม่สำเร็จ"); });
     return () => {
       cancelled = true;
     };
-  }, [open, job?.job_no]);
+  }, [open, job?.job_no, catalogRevision]);
 
   // รีเซ็ตฟอร์มทุกครั้งที่เปิด
   useEffect(() => {
@@ -249,6 +249,7 @@ export default function AddJobModal({
               showStock={false}
               renderProductMeta={p => {
                 const c = capacities[p.product_id];
+                if (!c) return <span className="text-xs font-semibold text-m3-grey-500">ยังไม่มีสูตรพร้อมใช้</span>;
                 return <span className={`text-right text-xs font-semibold ${c?.quantity === 0 ? "text-m3-error-dark" : c?.quantity != null ? "text-m3-primary-dark" : "text-m3-grey-500"}`}>ผลิตได้ <strong className="font-bold tabular-nums">{c?.quantity == null ? "—" : formatQty(c.quantity)}</strong>{c?.unit ? ` ${c.unit}` : ""}</span>;
               }}
               placeholder="ค้นหาสินค้าสำเร็จรูป / SKU / บาร์โค้ด"
@@ -279,7 +280,7 @@ export default function AddJobModal({
       </div>
 
       <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
-        disabled={submitting || (isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING")} onChange={changeBom} onValidation={setBomError} />
+        disabled={submitting || (isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING")} onChange={changeBom} onValidation={setBomError} onFormulasChanged={() => setCatalogRevision(n => n + 1)} />
 
       <label className="block">
         <span className={m3Cls.label}>เป้าหมายสินค้าดี</span>

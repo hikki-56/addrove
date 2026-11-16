@@ -24,6 +24,8 @@ export interface ProductionBomFormula {
   base_qty: number;
   items: ProductionBomMaterial[];
   revision?: string;
+  /** Last committed change to the master recipe; optional in older job snapshots. */
+  edited_at?: string | null;
 }
 
 /** Each factor means stock units per one recipe unit, explicitly supplied for mismatches. */

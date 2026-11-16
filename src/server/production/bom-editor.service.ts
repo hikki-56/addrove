@@ -4,16 +4,16 @@ import { ProductionError } from "@/server/production/production-error";
 import type { BomEditorFormula, BomEditorInput } from "@/lib/bom-editor";
 
 /** ทุกสูตรที่เปิดใช้งาน รวมสูตรที่วัตถุดิบไม่ครบ (หน้าแก้ไขต้องเห็นเพื่อซ่อมได้) */
-export async function listBomFormulasForEditor(): Promise<BomEditorFormula[]> {
+export async function listBomFormulasForEditor(productSku?: string): Promise<BomEditorFormula[]> {
   if (getStorageDriver() !== "postgres") return [];
   // Preserve edits made before edited_at existed. Imported headers retain their
   // original timestamp in cell 8; creating/importing a formula is not an edit.
   const formulas = await query(`SELECT bom_id,fg_sku,fg_name,fg_unit,base_qty,updated_at,
     COALESCE(edited_at,CASE WHEN pg_input_is_valid(source_cells->>8,'timestamp with time zone')
       THEN CASE WHEN updated_at>(source_cells->>8)::timestamptz THEN updated_at END END) AS edited_at
-    FROM bom_formulas WHERE active ORDER BY fg_sku,bom_id`);
+    FROM bom_formulas WHERE active AND ($1::text IS NULL OR fg_sku=$1) ORDER BY fg_sku,bom_id`, [productSku ?? null]);
   const items = await query(`SELECT bom_item_id,bom_id,rm_sku,rm_name,rm_qty_required,rm_unit,waste_percentage,is_primary
-    FROM bom_formula_items WHERE bom_id IN (SELECT bom_id FROM bom_formulas WHERE active) ORDER BY bom_id,bom_item_id`);
+    FROM bom_formula_items WHERE bom_id IN (SELECT bom_id FROM bom_formulas WHERE active AND ($1::text IS NULL OR fg_sku=$1)) ORDER BY bom_id,bom_item_id`, [productSku ?? null]);
   return formulas.map((f) => ({
     bom_id: String(f.bom_id), sku: String(f.fg_sku), name: String(f.fg_name), unit: String(f.fg_unit), base_qty: Number(f.base_qty),
     revision: String(f.updated_at),
@@ -37,7 +37,7 @@ export async function updateBomFormula(input: BomEditorInput): Promise<void> {
   const missing = skus.filter((s) => !products.some((p) => p.sku === s));
   if (missing.length) throw new ProductionError(`ไม่พบรหัสวัตถุดิบที่เปิดใช้งาน: ${missing.join(", ")}`, 400);
 
-  const existing = await query(`SELECT bom_item_id FROM bom_formula_items WHERE bom_id=$1`, [input.bom_id]);
+  const existing = await query(`SELECT bom_item_id,source_cells FROM bom_formula_items WHERE bom_id=$1`, [input.bom_id]);
   const existingIds = new Set(existing.map((r) => Number(r.bom_item_id)));
   const keepIds = input.items.flatMap((i) => (i.item_id === undefined ? [] : [i.item_id]));
   if (keepIds.some((id) => !existingIds.has(id))) throw new ProductionError("รายการวัตถุดิบไม่ตรงกับสูตรปัจจุบัน กรุณารีเฟรช", 409);
@@ -50,8 +50,13 @@ export async function updateBomFormula(input: BomEditorInput): Promise<void> {
       await query(`INSERT INTO bom_formula_items (bom_id,rm_sku,rm_barcode,rm_name,rm_qty_required,rm_unit,waste_percentage,is_primary)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, values);
     } else {
-      await query(`UPDATE bom_formula_items SET rm_sku=$2,rm_barcode=$3,rm_name=$4,rm_qty_required=$5,rm_unit=$6,waste_percentage=$7,is_primary=$8
-        WHERE bom_id=$1 AND bom_item_id=$9`, [...values, item.item_id]);
+      // An explicit main/secondary selection also confirms imported blank roles.
+      const previous = existing.find(r => Number(r.bom_item_id) === item.item_id);
+      const cells = Array.isArray(previous?.source_cells) ? [...previous.source_cells] : [];
+      while (cells.length < 7) cells.push("");
+      cells.splice(0, 7, input.bom_id, p.sku, p.barcode ?? "", p.name, String(item.is_primary), String(item.qty), item.unit.trim());
+      await query(`UPDATE bom_formula_items SET rm_sku=$2,rm_barcode=$3,rm_name=$4,rm_qty_required=$5,rm_unit=$6,waste_percentage=$7,is_primary=$8,source_cells=$10::jsonb
+        WHERE bom_id=$1 AND bom_item_id=$9`, [...values, item.item_id, JSON.stringify(cells)]);
     }
   }
   // updated_at เปลี่ยนเสมอ (trigger) → revision ใหม่ และ revision ของ ProductionBomFormula เปลี่ยนตาม
