@@ -85,6 +85,42 @@ test('inserting a location row in the middle carries later confirmed lines with 
 const packedProduct = { ...products[0], base_unit: 'ตัว', units_per_carton: 12 };
 const packedProducts = [packedProduct, ...products.slice(1)];
 
+describe('receiving existing GS1-128 internal labels', () => {
+  const product = { ...packedProduct, barcode: '90003073' };
+
+  afterEach(() => { jest.restoreAllMocks(); });
+
+  test.each([']C190003073', '(90)003073', '90003073'])(
+    'scan %s adds the exact product with a numeric barcode and its pack quantity', async (code) => {
+      const fetchSpy = jest.spyOn(globalThis, 'fetch');
+      await render([product]).handleScanBarcode(code);
+      expect(mockData.lines).toHaveLength(1);
+      expect(mockData.lines[0]).toMatchObject({ product_id: product.product_id, barcode: '90003073', boxes: 1, qty: 12 });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  test('remote lookup uses the numeric code when the product is not loaded', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      json: async () => ({ success: true, data: { items: [product] } }),
+    } as Response);
+    await render([]).handleScanBarcode(']C190003073');
+    expect(fetchSpy).toHaveBeenCalledWith('/api/products?search=90003073&master_only=true');
+    expect(mockData.lines[0]).toMatchObject({ product_id: product.product_id, barcode: '90003073', qty: 12 });
+  });
+
+  test('a partial search result cannot add the wrong product', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      json: async () => ({ success: true, data: [{ ...product, product_id: 'prod-other', sku: 'OTHER', barcode: '190003073' }] }),
+    } as Response);
+    await render([]).handleScanBarcode('(90)003073');
+    expect(mockData.lines).toHaveLength(0);
+    expect(render([]).scanFeedback?.type).toBe('error');
+    expect(render([]).scanFeedback?.message).toContain('90003073');
+    expect(render([]).scanFeedback?.message).not.toContain('(90)');
+  });
+});
+
 test('receiving plans add packs and warn when a scan crosses the remaining target', async () => {
   let hook = render(packedProducts);
   hook.startPlanReceive({

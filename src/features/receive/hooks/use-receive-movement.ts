@@ -12,7 +12,7 @@ import type { ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import { detectWarehouseCode, getWarehouseName } from "@/lib/warehouse-utils";
 import { useTabAuth } from "@/context/TabAuthContext";
 import type { ReceivingPlanView } from "./use-receiving-plans";
-import { normalizeWhId } from "@/features/receive/utils";
+import { normalizeReceiveScanCode, normalizeWhId } from "@/features/receive/utils";
 
 export const RECEIVE_DRAFT_KEY = "stockify_receive_draft_v2";
 // draft รุ่นก่อนหน้า — อ่านยกมาเป็น v2 แล้วลบทิ้ง จะได้ไม่เสียรายการค้างอยู่ตอนอัปเดตระบบ
@@ -465,8 +465,9 @@ export function useReceiveMovement({
     });
   };
 
-  const handleScanBarcode = useCallback(async (code: string, playSound = false) => {
+  const handleScanBarcode = useCallback(async (rawCode: string, playSound = false) => {
     const reportFeedback = (result: ScanFeedback) => setScanFeedback(result, playSound);
+    const code = normalizeReceiveScanCode(rawCode);
     const trimmed = code.trim().toLowerCase();
     if (!trimmed) return;
 
