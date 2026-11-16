@@ -80,7 +80,7 @@ export default function ProductionJobsPage() {
     PRODUCTION_POLL_MS
   );
   const guard = useSubmitGuard();
-  const [startJob, setStartJob] = useState<ProductionJob | null>(null);
+  const [startJobs, setStartJobs] = useState<ProductionJob[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
   const [reportJob, setReportJob] = useState<ProductionJob | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
@@ -122,19 +122,33 @@ export default function ProductionJobsPage() {
     return Array.from(map.values());
   }, [filtered]);
 
-  const handleStart = (job: ProductionJob) =>
+  const handleStart = () =>
     guard.run(async () => {
       setStartError(null);
-      const res = await productionApi(`/api/production/jobs/${encodeURIComponent(job.job_no)}/start`, "POST");
-      if (res.success) {
-        setStartJob(null);
-        setToast({ tone: "ok", message: res.message });
-        emitProductionUpdated();
-      } else {
-        setStartError(res.message);
-        if (isConflict(res)) emitProductionUpdated();
+      const pending = [...startJobs];
+      for (const [index, job] of pending.entries()) {
+        const endpoint = `/api/production/jobs/${encodeURIComponent(job.job_no)}`;
+        const res = await productionApi(`${endpoint}/start`, "POST");
+        let started = res.success;
+        // A lost response or another operator starting the job already fulfills
+        // this action. Read its current state before allowing a retry.
+        if (!started && (res.status === 0 || isConflict(res) || res.status >= 500)) {
+          const current = await productionApi<{ job: ProductionJob }>(endpoint);
+          started = current.success && current.data?.job.status === "IN_PROGRESS";
+        }
+        if (!started) {
+          setStartJobs(pending.slice(index));
+          setStartError(`${index ? `เริ่มผลิตแล้ว ${index} งาน · ` : ""}${job.job_no}: ${res.message} กรุณาตรวจรายการที่เหลือก่อนลองใหม่`);
+          emitProductionUpdated();
+          await reload();
+          return;
+        }
       }
-    }, `start:${job.job_no}`);
+      setStartJobs([]);
+      setToast({ tone: "ok", message: `เริ่มผลิตโต๊ะ ${pending[0]?.table_no} แล้ว ${pending.length} งาน` });
+      emitProductionUpdated();
+      await reload();
+    }, "start-table");
 
   const handleReport = (job: ProductionJob, payload: ReportPayload) =>
     guard.run(async () => {
@@ -270,14 +284,20 @@ export default function ProductionJobsPage() {
         </div>
       ) : (
         <div className="mt-5 grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {groupedByTable.map((group) => (
+          {groupedByTable.map((group) => {
+            const waitingJobs = group.jobs.filter(job => job.status === "WAITING" && (isAdmin || getAllowedActions(job, user?.role).start));
+            return (
             <div
               key={group.key}
               className={`m3-card relative flex flex-col overflow-hidden p-4 before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-5 ${priorityEdgeClass(group.jobs[0].priority)}`}
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 <M3NumberTile>{group.table_no}</M3NumberTile>
-                <span className="mr-1 text-sm font-bold text-m3-grey-800">โต๊ะ {group.table_no}</span>
+                <div className="mr-1"><span className="text-sm font-bold text-m3-grey-800">โต๊ะ {group.table_no}</span><p className="text-xs text-m3-grey-500">{group.jobs[0].production_date}</p></div>
+                {(isAdmin || isApprover) && <button type="button" aria-label={`เริ่มผลิตโต๊ะ ${group.table_no} วันที่ ${group.jobs[0].production_date}`} disabled={guard.pending || !waitingJobs.length}
+                  onClick={() => { setStartError(null); setStartJobs(waitingJobs); }} className="m3-btn m3-btn-sm m3-btn-dark ml-auto">
+                  <SolarPlayCircle size={18} />เริ่มผลิต
+                </button>}
               </div>
               <div className="mt-3 divide-y divide-[rgba(145,158,171,0.2)] rounded-lg border border-[rgba(145,158,171,0.2)]">
                 {group.jobs.map((job) => (
@@ -303,12 +323,12 @@ export default function ProductionJobsPage() {
                 <SolarArrowRight size={18} />
               </Link>
             </div>
-          ))}
+          ); })}
         </div>
       )}
 
       <ConfirmModal
-        open={!!startJob}
+        open={startJobs.length > 0}
         title="ยืนยันเริ่มผลิต"
         hint="เมื่อเริ่มแล้ว ระบบจะแจ้ง Admin ว่างานนี้เริ่มผลิตแล้ว"
         icon={<SolarPlayCircle size={28} />}
@@ -322,12 +342,15 @@ export default function ProductionJobsPage() {
         submitting={guard.pending}
         error={startError}
         onClose={() => {
-          setStartJob(null);
+          setStartJobs([]);
           setStartError(null);
         }}
-        onConfirm={() => startJob && handleStart(startJob)}
+        onConfirm={() => startJobs.length > 0 && handleStart()}
       >
-        {startJob && <StartJobSummary job={startJob} />}
+        {!!startJobs.length && <div className="space-y-3">
+          <p className="text-sm font-semibold">โต๊ะ {startJobs[0].table_no} · วันที่ {startJobs[0].production_date} · รอเริ่ม {startJobs.length} งาน</p>
+          {startJobs.map(job => <StartJobSummary key={job.job_no} job={job} />)}
+        </div>}
       </ConfirmModal>
 
       <ReportModal
