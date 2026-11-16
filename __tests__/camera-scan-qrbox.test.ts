@@ -1,4 +1,11 @@
-import { cameraScanQrbox, cameraScanQrboxCompact } from "@/components/ui/CameraBarcodeScannerModal";
+import {
+  cameraScanQrbox,
+  cameraScanQrboxCompact,
+  cameraScanAspectRatio,
+  containScanVideoSize,
+  sizeCompactScanSurface,
+  COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS,
+} from "@/components/ui/CameraBarcodeScannerModal";
 
 describe("cameraScanQrbox", () => {
   it("shrinks the scan frame versus the previous 0.9 x 0.6 box", () => {
@@ -49,4 +56,49 @@ it("compact qrbox stays within a tall portrait-like viewfinder so the shaded fra
   expect(y).toBeGreaterThanOrEqual(0);
   expect(x + box.width).toBeLessThanOrEqual(358);
   expect(y + box.height).toBeLessThanOrEqual(636);
+});
+
+
+describe("compact viewport aspect and contain sizing", () => {
+  it("exports a taller compact height capped by 34vh", () => {
+    expect(COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS).toBe("h-[min(260px,34vh)]");
+  });
+
+  it("uses the viewport aspect when both sides are known, otherwise 16:9", () => {
+    expect(cameraScanAspectRatio(390, 260)).toBeCloseTo(390 / 260);
+    expect(cameraScanAspectRatio(0, 260)).toBeCloseTo(16 / 9);
+    expect(cameraScanAspectRatio(390, 0)).toBeCloseTo(16 / 9);
+  });
+
+  it("contains a 16:9 stream inside a 390×260 box without stretching", () => {
+    const size = containScanVideoSize(1920, 1080, 390, 260);
+    expect(size).toEqual({ width: 390, height: Math.floor(1080 * (390 / 1920)) });
+    expect(size.height).toBe(219);
+    expect(size.width / size.height).toBeCloseTo(1920 / 1080, 2);
+    expect(size.height).toBeLessThan(260);
+  });
+
+  it("contains a portrait stream as a letterboxed column so the qrbox stays on-screen", () => {
+    const size = containScanVideoSize(1080, 1920, 390, 260);
+    expect(size).toEqual({ width: Math.floor(1080 * (260 / 1920)), height: 260 });
+    expect(size.width).toBe(146);
+    expect(size.width).toBeLessThan(390);
+    expect(size.height / size.width).toBeCloseTo(1920 / 1080, 2);
+  });
+
+  it("fills the box when the stream already matches the viewport", () => {
+    expect(containScanVideoSize(390, 260, 390, 260)).toEqual({ width: 390, height: 260 });
+  });
+
+  it("sizes the html5-qrcode root and video to the same contained rectangle", () => {
+    const viewport = { clientWidth: 390, clientHeight: 260 } as HTMLElement;
+    const root = { style: {} as CSSStyleDeclaration } as HTMLElement;
+    const video = { videoWidth: 1920, videoHeight: 1080, style: {} as CSSStyleDeclaration } as HTMLVideoElement;
+    expect(sizeCompactScanSurface(root, video, viewport)).toEqual({ width: 390, height: 219 });
+    expect(root.style.width).toBe("390px");
+    expect(root.style.height).toBe("219px");
+    expect(video.style.width).toBe("390px");
+    expect(video.style.height).toBe("219px");
+    expect(video.style.objectFit).toBe("fill");
+  });
 });

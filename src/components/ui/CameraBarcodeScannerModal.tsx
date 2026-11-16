@@ -16,13 +16,98 @@ export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: numbe
 }
 
 /**
- * กรอบสแกนของโหมดกะทัดรัด (วิว 144px) — สัดส่วนตามขนาด viewfinder จริงที่ html5-qrcode
+ * กรอบสแกนของโหมดกะทัดรัด — สัดส่วนตามขนาด viewfinder จริงที่ html5-qrcode
  * วัดจาก video.clientWidth/clientHeight (อย่าใช้กรอบคงที่ 200×72)
  *
  * html5-qrcode 2.3.8 บังคับด้านสั้นสุด 50px และจะไม่วาด #qr-shaded-region
  * (กรอบ + เส้นแดง) ถ้ากรอบสูงหรือกว้างเท่าจอวิดีโอ
  */
 export const HTML5_QRBOX_MIN_SIZE = 50;
+
+/** Compact receive camera height: ~220–260px, capped so short viewports stay usable. */
+export const COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS = "h-[min(260px,34vh)]";
+
+const DEFAULT_CAMERA_ASPECT_RATIO = 16 / 9;
+
+/** Aspect ratio to request from the camera so the stream can match the visible box. */
+export function cameraScanAspectRatio(viewfinderWidth: number, viewfinderHeight: number): number {
+  if (viewfinderWidth <= 0 || viewfinderHeight <= 0) return DEFAULT_CAMERA_ASPECT_RATIO;
+  return viewfinderWidth / viewfinderHeight;
+}
+
+/** Size a video so it fits inside a box without stretching (letterbox / pillarbox). */
+export function containScanVideoSize(
+  sourceWidth: number,
+  sourceHeight: number,
+  boxWidth: number,
+  boxHeight: number,
+): { width: number; height: number } {
+  if (sourceWidth <= 0 || sourceHeight <= 0 || boxWidth <= 0 || boxHeight <= 0) {
+    return { width: Math.max(0, Math.floor(boxWidth)), height: Math.max(0, Math.floor(boxHeight)) };
+  }
+  const scale = Math.min(boxWidth / sourceWidth, boxHeight / sourceHeight);
+  return {
+    width: Math.max(1, Math.floor(sourceWidth * scale)),
+    height: Math.max(1, Math.floor(sourceHeight * scale)),
+  };
+}
+
+/**
+ * Fit the html5-qrcode root and <video> to the contained visible frame.
+ * The library maps decode coords from video.clientWidth/clientHeight and paints
+ * #qr-shaded-region on the root, so both must share the same rectangle.
+ */
+export function sizeCompactScanSurface(
+  root: HTMLElement,
+  video: HTMLVideoElement,
+  viewport: HTMLElement,
+): { width: number; height: number } | null {
+  if (!video.videoWidth || !video.videoHeight) return null;
+  const size = containScanVideoSize(
+    video.videoWidth,
+    video.videoHeight,
+    viewport.clientWidth,
+    viewport.clientHeight,
+  );
+  root.style.width = `${size.width}px`;
+  root.style.height = `${size.height}px`;
+  video.style.width = `${size.width}px`;
+  video.style.height = `${size.height}px`;
+  video.style.objectFit = "fill";
+  return size;
+}
+
+/** Observe the scanner root and size the video before html5-qrcode measures on `playing`. */
+export function attachCompactScanVideoFit(viewport: HTMLElement, root: HTMLElement): () => void {
+  const bound = new WeakSet<HTMLVideoElement>();
+
+  const apply = (video: HTMLVideoElement) => {
+    sizeCompactScanSurface(root, video, viewport);
+  };
+
+  const bind = (video: HTMLVideoElement) => {
+    if (bound.has(video)) {
+      apply(video);
+      return;
+    }
+    bound.add(video);
+    if (video.videoWidth) apply(video);
+    video.addEventListener("loadedmetadata", () => apply(video));
+    video.addEventListener("playing", () => apply(video), true);
+  };
+
+  const existing = root.querySelector("video");
+  if (existing) bind(existing);
+
+  const observer = new MutationObserver(() => {
+    const video = root.querySelector("video");
+    if (video) bind(video);
+  });
+  observer.observe(root, { childList: true, subtree: true });
+
+  return () => observer.disconnect();
+}
+
 
 export function cameraScanQrboxCompact(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
   const margin = 2;
@@ -45,7 +130,7 @@ interface CameraBarcodeScannerModalProps {
   presentation?: "modal" | "inline";
   /** Optional slot rendered under the camera frame (e.g. receiving summary strip). */
   afterViewport?: React.ReactNode;
-  /** Fixed 144px viewfinder with the flash as a 36px icon in the bottom-left. */
+  /** Taller compact viewfinder (min(260px, 34vh)) with the flash as a 36px icon in the bottom-left. */
   compactViewport?: boolean;
   /** Keep the camera open after a successful scan; hide close and single/continuous controls. */
   persistOpen?: boolean;
@@ -75,6 +160,7 @@ export default function CameraBarcodeScannerModal({
   const torchRef = useRef<ReturnType<CameraCapabilities["torchFeature"]> | null>(null);
   const torchBusyRef = useRef(false);
   const cameraStopRef = useRef<Promise<void>>(Promise.resolve());
+  const compactFitCleanupRef = useRef<(() => void) | null>(null);
   const persistOpenRef = useRef(persistOpen);
 
   const [cameraError, setCameraError] = useState<string>("");
@@ -116,6 +202,8 @@ export default function CameraBarcodeScannerModal({
 
   // Stop camera helper
   const stopLiveCamera = async () => {
+    compactFitCleanupRef.current?.();
+    compactFitCleanupRef.current = null;
     const scanner = html5QrCodeRef.current;
     html5QrCodeRef.current = null;
     const torch = torchRef.current;
@@ -228,13 +316,34 @@ export default function CameraBarcodeScannerModal({
         });
         html5QrCodeRef.current = scanner;
 
+        const root = document.getElementById(scannerId);
+        const viewport = root?.parentElement;
+        if (compactViewport && root && viewport) {
+          compactFitCleanupRef.current?.();
+          compactFitCleanupRef.current = attachCompactScanVideoFit(viewport, root);
+        }
+
+        const aspectRatio = compactViewport && viewport
+          ? cameraScanAspectRatio(viewport.clientWidth, viewport.clientHeight)
+          : 1.777778;
+
         await scanner.start(
           { facingMode: "environment" },
-          {
-            fps: 25,
-            qrbox: compactViewport ? cameraScanQrboxCompact : cameraScanQrbox,
-            aspectRatio: 1.777778,
-          },
+          compactViewport
+            ? {
+                fps: 25,
+                qrbox: cameraScanQrboxCompact,
+                // ideal (not exact) so a device that cannot match the box still starts
+                videoConstraints: {
+                  facingMode: "environment",
+                  aspectRatio: { ideal: aspectRatio },
+                },
+              }
+            : {
+                fps: 25,
+                qrbox: cameraScanQrbox,
+                aspectRatio: 1.777778,
+              },
           (decodedText) => {
             if (isSubscribed && decodedText && !processingRef.current) {
               const now = Date.now();
@@ -376,7 +485,7 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Video Camera Viewport */}
-        <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? "stockify-scan-compact h-[144px] flex-none p-0" : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
+        <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? `stockify-scan-compact ${COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS} flex-none p-0` : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
           <div id={scannerId} className="h-full w-full text-center text-xs text-m3-grey-400" />
 
           {cameraError && (

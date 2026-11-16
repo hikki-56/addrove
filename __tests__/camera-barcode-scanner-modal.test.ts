@@ -1,5 +1,5 @@
 import React, { type ReactElement, type ReactNode } from "react";
-import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
+import CameraBarcodeScannerModal, { COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS } from "@/components/ui/CameraBarcodeScannerModal";
 import { feedbackError, feedbackSuccess } from "@/client/feedback";
 import { useScanFeedback } from "@/hooks/use-scan-feedback";
 
@@ -116,10 +116,11 @@ it("default chrome still includes the sound test, typed code field, and close co
   const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
   expect(String(viewport.props.className)).toContain("max-h-[min(280px,48vh)]");
   expect(String(viewport.props.className)).not.toContain("h-[144px]");
+  expect(String(viewport.props.className)).not.toContain(COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS);
   expect(String(viewport.props.className)).not.toContain("stockify-scan-compact");
 });
 
-it("receive opt-out props hide chrome, keep a compact 144px frame, and render afterViewport", () => {
+it("receive opt-out props hide chrome, keep a taller compact frame, and render afterViewport", () => {
   const tree = CameraBarcodeScannerModal({
     isOpen: true,
     onClose: jest.fn(),
@@ -135,12 +136,56 @@ it("receive opt-out props hide chrome, keep a compact 144px frame, and render af
   expect(() => find(tree, (node) => node.type === "button" && node.props["aria-label"] === "ปิดกล้องสแกน")).toThrow("Element not found");
   expect(() => find(tree, (node) => node.type === "span" && node.props.children === "ทีละครั้ง")).toThrow("Element not found");
   const viewport = find(tree, (node) => typeof node.props.className === "string" && String(node.props.className).includes("stockify-scan-viewport"));
-  expect(String(viewport.props.className)).toContain("h-[144px]");
+  expect(String(viewport.props.className)).toContain(COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS);
+  expect(String(viewport.props.className)).toContain("h-[min(260px,34vh)]");
   expect(String(viewport.props.className)).toContain("stockify-scan-compact");
+  expect(String(viewport.props.className)).not.toContain("h-[144px]");
   expect(String(viewport.props.className)).not.toContain("max-h-[min(280px,48vh)]");
   const flash = find(tree, (node) => node.type === "button" && node.props["aria-label"] === "เปิดแฟลช");
   expect(String(flash.props.className)).toContain("size-9");
   expect(String(flash.props.className)).toContain("absolute");
+});
+
+
+it("compact camera requests an ideal aspect ratio matching the viewport, not a stretched 16:9 fill", async () => {
+  jest.useFakeTimers();
+  const viewport = { clientWidth: 390, clientHeight: 260 };
+  const root = { parentElement: viewport, clientWidth: 390, clientHeight: 260, querySelector: () => null };
+  class FakeMutationObserver { observe() {} disconnect() {} }
+  Object.defineProperty(globalThis, "MutationObserver", { configurable: true, value: FakeMutationObserver });
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { getElementById: () => root } });
+  CameraBarcodeScannerModal({
+    isOpen: true,
+    onClose: jest.fn(),
+    compactViewport: true,
+    persistOpen: true,
+    hideManualInput: true,
+    hideSoundHint: true,
+  });
+  mockEffects.forEach((effect) => effect());
+  await jest.advanceTimersByTimeAsync(100);
+  expect(mockStart).toHaveBeenCalled();
+  const config = mockStart.mock.calls[0][1] as {
+    aspectRatio?: number;
+    videoConstraints?: { facingMode?: string; aspectRatio?: { ideal?: number } };
+    qrbox?: unknown;
+  };
+  expect(config.aspectRatio).toBeUndefined();
+  expect(config.videoConstraints).toEqual({
+    facingMode: "environment",
+    aspectRatio: { ideal: 390 / 260 },
+  });
+});
+
+it("default camera still requests the existing 16:9 aspectRatio and not compact videoConstraints", async () => {
+  jest.useFakeTimers();
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { getElementById: () => ({}) } });
+  CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn() });
+  mockEffects.forEach((effect) => effect());
+  await jest.advanceTimersByTimeAsync(100);
+  const config = mockStart.mock.calls[0][1] as { aspectRatio?: number; videoConstraints?: unknown };
+  expect(config.aspectRatio).toBe(1.777778);
+  expect(config.videoConstraints).toBeUndefined();
 });
 
 it("persistOpen keeps the scan chrome visible while the live camera is paused", () => {
