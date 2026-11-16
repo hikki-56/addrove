@@ -5,7 +5,7 @@ import { previewProductionBom } from "@/lib/production-bom";
 import { M3SubmitLabel, m3Cls } from "@/components/ui/m3";
 import type { ProductionBomFormula, ProductionBomPreview, ProductionBomSelection, ProductionMaterialPlan } from "@/types/production-bom";
 import type { BomManagementData } from "@/types/bom-management";
-import BomFormulaManager from "./BomFormulaManager";
+import BomFormulaManager, { type BomManagerAction } from "./BomFormulaManager";
 import BomEditStatus from "./BomEditStatus";
 
 interface Props {
@@ -29,7 +29,8 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const [rolesError, setRolesError] = useState<string | null>(null);
   const [rolesSaved, setRolesSaved] = useState(false);
   const [savedFormula, setSavedFormula] = useState<ProductionBomFormula | null>(null);
-  const [managing, setManaging] = useState(false);
+  const [managementAction, setManagementAction] = useState<BomManagerAction | null>(null);
+  const managing = managementAction !== null;
   const [managedFormulas, setManagedFormulas] = useState(false);
   const [managementMessage, setManagementMessage] = useState("");
   const saveRequest = useRef<AbortController | null>(null);
@@ -46,7 +47,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     setFormulas([]);
     setLoadedProductId(null);
     setSavedFormula(null);
-    setManaging(false);
+    setManagementAction(null);
     setManagedFormulas(false);
     setManagementMessage("");
     if (!productId) return;
@@ -69,7 +70,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : !managedFormulas && savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
   const preview = useMemo(() => formula ? previewProductionBom(formula, targetQty, value) : null, [formula, targetQty, value]);
   const loading = !!productId && loadedProductId !== productId;
-  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตร กดจัดการสูตรเพื่อเพิ่ม BOM" : preview?.issues[0] || null);
+  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตร กดเพิ่มสูตรเพื่อเริ่มต้น" : preview?.issues[0] || null);
   useEffect(() => { onValidation(validation); }, [validation, onValidation]);
   useEffect(() => {
     let live = true;
@@ -93,7 +94,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     setError(null);
     setRolesSaved(false);
     setRolesError(null);
-    setManaging(false);
+    setManagementAction(null);
     setManagementMessage(bomId ? "บันทึกสูตรเรียบร้อยแล้ว" : "ลบสูตรเรียบร้อยแล้ว");
     onChange(next ? { bom_id: next.bom_id, revision: next.revision } : undefined, next?.unit);
     onFormulasChanged?.();
@@ -131,6 +132,8 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     }
   };
   if (!productId) return null;
+  const openManager = (action: BomManagerAction) => { setManagementMessage(""); setManagementAction(action); };
+  const masterFormula = formulas.some(f => f.bom_id === formula?.bom_id);
   const factorInput = (unit: string, stockUnit: string, current: number | undefined, change: (n: number | undefined) => void) => (
     <label className="mt-2 block text-xs text-m3-grey-600">1 {unit} =
       <input aria-label={`อัตราแปลง ${unit} เป็น ${stockUnit}`} type="number" min="0.001" step="any" disabled={disabled || savingRoles} value={current ?? ""}
@@ -140,9 +143,13 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   return <section className="space-y-3 rounded-xl bg-m3-grey-100 p-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-bold">วัตถุดิบ · โกดัง 2</p>
-      {!managing && <button type="button" disabled={disabled || savingRoles || loading} onClick={() => { setManagementMessage(""); setManaging(true); }} className="m3-btn m3-btn-sm m3-btn-outline">จัดการสูตร · เพิ่ม / แก้ไข / ลบ</button>}
+      {!managing && <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={disabled || savingRoles || loading} onClick={() => openManager({ type: "new-formula" })} className="m3-btn m3-btn-sm m3-btn-outline">เพิ่มสูตร</button>
+        <button type="button" disabled={disabled || savingRoles || !masterFormula} onClick={() => openManager({ type: "edit-formula" })} className="m3-btn m3-btn-sm m3-btn-outline">แก้ไขสูตร</button>
+        <button type="button" disabled={disabled || savingRoles || !masterFormula} onClick={() => openManager({ type: "delete-formula" })} className="m3-btn m3-btn-sm text-m3-error-dark">ลบสูตร</button>
+      </div>}
     </div>
-    {managing ? <BomFormulaManager key={productId} productId={productId} initialBomId={selected} onClose={() => setManaging(false)} onChanged={applyManagedFormulas} /> : <>
+    {managementAction ? <BomFormulaManager key={productId} productId={productId} initialBomId={selected} initialAction={managementAction} onClose={() => setManagementAction(null)} onChanged={applyManagedFormulas} /> : <>
     {managementMessage && <p role="status" className="text-xs font-semibold text-m3-primary-dark">{managementMessage}</p>}
     {formula && formulas.length <= 1 && <p className="text-xs text-m3-grey-600">{formula.bom_id}</p>}
     {formula && (formulas.some(f => f.bom_id === formula.bom_id)
@@ -156,13 +163,19 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     </label>}
     {formula && <>
       <p className="text-xs">ฐานสูตร {formula.base_qty} {formula.unit}</p>
-      {!formula.items.length && <p className="text-xs font-semibold text-m3-error-dark">มีสูตรแล้ว แต่ยังไม่มีวัตถุดิบ กดจัดการสูตรเพื่อเพิ่มวัตถุดิบก่อนสั่งผลิต</p>}
+      {!formula.items.length && <p className="text-xs font-semibold text-m3-error-dark">มีสูตรแล้ว แต่ยังไม่มีวัตถุดิบ กดเพิ่มวัตถุดิบก่อนสั่งผลิต</p>}
       {formula.unit !== formula.stock_unit && factorInput(formula.unit, formula.stock_unit, value?.fg_factor, n => onChange({ ...value!, fg_factor: n }, formula.unit))}
       {preview?.materials.map(i => {
         const stock = availability?.materials.find(m => m.item_id === i.item_id);
-        return <div key={i.item_id} className="rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
-          <p className="font-semibold">{i.sku} · {i.name}</p>
-          {!i.product_id && <p className="text-xs font-semibold text-m3-error-dark">ยังจับคู่ทะเบียนวัตถุดิบไม่ได้ กดจัดการสูตรเพื่อเลือกรหัสที่ถูกต้อง</p>}
+        return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 font-semibold">{i.sku} · {i.name}</p>
+            {masterFormula && <div className="flex gap-2">
+              <button type="button" aria-label={`แก้ไขวัตถุดิบ ${i.sku}`} disabled={disabled || savingRoles} onClick={() => openManager({ type: "edit-material", itemId: i.item_id })} className="m3-btn m3-btn-sm m3-btn-outline">แก้ไข</button>
+              <button type="button" aria-label={`ลบวัตถุดิบ ${i.sku}`} disabled={disabled || savingRoles} onClick={() => openManager({ type: "delete-material", itemId: i.item_id })} className="m3-btn m3-btn-sm text-m3-error-dark">ลบ</button>
+            </div>}
+          </div>
+          {!i.product_id && <p className="text-xs font-semibold text-m3-error-dark">ยังจับคู่ทะเบียนวัตถุดิบไม่ได้ กดแก้ไขเพื่อเลือกรหัสที่ถูกต้อง</p>}
           <p className="text-xs text-m3-grey-600">{!i.role_confirmed ? "ยังไม่ระบุหลัก/รอง" : i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {i.stock_qty ?? "—"} {i.stock_unit}</p>
           {!formula.items.find(m => m.item_id === i.item_id)?.role_confirmed && <label className="mt-1 block text-xs">หลัก / รอง
             <select aria-label={`หลัก / รอง ${i.sku}`} disabled={disabled || savingRoles} value={value?.material_roles?.[String(i.item_id)] ?? ""} onChange={e => { setRolesSaved(false); setRolesError(null); onChange({ ...value!, material_roles: { ...value?.material_roles, [String(i.item_id)]: Number(e.target.value) as 0 | 1 } }, formula.unit); }} className="ml-2 h-9 px-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500">
@@ -176,6 +189,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
           {stock && <p className={stock.shortage ? "text-xs font-bold text-m3-error-dark" : "text-xs text-m3-grey-600"}>พร้อมใช้ {stock.available} {i.stock_unit}{stock.shortage ? ` · ขาด ${stock.shortage}` : ""}</p>}
         </div>;
       })}
+      {masterFormula && <button type="button" disabled={disabled || savingRoles} onClick={() => openManager({ type: "add-material" })} className="m3-btn m3-btn-outline">เพิ่มวัตถุดิบ</button>}
       {Object.keys(pendingRoles).length > 0 && <div className="space-y-1.5">
         <button type="button" disabled={disabled || savingRoles} onClick={saveRoles} className={m3Cls.btnPrimary}>
           <M3SubmitLabel submitting={savingRoles}>บันทึกประเภท</M3SubmitLabel>

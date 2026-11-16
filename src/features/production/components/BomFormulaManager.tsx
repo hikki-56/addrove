@@ -6,9 +6,13 @@ import { validateBomDraft, type BomEditorFormula, type BomEditorInput, type BomE
 import type { BomManagementData } from "@/types/bom-management";
 import BomEditStatus from "./BomEditStatus";
 
+export type BomManagerAction = { type: "edit-formula" | "new-formula" | "delete-formula" | "add-material" }
+  | { type: "edit-material" | "delete-material"; itemId: number };
+
 interface Props {
   productId: string;
   initialBomId?: string;
+  initialAction: BomManagerAction;
   onClose: () => void;
   onChanged: (data: BomManagementData, bomId?: string) => void;
 }
@@ -20,13 +24,16 @@ const newItem = (): DraftItem => ({ key: `new-${++itemSequence}`, sku: "", name:
 const draftOf = (f: BomEditorFormula): Draft => ({ bom_id: f.bom_id, revision: f.revision, unit: f.unit, base_qty: String(f.base_qty),
   items: f.items.map(i => ({ ...i, key: `item-${i.item_id}`, qty: String(i.qty), waste_percentage: String(i.waste_percentage) })) });
 
-export default function BomFormulaManager({ productId, initialBomId, onClose, onChanged }: Props) {
+export default function BomFormulaManager({ productId, initialBomId, initialAction, onClose, onChanged }: Props) {
   const [data, setData] = useState<BomManagementData | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [editingBase, setEditingBase] = useState(false);
   const [reload, setReload] = useState(0);
   const request = useRef<AbortController | null>(null);
   const listId = useId();
@@ -43,13 +50,20 @@ export default function BomFormulaManager({ productId, initialBomId, onClose, on
         if (controller.signal.aborted) return;
         const current = json.data as BomManagementData;
         setData(current);
-        const selected = current.formulas.find(f => f.bom_id === initialBomId) ?? current.formulas[0];
-        setDraft(selected ? draftOf(selected) : { unit: current.product.base_unit, base_qty: "1", items: [newItem()] });
+        const selected = initialAction.type === "new-formula" ? undefined : current.formulas.find(f => f.bom_id === initialBomId) ?? current.formulas[0];
+        const next = selected ? draftOf(selected) : { unit: current.product.base_unit, base_qty: "1", items: [newItem()] };
+        if (selected && initialAction.type === "add-material") next.items.push(newItem());
+        setDraft(next);
+        setEditingBase(!selected || initialAction.type === "edit-formula");
+        setConfirmDelete(!!selected && initialAction.type === "delete-formula");
+        setEditingKey(!selected || initialAction.type === "add-material" ? next.items.at(-1)?.key ?? null
+          : initialAction.type === "edit-material" ? next.items.find(i => i.item_id === initialAction.itemId)?.key ?? null : null);
+        setDeletingKey(initialAction.type === "delete-material" ? next.items.find(i => i.item_id === initialAction.itemId)?.key ?? null : null);
       })
       .catch(error => { if (!controller.signal.aborted) setErrors([error instanceof Error ? error.message : "โหลดสูตรไม่สำเร็จ"]); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); request.current?.abort(); };
-  }, [productId, initialBomId, reload]);
+  }, [productId, initialBomId, initialAction, reload]);
 
   const options = useMemo(() => data?.materials.map(p => <option key={p.product_id} value={p.sku} label={`${p.product_name} · ${p.barcode}`} />), [data]);
   const patchItem = (key: string, patch: Partial<DraftItem>) => setDraft(current => current && ({ ...current, items: current.items.map(i => i.key === key ? { ...i, ...patch } : i) }));
@@ -61,7 +75,11 @@ export default function BomFormulaManager({ productId, initialBomId, onClose, on
   const choose = (id: string) => {
     if (!data) return;
     const formula = data.formulas.find(f => f.bom_id === id);
-    setDraft(formula ? draftOf(formula) : { unit: data.product.base_unit, base_qty: "1", items: [newItem()] });
+    const next = formula ? draftOf(formula) : { unit: data.product.base_unit, base_qty: "1", items: [newItem()] };
+    setDraft(next);
+    setEditingKey(formula ? null : next.items[0].key);
+    setDeletingKey(null);
+    setEditingBase(!formula);
     setErrors([]);
     setConfirmDelete(false);
   };
@@ -110,6 +128,7 @@ export default function BomFormulaManager({ productId, initialBomId, onClose, on
       </label>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy} onClick={() => choose("")} className="m3-btn m3-btn-sm m3-btn-outline">เพิ่มสูตรใหม่</button>
+        {draft.bom_id && <button type="button" disabled={busy} onClick={() => setEditingBase(v => !v)} className="m3-btn m3-btn-sm m3-btn-outline">แก้ไขฐานสูตร</button>}
         {draft.bom_id && <button type="button" disabled={busy} onClick={() => setConfirmDelete(true)} className="m3-btn m3-btn-sm text-m3-error-dark">ลบสูตร</button>}
       </div>
       {confirmDelete ? <M3Banner tone="warning">
@@ -120,14 +139,28 @@ export default function BomFormulaManager({ productId, initialBomId, onClose, on
           <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className={m3Cls.btnCancel}>กลับไปแก้ไข</button>
         </div>
       </M3Banner> : <>
-        <div className="grid grid-cols-2 gap-3">
+        {editingBase ? <div className="grid grid-cols-2 gap-3">
           <label className="text-xs font-semibold">จำนวนฐานของสูตร<input aria-label="จำนวนฐานของสูตรที่จัดการ" inputMode="decimal" disabled={busy} value={draft.base_qty} onChange={e => setDraft({ ...draft, base_qty: e.target.value })} className={`mt-1 ${m3Cls.input}`} /></label>
           <label className="text-xs font-semibold">หน่วยสินค้าสำเร็จรูป<input aria-label="หน่วยสินค้าของสูตรที่จัดการ" disabled={busy} value={draft.unit} onChange={e => setDraft({ ...draft, unit: e.target.value })} className={`mt-1 ${m3Cls.input}`} /></label>
-        </div>
+        </div> : <p className="text-xs text-m3-grey-600">ฐานสูตร {draft.base_qty} {draft.unit}</p>}
         <datalist id={listId}>{options}</datalist>
         <div className="space-y-3">
-          {draft.items.map((item, index) => <fieldset key={item.key} aria-label={`วัตถุดิบในสูตร ${index + 1}`} className="space-y-2 rounded-lg border border-[rgba(145,158,171,0.2)] p-3">
-            <div className="flex items-center justify-between gap-2"><p className="text-xs font-bold">วัตถุดิบ {index + 1}</p><button type="button" disabled={busy} onClick={() => setDraft({ ...draft, items: draft.items.filter(i => i.key !== item.key) })} className="text-xs font-semibold text-m3-error-dark">ลบวัตถุดิบ</button></div>
+          {draft.items.map((item, index) => <fieldset key={item.key} aria-label={`วัตถุดิบในสูตร ${index + 1}`} className="space-y-2 rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 flex-1"><p className="font-semibold">{item.sku ? `${item.sku} · ${item.name || "ยังไม่พบชื่อในทะเบียน"}` : "วัตถุดิบใหม่"}</p>
+                <p className="text-xs text-m3-grey-600">{item.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"} · ใช้ {item.qty} {item.unit} ต่อฐานสูตร{Number(item.waste_percentage) > 0 ? ` · สูญเสีย ${item.waste_percentage}%` : ""}</p>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" aria-label={`แก้ไขวัตถุดิบ ${item.sku || index + 1}`} disabled={busy} onClick={() => { setEditingKey(item.key); setDeletingKey(null); }} className="m3-btn m3-btn-sm m3-btn-outline">แก้ไข</button>
+                <button type="button" aria-label={`ลบวัตถุดิบ ${item.sku || index + 1}`} disabled={busy} onClick={() => setDeletingKey(item.key)} className="m3-btn m3-btn-sm text-m3-error-dark">ลบ</button>
+              </div>
+            </div>
+            {deletingKey === item.key && <div className="space-y-2 rounded-lg bg-m3-grey-100 p-3">
+              <p className="text-xs font-semibold">ลบวัตถุดิบนี้ออกจากสูตรใช่ไหม? กดบันทึกสูตรเพื่อยืนยันการเปลี่ยนแปลง</p>
+              <div className="flex gap-2"><button type="button" disabled={busy} onClick={() => { setDraft({ ...draft, items: draft.items.filter(i => i.key !== item.key) }); setDeletingKey(null); }} className="m3-btn m3-btn-sm text-m3-error-dark">ยืนยันลบวัตถุดิบ</button>
+                <button type="button" disabled={busy} onClick={() => setDeletingKey(null)} className="m3-btn m3-btn-sm m3-btn-outline">ยกเลิก</button></div>
+            </div>}
+            {editingKey === item.key && <>
             <input aria-label="รหัสวัตถุดิบในสูตร" list={listId} autoComplete="off" placeholder="พิมพ์ SKU ชื่อ หรือบาร์โค้ด" disabled={busy} value={item.sku} onChange={e => changeSku(item.key, e.target.value)} className={m3Cls.input} />
             <p className="text-xs text-m3-grey-600">{item.name || "เลือกสินค้าจากรายการแนะนำ"}</p>
             <div className="grid grid-cols-2 gap-3">
@@ -136,9 +169,11 @@ export default function BomFormulaManager({ productId, initialBomId, onClose, on
               <label className="text-xs">สูญเสีย %<input inputMode="decimal" disabled={busy} value={item.waste_percentage} onChange={e => patchItem(item.key, { waste_percentage: e.target.value })} className={`mt-1 ${m3Cls.input}`} /></label>
               <label className="text-xs">หลัก / รอง<select disabled={busy} value={item.is_primary} onChange={e => patchItem(item.key, { is_primary: e.target.value === "1" ? 1 : 0 })} className={`mt-1 ${m3Cls.input}`}><option value={1}>ตัวหลัก</option><option value={0}>ตัวรอง</option></select></label>
             </div>
+            <button type="button" disabled={busy} onClick={() => setEditingKey(null)} className="m3-btn m3-btn-sm m3-btn-outline">เสร็จสิ้น</button>
+            </>}
           </fieldset>)}
         </div>
-        <button type="button" disabled={busy} onClick={() => setDraft({ ...draft, items: [...draft.items, newItem()] })} className="m3-btn m3-btn-outline">เพิ่มวัตถุดิบในสูตร</button>
+        <button type="button" disabled={busy} onClick={() => { const item = newItem(); setDraft({ ...draft, items: [...draft.items, item] }); setEditingKey(item.key); setDeletingKey(null); }} className="m3-btn m3-btn-outline">เพิ่มวัตถุดิบ</button>
         <div className="flex justify-end gap-2">
           <button type="button" disabled={busy} onClick={onClose} className={m3Cls.btnCancel}>ยกเลิกแก้สูตร</button>
           <button type="button" disabled={busy} onClick={() => void submit()} className={m3Cls.btnPrimary}><M3SubmitLabel submitting={busy}>{draft.bom_id ? "บันทึกสูตร" : "บันทึกสูตรใหม่"}</M3SubmitLabel></button>
