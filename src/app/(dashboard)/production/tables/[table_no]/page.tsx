@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   useProductionJobs,
@@ -49,6 +50,7 @@ function ProductionTableWorkspace() {
   const [today, setToday] = useState("");
   const [selectedJobNo, setSelectedJobNo] = useState("");
   const [resultBusy, setResultBusy] = useState(false);
+  const resultPanel = useRef<HTMLElement | null>(null);
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -154,8 +156,9 @@ function ProductionTableWorkspace() {
 
   return (
     <div className="w-full max-w-full pb-28">
+      <Link href="/production/jobs" className="m3-btn m3-btn-text mb-3">← งานผลิต</Link>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-bold text-m3-grey-800">โต๊ะผลิต {tableNo}</h1>
+        <h1 className="text-2xl font-bold text-m3-grey-800">โต๊ะ {tableNo}</h1>
         <label className="text-xs font-semibold text-m3-grey-600">วันที่ผลิต
           <input type="date" aria-label="วันที่ผลิตของโต๊ะ" value={productionDate} disabled={resultBusy || guard.pending} onChange={e => {
             if (validTableDate(e.target.value)) router.replace(`/production/tables/${tableNo}?date=${encodeURIComponent(e.target.value)}`, { scroll: false });
@@ -214,14 +217,18 @@ function ProductionTableWorkspace() {
                   type="button"
                   disabled={resultBusy || guard.pending}
                   aria-pressed={j.job_no === selectedJobNo}
-                  onClick={() => setSelectedJobNo(j.job_no)}
+                  onClick={() => {
+                    setSelectedJobNo(j.job_no);
+                    router.replace(`/production/tables/${tableNo}?date=${encodeURIComponent(productionDate)}&job_no=${encodeURIComponent(j.job_no)}`, { scroll: false });
+                    if (window.innerWidth < 1024) resultPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
                   className="min-w-0 flex-1 px-3 py-2.5 text-left"
                 >
                   <div className="truncate text-sm font-semibold">{j.product_name}</div>
                   <div className="truncate text-xs text-m3-grey-500">
                     {j.sku} · {formatQty(j.target_qty)} {j.unit}
                   </div>
-                  <div className="mt-1 text-xs text-m3-grey-500">{j.job_no} · {PRODUCTION_JOB_STATUS_LABELS[j.status]} · ดี {formatQty(j.produced_good)} · เสีย {formatQty(j.defect_total)}</div>
+                  <div className="mt-1 text-xs text-m3-grey-500">{PRODUCTION_JOB_STATUS_LABELS[j.status]}{j.report_count > 0 ? ` · ดี ${formatQty(j.produced_good)} · เสีย ${formatQty(j.defect_total)}` : ""}</div>
                 </button>
                 {getAllowedActions(j, user?.role).edit && (
                   <button
@@ -243,7 +250,7 @@ function ProductionTableWorkspace() {
           </div>
         </section>
 
-        <section className="m3-card p-4 sm:p-6">
+        <section ref={resultPanel} className="m3-card scroll-mt-20 p-4 sm:p-6">
           {!selected ? (
             <M3Empty title="เลือกสินค้าทางซ้าย" icon={<SolarBox size={28} />} />
           ) : (

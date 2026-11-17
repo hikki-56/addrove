@@ -189,7 +189,6 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     </div>
     {managementAction ? <BomFormulaManager key={productId} productId={productId} initialBomId={selected} initialAction={managementAction} onClose={() => setManagementAction(null)} onChanged={applyManagedFormulas} /> : <>
     {managementMessage && <p role="status" className="text-xs font-semibold text-m3-primary-dark">{managementMessage}</p>}
-    {formula && formulas.length <= 1 && <p className="text-xs text-m3-grey-600">{formula.bom_id}</p>}
     {formula && (formulas.some(f => f.bom_id === formula.bom_id)
       ? <BomEditStatus editedAt={formulas.find(f => f.bom_id === formula.bom_id)?.edited_at} />
       : <p className="text-xs text-m3-grey-500">สูตรที่เก็บไว้ในใบงาน</p>)}
@@ -200,7 +199,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       </select>
     </label>}
     {formula && <>
-      <p className="text-xs">ฐานสูตร {formula.base_qty} {formula.unit}</p>
+      {formula.base_qty !== 1 && <p className="text-xs">ฐานสูตร {formula.base_qty} {formula.unit}</p>}
       {!formula.items.length && <p className="text-xs font-semibold text-m3-error-dark">มีสูตรแล้ว แต่ยังไม่มีวัตถุดิบ กดเพิ่มวัตถุดิบก่อนสั่งผลิต</p>}
       {formula.unit !== formula.stock_unit && factorInput(formula.unit, formula.stock_unit, value?.fg_factor, n => onChange({ ...value!, fg_factor: n }, formula.unit))}
       {preview?.materials.map(i => {
@@ -251,7 +250,6 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       {rolesError && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{rolesError}</p>}
       {availability?.main_capacity != null && <p className="text-sm font-bold text-m3-primary-dark">ผลิตได้ {availability.main_capacity} {formula.unit}</p>}
     </>}
-    {validation && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{validation}</p>}
     </>}
   </section>;
 }

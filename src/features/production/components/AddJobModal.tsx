@@ -12,7 +12,7 @@ import { formatQty } from "./ui";
 import { parseQtyInput } from "@/features/production/lib/quantity";
 import { canEditField } from "@/features/production/lib/job-form";
 import { M3Banner, M3Dialog, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
-import { SolarCheckCircle, SolarFactory, SolarFlag } from "@/components/icons";
+import { SolarCheckCircle, SolarFlag } from "@/components/icons";
 
 // Modal เพิ่มงานผลิต (สร้างฉบับร่าง) และแก้ไขงานตามกติกาสถานะ (§6)
 // — เลือกสินค้าจากทะเบียนและสร้างสูตรแรกได้ งานผลิตต้องมีสูตรพร้อมใช้ก่อนบันทึก
@@ -183,10 +183,8 @@ export default function AddJobModal({
 
   return (
     <M3Dialog
-      title={isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต (ฉบับร่าง)"}
+      title={isEdit ? "แก้ไขงานผลิต" : "เพิ่มงานผลิต"}
       subtitle={isEdit && job ? job.job_no : undefined}
-      hint={isEdit ? undefined : "เฉพาะผู้ดูแลระบบ (Admin)"}
-      icon={<SolarFactory size={26} />}
       widthClass="sm:max-w-[560px]"
       onBackdrop={() => !submitting && onClose()}
       footer={
@@ -200,7 +198,7 @@ export default function AddJobModal({
             onClick={() => onSubmit({ ...form, target_qty: form.target_qty })}
             className={m3Cls.btnPrimary}
           >
-            <M3SubmitLabel submitting={submitting}>{isEdit ? "บันทึกการแก้ไข" : "เพิ่มงาน (ฉบับร่าง)"}</M3SubmitLabel>
+            <M3SubmitLabel submitting={submitting}>บันทึก</M3SubmitLabel>
           </button>
         </>
       }
@@ -281,9 +279,6 @@ export default function AddJobModal({
         </div>
       </div>
 
-      <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
-        disabled={submitting || (isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING")} onChange={changeBom} onValidation={setBomError} onFormulasChanged={() => setCatalogRevision(n => n + 1)} />
-
       <label className="block">
         <span className={m3Cls.label}>เป้าหมายสินค้าดี</span>
         <div className="relative mt-1.5">
@@ -305,8 +300,12 @@ export default function AddJobModal({
         {qtyInvalid && !qtyParse.ok && <p className="mt-1 text-xs font-semibold text-m3-error-dark">{qtyParse.error}</p>}
       </label>
 
-      <div>
-        <span className={m3Cls.label}>ลำดับความสำคัญ</span>
+      <BomPlanFields productId={form.product_id} targetQty={Number(form.target_qty)} value={form.bom} savedPlan={job?.material_plan} jobNo={job?.job_no}
+        disabled={submitting || (isEdit && editStatus !== "DRAFT" && editStatus !== "WAITING")} onChange={changeBom} onValidation={setBomError} onFormulasChanged={() => setCatalogRevision(n => n + 1)} />
+
+      <details open={form.priority !== "NORMAL" || undefined}>
+        <summary className="cursor-pointer text-sm text-m3-grey-600">ความสำคัญ: {form.priority === "NORMAL" ? "ปกติ" : form.priority === "URGENT" ? "ด่วน" : "ด่วนมาก"}</summary>
+      <div className="mt-3">
         <div className="mt-1.5 flex gap-2" role="group" aria-label="ลำดับความสำคัญ">
           {PRIORITY_OPTIONS.map((o) => (
             <button
@@ -324,6 +323,8 @@ export default function AddJobModal({
         </div>
       </div>
 
+      </details>
+
       {needReason && (
         <label className="block">
           <span className={m3Cls.label}>
@@ -338,7 +339,7 @@ export default function AddJobModal({
         </label>
       )}
 
-      {formError && !error && <p role="alert" className="text-sm font-semibold text-m3-error-dark">{formError}</p>}
+      {formError && !error && form.product_id && form.target_qty !== "" && <p role="alert" className="text-sm font-semibold text-m3-error-dark">{formError}</p>}
     </M3Dialog>
   );
 }
