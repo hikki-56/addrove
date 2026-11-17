@@ -3,16 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ProductionMaterialActual, ProductionMaterialPlan } from "@/types/production-bom";
 import { isValidProductionStockQuantity, previewProductionBom } from "@/lib/production-bom";
+import ReasonSelect from "./ReasonSelect";
 
 export interface MaterialReportValue {
   payload: { materials: ProductionMaterialActual[]; receipt_location_id: string; material_reason: string };
   error: string | null;
 }
 
-interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean }
+interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean; showErrors?: boolean }
 type Edit = { used?: string; scrap?: string; cause?: string };
 
-export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false }: Props) {
+export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false, showErrors = true }: Props) {
   const [edits, setEdits] = useState<Record<number, Edit>>({});
   const [location, setLocation] = useState("");
   const [reason, setReason] = useState("");
@@ -37,12 +38,12 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
       const cause = edits[i.item_id]?.cause || "";
       const usedQty = used.trim() === "" ? NaN : Number(used), scrapQty = scrap.trim() === "" ? NaN : Number(scrap);
       if (!isValidProductionStockQuantity(usedQty, i.stock_unit) || !isValidProductionStockQuantity(scrapQty, i.stock_unit)) error ||= `${i.sku}: จำนวนไม่ถูกต้องตามหน่วย ${i.stock_unit}`;
-      if (scrapQty > 0 && !cause.trim()) error ||= `${i.name}: กรุณาบอกว่าเสียเพราะอะไร`;
+      if (scrapQty > 0 && !cause.trim()) error ||= `เลือกสาเหตุ: ${i.sku}`;
       return { item_id: i.item_id, used_qty: usedQty, scrap_qty: scrapQty, scrap_cause: cause.trim() };
     });
     if (good > 0 && !location) error ||= "กรุณาเลือกที่เก็บสินค้า";
     if (good > 0 && locationError) error ||= locationError;
-    if (dailyClose && defect > 0 && !materials.some(m => m.scrap_qty > 0)) error ||= "กรุณาระบุรหัสวัตถุดิบที่เสียและจำนวนที่เสียจริง";
+    if (dailyClose && defect > 0 && !materials.some(m => m.scrap_qty > 0)) error ||= "ใส่จำนวนเสียวัตถุดิบ";
     const changed = materials.some((m, index) => m.used_qty !== (good > 0 ? preview.materials[index].stock_qty || 0 : 0));
     if (changed && !reason.trim()) error ||= "ใช้วัตถุดิบไม่ตรงสูตร กรุณาบอกเหตุผล";
     return { payload: { materials, receipt_location_id: location, material_reason: reason.trim() }, error };
@@ -52,6 +53,17 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   const materialFields = <>
     {preview.materials.map(i => {
       const expected = good > 0 ? i.stock_qty || 0 : 0;
+      if (dailyClose) return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="space-y-2 rounded-xl border border-[rgba(145,158,171,0.2)] bg-white p-3">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{i.name || i.sku}</p><p className="mt-1 text-xs text-m3-grey-500">{i.sku} · ใช้ {expected} {i.stock_unit}</p></div>
+          <label className="w-24 shrink-0 text-xs font-semibold">เสีย ({i.stock_unit})
+            <input aria-label={`วัตถุดิบเสีย ${i.sku}`} type="number" inputMode="decimal" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"}
+              onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1 h-11 w-full rounded-lg border border-[rgba(145,158,171,0.32)] px-2 text-right text-lg font-bold tabular-nums" />
+          </label>
+        </div>
+        {Number(edits[i.item_id]?.scrap || 0) > 0 && <ReasonSelect label="สาเหตุ" ariaLabel={`สาเหตุวัตถุดิบเสีย ${i.sku}`} value={edits[i.item_id]?.cause || ""}
+          options={["ชำรุด", "แตก", "ประกอบเสีย"]} disabled={disabled} onChange={cause => edit(i.item_id, { cause })} />}
+      </div>;
       return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="space-y-3 rounded-xl bg-white p-4 text-xs shadow-[0_0_0_1px_rgba(145,158,171,0.2)]">
         <div><p className="text-sm font-bold text-m3-grey-800">{i.name || i.sku}</p><p className="mt-1 text-m3-grey-500">{i.sku} · {i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"}</p></div>
         <div className="grid items-end gap-3 sm:grid-cols-2">
@@ -65,22 +77,20 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     })}
     {!dailyClose && <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
   </>;
-  const locationField = (compact || good > 0) && <label className="block text-sm font-bold">เก็บสินค้าไว้ที่ (โกดัง 2)
+  const locationField = (compact || good > 0) && <label className="block text-sm font-semibold">ตำแหน่งเก็บ
       <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code}</option>)}</select>
-      <span className="mt-1 block text-xs font-normal">รับเข้า {Math.round(good * (preview.fg_factor || 0) * 1000) / 1000} {plan.snapshot.stock_unit}</span>
     </label>;
-  return <section className="space-y-3 rounded-xl border border-[rgba(145,158,171,0.2)] p-4">
+  return <section className="space-y-3">
     {compact ? <>
       {locationField}
       {dailyClose ? <div className="space-y-3">
-        <h3 className="text-sm font-bold">วัตถุดิบที่ใช้ · {preview.materials.length} รายการ</h3>
-        <p className="text-xs text-m3-grey-600">กรอกจำนวนเสียบนการ์ดของรหัสนั้น หากไม่เสียให้เป็น 0</p>
+        <h3 className="text-sm font-semibold">วัตถุดิบ</h3>
         {materialFields}
       </div> : <details className="rounded-lg bg-m3-grey-100 p-3">
         <summary className="cursor-pointer text-sm font-bold">วัตถุดิบที่ใช้ · {preview.materials.length} รายการ</summary>
         <div className="mt-3 space-y-3">{materialFields}</div>
       </details>}
     </> : <><h3 className="text-sm font-bold">วัตถุดิบที่ใช้</h3>{materialFields}{locationField}</>}
-    {value.error && <p role="alert" className="text-xs font-bold text-m3-error-dark">{value.error}</p>}
+    {showErrors && value.error && <p role="alert" className="text-xs font-bold text-m3-error-dark">{value.error}</p>}
   </section>;
 }

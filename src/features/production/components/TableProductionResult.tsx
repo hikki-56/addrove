@@ -41,19 +41,20 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
     return runAction(() => sendWithIdempotency(
       { action: "report", jobNo, round: job.report_count + 1, payload: { ...payload } },
       idempotency_key => productionApi(`/api/production/jobs/${encodeURIComponent(jobNo)}/report`, "POST", { ...payload, idempotency_key }),
-    ), "ปิดยอดประจำวันและบันทึกตำแหน่งจัดเก็บแล้ว");
+    ), "บันทึกแล้ว");
   };
   if (loading) return <M3Loading label="กำลังโหลดผลผลิต…" />;
   if (error || !job) return <M3Banner tone="error">{error || "ไม่พบงานผลิต"}</M3Banner>;
   return <div className="space-y-5">
     <div>
       <h2 className="text-lg font-bold text-m3-grey-800">{job.product_name}</h2>
-      <p className="mt-1 text-xs text-m3-grey-500">{job.sku} · {job.job_no} · {PRODUCTION_JOB_STATUS_LABELS[job.status]}</p>
+      <p className="mt-1 text-xs text-m3-grey-500">{job.sku} · เป้า {formatQty(job.target_qty)} {job.unit} · {PRODUCTION_JOB_STATUS_LABELS[job.status]}</p>
+      {job.status === "IN_PROGRESS" && job.report_count > 0 && <p className="mt-1 text-xs text-m3-grey-600">บันทึกแล้ว: ดี {formatQty(job.produced_good)} · เสีย {formatQty(job.defect_total)}</p>}
     </div>
-    <div className="grid grid-cols-3 gap-2">
-      {[{ label: "เป้าหมาย", value: job.target_qty }, { label: "ผลิตได้จริงสะสม", value: job.produced_good }, { label: "เสียสะสม", value: job.defect_total }].map(stat =>
+    {job.status !== "IN_PROGRESS" && <div className="grid grid-cols-3 gap-2">
+      {[{ label: "เป้า", value: job.target_qty }, { label: "ผลิตดี", value: job.produced_good }, { label: "เสีย", value: job.defect_total }].map(stat =>
         <div key={stat.label} className="rounded-xl bg-m3-grey-100 p-3"><p className="text-xs text-m3-grey-600">{stat.label}</p><p className="mt-1 text-xl font-bold tabular-nums">{formatQty(stat.value)} <span className="text-xs font-normal">{job.unit}</span></p></div>)}
-    </div>
+    </div>}
     {message && <M3Banner tone="success" role="status">{message}</M3Banner>}
     {job.status !== "IN_PROGRESS" && actionError && <M3Banner tone="error" role="alert">{actionError}</M3Banner>}
     {job.status === "DRAFT" && <M3Banner tone="info">
@@ -65,8 +66,8 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
     </M3Banner>}
     {job.status === "IN_PROGRESS" && canReport && <ReportModal key={`${jobNo}:${formVersion}`} inline open job={job} submitting={guard.pending} error={actionError} onClose={() => { setFormVersion(v => v + 1); setActionError(null); }} onSubmit={report} />}
     {job.status === "IN_PROGRESS" && !canReport && <M3Banner tone="info">ผู้ดูแลระบบหรือผู้รับผิดชอบการผลิตสามารถบันทึกผลผลิตได้</M3Banner>}
-    <section aria-label="ผลผลิตที่บันทึกแล้ว" className="space-y-3 border-t border-[rgba(145,158,171,0.2)] pt-4">
-      <h3 className="text-sm font-bold">ผลผลิตที่บันทึกแล้วและตำแหน่งจัดเก็บ</h3>
+    {!!detail?.reports.length && <details className="border-t border-[rgba(145,158,171,0.2)] pt-3"><summary className="cursor-pointer text-sm text-m3-grey-600">ประวัติ</summary>
+    <section aria-label="ผลผลิตที่บันทึกแล้ว" className="mt-3 space-y-3">
       {!detail?.reports.length ? <p className="text-sm text-m3-grey-500">ยังไม่มีผลผลิตที่บันทึก</p> : detail.reports.map(r => <div key={r.report_id} className="rounded-lg border border-[rgba(145,158,171,0.2)] p-3 text-sm">
         <p className="font-semibold">{r.kind === "ADJUSTMENT" ? "ปรับปรุงยอด" : `รอบที่ ${r.report_no}`} · ผลิตดี {formatQty(r.good_qty)} · เสีย {formatQty(r.defect_qty)} {job.unit}</p>
         <p className="mt-1 text-m3-grey-600">ตำแหน่งจัดเก็บ: {r.receipt_location_code || (r.good_qty > 0 ? "ไม่ได้ระบุ" : "ไม่มีสินค้าดีรับเข้า")}</p>
@@ -74,5 +75,6 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
         {r.material_details?.filter(m => m.scrap_qty > 0).map(m => <p key={m.sku} className="mt-1 text-xs text-m3-error-dark">วัตถุดิบเสีย: {m.sku} · {formatQty(m.scrap_qty)} {m.stock_unit} · {m.scrap_cause}</p>)}
       </div>)}
     </section>
+    </details>}
   </div>;
 }

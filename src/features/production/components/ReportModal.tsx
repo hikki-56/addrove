@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ProductionJob } from "@/types/production";
-import { formatQty } from "./ui";
-import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
-import MaterialReportFields, { type MaterialReportValue } from "@/features/production/components/MaterialReportFields";
 import type { ProductionMaterialActual } from "@/types/production-bom";
-import { M3Banner, M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
-import { SolarClose, SolarDangerCircle } from "@/components/icons";
-
-// Modal รายงานผลผลิต (APPROVER) — ยอดเฉพาะรอบนี้ ระบบคำนวณยอดสะสมเอง
-// ก่อนยืนยันมีสรุปยอดรอบนี้ + สะสมเทียบเป้าเสมอ · มีของเสีย → บังคับสาเหตุ
-// จบงานไม่ครบเป้า/เกินเป้า → บังคับเหตุผล
-// idempotency key ไม่ได้สร้างที่นี่ — หน้าที่เรียกใช้ผูก key กับ "การส่งที่ตั้งใจ" ต่องาน
-// (lib/idempotency.ts: คงอยู่ข้ามการปิด/เปิด modal จนกว่าเซิร์ฟเวอร์ยืนยันสำเร็จ)
+import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
+import { M3ErrorBanner, M3SubmitLabel, m3Cls } from "@/components/ui/m3";
+import { SolarClose } from "@/components/icons";
+import MaterialReportFields, { type MaterialReportValue } from "./MaterialReportFields";
+import ReasonSelect from "./ReasonSelect";
 
 export interface ReportPayload {
   daily_close?: boolean;
@@ -30,256 +24,73 @@ export interface ReportPayload {
   close_reason: string;
 }
 
-interface ReportModalProps {
-  open: boolean;
-  job: ProductionJob | null;
-  submitting: boolean;
-  error: string | null;
-  onClose: () => void;
-  onSubmit: (payload: ReportPayload) => void;
-  inline?: boolean;
+interface Props {
+  open: boolean; job: ProductionJob | null; submitting: boolean; error: string | null;
+  onClose: () => void; onSubmit: (payload: ReportPayload) => void; inline?: boolean;
 }
 
-export default function ReportModal({ open, job, submitting, error, onClose, onSubmit, inline = false }: ReportModalProps) {
+export default function ReportModal({ open, job, submitting, error, onClose, onSubmit, inline = false }: Props) {
   useEscapeKey(open && !submitting && !inline, onClose);
-
   const [goodText, setGoodText] = useState("");
   const [defectText, setDefectText] = useState("");
   const [defectCause, setDefectCause] = useState("");
-  const [note, setNote] = useState("");
   const [closeReason, setCloseReason] = useState("");
   const [materialValue, setMaterialValue] = useState<MaterialReportValue | null>(null);
-
+  const [attempted, setAttempted] = useState(false);
   useEffect(() => {
-    if (open) {
-      setGoodText("");
-      setDefectText("");
-      setDefectCause("");
-      setNote("");
-      setCloseReason("");
-      setMaterialValue(null);
-    }
+    if (open) { setGoodText(""); setDefectText(""); setDefectCause(""); setCloseReason(""); setAttempted(false); }
+    else setMaterialValue(null);
   }, [open, job?.job_no]);
 
-  // ไม่ปัดเศษเงียบ ๆ อีกต่อไป — ทศนิยมเกิน 2 ตำแหน่ง/ไม่ใช่ตัวเลข → แจ้ง error และห้ามยืนยัน
-  const goodParse = parseQtyInput(goodText);
-  const defectParse = parseQtyInput(defectText);
-  const good = goodParse.ok ? goodParse.value : 0;
-  const defect = defectParse.ok ? defectParse.value : 0;
-  const target = job?.target_qty ?? 0;
-  const cumGood = roundQty((job?.produced_good ?? 0) + good);
-  const cumDefect = roundQty((job?.defect_total ?? 0) + defect);
-  const remainingAfter = Math.max(0, roundQty(target - cumGood));
-  const overAfter = Math.max(0, roundQty(cumGood - target));
-  const defectExplainsShortfall = remainingAfter > 0 && defect > 0 && cumGood + cumDefect >= target && !!defectCause.trim();
-  const closingReason = closeReason.trim() || (defectExplainsShortfall
-    ? `ปิดยอดประจำวัน: ผลิตดี ${formatQty(cumGood)} เสีย ${formatQty(cumDefect)} ${job?.unit || ""} · ${defectCause.trim()}` : "");
-  const qtyError = !goodParse.ok
-    ? `ผลิตดีรอบนี้: ${goodParse.error}`
-    : !defectParse.ok
-      ? `ของเสียรอบนี้: ${defectParse.error}`
-      : null;
-
-  const formError = useMemo(() => {
-    if (qtyError) return qtyError;
-    if (defect > 0 && !defectCause.trim()) return "กรุณาระบุสาเหตุของเสีย";
-    if (job?.material_plan && (!materialValue || materialValue.error)) return materialValue?.error || "กรุณาตรวจรายการวัตถุดิบ";
-    if (good + defect <= 0 && !materialValue?.payload.materials.some(i => i.used_qty + i.scrap_qty > 0) && !(job?.report_count || 0)) return "กรอกผลิตดีหรือของเสียอย่างน้อย 1 รายการ";
-    if ((remainingAfter > 0 || overAfter > 0) && !closingReason) {
-      return remainingAfter > 0
-        ? `จบงานโดยยังขาดจากเป้าหมาย ${formatQty(remainingAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`
-        : `ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job?.unit ?? ""} — ต้องระบุเหตุผล`;
-    }
-    return null;
-  }, [qtyError, good, defect, defectCause, remainingAfter, overAfter, closingReason, job, materialValue]);
-
+  const goodParse = parseQtyInput(goodText), defectParse = parseQtyInput(defectText);
+  const good = goodParse.ok ? goodParse.value : 0, defect = defectParse.ok ? defectParse.value : 0;
+  const cumGood = roundQty((job?.produced_good || 0) + good), cumDefect = roundQty((job?.defect_total || 0) + defect);
+  const remaining = Math.max(0, roundQty((job?.target_qty || 0) - cumGood));
+  const over = Math.max(0, roundQty(cumGood - (job?.target_qty || 0)));
+  // Reuse only reasons explicitly selected on the material cards; never invent a cause.
+  const materialCauses = [...new Set(materialValue?.payload.materials.filter(m => m.scrap_qty > 0).map(m => m.scrap_cause).filter(Boolean) || [])].join(" / ");
+  const selectedCause = defectCause.trim() || materialCauses.slice(0, 500);
+  const accountedFor = remaining > 0 && defect > 0 && cumGood + cumDefect >= (job?.target_qty || 0);
+  const closingReason = closeReason.trim() || (accountedFor && selectedCause ? `ผลิตดี ${cumGood} เสีย ${cumDefect} · ${selectedCause}` : "");
+  const hasQuantity = good + defect > 0 || !!materialValue?.payload.materials.some(m => m.used_qty + m.scrap_qty > 0);
+  const formError = !goodParse.ok ? `ผลิตดี: ${goodParse.error}` : !defectParse.ok ? `เสีย: ${defectParse.error}`
+    : !hasQuantity && !job?.report_count ? "กรอกจำนวนผลิต"
+    : job?.material_plan && (!materialValue || materialValue.error) ? materialValue?.error || "ตรวจวัตถุดิบ"
+    : defect > 0 && !selectedCause ? "เลือกสาเหตุของเสีย"
+    : (remaining > 0 || over > 0) && !closingReason ? "เลือกเหตุผลปิดงาน" : null;
   if (!open || !job) return null;
-
-  const qtyBox = (invalid: boolean, strong: boolean) =>
-    `flex h-14 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 transition-colors focus-within:border-m3-grey-800 focus-within:ring-1 focus-within:ring-m3-grey-800 ${
-      invalid ? "border-m3-error" : strong ? "border-m3-grey-800 border-2" : "border-[rgba(145,158,171,0.32)]"
-    }`;
-  const qtyInput =
-    "w-full min-w-0 bg-transparent text-right font-m3-disp text-2xl font-bold tabular-nums text-m3-grey-800 placeholder:text-m3-grey-400 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
-  const intentText = "ปิดยอดประจำวันและจบงานนี้";
-  const submitText = (
-    <span>
-      ปิดยอดประจำวัน (ดี {formatQty(good)} · เสีย {formatQty(defect)})
-    </span>
-  );
-  const handleSubmit = () =>
-    onSubmit({
-      good_qty: good,
-      defect_qty: defect,
-      defect_cause: defectCause.trim(),
-      note: note.trim(),
-      report_kind: "FINAL",
-      daily_close: true,
-      close_reason: closingReason,
-      ...(job.material_plan ? { ...materialValue?.payload, create_backorder: false } : {}),
-    });
-
-  // มือถือ = เต็มจอ (M44–46: ปุ่ม X ซ้ายบน + ปุ่มยืนยันใหญ่ด้านล่าง) · ≥sm = dialog 560px (D32–34)
-  return (
-    <div className={inline ? "" : "fixed inset-0 z-50 flex justify-center sm:items-center sm:p-6"}>
-      {!inline && <div className={`${m3Cls.overlay} hidden sm:block`} onClick={() => !submitting && onClose()} />}
-      <div
-        role={inline ? "region" : "dialog"}
-        aria-modal={inline ? undefined : true}
-        aria-label="รายงานผลผลิต"
-        className={inline ? "w-full" : "relative flex h-dvh w-full flex-col bg-white animate-in fade-in duration-150 sm:h-auto sm:max-h-[92dvh] sm:max-w-[560px] sm:rounded-2xl sm:shadow-m3-dropdown sm:zoom-in-95"}
-      >
-        <div className={inline ? "mb-4 flex items-start gap-3" : "flex items-start gap-3 border-b border-[rgba(145,158,171,0.2)] px-4 py-3 sm:border-0 sm:px-7 sm:pt-6 sm:pb-1"}>
-          {!inline && <button
-            type="button"
-            aria-label="ปิด"
-            disabled={submitting}
-            onClick={onClose}
-            className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-m3-grey-800 hover:bg-[rgba(145,158,171,0.08)] sm:order-last sm:-mr-2 sm:ml-0 sm:size-9 sm:text-m3-grey-600"
-          >
-            <SolarClose size={22} />
-          </button>}
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-m3-grey-800 sm:text-xl">ปิดยอดผลิตประจำวัน</h2>
-            <p className="mt-0.5 truncate text-xs font-medium tabular-nums text-m3-grey-500">
-              โต๊ะ {job.table_no} · {job.job_no}
-              <span className="hidden sm:inline">
-                {" "}· {job.product_name} ({job.sku})
-              </span>{" "}
-              · รอบที่ {formatQty((job.report_count ?? 0) + 1)}
-            </p>
-          </div>
+  const submit = () => {
+    setAttempted(true);
+    if (formError) return;
+    onSubmit({ good_qty: good, defect_qty: defect, defect_cause: defect > 0 ? selectedCause : "", note: "", report_kind: "FINAL", daily_close: true,
+      close_reason: closingReason, ...(job.material_plan ? { ...materialValue?.payload, create_backorder: false } : {}) });
+  };
+  return <div className={inline ? "" : "fixed inset-0 z-50 flex justify-center sm:items-center sm:p-6"}>
+    {!inline && <div className={`${m3Cls.overlay} hidden sm:block`} onClick={() => !submitting && onClose()} />}
+    <div role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-label="รายงานผลผลิต"
+      className={inline ? "w-full" : "relative flex h-dvh w-full flex-col bg-white sm:h-auto sm:max-h-[92dvh] sm:max-w-[560px] sm:rounded-2xl sm:shadow-m3-dropdown"}>
+      {!inline && <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-7">
+        <div><h2 className="text-lg font-bold">บันทึกผลผลิต</h2><p className="text-sm text-m3-grey-600">{job.product_name}</p></div>
+        <button type="button" aria-label="ปิด" disabled={submitting} onClick={onClose} className="m3-btn m3-btn-sm m3-btn-text"><SolarClose size={22} /></button>
+      </div>}
+      <div className={inline ? "space-y-4" : "flex-1 space-y-4 overflow-y-auto px-4 pb-4 sm:px-7"}>
+        {error && <M3ErrorBanner message={error} />}
+        <div className="grid grid-cols-2 gap-3">
+          {[{ label: job.report_count > 0 ? "ผลิตดีเพิ่ม" : "ผลิตดี", value: goodText, change: setGoodText }, { label: job.report_count > 0 ? "เสียเพิ่ม" : "เสีย", value: defectText, change: setDefectText }].map(field =>
+            <label key={field.label} className="block text-sm font-semibold">{field.label} ({job.unit})
+              <input type="number" inputMode="decimal" min="0" step="any" disabled={submitting} placeholder="0" value={field.value} onChange={e => field.change(e.target.value)}
+                className={`mt-1.5 h-14 text-right text-2xl font-bold tabular-nums ${m3Cls.input}`} />
+            </label>)}
         </div>
-
-        <div className={inline ? "space-y-5" : "flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-6 sm:px-7 sm:pb-2"}>
-          {error && <M3ErrorBanner message={error} />}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
-            <label className="block">
-              <span className="text-sm font-semibold text-m3-grey-800">ผลิตได้ (ดี)</span>
-              <div className={`mt-2 ${qtyBox(!goodParse.ok, true)}`}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
-                  value={goodText}
-                  onChange={(e) => setGoodText(e.target.value)}
-                  placeholder="0"
-                  disabled={submitting}
-                  className={qtyInput}
-                />
-                <span className="w-1/2 shrink-0 text-sm font-semibold text-m3-grey-600">{job.unit}</span>
-              </div>
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-m3-grey-800">เสีย</span>
-              <div className={`mt-2 ${qtyBox(!defectParse.ok, false)}`}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
-                  value={defectText}
-                  onChange={(e) => setDefectText(e.target.value)}
-                  placeholder="0"
-                  disabled={submitting}
-                  className={qtyInput}
-                />
-                <span className="w-1/2 shrink-0 text-sm font-semibold text-m3-grey-600">{job.unit}</span>
-              </div>
-            </label>
-          </div>
-          {qtyError && <p className="-mt-3 text-xs font-semibold text-m3-error-dark">{qtyError}</p>}
-          {defect > 0 && <label className="block text-sm font-semibold">สาเหตุของเสีย
-            <input disabled={submitting} value={defectCause} onChange={e => setDefectCause(e.target.value)} className={`mt-1.5 ${m3Cls.input}`} />
-          </label>}
-          <M3Banner tone="info">ตัดวัตถุดิบตามจำนวนสินค้าดีที่ผลิตจริง และบวกวัตถุดิบที่เสียตามรหัสและจำนวนที่ระบุ เมื่อบันทึกจะจบงานของวันนี้</M3Banner>
-          {inline && job.material_plan && <MaterialReportFields compact dailyClose plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
-
-          {/* สรุปยอดก่อนยืนยัน — กันกรอกผิด */}
-          <div className="rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] p-4">
-            <p className="text-sm font-bold text-m3-grey-800">สรุป</p>
-            <div className="mt-2.5 space-y-2 text-sm tabular-nums">
-              <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">รอบนี้ ดี / เสีย</span>
-                <span className="shrink-0 font-bold whitespace-nowrap text-m3-grey-800">
-                  +{formatQty(good)} / +{formatQty(defect)} {job.unit}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">ดีรวมทั้งหมด <span className="text-m3-grey-500">(ก่อนหน้า {formatQty(job.produced_good)})</span></span>
-                <span className="shrink-0 font-bold whitespace-nowrap text-m3-primary-dark">
-                  {formatQty(cumGood)} / {formatQty(target)} {job.unit}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span className="text-m3-grey-600">เสียรวมทั้งหมด <span className="text-m3-grey-500">(ก่อนหน้า {formatQty(job.defect_total)})</span></span>
-                <span className="shrink-0 font-bold whitespace-nowrap text-m3-error-dark">
-                  {formatQty(cumDefect)} {job.unit}
-                </span>
-              </div>
-            </div>
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-m3-grey-600">
-              <SolarDangerCircle size={16} className="shrink-0 text-m3-grey-500" />
-              <span>
-                <b className="font-bold text-m3-grey-800">สถานะ:</b> {intentText}
-              </span>
-            </p>
-            <div className="mt-3 space-y-2">
-              {remainingAfter > 0 && (
-                <M3Banner tone="warning">
-                  {defectExplainsShortfall ? `สินค้าดีต่ำกว่าเป้า ${formatQty(remainingAfter)} ${job.unit} โดยมีของเสียระบุแล้ว ปิดยอดและจบงานได้`
-                    : `ปิดยอดโดยสินค้าดีต่ำกว่าเป้า ${formatQty(remainingAfter)} ${job.unit} — ต้องระบุเหตุผล`}
-                </M3Banner>
-              )}
-              {overAfter > 0 && (
-                <M3Banner tone="warning">
-                  {`ผลิตดีสะสมเกินเป้าหมาย ${formatQty(overAfter)} ${job.unit} — ต้องระบุเหตุผล`}
-                </M3Banner>
-              )}
-            </div>
-          </div>
-
-          {(remainingAfter > 0 || overAfter > 0) && !defectExplainsShortfall && (
-            <label className="block">
-              <span className={m3Cls.label}>
-                เหตุผล{remainingAfter > 0 ? `จบงานที่ยังขาด ${formatQty(remainingAfter)} ${job.unit}` : `ผลิตเกินเป้า ${formatQty(overAfter)} ${job.unit}`}{" "}
-                <span className="text-m3-error">(จำเป็น)</span>
-              </span>
-              <textarea
-                rows={2}
-                disabled={submitting}
-                value={closeReason}
-                onChange={(e) => setCloseReason(e.target.value)}
-                className={`mt-1.5 resize-none ${!closeReason.trim() ? m3Cls.inputError : m3Cls.input}`}
-              />
-              {!closeReason.trim() && <p className="mt-1 text-xs font-semibold text-m3-error-dark">ต้องระบุเหตุผลก่อนยืนยัน</p>}
-            </label>
-          )}
-
-          {!inline && job.material_plan && <MaterialReportFields dailyClose plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
-          {inline && <label className="block text-sm font-semibold">หมายเหตุ
-            <textarea rows={2} disabled={submitting} value={note} onChange={e => setNote(e.target.value)} className={`mt-1.5 ${m3Cls.input}`} />
-          </label>}
-        </div>
-
-        {/* มือถือ: ปุ่มยืนยันใหญ่เต็มความกว้าง (ปิดด้วย X ด้านบน) · ≥sm: ยกเลิก + ยืนยัน ชิดขวา */}
-        <div className={inline ? "mt-5 flex flex-wrap justify-end gap-3" : "border-t border-[rgba(145,158,171,0.2)] px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex sm:justify-end sm:gap-3 sm:border-0 sm:px-7 sm:pt-4 sm:pb-7"}>
-          <button type="button" disabled={submitting} onClick={onClose} className={`${inline ? "inline-flex" : "hidden sm:inline-flex"} ${m3Cls.btnCancel}`}>
-            {inline ? "ล้างข้อมูล" : "ยกเลิก"}
-          </button>
-          {inline && formError && <p role="alert" className="w-full text-sm font-semibold text-m3-error-dark">{formError}</p>}
-          <button
-            type="button"
-            disabled={!!formError || submitting}
-            onClick={handleSubmit}
-            className="m3-btn m3-btn-primary h-14 w-full text-base shadow-[0_8px_16px_rgba(0,167,111,0.24)] disabled:shadow-none sm:h-11 sm:w-auto sm:px-5 sm:text-sm sm:shadow-none"
-          >
-            <M3SubmitLabel submitting={submitting}>{submitText}</M3SubmitLabel>
-          </button>
-        </div>
+        {defect > 0 && !job.material_plan && <ReasonSelect label="สาเหตุของเสีย" value={defectCause} options={["ชำรุด", "แตก", "ประกอบเสีย"]} disabled={submitting} onChange={setDefectCause} />}
+        {job.material_plan && <MaterialReportFields key={job.job_no} compact dailyClose showErrors={false} plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} />}
+        {hasQuantity && (remaining > 0 || over > 0) && !accountedFor && <ReasonSelect label="เหตุผลปิดงาน" value={closeReason}
+          options={["ผลิตไม่ครบ", "วัตถุดิบไม่พอ", "หยุดงาน", "ผลิตเกินเป้า"]} disabled={submitting} onChange={setCloseReason} />}
+        {attempted && formError && <p role="alert" className="text-sm font-semibold text-m3-error-dark">{formError}</p>}
+      </div>
+      <div className={inline ? "mt-4" : "border-t border-[rgba(145,158,171,0.2)] p-4 sm:px-7"}>
+        <button type="button" disabled={submitting} onClick={submit} className="m3-btn m3-btn-primary h-12 w-full"><M3SubmitLabel submitting={submitting}>บันทึก</M3SubmitLabel></button>
       </div>
     </div>
-  );
+  </div>;
 }
