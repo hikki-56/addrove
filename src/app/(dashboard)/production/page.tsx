@@ -12,6 +12,7 @@ import {
 import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
 import { getAllowedActions, showCancelOnPlanningCard } from "@/features/production/lib/permissions";
+import { productionTableHref } from "@/features/production/lib/table-navigation";
 import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import { ConfirmModal, ReasonModal } from "@/features/production/components/ActionModals";
@@ -398,7 +399,7 @@ export default function ProductionPlanningPage() {
                 <div className="px-4 pt-4 pb-3 sm:px-[18px]">
                   <div className="flex items-center justify-between gap-2">
                     <Link
-                      href={`/production/tables/${tableNo}`}
+                      href={productionTableHref(tableNo, tableJobs, dateFilter)}
                       className="flex min-w-0 items-center gap-2.5 rounded-lg outline-offset-2 hover:bg-[rgba(145,158,171,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-m3-primary"
                     >
                       <M3NumberTile>{tableNo}</M3NumberTile>

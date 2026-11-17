@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   useProductionJobs,
   emitProductionUpdated,
@@ -10,6 +10,7 @@ import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
 import { useTabAuth } from "@/context/TabAuthContext";
 import { getAllowedActions } from "@/features/production/lib/permissions";
+import { preferredTableJob, validTableDate } from "@/features/production/lib/table-navigation";
 import { buildCreateJobInput, buildJobPatch } from "@/features/production/lib/job-form";
 import AddJobModal, { type AddJobFormValue } from "@/features/production/components/AddJobModal";
 import TableProductionResult from "@/features/production/components/TableProductionResult";
@@ -31,8 +32,16 @@ function matchesFgQuery(
   return hay.includes(q);
 }
 
-export default function ProductionTableConfirmPage() {
+export default function ProductionTablePage() {
+  return <Suspense fallback={<M3Loading label="กำลังโหลดโต๊ะผลิต…" />}><ProductionTableWorkspace /></Suspense>;
+}
+
+function ProductionTableWorkspace() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const linkedDate = validTableDate(searchParams.get("date"));
+  const linkedJobNo = searchParams.get("job_no") || "";
   const raw = String(params.table_no ?? "");
   const tableNo = Number(raw);
   const valid = Number.isInteger(tableNo) && (PRODUCTION_TABLES as readonly number[]).includes(tableNo);
@@ -50,20 +59,25 @@ export default function ProductionTableConfirmPage() {
   useEffect(() => {
     setToday(todayYMD());
   }, []);
+  useEffect(() => { setSelectedJobNo(linkedJobNo); setSearch(""); }, [linkedJobNo, linkedDate, tableNo]);
 
   const { jobs, loading, error, reload } = useProductionJobs(
     {
-      date_from: today || undefined,
-      date_to: today || undefined,
+      date_from: linkedDate,
+      date_to: linkedDate,
       table_no: valid ? tableNo : "ALL",
     },
     { enabled: valid && today !== "" }
   );
 
-  const tableJobs = useMemo(
-    () => (valid ? jobs.filter((j) => j.table_no === tableNo && j.status !== "CANCELLED") : []),
-    [jobs, tableNo, valid]
+  const candidates = useMemo(
+    () => (valid ? jobs.filter(j => j.table_no === tableNo && j.status !== "CANCELLED" && (!linkedDate || j.production_date === linkedDate)) : []),
+    [jobs, tableNo, valid, linkedDate]
   );
+  // Legacy links have no date: keep ongoing work visible after midnight.
+  const productionDate = linkedDate || candidates.find(j => j.job_no === linkedJobNo)?.production_date
+    || candidates.find(j => j.job_no === selectedJobNo)?.production_date || preferredTableJob(candidates)?.production_date || today;
+  const tableJobs = useMemo(() => candidates.filter(j => j.production_date === productionDate), [candidates, productionDate]);
 
   const query = search.trim().toLowerCase();
 
@@ -86,9 +100,9 @@ export default function ProductionTableConfirmPage() {
       return;
     }
     if (!filteredJobs.some((j) => j.job_no === selectedJobNo)) {
-      setSelectedJobNo(filteredJobs[0].job_no);
+      setSelectedJobNo(filteredJobs.find(j => j.job_no === linkedJobNo)?.job_no || preferredTableJob(filteredJobs)!.job_no);
     }
-  }, [filteredJobs, selectedJobNo]);
+  }, [filteredJobs, selectedJobNo, linkedJobNo]);
 
   const selected: ProductionJob | undefined = tableJobs.find((j) => j.job_no === selectedJobNo);
 
@@ -140,7 +154,14 @@ export default function ProductionTableConfirmPage() {
 
   return (
     <div className="w-full max-w-full pb-28">
-      <h1 className="mb-5 text-2xl font-bold text-m3-grey-800">โต๊ะผลิต {tableNo}</h1>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-2xl font-bold text-m3-grey-800">โต๊ะผลิต {tableNo}</h1>
+        <label className="text-xs font-semibold text-m3-grey-600">วันที่ผลิต
+          <input type="date" aria-label="วันที่ผลิตของโต๊ะ" value={productionDate} disabled={resultBusy || guard.pending} onChange={e => {
+            if (validTableDate(e.target.value)) router.replace(`/production/tables/${tableNo}?date=${encodeURIComponent(e.target.value)}`, { scroll: false });
+          }} className={`mt-1 block ${m3Cls.input}`} />
+        </label>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section className="m3-card flex min-h-0 flex-col p-4">
@@ -235,7 +256,7 @@ export default function ProductionTableConfirmPage() {
         open={addOpen}
         mode="create"
         defaultTable={tableNo}
-        defaultDate={today}
+        defaultDate={productionDate}
         hideTableDate
         submitting={guard.pending}
         error={modalError}

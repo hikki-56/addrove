@@ -13,6 +13,7 @@ import { useSubmitGuard } from "@/features/production/hooks/use-submit-guard";
 import { productionApi, isConflict } from "@/features/production/lib/api";
 import { sendWithIdempotency } from "@/features/production/lib/idempotency";
 import { getAllowedActions } from "@/features/production/lib/permissions";
+import { productionTableHref } from "@/features/production/lib/table-navigation";
 import { ConfirmModal, StartJobSummary } from "@/features/production/components/ActionModals";
 import ReportModal, { type ReportPayload } from "@/features/production/components/ReportModal";
 import ProductionPrintButton from "@/features/production/components/ProductionPrintButton";
@@ -316,7 +317,7 @@ export default function ProductionJobsPage() {
                 ))}
               </div>
               <Link
-                href={`/production/tables/${group.table_no}`}
+                href={productionTableHref(group.table_no, group.jobs)}
                 className="m3-btn m3-btn-primary mt-4 h-11 w-full"
               >
                 รายละเอียด
