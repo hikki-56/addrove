@@ -13,6 +13,7 @@ export const productionBomSelectionSchema = z.object({
   fg_factor: z.number().positive().finite().optional(),
   material_factors: z.record(z.string(), z.number().positive().finite()).optional(),
   material_roles: z.record(z.string(), z.union([z.literal(0), z.literal(1)])).optional(),
+  material_locations: z.record(z.string().regex(/^[1-9]\d*$/), z.string().trim().min(1).max(100)).optional(),
   revision: z.string().optional(),
   all_materials_confirmed: z.boolean().optional(),
 });

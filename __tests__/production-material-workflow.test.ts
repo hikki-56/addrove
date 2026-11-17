@@ -8,6 +8,8 @@ import { createBomFormula, deleteBomFormula, getBomManagementData, updateProduct
 import { getRepository } from "@/server/repositories";
 import { createJobs, submitJobs, startJob, reportProduction, cancelJob, reopenJob, getJobDetail, deleteDraft, updateJob } from "@/server/production/production-job.service";
 import { previewMaterialAvailability, listProductionCapacities } from "@/server/production/production-material.service";
+import { availableMaterialSources } from "@/server/production/production-material-sources.service";
+import { productionBomSelectionSchema } from "@/server/production/production-schemas";
 import { issueStock } from "@/server/services/stock/issue-stock";
 import { moveStock } from "@/server/services/stock/move-stock";
 import { completeTransfer } from "@/server/services/stock/transfer-stock";
@@ -77,6 +79,73 @@ async function fixture(target = 3) {
   const [job] = await createJobs(admin, [input]);
   return { repo, job, fg, main, shared, selection, input, mainId: Number(m.bom_item_id), sharedId: Number(s.bom_item_id) };
 }
+
+test("pickup planning auto-selects a sole source and requires a valid explicit choice for multiple sources", async () => {
+  const f = await fixture();
+  expect(f.job.material_plan?.selection.material_locations).toEqual({ [f.mainId]: 'raw-A', [f.sharedId]: 'raw-A' });
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'fg-A', delta: 30 }]);
+  await expect(createJobs(admin, [f.input])).rejects.toThrow('เลือกจุดรับวัตถุดิบ');
+  for (const invalid of ['raw-other', 'unknown']) {
+    await expect(createJobs(admin, [{ ...f.input, bom: { ...f.selection, material_locations: { [f.mainId]: invalid } } }])).rejects.toThrow('จุดรับไม่มีสต็อกหรือปิดใช้งาน');
+  }
+  await expect(createJobs(admin, [{ ...f.input, bom: { ...f.selection, material_locations: { '99999999': 'raw-A' } } }])).rejects.toThrow('จุดรับวัตถุดิบไม่ตรงกับสูตร');
+  const selection = productionBomSelectionSchema.parse({ ...f.selection, material_locations: { [f.mainId]: 'fg-A' } });
+  const [job] = await createJobs(admin, [{ ...f.input, bom: selection }]);
+  expect((await getJobDetail(job.job_no))?.job.material_plan?.selection.material_locations).toEqual({ [f.mainId]: 'fg-A', [f.sharedId]: 'raw-A' });
+});
+
+test("production pickup reservations protect the chosen shelf while another shelf remains available", async () => {
+  const f = await fixture();
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'raw-A', delta: -24 }, { productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'fg-A', delta: 30 }]);
+  await submitJobs(admin, [f.job.job_no]);
+  const [same] = await createJobs(admin, [{ ...f.input, bom: { ...f.selection, material_locations: { [f.mainId]: 'raw-A' } } }]);
+  await expect(submitJobs(admin, [same.job_no])).rejects.toThrow('จุดรับ RAW พร้อมใช้ 0 ต้องการ 6');
+  expect((await getJobDetail(same.job_no))?.job.status).toBe('DRAFT');
+  const [other] = await createJobs(admin, [{ ...f.input, bom: { ...f.selection, material_locations: { [f.mainId]: 'fg-A' } } }]);
+  await submitJobs(admin, [other.job_no]);
+  const sources = await availableMaterialSources(f.repo, [f.main.product_id]);
+  expect(sources.find(l => l.location_id === 'raw-A')?.available).toBe(0);
+  expect(sources.find(l => l.location_id === 'fg-A')?.available).toBe(24);
+  expect((await availableMaterialSources(f.repo, [f.main.product_id], f.job.job_no)).find(l => l.location_id === 'raw-A')?.available).toBe(6);
+});
+
+test("good usage and scrap are deducted only from the saved pickup point and replay does not deduct twice", async () => {
+  const f = await fixture();
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'fg-A', delta: 100 }]);
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  const input = { daily_close: true, good_qty: 3, defect_qty: 0, defect_cause: '', note: '', photo_url: '', report_kind: 'FINAL' as const, close_reason: '', receipt_location_id: 'fg-A', idempotency_key: 'saved-pickup-scrap',
+    materials: [{ item_id: f.mainId, used_qty: 6, scrap_qty: 1, scrap_cause: 'ชำรุด' }, { item_id: f.sharedId, used_qty: 3, scrap_qty: 0, scrap_cause: '' }] };
+  await reportProduction(actor, f.job.job_no, input);
+  expect((await reportProduction(actor, f.job.job_no, input)).replayed).toBe(true);
+  const stocks = await query('SELECT location_id,quantity FROM stock_summary WHERE product_id=$1 ORDER BY location_id', [f.main.product_id]);
+  expect(stocks).toEqual([{ location_id: 'fg-A', quantity: 100 }, { location_id: 'raw-A', quantity: 23 }]);
+  expect((await query("SELECT location_id FROM stock_movements WHERE product_id=$1 AND qty_change<0", [f.main.product_id]))).toEqual([{ location_id: 'raw-A' }]);
+});
+
+test("a depleted pickup point blocks reporting without falling back to another shelf or leaving partial changes", async () => {
+  const f = await fixture();
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'fg-A', delta: 100 }]);
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'raw-A', delta: -25 }]);
+  const before = await query('SELECT * FROM stock_summary WHERE product_id=ANY($1::text[]) ORDER BY product_id,location_id', [[f.main.product_id, f.shared.product_id, f.fg.product_id]]);
+  await expect(reportProduction(actor, f.job.job_no, { good_qty: 3, defect_qty: 0, defect_cause: '', note: '', photo_url: '', report_kind: 'FINAL', close_reason: '', receipt_location_id: 'fg-A', idempotency_key: 'depleted-pickup',
+    materials: [{ item_id: f.mainId, used_qty: 6, scrap_qty: 0, scrap_cause: '' }, { item_id: f.sharedId, used_qty: 3, scrap_qty: 0, scrap_cause: '' }] })).rejects.toThrow('จุดรับ RAW พร้อมใช้ 5 ต้องการ 6');
+  expect(await query('SELECT * FROM stock_summary WHERE product_id=ANY($1::text[]) ORDER BY product_id,location_id', [[f.main.product_id, f.shared.product_id, f.fg.product_id]])).toEqual(before);
+  expect((await getJobDetail(f.job.job_no))?.reports).toEqual([]);
+});
+
+test("legacy jobs without a pickup choice retain warehouse allocation", async () => {
+  const f = await fixture();
+  await query("UPDATE production_material_plans SET selection=selection-'material_locations' WHERE job_no=$1", [f.job.job_no]);
+  await f.repo.stockSummary.applyChanges([{ productId: f.main.product_id, warehouseId: 'wh-02', locationId: 'fg-A', delta: 100 }]);
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  await reportProduction(actor, f.job.job_no, { good_qty: 3, defect_qty: 0, defect_cause: '', note: '', photo_url: '', report_kind: 'FINAL', close_reason: '', receipt_location_id: 'fg-A', idempotency_key: 'legacy-pickup',
+    materials: [{ item_id: f.mainId, used_qty: 6, scrap_qty: 0, scrap_cause: '' }, { item_id: f.sharedId, used_qty: 3, scrap_qty: 0, scrap_cause: '' }] });
+  expect(Number((await query("SELECT quantity FROM stock_summary WHERE product_id=$1 AND location_id='fg-A'", [f.main.product_id]))[0].quantity)).toBe(94);
+});
 
 test("recipe management creates a second formula, protects product ownership and preserves existing production snapshots", async () => {
   const f = await fixture();

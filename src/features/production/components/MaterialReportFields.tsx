@@ -53,9 +53,12 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
   const materialFields = <>
     {preview.materials.map(i => {
       const expected = good > 0 ? i.stock_qty || 0 : 0;
+      const sourceId = plan.selection.material_locations?.[String(i.item_id)];
+      const source = plan.stock_locations?.find(l => l.product_id === i.product_id && l.location_id === sourceId);
+      const pickup = source && <p className="mt-1 text-xs font-semibold text-m3-primary-dark">จุดรับ: {source.location_code || source.location_name}</p>;
       if (dailyClose) return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="space-y-2 rounded-xl border border-[rgba(145,158,171,0.2)] bg-white p-3">
         <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{i.name || i.sku}</p><p className="mt-1 text-xs text-m3-grey-500">{i.sku} · ใช้ {expected} {i.stock_unit}</p></div>
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{i.name || i.sku}</p><p className="mt-1 text-xs text-m3-grey-500">{i.sku} · ใช้ {expected} {i.stock_unit}</p>{pickup}</div>
           <label className="w-24 shrink-0 text-xs font-semibold">เสีย ({i.stock_unit})
             <input aria-label={`วัตถุดิบเสีย ${i.sku}`} type="number" inputMode="decimal" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.scrap ?? "0"}
               onChange={e => edit(i.item_id, { scrap: e.target.value })} className="mt-1 h-11 w-full rounded-lg border border-[rgba(145,158,171,0.32)] px-2 text-right text-lg font-bold tabular-nums" />
@@ -65,7 +68,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
           options={["ชำรุด", "แตก", "ประกอบเสีย"]} disabled={disabled} onChange={cause => edit(i.item_id, { cause })} />}
       </div>;
       return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="space-y-3 rounded-xl bg-white p-4 text-xs shadow-[0_0_0_1px_rgba(145,158,171,0.2)]">
-        <div><p className="text-sm font-bold text-m3-grey-800">{i.name || i.sku}</p><p className="mt-1 text-m3-grey-500">{i.sku} · {i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"}</p></div>
+        <div><p className="text-sm font-bold text-m3-grey-800">{i.name || i.sku}</p><p className="mt-1 text-m3-grey-500">{i.sku} · {i.is_primary === 1 ? "ตัวหลัก" : "ตัวรอง"}</p>{pickup}</div>
         <div className="grid items-end gap-3 sm:grid-cols-2">
           {dailyClose ? <div className="rounded-lg bg-m3-grey-100 p-3"><p className="text-m3-grey-600">ใช้ผลิตสินค้าดีตามสูตร</p><p className="mt-1 text-lg font-bold tabular-nums">{expected} <span className="text-xs font-normal">{i.stock_unit}</span></p></div>
             : <label>ใช้ได้ ({i.stock_unit})<input aria-label={`ใช้ผลิต ${i.sku}`} type="number" min="0" step="any" disabled={disabled} value={edits[i.item_id]?.used ?? String(expected)} onChange={e => edit(i.item_id, { used: e.target.value })} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}

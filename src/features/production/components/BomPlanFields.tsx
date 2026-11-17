@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { previewProductionBom } from "@/lib/production-bom";
 import { M3SubmitLabel, m3Cls } from "@/components/ui/m3";
-import type { ProductionBomFormula, ProductionBomPreview, ProductionBomSelection, ProductionMaterialPlan } from "@/types/production-bom";
+import type { ProductionBomFormula, ProductionBomPreview, ProductionBomSelection, ProductionMaterialPlan, ProductionMaterialStockLocation } from "@/types/production-bom";
 import type { BomManagementData } from "@/types/bom-management";
 import BomFormulaManager, { type BomManagerAction } from "./BomFormulaManager";
 import BomEditStatus from "./BomEditStatus";
@@ -25,6 +25,10 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<ProductionBomPreview | null>(null);
+  const [sources, setSources] = useState<ProductionMaterialStockLocation[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+  const [sourcesVersion, setSourcesVersion] = useState(0);
   const [savingRoles, setSavingRoles] = useState(false);
   const [rolesError, setRolesError] = useState<string | null>(null);
   const [rolesSaved, setRolesSaved] = useState(false);
@@ -60,7 +64,22 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
         setLoadedProductId(productId);
       }).catch(e => { if (live) { setError(e instanceof Error ? e.message : "โหลดสูตรไม่สำเร็จ"); setLoadedProductId(productId); } });
     return () => { live = false; };
-  }, [productId]);
+  }, [productId, jobNo]);
+  useEffect(() => {
+    let live = true;
+    setSources([]);
+    setSourcesError(null);
+    setSourcesLoading(!!productId);
+    if (!productId) return;
+    fetch(`/api/production/material-sources?product_id=${encodeURIComponent(productId)}${jobNo ? `&job_no=${encodeURIComponent(jobNo)}` : ""}`, { cache: "no-store" })
+      .then(r => r.json()).then(json => {
+        if (!live) return;
+        if (!json.success) throw new Error(json.message || "โหลดจุดรับไม่สำเร็จ");
+        setSources(json.data);
+      }).catch(e => { if (live) setSourcesError(e instanceof Error ? e.message : "โหลดจุดรับไม่สำเร็จ"); })
+      .finally(() => { if (live) setSourcesLoading(false); });
+    return () => { live = false; };
+  }, [productId, jobNo, sourcesVersion]);
   useEffect(() => {
     if (!disabled && !selected && loadedProductId === productId && formulas.length) {
       const first = formulas[0];
@@ -70,7 +89,25 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
   const formula = savedFormula?.product_id === productId && savedFormula.bom_id === selected ? savedFormula : !managedFormulas && savedPlan && savedPlan.snapshot.product_id === productId && savedPlan.snapshot.bom_id === selected ? savedPlan.snapshot : loadedProductId === productId ? formulas.find(f => f.bom_id === selected) : undefined;
   const preview = useMemo(() => formula ? previewProductionBom(formula, targetQty, value) : null, [formula, targetQty, value]);
   const loading = !!productId && loadedProductId !== productId;
-  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตร กดเพิ่มสูตรเพื่อเริ่มต้น" : preview?.issues[0] || null);
+  useEffect(() => {
+    if (disabled || loading || sourcesLoading || sourcesError || !formula || !value) return;
+    const locations = { ...value.material_locations };
+    let changed = false;
+    for (const item of formula.items) {
+      const matches = sources.filter(l => l.product_id === item.product_id);
+      if (!locations[String(item.item_id)] && matches.length === 1) {
+        locations[String(item.item_id)] = matches[0].location_id;
+        changed = true;
+      }
+    }
+    if (changed) onChange({ ...value, material_locations: locations }, formula.unit);
+  }, [disabled, loading, sourcesLoading, sourcesError, formula, value, sources, onChange]);
+  const missingSource = !loading && !sourcesLoading && !disabled && formula?.items.find(i => {
+    const matches = sources.filter(l => l.product_id === i.product_id);
+    const chosen = value?.material_locations?.[String(i.item_id)];
+    return chosen ? !matches.some(l => l.location_id === chosen) : matches.length > 1;
+  });
+  const validation = !productId ? null : managing ? "กรุณาบันทึกหรือยกเลิกการแก้สูตรก่อนเพิ่มงานผลิต" : savingRoles ? "กำลังบันทึกประเภทวัตถุดิบ…" : error || sourcesError || (!formula ? loading ? "กำลังดึงวัตถุดิบตามสูตรของสินค้า…" : "สินค้านี้ยังไม่มีสูตร กดเพิ่มสูตรเพื่อเริ่มต้น" : preview?.issues[0] || (sourcesLoading ? "กำลังโหลดจุดรับ…" : missingSource ? `${missingSource.sku}: เลือกจุดรับวัตถุดิบ` : null));
   useEffect(() => { onValidation(validation); }, [validation, onValidation]);
   useEffect(() => {
     let live = true;
@@ -95,6 +132,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
     setRolesSaved(false);
     setRolesError(null);
     setManagementAction(null);
+    setSourcesVersion(v => v + 1);
     setManagementMessage(bomId ? "บันทึกสูตรเรียบร้อยแล้ว" : "ลบสูตรเรียบร้อยแล้ว");
     onChange(next ? { bom_id: next.bom_id, revision: next.revision } : undefined, next?.unit);
     onFormulasChanged?.();
@@ -167,6 +205,9 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
       {formula.unit !== formula.stock_unit && factorInput(formula.unit, formula.stock_unit, value?.fg_factor, n => onChange({ ...value!, fg_factor: n }, formula.unit))}
       {preview?.materials.map(i => {
         const stock = availability?.materials.find(m => m.item_id === i.item_id);
+        const pickupLocations = sources.filter(l => l.product_id === i.product_id);
+        const pickupId = value?.material_locations?.[String(i.item_id)] || "";
+        const solePickup = pickupLocations.length === 1 && (!pickupId || pickupId === pickupLocations[0].location_id);
         return <div key={i.item_id} role="group" aria-label={`วัตถุดิบ ${i.sku}`} className="rounded-lg bg-white px-3 py-2.5 text-sm text-m3-grey-800 shadow-[0_0_0_1px_rgba(145,158,171,0.16)]">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <p className="min-w-0 flex-1 font-semibold">{i.sku} · {i.name}</p>
@@ -186,6 +227,16 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
             const factors = { ...value?.material_factors }; if (n === undefined) delete factors[String(i.item_id)]; else factors[String(i.item_id)] = n;
             onChange({ ...value!, material_factors: factors }, formula.unit);
           })}
+          {i.product_id && <div className="mt-2">
+            {sourcesLoading ? <p className="text-xs text-m3-grey-500">กำลังโหลดจุดรับ…</p> : sourcesError ? <p className="text-xs text-m3-error-dark">โหลดจุดรับไม่สำเร็จ</p> : solePickup ? <p className="text-sm font-semibold">จุดรับ: {pickupLocations[0].location_code || pickupLocations[0].location_name}</p>
+              : pickupLocations.length ? <label className="block text-xs font-semibold">จุดรับวัตถุดิบ
+                <select aria-label={`จุดรับวัตถุดิบ ${i.sku}`} disabled={disabled || savingRoles} value={pickupLocations.some(l => l.location_id === pickupId) ? pickupId : ""}
+                  onChange={e => onChange({ ...value!, material_locations: { ...value?.material_locations, [String(i.item_id)]: e.target.value } }, formula.unit)} className={`mt-1 h-10 ${m3Cls.input}`}>
+                  <option value="" disabled>เลือกจุดรับ</option>
+                  {pickupLocations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code || l.location_name} · พร้อมใช้ {l.available ?? l.quantity} {i.stock_unit}</option>)}
+                </select>
+              </label> : <p className="text-xs text-m3-grey-500">จุดรับ: ไม่มีสต็อก</p>}
+          </div>}
           {stock && <p className={stock.shortage ? "text-xs font-bold text-m3-error-dark" : "text-xs text-m3-grey-600"}>พร้อมใช้ {stock.available} {i.stock_unit}{stock.shortage ? ` · ขาด ${stock.shortage}` : ""}</p>}
         </div>;
       })}

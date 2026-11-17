@@ -4,11 +4,12 @@ import { getReservedEntries } from "@/server/services/outbound/stock-reservation
 import type { IStockRepository } from "@/server/repositories/interfaces";
 import type { Document } from "@/types/models";
 import type { ProductionJob, ProductionReport } from "@/types/production";
-import type { ProductionBomSelection, ProductionCapacity, ProductionMaterialActual, ProductionMaterialPlan, ProductionMaterialStockLocation } from "@/types/production-bom";
+import type { ProductionBomSelection, ProductionCapacity, ProductionMaterialActual, ProductionMaterialPlan } from "@/types/production-bom";
 import { previewProductionBom, isValidProductionStockQuantity, productionMainCapacity } from "@/lib/production-bom";
 import { listProductionBoms } from "@/server/production/production-bom.service";
 import { ProductionError } from "@/server/production/production-error";
 import { getProductionMaterialWarehouseId, scopeProductionMaterials } from "@/server/production/production-warehouse";
+import { availableMaterialSources, readMaterialStockLocations, resolveMaterialSources } from "./production-material-sources.service";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 const enabled = () => getStorageDriver() === "postgres";
@@ -25,10 +26,7 @@ export async function attachMaterialPlans(jobs: ProductionJob[]): Promise<void> 
   }
   const productIds = [...new Set(jobs.flatMap(j => j.material_plan?.snapshot.items.map(i => i.product_id) || []))];
   if (!productIds.length) return;
-  const locations = await query<ProductionMaterialStockLocation>(`SELECT s.product_id,l.location_id,coalesce(l.location_code,'') AS location_code,coalesce(l.location_name,'') AS location_name,s.quantity
-    FROM stock_summary s JOIN locations l USING(location_id)
-    WHERE s.warehouse_id=$1 AND l.warehouse_id=$1 AND l.active AND s.quantity>0 AND s.product_id=ANY($2::text[])
-    ORDER BY s.product_id,(l.location_code=''),l.location_code,l.location_id`, [warehouseId, productIds]);
+  const locations = await readMaterialStockLocations(productIds, jobs.flatMap(j => Object.values(j.material_plan?.selection.material_locations || {})));
   for (const j of jobs) {
     if (!j.material_plan) continue;
     const materials = new Set(j.material_plan.snapshot.items.map(i => i.product_id));
@@ -50,9 +48,10 @@ export async function saveMaterialPlan(job: Pick<ProductionJob, "job_no" | "prod
   if (selection.revision && selection.revision !== formula.revision) throw new ProductionError("สูตรเปลี่ยนหลังจากเปิดฟอร์ม กรุณาโหลดสูตรใหม่ก่อนบันทึก", 409);
   const preview = previewProductionBom(formula, job.target_qty, selection);
   if (preview.issues.length) throw new ProductionError(preview.issues.join(" · "));
+  const resolvedSelection = await resolveMaterialSources(formula, selection);
   await query(`INSERT INTO production_material_plans(job_no,snapshot,selection) VALUES($1,$2::jsonb,$3::jsonb)
-    ON CONFLICT(job_no) DO UPDATE SET snapshot=excluded.snapshot,selection=excluded.selection`, [job.job_no, JSON.stringify(formula), JSON.stringify(selection)]);
-  return { snapshot: formula, selection };
+    ON CONFLICT(job_no) DO UPDATE SET snapshot=excluded.snapshot,selection=excluded.selection`, [job.job_no, JSON.stringify(formula), JSON.stringify(resolvedSelection)]);
+  return { snapshot: formula, selection: resolvedSelection };
 }
 
 export async function cloneMaterialPlan(parentNo: string, childNo: string, reportId: string): Promise<void> {
@@ -79,6 +78,10 @@ export async function reserveJobMaterials(repo: IStockRepository, job: Pick<Prod
   if (!p) throw new ProductionError(`${job.job_no}: กรุณาเปิดแก้ไขงาน ระบบจะจับคู่สูตรจากสินค้าให้อัตโนมัติ แล้วตรวจวัตถุดิบและระบุอัตราแปลงหน่วยที่ยังขาดก่อนส่งผลิต`);
   await releaseMaterialReservations(job.job_no);
   if (job.remaining_qty <= 0) return;
+  if (strict && p.selection.material_locations && p.snapshot.items.some(i => !p.selection.material_locations?.[String(i.item_id)])) {
+    p.selection = await resolveMaterialSources(p.snapshot, p.selection);
+    await query("UPDATE production_material_plans SET selection=$2::jsonb WHERE job_no=$1", [job.job_no, JSON.stringify(p.selection)]);
+  }
   const preview = previewProductionBom(p.snapshot, job.remaining_qty, p.selection);
   if (preview.issues.length) throw new ProductionError(preview.issues.join(" · "));
   const totals = new Map<string, { product_id: string; warehouse_id: string; qty: number; sku: string }>();
@@ -87,11 +90,33 @@ export async function reserveJobMaterials(repo: IStockRepository, job: Pick<Prod
     const old = totals.get(key);
     totals.set(key, { product_id: i.product_id, warehouse_id: i.warehouse_id, qty: round((old?.qty || 0) + i.stock_qty!), sku: i.sku });
   }
+  const sourceLimits = await materialSourceLimits(repo, preview.materials.map(i => ({ ...i, quantity: i.stock_qty! })), p.selection, job.job_no, strict);
   for (const i of totals.values()) {
-    const available = Math.max(0, await availableStock(repo, i.product_id, i.warehouse_id, job.job_no));
+    const available = Math.max(0, Math.floor((Math.min(await availableStock(repo, i.product_id, i.warehouse_id, job.job_no), i.qty * (sourceLimits.get(i.product_id) ?? 1)) + 1e-8) * 1000) / 1000);
     if (strict && available < i.qty) throw new ProductionError(`${i.sku}: วัตถุดิบพร้อมใช้ ${available} ต้องการ ${i.qty} ยังขาด ${round(i.qty - available)}`);
     await query("INSERT INTO production_material_reservations(job_no,product_id,warehouse_id,quantity) VALUES($1,$2,$3,$4)", [job.job_no, i.product_id, i.warehouse_id, Math.min(available, i.qty)]);
   }
+}
+
+/** A chosen pickup point is binding: never substitute another shelf silently. */
+async function materialSourceLimits(repo: IStockRepository, items: Array<{ item_id: number; product_id: string; sku: string; quantity: number }>, selection: ProductionBomSelection, jobNo: string, strict: boolean) {
+  const demands = new Map<string, { product_id: string; location_id: string; sku: string; quantity: number }>();
+  for (const item of items) {
+    const locationId = selection.material_locations?.[String(item.item_id)];
+    if (!locationId || item.quantity <= 0) continue;
+    const key = `${item.product_id}\0${locationId}`, previous = demands.get(key);
+    demands.set(key, { product_id: item.product_id, location_id: locationId, sku: item.sku, quantity: round((previous?.quantity || 0) + item.quantity) });
+  }
+  const limits = new Map<string, number>();
+  if (!demands.size) return limits;
+  const sources = await availableMaterialSources(repo, [...new Set(items.map(i => i.product_id))], jobNo, [...demands.values()].map(d => d.location_id));
+  for (const demand of demands.values()) {
+    const source = sources.find(l => l.product_id === demand.product_id && l.location_id === demand.location_id);
+    const available = source?.available || 0;
+    if (strict && available < demand.quantity) throw new ProductionError(`${demand.sku}: จุดรับ ${source?.location_code || demand.location_id} พร้อมใช้ ${available} ต้องการ ${demand.quantity} · ยังขาด ${round(demand.quantity - available)}`);
+    limits.set(demand.product_id, Math.min(limits.get(demand.product_id) ?? 1, available / demand.quantity));
+  }
+  return limits;
 }
 
 export async function listProductionCapacities(repo: IStockRepository, excludeJob = ""): Promise<ProductionCapacity[]> {
@@ -185,6 +210,7 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
     totals.set(key, { qty: round((old?.qty || 0) + i.total_qty), product_id: i.product_id, warehouse_id: i.warehouse_id, sku: i.sku });
   }
   for (const i of totals.values()) if (i.qty > await availableStock(repo, i.product_id, i.warehouse_id, job.job_no)) throw new ProductionError(`${i.sku}: วัตถุดิบไม่พอหรือถูกจองให้งานอื่นแล้ว`);
+  await materialSourceLimits(repo, details.map(i => ({ ...i, quantity: i.total_qty })), plan.selection, job.job_no, true);
   // Convert this job's reservation into actual usage inside the caller's writer
   // transaction. Other jobs remain protected; rollback restores this reservation.
   await releaseMaterialReservations(job.job_no);
@@ -193,8 +219,9 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
   await repo.documents.create(doc);
   for (const i of details) {
     if (i.total_qty === 0) continue;
-    if (!repo.stockSummary.allocateTransferSources) throw new ProductionError("ระบบจัดสรรวัตถุดิบจากตำแหน่งเก็บยังไม่พร้อม");
-    const allocations = await repo.stockSummary.allocateTransferSources(i.product_id, i.warehouse_id, i.total_qty, "");
+    const sourceId = plan.selection.material_locations?.[String(i.item_id)];
+    if (!sourceId && !repo.stockSummary.allocateTransferSources) throw new ProductionError("ระบบจัดสรรวัตถุดิบจากตำแหน่งเก็บยังไม่พร้อม");
+    const allocations = sourceId ? [{ location_id: sourceId, qty: i.total_qty }] : await repo.stockSummary.allocateTransferSources!(i.product_id, i.warehouse_id, i.total_qty, "");
     await repo.stockSummary.applyChanges(allocations.map(a => ({ productId: i.product_id, warehouseId: i.warehouse_id, locationId: a.location_id, delta: -a.qty })));
     await repo.movements.batchCreate(allocations.map(a => ({ document_id: doc.document_id, product_id: i.product_id, warehouse_id: i.warehouse_id, location_id: a.location_id, qty_change: -a.qty, movement_type: "ISSUE", idempotency_key: `mfg-${report.report_id}-${i.item_id}-${a.location_id}`, created_by: actorId })));
   }

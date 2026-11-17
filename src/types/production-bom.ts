@@ -34,6 +34,8 @@ export interface ProductionBomSelection {
   fg_factor?: number;
   material_factors?: Record<string, number>;
   material_roles?: Record<string, 0 | 1>;
+  /** Pickup location per recipe item, saved with the job rather than the master BOM. */
+  material_locations?: Record<string, string>;
   revision?: string;
   all_materials_confirmed?: boolean;
 }
@@ -73,6 +75,7 @@ export interface ProductionMaterialStockLocation {
   location_code: string;
   location_name: string;
   quantity: number;
+  available?: number;
 }
 
 export interface ProductionMaterialPlan {
