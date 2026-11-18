@@ -257,11 +257,10 @@ export default function TransferForm({
               <div className="truncate text-sm font-bold text-m3-grey-800">{currentUserName}</div>
             </div>
           </div>
-          <span className="shrink-0 text-xs text-m3-grey-500">คนสร้างเอกสาร</span>
           <input type="hidden" {...register("moved_by")} value="" />
         </div>
 
-        <M3Banner tone="info">ถ้าสินค้าอยู่หลายชั้นวางในโกดังต้นทาง พนักงานจะสแกนหยิบแยกตามตำแหน่งจนครบจำนวน</M3Banner>
+        <M3Banner tone="info">สแกนหยิบแยกตามตำแหน่งให้ครบจำนวน</M3Banner>
 
         <div className="flex justify-end">
           <button

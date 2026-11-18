@@ -508,7 +508,6 @@ export default function ProductionJobDetailPage() {
       <ConfirmModal
         open={startOpen}
         title="ยืนยันเริ่มผลิต"
-        hint="เมื่อเริ่มแล้ว ระบบจะแจ้ง Admin ว่างานนี้เริ่มผลิตแล้ว"
         icon={<SolarPlayCircle size={28} />}
         iconTone="info"
         confirmLabel={

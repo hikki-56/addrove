@@ -338,7 +338,7 @@ export default function AssignLocationPage() {
 
           {!product && (
             <div className="rounded-xl border border-dashed border-[rgba(145,158,171,0.32)] px-6 py-10 text-center text-sm font-semibold text-m3-grey-500">
-              สแกนหรือพิมพ์บาร์โค้ดสินค้าเพื่อเริ่มระบุตำแหน่ง
+              สแกนหรือพิมพ์บาร์โค้ดสินค้า
             </div>
           )}
 

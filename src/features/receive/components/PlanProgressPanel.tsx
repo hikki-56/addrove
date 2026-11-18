@@ -64,7 +64,7 @@ export default function PlanProgressPanel({ plan, control, onExitPlan }: PlanPro
               </>
             )}
           </div>
-          <p className="mt-1 text-xs text-m3-grey-500">ยอดรอบนี้แสดงทันทีเมื่อสแกน และจะบันทึกเมื่อกดบันทึกรับสินค้า</p>
+          <p className="mt-1 text-xs text-m3-grey-500">กดบันทึกรับสินค้าเพื่อบันทึกยอดรอบนี้</p>
         </div>
         {onExitPlan && (
           <button type="button" onClick={onExitPlan} className="m3-btn m3-btn-outline shrink-0 self-start bg-white">

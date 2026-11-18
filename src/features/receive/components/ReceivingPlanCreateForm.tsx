@@ -200,7 +200,7 @@ export default function ReceivingPlanCreateForm({
       <div className={`${cardClass} space-y-4 p-5 sm:p-6`}>
         <div className="space-y-2">
           <h3 className="text-base font-bold text-m3-grey-800">เพิ่มสินค้าเข้าแผน</h3>
-          <p className="text-sm text-m3-grey-600">เลือกได้จากสินค้าทั้งหมดในระบบ แม้ยังไม่มีสต็อกในโกดังที่เลือก</p>
+          <p className="text-sm text-m3-grey-600">เลือกสินค้าได้แม้ยังไม่มีสต็อกในโกดังนี้</p>
           {productsLoading ? (
             <p role="status" className="text-sm text-m3-grey-600">กำลังโหลดรายการสินค้าทั้งหมด…</p>
           ) : productsError ? (

@@ -67,11 +67,11 @@ interface PdfDoc {
 const FIELDS: Array<{ key: keyof Mapping; label: string; required: boolean; hint: string }> = [
   { key: "bill_no", label: "เลขที่บิล *", required: true, hint: "เลขที่เอกสาร/ใบสั่งขายจาก Express" },
   { key: "sku", label: "รหัสสินค้า *", required: true, hint: "ต้องตรงกับ SKU หรือบาร์โค้ดในระบบ" },
-  { key: "qty", label: "จำนวน *", required: true, hint: "จำนวนที่ต้องหยิบ" },
-  { key: "product_name", label: "ชื่อสินค้า", required: false, hint: "ไว้อ้างอิง (ไม่บังคับ)" },
-  { key: "location", label: "ตำแหน่ง", required: false, hint: "ถ้าไฟล์ระบุตำแหน่งมาเอง" },
-  { key: "customer", label: "ลูกค้า", required: false, hint: "แสดงบนบิล/สติกเกอร์" },
-  { key: "date", label: "วันที่เอกสาร", required: false, hint: "วันที่บิล" },
+  { key: "qty", label: "จำนวน *", required: true, hint: "" },
+  { key: "product_name", label: "ชื่อสินค้า", required: false, hint: "" },
+  { key: "location", label: "ตำแหน่ง", required: false, hint: "" },
+  { key: "customer", label: "ลูกค้า", required: false, hint: "" },
+  { key: "date", label: "วันที่เอกสาร", required: false, hint: "" },
 ];
 
 async function postImport(formData: FormData): Promise<{ data: unknown; message: string }> {
@@ -463,7 +463,7 @@ export default function OutboundUploadPage() {
                     <option key={h} value={h}>{h || "(ไม่มีชื่อ)"}</option>
                   ))}
                 </select>
-                <div className="text-xs text-m3-grey-500 mt-0.5">{f.hint}</div>
+                {f.hint && <div className="text-xs text-m3-grey-500 mt-0.5">{f.hint}</div>}
               </div>
             ))}
           </div>

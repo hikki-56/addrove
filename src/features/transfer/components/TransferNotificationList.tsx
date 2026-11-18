@@ -176,21 +176,21 @@ export default function TransferNotificationList({
             : step === 1
               ? {
                 title: "กำลังสแกนสินค้า",
-                detail: "พนักงานกำลังสแกนบาร์โค้ดสินค้าบนตัวสินค้า",
+                detail: "",
                 badge: "m3-label-info",
                 dot: "",
               }
               : step === 2
                 ? {
                   title: "กำลังหยิบสินค้าต้นทาง",
-                  detail: `พนักงานกำลังสแกนตำแหน่งและหยิบของใน ${t.from_warehouse_name}`,
+                  detail: `สแกนหยิบจาก ${t.from_warehouse_name}`,
                   badge: "m3-label-warning",
                   dot: "",
                 }
                   : step === 3
                     ? {
                       title: "กำลังสแกนตำแหน่งปลายทาง",
-                      detail: `พนักงานกำลังนำสินค้าเข้าตำแหน่งปลายทางใน ${t.to_warehouse_name}`,
+                      detail: `จัดเก็บที่ ${t.to_warehouse_name}`,
                       badge: "bg-[rgba(142,51,255,0.16)] text-[#5119B7]",
                       dot: "",
                     }
@@ -203,7 +203,7 @@ export default function TransferNotificationList({
                       }
                       : {
                         title: "รอดำเนินการ (ยังไม่เริ่ม)",
-                        detail: "สร้างใบงานแล้ว รอพนักงานกดเริ่มงาน",
+                        detail: "",
                         badge: "m3-label-default",
                         dot: "",
                       };

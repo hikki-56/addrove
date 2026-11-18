@@ -81,7 +81,6 @@ export default function PlannedShelfBarcodes() {
         <div className="planned-shelf-heading">
           <div>
             <div className="planned-shelf-title"><SolarTagBarcode size={24} /><h2>บาร์โค้ดชั้นวางสินค้าใหม่</h2><span className="planned-shelf-badge">เตรียมใช้งาน</span></div>
-            <p>ป้ายตำแหน่งชุดใหม่ แยกตามโกดัง ล็อก ฝั่ง และชั้นวาง</p>
           </div>
           <div className="planned-shelf-actions">
             <button type="button" className="m3-btn m3-btn-outline" disabled={loading} aria-label="โหลดตำแหน่งใหม่" onClick={() => setReload((n) => n + 1)}><SolarRefresh size={18} />โหลดใหม่</button>
@@ -127,7 +126,7 @@ export default function PlannedShelfBarcodes() {
               ))}
             </div>
           </>}
-      <div className="planned-shelf-footer"><span>ป้ายชุดใหม่สำหรับเตรียมตำแหน่งสินค้า</span><Link href="/shelves/qr">บาร์โค้ดชั้นวางเดิม</Link></div>
+      <div className="planned-shelf-footer"><Link href="/shelves/qr">บาร์โค้ดชั้นวางเดิม</Link></div>
       {printing && <PlannedShelfPrintPreview locations={printing} onClose={() => setPrinting(null)} />}
     </div>
   );

@@ -239,7 +239,7 @@ export function AdjustModal({ open, job, submitting, error, onClose, onSubmit }:
     <M3Dialog
       title="ปรับปรุงยอดผลผลิต"
       subtitle={`${job.job_no} · ${job.product_name} (${job.sku})`}
-      hint="ไม่เขียนทับยอดเดิม — ระบบสร้างรายการปรับ บันทึกประวัติก่อน–หลัง และปรับสต็อกตามส่วนต่าง"
+      hint="เก็บประวัติยอดเดิม และปรับสต็อกตามส่วนต่าง"
       icon={<SolarPen size={26} />}
       iconTone="warning"
       widthClass="sm:max-w-[560px]"

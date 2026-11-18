@@ -18,7 +18,7 @@ export default function ShelfLetterLabels() {
       <div className="planned-shelf-heading">
         <div>
           <div className="planned-shelf-title"><h2 id="shelf-letter-title">ป้ายตัวอักษรชั้นวาง A / B / C</h2></div>
-          <p>ตัวอักษรแยกใบ ขนาดใหญ่ สำหรับติดชั้นวาง · A4 แนวนอน · {layout === "full-page" ? "ตัวอักษรละ 1 หน้า" : "9 ป้ายต่อหน้า"}</p>
+          <p>A4 แนวนอน · {layout === "full-page" ? "ตัวอักษรละ 1 หน้า" : "9 ป้ายต่อหน้า"}</p>
         </div>
         <div className="planned-shelf-actions">
           <button type="button" className="m3-btn m3-btn-primary" disabled={!labels.length} onClick={() => setPrinting(labels)}>

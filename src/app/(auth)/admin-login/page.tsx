@@ -226,7 +226,7 @@ export default function AdminLoginPage() {
 
         {/* Footer */}
         <p className="text-center text-m3-grey-600 text-xs mt-6">
-          © {new Date().getFullYear()} Stockify — Admin Security Portal
+          © {new Date().getFullYear()} Stockify
         </p>
       </div>
     </div>

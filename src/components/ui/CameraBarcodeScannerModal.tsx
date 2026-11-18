@@ -547,7 +547,7 @@ export default function CameraBarcodeScannerModal({
           )}
           {!hideSoundHint && (
           <div className="flex items-center justify-between gap-2 text-xs text-m3-grey-600">
-            <span>{isProcessing ? "กำลังตรวจสอบรหัส..." : isScanningLive ? "พร้อมสแกน • สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง" : "สำเร็จ: บี๊ปสั้น / ไม่สำเร็จ: เสียงต่ำ 2 ครั้ง"}</span>
+            <span>{isProcessing ? "กำลังตรวจสอบรหัส..." : isScanningLive ? "พร้อมสแกน" : "ยังไม่พร้อมสแกน"}</span>
             <button type="button" onClick={playSuccessSound} className="shrink-0 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white px-2 py-1 font-bold text-m3-grey-800 cursor-pointer hover:bg-[rgba(145,158,171,0.08)]">ทดสอบเสียง</button>
           </div>
           )}

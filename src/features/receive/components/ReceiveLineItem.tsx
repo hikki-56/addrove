@@ -438,7 +438,7 @@ export default function ReceiveLineItem({
           ) : null}
           <p className="text-sm text-m3-grey-600">
             {packSize
-              ? `สแกน 1 ครั้ง = 1 กล่อง (${packSize.toLocaleString()} ${baseUnit}) · แก้จำนวนตามของจริงได้`
+              ? `สแกน 1 ครั้ง = 1 กล่อง (${packSize.toLocaleString()} ${baseUnit})`
               : "ยังไม่มีจำนวนบรรจุ — กรุณากรอกจำนวนตามของจริง"}
           </p>
           {renderSlot({

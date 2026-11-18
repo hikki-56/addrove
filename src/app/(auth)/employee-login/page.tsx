@@ -196,7 +196,6 @@ function PinScreen() {
     <AuthShell footer={<>© {new Date().getFullYear()} Stockify — ระบบจัดการคลังสินค้า</>}>
       <div className="flex flex-col items-center text-center">
         <h1 className="font-m3-disp text-[26px] font-bold text-m3-grey-800">กรอกรหัส PIN</h1>
-        <p className="mt-1 text-sm text-m3-grey-600">ระบบสำหรับพนักงานคลังสินค้า</p>
       </div>
 
       {/* Reassurance Beacon: Section/Warehouse context confirmation */}

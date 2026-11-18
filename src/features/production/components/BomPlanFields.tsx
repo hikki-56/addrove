@@ -244,7 +244,7 @@ export default function BomPlanFields({ productId, targetQty, value, savedPlan, 
         <button type="button" disabled={disabled || savingRoles} onClick={saveRoles} className={m3Cls.btnPrimary}>
           <M3SubmitLabel submitting={savingRoles}>บันทึกประเภท</M3SubmitLabel>
         </button>
-        <p className="text-xs text-m3-grey-600">บันทึกประเภทหลัก/รองไว้ในสูตรสำหรับการใช้งานครั้งถัดไป</p>
+        <p className="text-xs text-m3-grey-600">ใช้ประเภทหลัก/รองนี้กับงานถัดไป</p>
       </div>}
       {rolesSaved && <p role="status" className="text-xs font-semibold text-m3-primary-dark">บันทึกประเภทวัตถุดิบแล้ว</p>}
       {rolesError && <p role="alert" className="text-xs font-semibold text-m3-error-dark">{rolesError}</p>}

@@ -35,7 +35,7 @@ const PACKER_SECTION = {
   id: "packer",
   code: "PKR",
   name: "ส่วนพนักงานแพ็กของ",
-  desc: "จุดเดียว — สแกนเข้าระบบเพื่อหยิบของ/แพ็กใส่กล่อง/ของขึ้นรถ",
+  desc: "หยิบสินค้า แพ็ก และขึ้นรถ",
 };
 
 type WarehouseQrPrintMode = "poster" | "grid" | "packer";
@@ -359,7 +359,6 @@ export default function WarehouseQrPage() {
                     {wh.code}
                   </span>
                   <h2 className="text-xl font-bold text-m3-grey-800 mt-1">{wh.name}</h2>
-                  <p className="text-xs text-m3-grey-600 font-medium">{wh.desc}</p>
                 </div>
 
                 {/* QR Code Container */}
@@ -428,7 +427,7 @@ export default function WarehouseQrPage() {
 
             <div className="w-full text-center space-y-1">
               <p className="text-xs sm:text-sm font-bold text-m3-info-dark">
-                สแกนเพื่อ: เข้าระบบส่วนพนักงานแพ็กของ (PIN 4 หลัก)
+                เข้าระบบแพ็กของ · PIN 4 หลัก
                 {forceChrome && (
                   <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[rgba(0,184,217,0.08)] border border-[rgba(0,184,217,0.24)] text-m3-info-dark text-xs font-bold align-middle">
                     เปิดใน Chrome

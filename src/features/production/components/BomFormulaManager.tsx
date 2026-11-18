@@ -114,7 +114,7 @@ export default function BomFormulaManager({ productId, initialBomId, initialActi
 
   return <section aria-label="จัดการสูตร BOM" className="space-y-4 rounded-xl border border-[rgba(145,158,171,0.24)] bg-white p-3 sm:p-4">
     <div className="flex items-start justify-between gap-3">
-      <div><h3 className="text-sm font-bold">จัดการสูตร BOM</h3><p className="mt-1 text-xs text-m3-grey-600">บันทึกเป็นสูตรกลาง ใช้กับงานผลิตครั้งถัดไปด้วย</p></div>
+      <div><h3 className="text-sm font-bold">จัดการสูตร BOM</h3><p className="mt-1 text-xs text-m3-grey-600">ใช้เป็นสูตรกลางสำหรับงานผลิตถัดไป</p></div>
       <button type="button" disabled={busy} onClick={onClose} className="m3-btn m3-btn-sm m3-btn-outline">ปิดการจัดการสูตร</button>
     </div>
     {loading ? <M3Loading label="กำลังโหลดสูตร…" /> : data && draft && <>
