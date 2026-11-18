@@ -6,6 +6,7 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 import { loadCameraScanner } from "@/client/camera-scanner-loader";
+import CameraScanGuide from "./CameraScanGuide";
 
 /** Use nearly the full camera image so long barcodes fit inside the scan frame. */
 export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
@@ -155,6 +156,7 @@ export default function CameraBarcodeScannerModal({
   hideSoundHint = false,
 }: CameraBarcodeScannerModalProps) {
   const scannerId = useId();
+  const viewportRef = useRef<HTMLDivElement>(null);
   const titleId = `${scannerId}-title`;
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const torchRef = useRef<ReturnType<CameraCapabilities["torchFeature"]> | null>(null);
@@ -501,8 +503,9 @@ export default function CameraBarcodeScannerModal({
         </div>
 
         {/* Video Camera Viewport */}
-        <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? `stockify-scan-compact ${COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS} flex-none p-0` : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
+        <div ref={viewportRef} className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? `stockify-scan-compact ${COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS} flex-none p-0` : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
           <div id={scannerId} className="h-full w-full text-center text-xs text-m3-grey-400" />
+          <CameraScanGuide key={isScanningLive ? "live" : "idle"} active={isScanningLive && !cameraError} viewportRef={viewportRef} />
 
           {!cameraError && !isScanningLive && isOpen && (
             <div role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-xs font-semibold text-white">
