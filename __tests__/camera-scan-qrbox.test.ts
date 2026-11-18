@@ -8,19 +8,19 @@ import {
 } from "@/components/ui/CameraBarcodeScannerModal";
 
 describe("cameraScanQrbox", () => {
-  it("shrinks the scan frame versus the previous 0.9 x 0.6 box", () => {
+  it("uses nearly the full viewfinder for long barcodes", () => {
     const box = cameraScanQrbox(400, 260);
-    const minEdge = 260;
-    expect(box.width).toBe(Math.max(160, Math.floor(minEdge * 0.64)));
-    expect(box.height).toBe(Math.max(100, Math.floor(minEdge * 0.4)));
-    expect(box.width).toBeLessThan(Math.floor(minEdge * 0.9));
-    expect(box.height).toBeLessThan(Math.floor(minEdge * 0.6));
+    expect(box).toEqual({ width: 376, height: 223 });
+    expect(box.width).toBeLessThan(400);
+    expect(box.height).toBeLessThan(260);
   });
 
-  it("keeps a usable minimum on a small viewfinder", () => {
+  it("stays within a small viewfinder while meeting the decoder minimum", () => {
     const box = cameraScanQrbox(120, 80);
-    expect(box.width).toBe(160);
-    expect(box.height).toBe(100);
+    expect(box.width).toBeGreaterThanOrEqual(50);
+    expect(box.height).toBeGreaterThanOrEqual(50);
+    expect(box.width).toBeLessThan(120);
+    expect(box.height).toBeLessThan(80);
   });
 });
 

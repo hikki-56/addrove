@@ -6,12 +6,11 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
 
-/** ขนาดกรอบสแกนในวิวกล้อง — ย่อจากเดิม (0.9 x 0.6 ของด้านสั้น) ให้เล็งบาร์โค้ดได้ง่ายขึ้น */
+/** Use nearly the full camera image so long barcodes fit inside the scan frame. */
 export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
-  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
   return {
-    width: Math.max(160, Math.floor(minEdge * 0.64)),
-    height: Math.max(100, Math.floor(minEdge * 0.4)),
+    width: Math.floor(viewfinderWidth * 0.94),
+    height: Math.floor(viewfinderHeight * 0.86),
   };
 }
 
