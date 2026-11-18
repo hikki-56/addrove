@@ -1369,7 +1369,7 @@ html .m3-table td:last-child { padding-right: 24px; }
 html .m3-table th.m3-num,
 html .m3-table td.m3-num { text-align: right; }
 
-/* Keep a white frame aligned with the html5-qrcode decoding area. */
+/* Keep four white corners aligned with the html5-qrcode decoding area. */
 .stockify-scan-viewport #qr-shaded-region {
   overflow: hidden;
 }
@@ -1390,9 +1390,17 @@ html .m3-table td.m3-num { text-align: right; }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 0 0 0 2px #fff;
+  background:
+    linear-gradient(#fff 0 0) left top / min(28px, 25%) 3px no-repeat,
+    linear-gradient(#fff 0 0) left top / 3px min(28px, 25%) no-repeat,
+    linear-gradient(#fff 0 0) right top / min(28px, 25%) 3px no-repeat,
+    linear-gradient(#fff 0 0) right top / 3px min(28px, 25%) no-repeat,
+    linear-gradient(#fff 0 0) left bottom / min(28px, 25%) 3px no-repeat,
+    linear-gradient(#fff 0 0) left bottom / 3px min(28px, 25%) no-repeat,
+    linear-gradient(#fff 0 0) right bottom / min(28px, 25%) 3px no-repeat,
+    linear-gradient(#fff 0 0) right bottom / 3px min(28px, 25%) no-repeat;
 }
-/* Hide the decoder's colored corners so the whole frame stays white. */
+/* Hide the decoder's colored corners so the custom corners stay white. */
 .stockify-scan-viewport #qr-shaded-region > div {
   display: none;
 }
