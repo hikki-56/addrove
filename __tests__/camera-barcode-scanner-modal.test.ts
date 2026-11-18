@@ -2,11 +2,14 @@ import React, { type ReactElement, type ReactNode } from "react";
 import CameraBarcodeScannerModal, { COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS } from "@/components/ui/CameraBarcodeScannerModal";
 import { feedbackError, feedbackSuccess } from "@/client/feedback";
 import { useScanFeedback } from "@/hooks/use-scan-feedback";
+import * as cameraScannerLoader from "@/client/camera-scanner-loader";
 
 const mockSetState = jest.fn();
 let mockManualCode = "";
 const mockEffects: Array<() => unknown> = [];
 const mockStart = jest.fn().mockResolvedValue(undefined);
+const mockStop = jest.fn().mockResolvedValue(undefined);
+const mockClear = jest.fn();
 
 jest.mock("react", () => ({
   ...jest.requireActual("react"),
@@ -22,7 +25,7 @@ jest.mock("@/client/feedback", () => ({
 }));
 jest.mock("html5-qrcode", () => ({
   Html5Qrcode: jest.fn().mockImplementation(() => ({
-    clear: jest.fn(), start: mockStart,
+    clear: mockClear, start: mockStart, stop: mockStop, isScanning: false,
   })),
   Html5QrcodeSupportedFormats: {},
 }));
@@ -45,6 +48,7 @@ function find(root: ReactNode, predicate: (element: ReactElement<Props>) => bool
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockStart.mockReset().mockResolvedValue(undefined);
   mockEffects.length = 0;
   mockManualCode = "";
   jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -82,7 +86,7 @@ it("live decoding waits for validation without playing an early success sound", 
   const onScan = jest.fn(async () => { feedbackError(); });
   CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn(), onScan, feedbackHandledByCaller: true });
   mockEffects.forEach((effect) => effect());
-  await jest.advanceTimersByTimeAsync(100);
+  await jest.advanceTimersByTimeAsync(0);
   const decode = mockStart.mock.calls[0][2] as (code: string) => void;
   decode("REJECTED");
   await Promise.resolve();
@@ -163,7 +167,7 @@ it("compact camera requests an ideal aspect ratio matching the viewport, not a s
     hideSoundHint: true,
   });
   mockEffects.forEach((effect) => effect());
-  await jest.advanceTimersByTimeAsync(100);
+  await jest.advanceTimersByTimeAsync(0);
   expect(mockStart).toHaveBeenCalled();
   const config = mockStart.mock.calls[0][1] as {
     aspectRatio?: number;
@@ -177,15 +181,75 @@ it("compact camera requests an ideal aspect ratio matching the viewport, not a s
   });
 });
 
-it("default camera still requests the existing 16:9 aspectRatio and not compact videoConstraints", async () => {
+it("opens immediately and requests 16:9 during capture without a second track negotiation", async () => {
   jest.useFakeTimers();
   Object.defineProperty(globalThis, "document", { configurable: true, value: { getElementById: () => ({}) } });
   CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn() });
   mockEffects.forEach((effect) => effect());
-  await jest.advanceTimersByTimeAsync(100);
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStart).toHaveBeenCalledTimes(1);
   const config = mockStart.mock.calls[0][1] as { aspectRatio?: number; videoConstraints?: unknown };
-  expect(config.aspectRatio).toBe(1.777778);
-  expect(config.videoConstraints).toBeUndefined();
+  expect(config.aspectRatio).toBeUndefined();
+  expect(config.videoConstraints).toEqual({
+    facingMode: "environment",
+    aspectRatio: { ideal: 16 / 9 },
+  });
+});
+
+it("preloads the decoder while closed without opening the camera", async () => {
+  jest.useFakeTimers();
+  const load = jest.spyOn(cameraScannerLoader, "loadCameraScanner");
+  CameraBarcodeScannerModal({ isOpen: false, onClose: jest.fn() });
+  mockEffects.forEach((effect) => effect());
+  expect(load).not.toHaveBeenCalled();
+  await jest.advanceTimersByTimeAsync(500);
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(mockStart).not.toHaveBeenCalled();
+});
+
+it("waits for a pending camera to stop before reopening, even before its first playing event", async () => {
+  jest.useFakeTimers();
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { getElementById: () => ({}) } });
+  let resolveStart!: () => void;
+  mockStart.mockImplementationOnce(() => new Promise<void>((resolve) => { resolveStart = resolve; }));
+  CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn() });
+  const setupCamera = mockEffects[mockEffects.length - 1];
+  const close = setupCamera() as () => void;
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStart).toHaveBeenCalledTimes(1);
+
+  close();
+  const closeReopened = setupCamera() as () => void;
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStop).not.toHaveBeenCalled();
+  expect(mockClear).not.toHaveBeenCalled();
+  expect(mockStart).toHaveBeenCalledTimes(1);
+
+  resolveStart();
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStop).toHaveBeenCalledTimes(1);
+  expect(mockClear).toHaveBeenCalledTimes(1);
+  expect(mockStart).toHaveBeenCalledTimes(2);
+  expect(mockStop.mock.invocationCallOrder[0]).toBeLessThan(mockStart.mock.invocationCallOrder[1]);
+
+  closeReopened();
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStop).toHaveBeenCalledTimes(2);
+});
+
+it("does not start a camera when closed during the decoder download", async () => {
+  jest.useFakeTimers();
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { getElementById: () => ({}) } });
+  let resolveDownload!: (module: typeof import("html5-qrcode")) => void;
+  jest.spyOn(cameraScannerLoader, "loadCameraScanner").mockImplementationOnce(() =>
+    new Promise((resolve) => { resolveDownload = resolve; })
+  );
+  CameraBarcodeScannerModal({ isOpen: true, onClose: jest.fn() });
+  const close = mockEffects[mockEffects.length - 1]() as () => void;
+  close();
+  resolveDownload(await import("html5-qrcode"));
+  await jest.advanceTimersByTimeAsync(0);
+  expect(mockStart).not.toHaveBeenCalled();
 });
 
 it("persistOpen keeps the scan chrome visible while the live camera is paused", () => {

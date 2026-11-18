@@ -5,6 +5,7 @@ import type { CameraCapabilities, Html5Qrcode } from "html5-qrcode";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { feedbackError, feedbackSuccess, playSuccessSound, prepareFeedbackAudio, setCameraScanActive } from "@/client/feedback";
 import ScanFeedbackBanner, { type ScanFeedback } from "@/components/scanner/ScanFeedbackBanner";
+import { loadCameraScanner } from "@/client/camera-scanner-loader";
 
 /** Use nearly the full camera image so long barcodes fit inside the scan frame. */
 export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
@@ -159,6 +160,7 @@ export default function CameraBarcodeScannerModal({
   const torchRef = useRef<ReturnType<CameraCapabilities["torchFeature"]> | null>(null);
   const torchBusyRef = useRef(false);
   const cameraStopRef = useRef<Promise<void>>(Promise.resolve());
+  const cameraStartRef = useRef<Promise<unknown> | null>(null);
   const compactFitCleanupRef = useRef<(() => void) | null>(null);
   const persistOpenRef = useRef(persistOpen);
 
@@ -205,6 +207,8 @@ export default function CameraBarcodeScannerModal({
     compactFitCleanupRef.current = null;
     const scanner = html5QrCodeRef.current;
     html5QrCodeRef.current = null;
+    const started = cameraStartRef.current;
+    cameraStartRef.current = null;
     const torch = torchRef.current;
     torchRef.current = null;
     torchBusyRef.current = false;
@@ -215,7 +219,16 @@ export default function CameraBarcodeScannerModal({
     const stopped = cameraStopRef.current.then(async () => {
       if (!scanner) return;
       try {
-        if (scanner.isScanning) {
+        // start() can still be waiting for permission, or resolve before the
+        // video's playing event sets isScanning. Release that camera as well.
+        let didStart = false;
+        if (started) {
+          try {
+            await started;
+            didStart = true;
+          } catch { /* A failed start has no running track to stop. */ }
+        }
+        if (didStart || scanner.isScanning) {
           // Release the light before stopping the video track. Stopping the
           // track also releases it when a device rejects the off constraint.
           try {
@@ -280,6 +293,18 @@ export default function CameraBarcodeScannerModal({
   }, []);
 
   useEffect(() => {
+    if (isOpen) return;
+    // Download while this scanner is idle; never request camera permission here.
+    const preload = () => { void loadCameraScanner().catch(() => {}); };
+    if (typeof window.requestIdleCallback === "function") {
+      const idle = window.requestIdleCallback(preload, { timeout: 1500 });
+      return () => window.cancelIdleCallback(idle);
+    }
+    const timer = setTimeout(preload, 500);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
       void stopLiveCamera();
       return;
@@ -291,11 +316,12 @@ export default function CameraBarcodeScannerModal({
     lastScannedCodeRef.current = { code: "", time: 0 };
 
     async function initLiveScanner() {
-      await stopLiveCamera();
-
       try {
-        // โหลด decoder เมื่อเปิดกล้องเท่านั้น เพื่อไม่ให้ทุกหน้าใช้งานต้องรอไลบรารีนี้
-        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+        // Prepare the decoder while the previous camera is releasing its track.
+        const [{ Html5Qrcode, Html5QrcodeSupportedFormats }] = await Promise.all([
+          loadCameraScanner(),
+          stopLiveCamera(),
+        ]);
         // ผู้ใช้อาจปิดกล้องระหว่างดาวน์โหลด — อย่าเริ่มกล้องหลัง modal ถูกปิด
         if (!isSubscribed || !document.getElementById(scannerId)) return;
 
@@ -324,25 +350,20 @@ export default function CameraBarcodeScannerModal({
 
         const aspectRatio = compactViewport && viewport
           ? cameraScanAspectRatio(viewport.clientWidth, viewport.clientHeight)
-          : 1.777778;
+          : DEFAULT_CAMERA_ASPECT_RATIO;
 
-        await scanner.start(
+        const started = scanner.start(
           { facingMode: "environment" },
-          compactViewport
-            ? {
-                fps: 25,
-                qrbox: cameraScanQrboxCompact,
-                // ideal (not exact) so a device that cannot match the box still starts
-                videoConstraints: {
-                  facingMode: "environment",
-                  aspectRatio: { ideal: aspectRatio },
-                },
-              }
-            : {
-                fps: 25,
-                qrbox: cameraScanQrbox,
-                aspectRatio: 1.777778,
-              },
+          {
+            fps: 25,
+            qrbox: compactViewport ? cameraScanQrboxCompact : cameraScanQrbox,
+            // Request the desired ratio once, during getUserMedia. Setting the
+            // library's aspectRatio also would renegotiate the track afterward.
+            videoConstraints: {
+              facingMode: "environment",
+              aspectRatio: { ideal: aspectRatio },
+            },
+          },
           (decodedText) => {
             if (isSubscribed && decodedText && !processingRef.current) {
               const now = Date.now();
@@ -362,6 +383,8 @@ export default function CameraBarcodeScannerModal({
             // Frame error ignored
           }
         );
+        cameraStartRef.current = started;
+        await started;
 
         if (isSubscribed) {
           setIsScanningLive(true);
@@ -376,9 +399,6 @@ export default function CameraBarcodeScannerModal({
             // Camera scanning still works when torch capabilities are absent.
             setIsTorchSupported(false);
           }
-        } else if (scanner.isScanning) {
-          // The user may close the modal while camera permission is pending.
-          await scanner.stop();
         }
       } catch (err: unknown) {
         console.warn("Live camera start failed:", err);
@@ -390,13 +410,10 @@ export default function CameraBarcodeScannerModal({
       }
     }
 
-    const timer = setTimeout(() => {
-      void initLiveScanner();
-    }, 100);
+    void initLiveScanner();
 
     return () => {
       isSubscribed = false;
-      clearTimeout(timer);
       void stopLiveCamera();
     };
   }, [isOpen, submitScan, scannerId, compactViewport]);
@@ -486,6 +503,13 @@ export default function CameraBarcodeScannerModal({
         {/* Video Camera Viewport */}
         <div className={`stockify-scan-viewport relative bg-[#151B22] flex items-center justify-center overflow-hidden ${compactViewport ? `stockify-scan-compact ${COMPACT_SCAN_VIEWPORT_HEIGHT_CLASS} flex-none p-0` : "bg-m3-grey-800 flex-1 min-h-[200px] max-h-[min(280px,48vh)] sm:min-h-[260px] sm:max-h-[360px] p-2"}`}>
           <div id={scannerId} className="h-full w-full text-center text-xs text-m3-grey-400" />
+
+          {!cameraError && !isScanningLive && isOpen && (
+            <div role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-xs font-semibold text-white">
+              <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              กำลังเปิดกล้อง...
+            </div>
+          )}
 
           {cameraError && (
             <div className="absolute inset-0 bg-white p-6 text-center space-y-4 flex flex-col items-center justify-center">
