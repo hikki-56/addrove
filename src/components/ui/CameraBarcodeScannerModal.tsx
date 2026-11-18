@@ -19,7 +19,7 @@ export function cameraScanQrbox(viewfinderWidth: number, viewfinderHeight: numbe
  * วัดจาก video.clientWidth/clientHeight (อย่าใช้กรอบคงที่ 200×72)
  *
  * html5-qrcode 2.3.8 บังคับด้านสั้นสุด 50px และจะไม่วาด #qr-shaded-region
- * (กรอบ + เส้นแดง) ถ้ากรอบสูงหรือกว้างเท่าจอวิดีโอ
+ * (กรอบสแกน) ถ้ากรอบสูงหรือกว้างเท่าจอวิดีโอ
  */
 export const HTML5_QRBOX_MIN_SIZE = 50;
 

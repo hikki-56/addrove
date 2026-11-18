@@ -1369,7 +1369,7 @@ html .m3-table td:last-child { padding-right: 24px; }
 html .m3-table th.m3-num,
 html .m3-table td.m3-num { text-align: right; }
 
-/* Scan viewfinder: smaller html5-qrcode qrbox + red sweeping line */
+/* Keep a white frame aligned with the html5-qrcode decoding area. */
 .stockify-scan-viewport #qr-shaded-region {
   overflow: hidden;
 }
@@ -1377,7 +1377,7 @@ html .m3-table td.m3-num { text-align: right; }
 /*
  * โหมดกะทัดรัด (สูง min(260px, 34vh)): อย่ายืดวิดีโอด้วย object-fit: fill
  * JS จัดขนาด <video> และ root ของ html5-qrcode ให้เท่ากรอบภาพจริง (contain)
- * ก่อนที่ไลบรารีจะวัด clientWidth/clientHeight — กรอบ + เส้นแดง + โซน decode
+ * ก่อนที่ไลบรารีจะวัด clientWidth/clientHeight — กรอบและโซน decode
  * จึงตรงกับภาพที่เห็น โดยไม่บิดสัดส่วน
  */
 .stockify-scan-viewport.stockify-scan-compact video {
@@ -1388,25 +1388,11 @@ html .m3-table td.m3-num { text-align: right; }
 .stockify-scan-viewport #qr-shaded-region::after {
   content: "";
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 10%;
-  height: 2px;
-  border-radius: 999px;
+  inset: 0;
   pointer-events: none;
-  background: #ff3b30;
-  box-shadow:
-    0 0 8px 2px rgba(255, 59, 48, 0.9),
-    0 0 16px 6px rgba(255, 59, 48, 0.35);
-  animation: stockify-scan-line 1.8s ease-in-out infinite alternate;
+  box-shadow: inset 0 0 0 2px #fff;
 }
-@keyframes stockify-scan-line {
-  from { top: 10%; }
-  to { top: calc(90% - 2px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .stockify-scan-viewport #qr-shaded-region::after {
-    animation: none;
-    top: 50%;
-  }
+/* Hide the decoder's colored corners so the whole frame stays white. */
+.stockify-scan-viewport #qr-shaded-region > div {
+  display: none;
 }
