@@ -11,6 +11,13 @@ test("only menus outside the role grant extra permissions", () => {
   expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/express-import/receive"])).toEqual([PERMISSIONS.EXPRESS_IMPORT_VIEW, PERMISSIONS.EXPRESS_IMPORT_MANAGE]);
 });
 
+test("granting the count results menu permits reading only the assigned warehouse", () => {
+  const reader = actor("VIEWER", getGrantedPermissions("VIEWER", ["/stock-counts/results"]));
+  expect(isAuthorized(reader, PERMISSIONS.STOCK_COUNT_VIEW, "WH-01")).toBe(true);
+  expect(isAuthorized(reader, PERMISSIONS.STOCK_COUNT_VIEW, "WH-02")).toBe(false);
+  expect(isAuthorized(reader, PERMISSIONS.STOCK_COUNT, "WH-01")).toBe(false);
+});
+
 test("ticking the BOM editor menu does not grant production planning permissions", () => {
   expect(getGrantedPermissions("WAREHOUSE_STAFF", ["/production/formula"])).toEqual([]);
   expect(getGrantedPermissions("ADMIN", ["/production/formula"])).toEqual([]);

@@ -50,6 +50,7 @@ const pathTitles: Record<string, { parent: string; title: string }> = {
   "/users/cards": { parent: "การตั้งค่า", title: "บัตรบาร์โค้ดพนักงาน" },
   "/stock": { parent: "คลังสินค้า", title: "ตรวจสอบสต็อก" },
   "/stock-counts": { parent: "การตรวจนับ", title: "ตรวจนับสต็อก" },
+  "/stock-counts/results": { parent: "การตรวจนับ", title: "ผลตรวจนับสต็อก" },
   "/temporary-stock-cuts": { parent: "การทำรายการ", title: "ตัดสต็อกชั่วคราว" },
   "/locations": { parent: "คลังสินค้า", title: "ตำแหน่งสินค้าในโกดัง" },
   "/movements/receive": { parent: "การเคลื่อนไหว", title: "รับสินค้าเข้า (Admin)" },

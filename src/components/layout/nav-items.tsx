@@ -174,6 +174,12 @@ export const navItems: NavItem[] = [
     icon: <Icon><rect x="4" y="4" width="16" height="17" rx="2" /><path d="M9 3h6v3H9zM8 13l3 3 5-6" /></Icon>,
   },
   {
+    href: "/stock-counts/results",
+    label: "ผลตรวจนับสต็อก",
+    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF"],
+    icon: <Icon><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></Icon>,
+  },
+  {
     href: "/movements/receive",
     label: "รับสินค้าเข้าโกดัง",
     icon: (

@@ -5,14 +5,14 @@ import { v4 as uuid } from "uuid";
 import { feedbackError, feedbackSuccess, prepareFeedbackAudio } from "@/client/feedback";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
-import BarcodeSvg from "@/components/ui/BarcodeSvg";
+import Link from "next/link";
 import { SolarQrCode, SolarMapPoint } from "@/components/icons";
 import type { CountEntry, ScannedCountProduct } from "@/types/count-round";
 import { errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 
 interface Claim { shelf: string; previous: CountEntry | null }
 
-export default function CountScanner({ warehouse, round, refresh }: { warehouse: string; round: string; refresh: () => void }) {
+export default function CountScanner({ warehouse, round }: { warehouse: string; round: string }) {
   const [product, setProduct] = useState<ScannedCountProduct>();
   const [claim, setClaim] = useState<Claim>();
   const [code, setCode] = useState("");
@@ -28,6 +28,14 @@ export default function CountScanner({ warehouse, round, refresh }: { warehouse:
   function reset() {
     setProduct(undefined); setClaim(undefined); setCode(""); setQty(""); setMode(""); setError("");
   }
+  function back() {
+    if (!claim) { reset(); return; }
+    setCode("");
+    setClaim(undefined);
+    setQty("");
+    setMode("");
+    setError("");
+  }
   async function scan(raw: string, sound = false) {
     if (processing.current || claim) return;
     processing.current = true;
@@ -36,7 +44,7 @@ export default function CountScanner({ warehouse, round, refresh }: { warehouse:
       if (!product) setProduct(await getCount<ScannedCountProduct>({ warehouse, product: raw }));
       else {
         const next = await sendCount<Claim>({ action: "claim", warehouse, round, product: product.product_id, shelf: raw });
-        setClaim(next); setMode(next.previous ? "" : "set"); refresh();
+        setClaim(next); setMode(next.previous ? "" : "set");
       }
       setCode("");
       if (sound) feedbackSuccess();
@@ -56,7 +64,7 @@ export default function CountScanner({ warehouse, round, refresh }: { warehouse:
       if (signature !== lastBody.current) { request.current = uuid(); lastBody.current = signature; }
       const saved = await sendCount<CountEntry>({ ...body, request: request.current });
       setNotice(`บันทึกแล้ว · ${saved.sku} · ชั้น ${saved.shelf_code} · ${saved.quantity} ${saved.base_unit}`);
-      reset(); refresh();
+      reset();
     } catch (e) { setError(errorText(e)); } finally { processing.current = false; setBusy(false); }
   }
   const step = claim ? 3 : product ? 2 : 1;
@@ -76,11 +84,8 @@ export default function CountScanner({ warehouse, round, refresh }: { warehouse:
         <strong className="block break-words text-base leading-snug">{product.product_name}</strong>
         <p className="break-all text-sm text-m3-grey-600">{product.sku} · {product.base_unit}</p>
       </div>
-      {barcode ? <figure aria-label="บาร์โค้ดสินค้า" className="flex flex-col items-center gap-1 px-4 py-3">
-        {/^[\x20-\x7E]+$/.test(barcode) && <BarcodeSvg value={barcode} disableZoom width={2} height={44} showText={false}
-          className="w-full max-w-80 border-0 p-0 shadow-none" />}
-        <figcaption className="break-all text-center font-mono text-sm tracking-wider">{barcode}</figcaption>
-      </figure> : <p className="p-3 text-center text-sm text-m3-grey-600">ไม่มีบาร์โค้ด</p>}
+      {barcode ? <p aria-label="เลขบาร์โค้ดสินค้า" className="break-all px-3 py-4 text-center font-mono text-3xl font-bold leading-tight tabular-nums text-m3-grey-800 sm:text-4xl">{barcode}</p>
+        : <p className="p-3 text-center text-sm text-m3-grey-600">ไม่มีบาร์โค้ด</p>}
       {claim && <p className="flex items-center gap-2 border-t border-m3-grey-200 px-4 py-2 text-sm font-semibold">
         <SolarMapPoint size={18} /> ชั้น {claim.shelf}</p>}
     </div>}
@@ -108,6 +113,8 @@ export default function CountScanner({ warehouse, round, refresh }: { warehouse:
     </form>}
     {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
     {notice && <p role="status" className="rounded-lg bg-m3-primary-lighter/50 px-3 py-2 text-sm font-semibold text-m3-primary-darker">{notice}</p>}
-    {product && <button className="min-h-11 w-full text-sm font-semibold text-m3-grey-600 underline underline-offset-4" disabled={busy} onClick={reset}>สแกนใหม่</button>}
+    {product
+      ? <button type="button" className="m3-btn m3-btn-outline min-h-11 w-full" disabled={busy} onClick={back}>ย้อนกลับ</button>
+      : <Link className="m3-btn m3-btn-outline min-h-11 w-full" href="/dashboard">กลับหน้าหลัก</Link>}
   </section>;
 }

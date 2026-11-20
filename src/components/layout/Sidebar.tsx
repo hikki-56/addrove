@@ -27,6 +27,7 @@ const OPERATION_ORDER = [
   ASSIGN_LOCATION_HREF,
   ASSIGN_LOCATION_REQUESTS_HREF,
   "/stock-counts",
+  "/stock-counts/results",
   "/temporary-stock-cuts",
   "/movements/receive/history",
   "/movements/transfer/history",
@@ -245,6 +246,7 @@ export default function Sidebar({
         ASSIGN_LOCATION_HREF,
         ASSIGN_LOCATION_REQUESTS_HREF,
         "/stock-counts",
+        "/stock-counts/results",
         "/temporary-stock-cuts",
       ].includes(i.href)
     )
