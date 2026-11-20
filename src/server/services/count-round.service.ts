@@ -40,9 +40,11 @@ export async function findCountProduct(scan: string) {
 export async function roundReport(warehouse: string, id: string): Promise<RoundReport> {
   const round = await findRound(warehouse, id);
   const [entries, shelves] = await Promise.all([
-    query<CountEntry>(`select distinct on (shelf_code, product_id) shelf_code, product_id, request_id, sku,
-      product_name, base_unit, quantity, counter_name, counted_at from stock_count_entries
-      where round_id=$1 order by shelf_code, product_id, revision desc`, [id]),
+    query<RoundReport["entries"][number]>(`select distinct on (e.shelf_code, e.product_id)
+      e.shelf_code, e.product_id, e.request_id, e.sku, e.product_name, e.base_unit,
+      e.quantity, e.counter_name, e.counted_at, p.barcode
+      from stock_count_entries e join products p on p.product_id = e.product_id
+      where e.round_id=$1 order by e.shelf_code, e.product_id, e.revision desc`, [id]),
     query<CountShelf>(`select shelf_code, counted_by, counter_name, finished_at,
       finished_at is null and expires_at > now() as occupied from stock_count_shelves where round_id=$1 order by shelf_code`, [id]),
   ]);

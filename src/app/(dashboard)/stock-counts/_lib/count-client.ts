@@ -22,10 +22,10 @@ export function dateLabel(date: string) {
 
 export async function downloadRound(report: RoundReport, warehouseName: string) {
   const XLSX = await import("xlsx");
-  const data = [["โกดัง", "ชั้น", "รหัสสินค้า", "ชื่อสินค้า", "จำนวนที่นับได้", "หน่วย", "ผู้ตรวจนับ", "เวลาบันทึก (ไทย)"],
-    ...report.entries.map(row => [warehouseName, row.shelf_code, row.sku, row.product_name, row.quantity, row.base_unit, row.counter_name, dateLabel(row.counted_at)])];
+  const data = [["โกดัง", "ชั้น", "รหัสสินค้า", "ชื่อสินค้า", "จำนวนที่นับได้", "หน่วย", "ผู้ตรวจนับ", "เวลาบันทึก (ไทย)", "เลขบาร์โค้ด"],
+    ...report.entries.map(row => [warehouseName, row.shelf_code, row.sku, row.product_name, row.quantity, row.base_unit, row.counter_name, dateLabel(row.counted_at), row.barcode])];
   const sheet = XLSX.utils.aoa_to_sheet(data);
-  sheet["!cols"] = [22,18,20,45,18,12,24,28].map(wch => ({ wch }));
+  sheet["!cols"] = [22,18,20,45,18,12,24,28,24].map(wch => ({ wch }));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "ผลตรวจนับ");
   XLSX.writeFile(workbook, `ตรวจนับ-${warehouseName}-${report.round.round_id}.xlsx`);

@@ -35,5 +35,5 @@ export interface CountShelf {
 export interface RoundReport {
   round: CountRound;
   shelves: CountShelf[];
-  entries: CountEntry[];
+  entries: (CountEntry & { barcode: string })[];
 }
