@@ -12,6 +12,10 @@ export interface CountProduct {
   base_unit: string;
 }
 
+export interface ScannedCountProduct extends CountProduct {
+  barcode: string;
+}
+
 export interface CountEntry extends CountProduct {
   request_id: string;
   shelf_code: string;

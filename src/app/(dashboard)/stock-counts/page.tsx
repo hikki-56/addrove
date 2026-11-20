@@ -24,23 +24,18 @@ export default function StockCountsPage() {
     return () => controller.abort();
   }, [attempt]);
   const selected = access?.warehouses.find(w => w.warehouse_id === warehouse);
-  return <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-7">
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <h1 className="text-3xl font-bold text-m3-grey-800">ตรวจนับสต็อก</h1>
-      {access && <label className="grid gap-1 text-sm font-semibold">โกดังที่ตรวจนับ
-        <select className="rounded-lg border bg-white px-3 py-2" value={warehouse} onChange={e => setWarehouse(e.target.value)}>
-          {access.warehouses.map(w => <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name}</option>)}
-        </select>
-      </label>}
-    </header>
+  return <div className="mx-auto w-full min-w-0 max-w-5xl space-y-4 pb-4 sm:space-y-5">
+    <h1 className="sr-only text-3xl font-bold text-m3-grey-800 md:not-sr-only">ตรวจนับสต็อก</h1>
     {error && <p role="alert">{error} <button className="m3-btn m3-btn-outline" onClick={() => setAttempt(n => n + 1)}>ลองใหม่</button></p>}
     {!access && !error && <p role="status">กำลังโหลดโกดัง…</p>}
     {access && !selected && <p>ไม่มีโกดังที่ได้รับสิทธิ์ตรวจนับ</p>}
-    {access && selected && <WarehouseRounds key={warehouse} warehouse={selected} access={access} />}
+    {access && selected && <WarehouseRounds key={warehouse} warehouse={selected} access={access} changeWarehouse={setWarehouse} />}
   </div>;
 }
 
-function WarehouseRounds({ warehouse, access }: { warehouse: WarehouseOption; access: Access }) {
+function WarehouseRounds({ warehouse, access, changeWarehouse }: {
+  warehouse: WarehouseOption; access: Access; changeWarehouse: (id: string) => void;
+}) {
   const id = warehouse.warehouse_id;
   const [rounds, setRounds] = useState<CountRound[]>();
   const [selected, setSelected] = useState("");
@@ -68,14 +63,20 @@ function WarehouseRounds({ warehouse, access }: { warehouse: WarehouseOption; ac
     } catch (e) { setError(errorText(e)); } finally { setBusy(false); }
   }
   return <>
-    <section className="m3-card flex flex-wrap items-center justify-between gap-4 p-5">
-      {rounds?.length ? <label className="grid gap-1 text-sm font-semibold">รอบตรวจนับ
-        <select value={selected} className="max-w-full rounded-lg border bg-white px-3 py-2" onChange={e => setSelected(e.target.value)}>
+    <section className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-end gap-2 sm:gap-3">
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-m3-grey-600">โกดังที่ตรวจนับ
+        <select className="min-h-12 w-full min-w-0 rounded-xl border border-m3-grey-300 bg-white px-2 text-base text-m3-grey-800 sm:px-3"
+          value={id} onChange={e => changeWarehouse(e.target.value)}>
+          {access.warehouses.map(w => <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name}</option>)}
+        </select>
+      </label>
+      {rounds?.length ? <label className="grid min-w-0 gap-1 text-sm font-semibold text-m3-grey-600">รอบตรวจนับ
+        <select value={selected} className="min-h-12 w-full min-w-0 truncate rounded-xl border border-m3-grey-300 bg-white px-2 text-base text-m3-grey-800 sm:px-3" onChange={e => setSelected(e.target.value)}>
           {rounds.map(r => <option key={r.round_id} value={r.round_id}>{r.closed_at ? "จบแล้ว" : "กำลังนับ"} · {dateLabel(r.opened_at)}</option>)}
         </select>
-      </label> : <p>{rounds ? "โกดังนี้ยังไม่มีรอบตรวจนับ" : "กำลังโหลดรอบตรวจนับ…"}</p>}
-      {rounds && !rounds.some(r => !r.closed_at) && <button className="m3-btn m3-btn-primary" disabled={busy} onClick={start}>เริ่มรอบตรวจนับ</button>}
-      {error && <p role="alert">{error} <button onClick={() => setAttempt(n => n + 1)}>ลองใหม่</button></p>}
+      </label> : !rounds && !error && <p role="status" className="p-2 text-sm">กำลังโหลดรอบ…</p>}
+      {rounds && !rounds.some(r => !r.closed_at) && <button className={`m3-btn m3-btn-dark min-h-12 ${rounds.length ? "col-span-2 sm:justify-self-end" : ""}`} disabled={busy} onClick={start}>เริ่มรอบตรวจนับ</button>}
+      {error && <p role="alert" className="col-span-2">{error} <button className="m3-btn m3-btn-outline" onClick={() => setAttempt(n => n + 1)}>ลองใหม่</button></p>}
     </section>
     {selected && <RoundWorkspace key={selected} round={selected} warehouse={id} warehouseName={warehouse.warehouse_name}
       userId={access.userId} canCloseAll={access.canCloseAll} listedOpen={rounds?.find(r => r.round_id === selected)?.closed_at === null}

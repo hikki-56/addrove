@@ -2,7 +2,7 @@ import { z } from "zod";
 import { normalizeReceiveScanCode } from "@/features/receive/utils";
 import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
 import { authorize, PERMISSIONS, type Actor } from "@/server/security";
-import type { CountEntry, CountProduct, CountRound, CountShelf, RoundReport } from "@/types/count-round";
+import type { CountEntry, CountProduct, CountRound, CountShelf, RoundReport, ScannedCountProduct } from "@/types/count-round";
 
 const context = { warehouse: z.string().trim().min(1), round: z.uuid() };
 const shelf = z.string().trim().min(1).max(200);
@@ -31,7 +31,7 @@ async function findRound(warehouse: string, id: string) {
 }
 
 export async function findCountProduct(scan: string) {
-  const products = await query<CountProduct>(`select product_id, sku, product_name, base_unit from products
+  const products = await query<ScannedCountProduct>(`select product_id, sku, product_name, base_unit, barcode from products
     where active and (upper(sku)=upper($1) or barcode=$1) limit 2`, [normalizeReceiveScanCode(scan)]);
   if (products.length !== 1) throw new CountProblem(products.length ? "รหัสตรงกับสินค้ามากกว่าหนึ่งรายการ" : "ไม่พบสินค้าที่เปิดใช้งานตามรหัสนี้", 400);
   return products[0];
