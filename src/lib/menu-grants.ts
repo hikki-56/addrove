@@ -16,6 +16,7 @@ const EXPRESS = [P.EXPRESS_IMPORT_VIEW, P.EXPRESS_IMPORT_MANAGE];
 /** เมนู → สิทธิ์ที่หน้าและ API ของเมนูนั้นต้องใช้ (เมนูระบบของ ty ไม่อยู่ในตารางนี้ จึงให้สิทธิ์ไม่ได้) */
 export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/dashboard": [P.STOCK_VIEW],
+  "/stock-counts": [P.STOCK_COUNT],
   "/movements/receive": RECEIVE,
   "/staff/receive": RECEIVE,
   "/movements/receive/history": [P.STOCK_VIEW, P.DOCUMENT_VIEW],

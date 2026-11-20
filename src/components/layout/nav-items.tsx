@@ -168,6 +168,12 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN", "VIEWER", "WAREHOUSE_STAFF", "PACKER"],
   },
   {
+    href: "/stock-counts",
+    label: "ตรวจนับสต็อก",
+    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF"],
+    icon: <Icon><rect x="4" y="4" width="16" height="17" rx="2" /><path d="M9 3h6v3H9zM8 13l3 3 5-6" /></Icon>,
+  },
+  {
     href: "/movements/receive",
     label: "รับสินค้าเข้าโกดัง",
     icon: (
