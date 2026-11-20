@@ -5,6 +5,7 @@ import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import type { RoundReport } from "@/types/count-round";
 import { dateLabel, downloadRound, errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import { SolarRefresh } from "@/components/icons";
+import { groupCountEntriesByShelf } from "@/app/(dashboard)/stock-counts/_lib/count-ui";
 
 interface Props {
   warehouse: string;
@@ -44,31 +45,74 @@ export default function RoundWorkspace({ warehouse, warehouseName, round, userId
     } catch (e) { setError(errorText(e)); } finally { await refresh(); setBusy(false); }
   }
   const open = report && !report.round.closed_at;
+  const groups = report ? groupCountEntriesByShelf(report.entries) : [];
+  const canClose = !!(open && canCount && (canCloseAll || report.round.opened_by === userId));
+
   return <>
     {loadError && <p role="alert">{loadError} <button className="m3-btn m3-btn-outline" onClick={refresh}>โหลดใหม่</button></p>}
     {!report && !loadError && <p role="status">กำลังโหลดข้อมูลรอบ…</p>}
-    {report && <section className="m3-card min-w-0 space-y-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">ผลตรวจนับ <span className="ml-1 text-sm font-medium text-m3-grey-600">{report.entries.length} รายการ</span></h2>
-        <button className="m3-btn m3-btn-outline min-h-11 min-w-11" aria-label="โหลดล่าสุด" title="โหลดล่าสุด" disabled={busy} onClick={refresh}><SolarRefresh size={18} /></button>
-      </header>
-      {report.entries.length ? <ul className="max-h-96 divide-y divide-m3-grey-200 overflow-y-auto">
-        {report.entries.map(row => <li key={row.request_id} className="space-y-1 py-3 text-sm">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <strong className="min-w-0 flex-1 break-words">{row.product_name}</strong>
-            <span className="font-semibold tabular-nums text-m3-primary-dark">{row.quantity} {row.base_unit}</span>
+    {report && (
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <section className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-m3-card">
+          <header className="flex items-baseline justify-between gap-3 px-5 py-4">
+            <h2 className="text-lg font-bold text-m3-grey-800">ชั้นที่นับ</h2>
+            <span className="text-sm font-medium text-m3-grey-600">{groups.length} ชั้น</span>
+          </header>
+          {groups.length ? (
+            <ul>
+              {groups.map((group, i) => (
+                <li key={group.shelf_code} className={`flex items-baseline justify-between gap-3 px-5 py-3 ${i > 0 ? "border-t border-dashed border-m3-grey-200" : ""}`}>
+                  <div className="min-w-0">
+                    <p className="font-bold text-m3-grey-800">{group.shelf_code}</p>
+                    <p className="truncate text-sm text-m3-grey-600">{group.counter_name}</p>
+                  </div>
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-m3-grey-600">{group.entries.length} รายการ</span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="px-5 pb-5 text-sm text-m3-grey-600">ยังไม่มีชั้นที่บันทึก</p>}
+        </section>
+
+        <section className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-m3-card">
+          <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <h2 className="text-lg font-bold text-m3-grey-800">ผลตรวจนับ <span className="ml-1 text-sm font-medium text-m3-grey-600">{report.entries.length} รายการ</span></h2>
+            <button className="m3-btn m3-btn-outline min-h-11 min-w-11" aria-label="โหลดล่าสุด" title="โหลดล่าสุด" disabled={busy} onClick={refresh}><SolarRefresh size={18} /></button>
+          </header>
+          {report.entries.length ? (
+            <div className="max-h-[32rem] overflow-y-auto px-5 pb-2">
+              {groups.map(group => (
+                <div key={group.shelf_code} className="mb-1">
+                  <h3 className="hidden pt-2 text-sm font-bold text-m3-grey-600 lg:block">ชั้น {group.shelf_code}</h3>
+                  <ul className="divide-y divide-m3-grey-200">
+                    {group.entries.map(row => (
+                      <li key={row.request_id} className="flex items-start justify-between gap-3 py-3 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <strong className="block break-words text-m3-grey-800">{row.product_name}</strong>
+                          <p className="mt-0.5 break-words text-m3-grey-600">
+                            <span className="lg:hidden">ชั้น {row.shelf_code} · </span>
+                            {row.sku}
+                            <span className="hidden lg:inline"> · {row.counter_name} · {dateLabel(row.counted_at)}</span>
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-base font-semibold tabular-nums text-m3-primary-dark">{row.quantity}</p>
+                          <p className="text-xs text-m3-grey-600">{row.base_unit}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : <p className="px-5 pb-5 text-sm text-m3-grey-600">ยังไม่มีรายการที่บันทึก</p>}
+          <div className="grid gap-2 border-t border-m3-grey-200 p-4 sm:p-5">
+            <button className="m3-btn m3-btn-outline min-h-[52px] sm:min-h-12" disabled={busy} onClick={() => act("export")}>ดาวน์โหลด Excel</button>
+            {canClose && <button className="m3-btn m3-btn-dark min-h-[52px] sm:min-h-12" disabled={busy} onClick={() => act("close")}>จบรอบและดาวน์โหลด Excel</button>}
+            {report.round.closed_at && <p className="text-sm text-m3-grey-600">จบรอบเมื่อ {dateLabel(report.round.closed_at)}</p>}
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           </div>
-          <p className="break-words text-m3-grey-600">{row.sku} · ชั้น {row.shelf_code}</p>
-          <p className="break-words text-xs text-m3-grey-600">{row.counter_name} · {dateLabel(row.counted_at)}</p>
-        </li>)}
-      </ul> : <p className="py-2 text-sm text-m3-grey-600">ยังไม่มีรายการที่บันทึก</p>}
-      <div className="grid gap-2 border-t border-m3-grey-200 pt-4">
-        <button className="m3-btn m3-btn-outline min-h-11" disabled={busy} onClick={() => act("export")}>ดาวน์โหลด Excel</button>
-        {open && canCount && (canCloseAll || report.round.opened_by === userId) && <button className="m3-btn m3-btn-dark min-h-11"
-          disabled={busy} onClick={() => act("close")}>จบรอบและดาวน์โหลด Excel</button>}
+        </section>
       </div>
-      {report.round.closed_at && <p>จบรอบเมื่อ {dateLabel(report.round.closed_at)}</p>}
-      {error && <p role="alert" className="text-red-700">{error}</p>}
-    </section>}
+    )}
   </>;
 }
