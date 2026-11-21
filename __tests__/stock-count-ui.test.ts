@@ -13,7 +13,7 @@ it("formats the saved-count notice with กล่อง/ชิ้น and without
   expect(formatSavedNotice({ sku: "X", shelf_code: "A", quantity: 1, base_unit: "ชิ้น" })).not.toMatch(/แพ็ก/);
 });
 
-it("exports each submission with its operator, location, quantity and Bangkok date", async () => {
+it("exports the eight report columns in order with barcode text and numeric counts", async () => {
   const cwd = process.cwd();
   const dir = mkdtempSync(path.join(tmpdir(), "stock-count-export-"));
   try {
@@ -24,7 +24,8 @@ it("exports each submission with its operator, location, quantity and Bangkok da
     const workbook = XLSX.read(readFileSync("ตรวจนับ-โกดัง1-2026-11-21.xlsx"));
     const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets["ผลตรวจนับ"], { header: 1 });
     expect(rows).toHaveLength(3);
-    expect(rows[1]).toEqual(["โกดัง1", "A1", "SKU", "สินค้า", 2, "ชิ้น", "คนแรก", expect.stringContaining("21/11/69"), "0012"]);
+    expect(rows[0]).toEqual(["โกดัง", "รหัสสินค้า", "เลขบาร์โค้ด", "ชื่อสินค้า", "จำนวนที่นับได้", "หน่วย", "ผู้ตรวจนับ", "เวลาบันทึก (ไทย)"]);
+    expect(rows[1]).toEqual(["โกดัง1", "SKU", "0012", "สินค้า", 2, "ชิ้น", "คนแรก", expect.stringContaining("21/11/69")]);
     expect(rows[2][4]).toBe(5);
     expect(rows[2][6]).toBe("คนที่สอง");
   } finally {

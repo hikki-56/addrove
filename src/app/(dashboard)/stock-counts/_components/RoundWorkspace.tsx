@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { usePollingWhenVisible } from "@/hooks/use-visibility-polling";
 import type { CountReportEntry } from "@/types/count-round";
-import { dateLabel, downloadCounts, errorText, getCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
+import { countReportColumns, downloadCounts, errorText, getCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import { SolarRefresh } from "@/components/icons";
 
 type Props = { warehouse: string; warehouseName: string };
@@ -49,16 +49,18 @@ function CountResults({ warehouse, warehouseName, date }: Props & { date: string
     </div>
     {error && <p role="alert">{error}</p>}
     {!entries && !error && <p role="status">กำลังโหลดผลตรวจนับ…</p>}
-    {entries?.length === 0 && <p>ยังไม่มีรายการตรวจนับของวันที่เลือก</p>}
-    {!!entries?.length && <ul className="divide-y divide-m3-grey-200">
-      {entries.map(row => <li key={row.request_id} className="flex items-start justify-between gap-4 py-3">
-        <div className="min-w-0 space-y-1 break-words">
-          <strong>{row.product_name}</strong>
-          <p className="text-sm">{row.sku} · ตำแหน่ง {row.shelf_code}</p>
-          <p className="text-sm text-m3-grey-600">{row.counter_name} · {dateLabel(row.counted_at)}</p>
-        </div>
-        <strong className="shrink-0 tabular-nums">{row.quantity} {row.base_unit}</strong>
-      </li>)}
-    </ul>}
+    {entries && <div className="overflow-x-auto rounded-xl border border-m3-grey-200">
+      <table aria-label="ผลตรวจนับสต็อก" className="w-full text-left text-sm">
+        <thead className="bg-m3-grey-100 text-m3-grey-800">
+          <tr>{countReportColumns.map(column => <th key={column.label} scope="col" className="whitespace-nowrap px-3 py-3">{column.label}</th>)}</tr>
+        </thead>
+        <tbody className="divide-y divide-m3-grey-200">
+          {entries.map(row => <tr key={row.request_id}>
+            {countReportColumns.map(column => <td key={column.label} className="px-3 py-3 align-top tabular-nums">{column.value(row, warehouseName)}</td>)}
+          </tr>)}
+          {entries.length === 0 && <tr><td colSpan={countReportColumns.length} className="p-4 text-center text-m3-grey-600">ยังไม่มีรายการตรวจนับของวันที่เลือก</td></tr>}
+        </tbody>
+      </table>
+    </div>}
   </>;
 }
