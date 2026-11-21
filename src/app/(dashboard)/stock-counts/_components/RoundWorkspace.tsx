@@ -74,9 +74,15 @@ export default function RoundWorkspace({ warehouse, warehouseName, round, userId
         </section>
 
         <section className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-m3-card">
-          <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-            <h2 className="text-lg font-bold text-m3-grey-800">ผลตรวจนับ <span className="ml-1 text-sm font-medium text-m3-grey-600">{report.entries.length} รายการ</span></h2>
-            <button className="m3-btn m3-btn-outline min-h-11 min-w-11" aria-label="โหลดล่าสุด" title="โหลดล่าสุด" disabled={busy} onClick={refresh}><SolarRefresh size={18} /></button>
+          <header className="flex flex-wrap items-center gap-2 px-4 py-4 sm:gap-3 sm:px-5">
+            <h2 className="min-w-0 flex-1 text-lg font-bold text-m3-grey-800">ผลตรวจนับ <span className="ml-1 text-sm font-medium text-m3-grey-600">{report.entries.length} รายการ</span></h2>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex items-center gap-2">
+                <button className="m3-btn m3-btn-outline min-h-11 min-w-11 shrink-0" aria-label="โหลดล่าสุด" title="โหลดล่าสุด" disabled={busy} onClick={refresh}><SolarRefresh size={18} /></button>
+                <button className="m3-btn m3-btn-outline min-h-11 min-w-0 flex-1 sm:flex-none" disabled={busy} onClick={() => act("export")}>ดาวน์โหลด Excel</button>
+              </div>
+              {canClose && <button className="m3-btn m3-btn-dark min-h-[52px] w-full sm:min-h-11 sm:w-auto" disabled={busy} onClick={() => act("close")}>จบรอบและดาวน์โหลด Excel</button>}
+            </div>
           </header>
           {report.entries.length ? (
             <div className="max-h-[32rem] overflow-y-auto px-5 pb-2">
@@ -105,12 +111,12 @@ export default function RoundWorkspace({ warehouse, warehouseName, round, userId
               ))}
             </div>
           ) : <p className="px-5 pb-5 text-sm text-m3-grey-600">ยังไม่มีรายการที่บันทึก</p>}
-          <div className="grid gap-2 border-t border-m3-grey-200 p-4 sm:p-5">
-            <button className="m3-btn m3-btn-outline min-h-[52px] sm:min-h-12" disabled={busy} onClick={() => act("export")}>ดาวน์โหลด Excel</button>
-            {canClose && <button className="m3-btn m3-btn-dark min-h-[52px] sm:min-h-12" disabled={busy} onClick={() => act("close")}>จบรอบและดาวน์โหลด Excel</button>}
-            {report.round.closed_at && <p className="text-sm text-m3-grey-600">จบรอบเมื่อ {dateLabel(report.round.closed_at)}</p>}
-            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          </div>
+          {(report.round.closed_at || error) && (
+            <div className="space-y-1 border-t border-m3-grey-200 px-4 py-3 sm:px-5">
+              {report.round.closed_at && <p className="text-sm text-m3-grey-600">จบรอบเมื่อ {dateLabel(report.round.closed_at)}</p>}
+              {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+            </div>
+          )}
         </section>
       </div>
     )}

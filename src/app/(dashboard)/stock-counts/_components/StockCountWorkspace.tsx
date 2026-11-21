@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 import type { CountRound } from "@/types/count-round";
 import { dateLabel, errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import Link from "next/link";
+import CompactSelect from "@/components/ui/CompactSelect";
 import CountScanner from "./CountScanner";
 import RoundWorkspace from "./RoundWorkspace";
 
@@ -39,10 +40,6 @@ export default function StockCountWorkspace({ view }: { view: View }) {
   }, [attempt]);
   const selected = access?.warehouses.find(w => w.warehouse_id === warehouse);
   return <div className="mx-auto w-full min-w-0 max-w-5xl space-y-4 pb-4 sm:space-y-5">
-    <header className="hidden md:block">
-      <h1 className="text-3xl font-bold text-m3-grey-800">{view === "scan" ? "ตรวจนับสต็อก" : "ผลตรวจนับสต็อก"}</h1>
-      <p className="mt-1 text-sm text-m3-grey-600">การตรวจนับ</p>
-    </header>
     <h1 className="sr-only">{view === "scan" ? "ตรวจนับสต็อก" : "ผลตรวจนับสต็อก"}</h1>
     {error && <p role="alert">{error} <button className="m3-btn m3-btn-outline" onClick={() => setAttempt(n => n + 1)}>ลองใหม่</button></p>}
     {!access && !error && <p role="status">กำลังโหลดโกดัง…</p>}
@@ -101,9 +98,12 @@ function WarehouseRounds({ warehouse, access, changeWarehouse, view }: {
     <section className="rounded-2xl bg-white p-4 shadow-m3-card sm:px-5">
       <div className={`grid min-w-0 items-end gap-3 ${view === "results" ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto]" : "sm:grid-cols-[minmax(0,1fr)_auto]"}`}>
         <label className="grid min-w-0 gap-1 text-sm font-semibold text-m3-grey-600">โกดังที่ตรวจนับ
-          <select className={selectClass} value={id} onChange={e => changeWarehouse(e.target.value)}>
-            {access.warehouses.map(w => <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name}</option>)}
-          </select>
+          <CompactSelect
+            value={id}
+            options={access.warehouses.map(w => ({ value: w.warehouse_id, label: w.warehouse_name }))}
+            onChange={changeWarehouse}
+            title="โกดังที่ตรวจนับ"
+          />
         </label>
         {view === "results" && rounds?.length ? <label className="grid min-w-0 gap-1 text-sm font-semibold text-m3-grey-600">รอบตรวจนับ
           <select value={selected} className={`${selectClass} truncate`} onChange={e => {
