@@ -115,8 +115,6 @@ function WarehouseRounds({ warehouse, access, changeWarehouse, view }: {
         {view === "scan" && active && (
           <div className="flex flex-wrap items-center justify-end gap-2">
             <span className="rounded-lg bg-[rgba(0,184,217,.16)] px-2.5 py-1 text-xs font-bold text-[#006C9C]">กำลังนับ · {dateLabel(active.opened_at)}</span>
-            {!!rounds?.length && <Link href="/stock-counts/results" onClick={() => sessionStorage.setItem(selectionKey, active.round_id)}
-              className="m3-btn m3-btn-outline min-h-11">ดูผลตรวจนับ</Link>}
           </div>
         )}
         {view === "results" && access.canCount && (
@@ -141,8 +139,6 @@ function WarehouseRounds({ warehouse, access, changeWarehouse, view }: {
         </div>
         <div className="mx-auto grid w-full max-w-[360px] gap-2.5">
           {access.canCount && <button className="m3-btn m3-btn-dark min-h-[52px] sm:min-h-12" disabled={busy} onClick={start}>เริ่มรอบตรวจนับ</button>}
-          {!!rounds.length && <Link href="/stock-counts/results" onClick={() => sessionStorage.setItem(selectionKey, rounds[0].round_id)}
-            className="m3-btn m3-btn-outline min-h-[52px] sm:min-h-12">ดูผลตรวจนับ</Link>}
           <Link href="/dashboard" className="m3-btn m3-btn-outline min-h-[52px] sm:min-h-12">กลับหน้าหลัก</Link>
         </div>
       </div>
