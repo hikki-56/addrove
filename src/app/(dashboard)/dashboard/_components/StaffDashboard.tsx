@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import StaffNavigationPending from "./StaffNavigationPending";
 import { useTabAuth } from "@/context/TabAuthContext";
+import { useMenuVisibility } from "@/context/MenuVisibilityContext";
+import { getVisibleNavItems } from "@/components/layout/nav-items";
 import { getActiveWarehouse, getWarehouseName } from "@/lib/warehouse-utils";
 import {
   getPendingTransferNotifications,
@@ -19,6 +21,7 @@ import { subscribeTransferSync } from "@/client/transfer-sync-scheduler";
 import {
   SolarBox,
   SolarBuildings,
+  SolarClipboardList,
   SolarInboxIn,
   SolarMapPoint,
   SolarNavigationArrow,
@@ -27,6 +30,9 @@ import {
 
 export default function StaffDashboard() {
   const { user: tabUser } = useTabAuth();
+  const { menu_hrefs, can_manage } = useMenuVisibility();
+  const canOpenStockCounts = tabUser && getVisibleNavItems(tabUser, menu_hrefs, can_manage)
+    .some(item => item.href === "/stock-counts");
   const [activeWh, setActiveWh] = useState<string>("wh-01");
   const [pendingTransfers, setPendingTransfers] = useState<TransferNotification[]>([]);
 
@@ -185,6 +191,19 @@ export default function StaffDashboard() {
             <StaffNavigationPending />
           </Link>
 
+          {canOpenStockCounts && <Link
+            href={{ pathname: "/stock-counts", query: { warehouse_id: activeWh } }}
+            prefetch={true}
+            id="staff-btn-stock-counts"
+            className={tileClass}
+            style={{ animationDelay: "450ms" }}
+          >
+            <span className={`${iconTileClass} bg-[rgba(0,120,103,0.12)] text-[#007867]`}>
+              <SolarClipboardList size={36} />
+            </span>
+            <h2 className={labelClass}>ตรวจนับสต็อก</h2>
+            <StaffNavigationPending />
+          </Link>}
         </div>
       </div>
     </div>

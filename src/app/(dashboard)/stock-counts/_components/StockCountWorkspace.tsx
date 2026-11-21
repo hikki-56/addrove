@@ -17,8 +17,12 @@ export default function StockCountWorkspace() {
     const controller = new AbortController();
     getCount<Access>({}, controller.signal).then(data => {
       setAccess(data);
+      const requested = new URLSearchParams(window.location.search).get("warehouse_id");
       const remembered = sessionStorage.getItem(`stock-count-warehouse:${data.userId}`);
-      setWarehouse(data.warehouses.find(w => w.warehouse_id === remembered)?.warehouse_id ?? data.warehouses[0]?.warehouse_id ?? "");
+      const initial = data.warehouses.find(w => w.warehouse_id === requested)
+        ?? data.warehouses.find(w => w.warehouse_id === remembered)
+        ?? data.warehouses[0];
+      setWarehouse(initial?.warehouse_id ?? "");
       setError("");
     }).catch(e => { if (!controller.signal.aborted) setError(errorText(e)); });
     return () => controller.abort();
