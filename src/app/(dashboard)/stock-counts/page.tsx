@@ -1,5 +1,9 @@
+"use client";
+
+import { useTabAuth } from "@/context/TabAuthContext";
 import StockCountWorkspace from "./_components/StockCountWorkspace";
 
 export default function StockCountsPage() {
-  return <StockCountWorkspace view="scan" />;
+  const { user } = useTabAuth();
+  return user && <StockCountWorkspace key={user.id} />;
 }

@@ -1,5 +1,5 @@
-import StockCountWorkspace from "@/app/(dashboard)/stock-counts/_components/StockCountWorkspace";
+import { redirect } from "next/navigation";
 
 export default function StockCountResultsPage() {
-  return <StockCountWorkspace view="results" />;
+  redirect("/stock-counts");
 }

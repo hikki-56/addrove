@@ -6,20 +6,15 @@ import { feedbackError, feedbackSuccess } from "@/client/feedback";
 import BarcodeScanInput from "@/components/scanner/BarcodeScanInput";
 import CameraBarcodeScannerModal from "@/components/ui/CameraBarcodeScannerModal";
 import Link from "next/link";
-import type { CountEntry, ScannedCountProduct } from "@/types/count-round";
+import type { ScannedCountProduct } from "@/types/count-round";
 import { errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import { formatSavedNotice } from "@/app/(dashboard)/stock-counts/_lib/count-ui";
 
-type ClaimResult = { shelf: string; previous: CountEntry | null };
-type SaveMode = "add" | "set";
-
-export default function CountScanner({ warehouse, round }: { warehouse: string; round: string }) {
+export default function CountScanner({ warehouse }: { warehouse: string }) {
   const [product, setProduct] = useState<ScannedCountProduct>();
   const [shelf, setShelf] = useState("");
-  const [previous, setPrevious] = useState<CountEntry | null>(null);
-  const [mode, setMode] = useState<SaveMode>("add");
   const [code, setCode] = useState("");
-  const [qty, setQty] = useState("1");
+  const [qty, setQty] = useState("");
   const [camera, setCamera] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,10 +28,8 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
   function resetAll() {
     setProduct(undefined);
     setShelf("");
-    setPrevious(null);
-    setMode("add");
     setCode("");
-    setQty("1");
+    setQty("");
     setError("");
     pending.current = null;
   }
@@ -44,9 +37,7 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
   function goBack() {
     if (step === 3) {
       setShelf("");
-      setPrevious(null);
-      setMode("add");
-      setQty("1");
+      setQty("");
       setError("");
       pending.current = null;
       return;
@@ -66,13 +57,8 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
       if (!product) {
         setProduct(await getCount<ScannedCountProduct>({ warehouse, product: raw }));
       } else {
-        const claimed = await sendCount<ClaimResult>({
-          action: "claim", warehouse, round, product: product.product_id, shelf: raw.trim(),
-        });
-        setShelf(claimed.shelf);
-        setPrevious(claimed.previous);
-        setMode("add");
-        setQty("1");
+        setShelf(await getCount<string>({ warehouse, location: raw.trim() }));
+        setQty("");
       }
       setCode("");
       if (sound) feedbackSuccess();
@@ -94,13 +80,13 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
     setBusy(true); setError("");
     try {
       const body = {
-        action: "save", warehouse, round, product: product.product_id, shelf,
-        quantity, mode, previous: previous?.request_id ?? null,
+        action: "submit", warehouse, product: product.product_id, shelf,
+        quantity,
       };
       const signature = JSON.stringify(body);
       if (pending.current?.signature !== signature) pending.current = { signature, request: uuid() };
-      const saved = await sendCount<CountEntry>({ ...body, request: pending.current.request });
-      setNotice(formatSavedNotice(saved));
+      await sendCount({ ...body, request: pending.current.request });
+      setNotice(formatSavedNotice({ ...product, shelf_code: shelf, quantity }));
       resetAll();
     } catch (e) {
       setError(errorText(e));
@@ -109,8 +95,6 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
 
   const barcode = product?.barcode?.trim();
   const unit = product?.base_unit ?? "";
-  const qtyLabel = previous && mode === "add" ? `จำนวนที่เพิ่ม (${unit})` : `จำนวนที่นับได้ (${unit})`;
-
   return <section className="overflow-hidden rounded-2xl bg-white shadow-m3-card">
     <div className="space-y-4 p-4 sm:p-6">
       <header>
@@ -120,7 +104,7 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-m3-grey-800">
             {step === 1 ? <label htmlFor="count-scan">สแกนสินค้า</label>
-              : step === 2 ? <label htmlFor="count-scan">สแกนชั้นวาง</label>
+              : step === 2 ? <label htmlFor="count-scan">สแกนตำแหน่ง</label>
               : "กรอกจำนวนที่นับได้"}
           </h2>
           <span aria-label={`ขั้นที่ ${step} จาก 3`} className="shrink-0 text-sm font-semibold tabular-nums text-m3-grey-600">{step} / 3</span>
@@ -149,7 +133,7 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
                 <svg aria-hidden="true" className="size-4 shrink-0 text-m3-primary" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
                 </svg>
-                ชั้น {shelf}
+                ตำแหน่ง {shelf}
               </p>
             )}
           </div>
@@ -164,7 +148,7 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
             value={code}
             onChange={setCode}
             isProcessing={busy}
-            placeholder={step === 2 ? "พิมพ์หรือสแกนรหัสชั้น" : "พิมพ์หรือสแกนรหัสสินค้า"}
+            placeholder={step === 2 ? "พิมพ์หรือสแกนรหัสตำแหน่ง" : "พิมพ์หรือสแกนรหัสสินค้า"}
             onScanSubmit={scan}
             onOpenScannerModal={() => setCamera(true)}
             isScannerOpen={camera}
@@ -177,33 +161,15 @@ export default function CountScanner({ warehouse, round }: { warehouse: string; 
 
       {step === 3 && product && (
         <div className="space-y-3">
-          {previous && (
-            <>
-              <p className="text-sm font-semibold text-m3-grey-800">
-                ชั้นนี้เคยนับไว้ <span className="tabular-nums">{previous.quantity}</span> {previous.base_unit}
-              </p>
-              <fieldset className="flex flex-wrap gap-5 text-sm font-semibold text-m3-grey-800">
-                <legend className="sr-only">วิธีบันทึกจำนวน</legend>
-                <label className="inline-flex items-center gap-2">
-                  <input type="radio" name="count-mode" className="size-4 accent-m3-grey-800" checked={mode === "add"} onChange={() => setMode("add")} disabled={busy} />
-                  เพิ่มจากเดิม
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input type="radio" name="count-mode" className="size-4 accent-m3-grey-800" checked={mode === "set"} onChange={() => setMode("set")} disabled={busy} />
-                  แก้ยอดเดิม
-                </label>
-              </fieldset>
-            </>
-          )}
-          <label className="grid gap-1.5 text-sm font-semibold text-m3-grey-800">{qtyLabel}
+          <label className="grid gap-1.5 text-sm font-semibold text-m3-grey-800">จำนวนที่นับได้ ({unit})
             <input type="number" inputMode="decimal" min="0" max="99999999999.999" step="0.001"
               className="h-14 w-full rounded-lg border border-[rgba(145,158,171,.32)] bg-white px-3 text-2xl font-semibold tabular-nums text-m3-grey-800 outline-none focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800"
               value={qty} disabled={busy}
               onFocus={e => e.currentTarget.select()} onChange={e => setQty(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void save(); } }} />
           </label>
-          <button type="button" className="m3-btn m3-btn-dark min-h-[52px] w-full sm:min-h-12" disabled={busy} onClick={() => void save()}>
-            บันทึกจำนวน
+          <button type="button" className="m3-btn m3-btn-dark min-h-[52px] w-full sm:min-h-12" disabled={busy || !qty.trim()} onClick={() => void save()}>
+            ยืนยัน
           </button>
         </div>
       )}

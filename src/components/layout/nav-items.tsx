@@ -58,9 +58,9 @@ function Icon({ children, className = "w-[18px] h-[18px]" }: { children: React.R
 
 export function getNavItems(role?: UserRole): NavItem[] {
   if (role === "APPROVER") {
-    // APPROVER (บัญชีแก้ว) — เบิกสินค้า + ใบผลิต
-    const hrefs = ["/movements/transfer", "/production/jobs"];
-    return navItems.filter((i) => hrefs.includes(i.href));
+    // Keep the existing shortcuts first for the approver.
+    const hrefs = ["/production/jobs", "/movements/transfer", "/stock-counts"];
+    return hrefs.flatMap(href => navItems.filter(item => item.href === href));
   }
   const isAdmin = role === "ADMIN";
   return navItems.map((item) => {
@@ -107,7 +107,8 @@ export function getSelectableMenuItems(user: MenuUser): NavItem[] {
 export function getVisibleNavItems(user: MenuUser, menuHrefs?: string[] | null, canManage = canManageUserMenus(user.email)): NavItem[] {
   const allowed = menuHrefs ?? getAllowedMenuHrefs(user);
   const visible = (menuHrefs ? getSelectableMenuItems(user) : getRoleMenuItems(user))
-    .filter((item) => allowed === null || allowed.includes(item.href));
+    .filter((item) => allowed === null || allowed.includes(item.href) ||
+      (item.href === "/stock-counts" && canManageUserMenus(user.email) && allowed.includes("/stock-counts/results")));
   // "ระบุตำแหน่งสินค้า" / "คำขอระบุตำแหน่ง": ค่าเริ่มต้น = พนักงานทุกคน + แอดมินเฉพาะ ty (ยืนยันผ่าน can_manage)
   // ตั้งค่าเมนูผู้ใช้ ติ๊กเพิ่มหรือเอาออกได้ทีละเมนู (ดู getAssignLocationAccess)
   const access = getAssignLocationAccess(user.role, user.email, menuHrefs ?? null, canManage);
@@ -170,14 +171,8 @@ export const navItems: NavItem[] = [
   {
     href: "/stock-counts",
     label: "ตรวจนับสต็อก",
-    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF"],
+    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF", "STAFF", "PACKER", "APPROVER"],
     icon: <Icon><rect x="4" y="4" width="16" height="17" rx="2" /><path d="M9 3h6v3H9zM8 13l3 3 5-6" /></Icon>,
-  },
-  {
-    href: "/stock-counts/results",
-    label: "ผลตรวจนับสต็อก",
-    roles: ["ADMIN", "MANAGER", "WAREHOUSE_STAFF"],
-    icon: <Icon><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></Icon>,
   },
   {
     href: "/movements/receive",

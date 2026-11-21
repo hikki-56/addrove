@@ -110,6 +110,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.EXPRESS_IMPORT_MANAGE,
   ],
   APPROVER: [
+    PERMISSIONS.STOCK_COUNT,
     PERMISSIONS.STOCK_VIEW,
     PERMISSIONS.DOCUMENT_VIEW,
     PERMISSIONS.DOCUMENT_APPROVE,
@@ -134,6 +135,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
   ],
   // พนักงานแพ็กของ — ทำงานเฉพาะสายส่งของออก: หยิบ → แพ็ก → ขึ้นรถ
   PACKER: [
+    PERMISSIONS.STOCK_COUNT,
     PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_VIEW,
     PERMISSIONS.STOCK_ISSUE,
@@ -141,6 +143,7 @@ export const ROLE_PERMISSION_MATRIX: Record<UserRole, readonly Permission[]> = {
     PERMISSIONS.OUTBOUND_SHIP,
   ],
   STAFF: [
+    PERMISSIONS.STOCK_COUNT,
     PERMISSIONS.OFFICE_VIEW,
     PERMISSIONS.STOCK_RECEIVE,
     PERMISSIONS.STOCK_ISSUE,

@@ -54,12 +54,12 @@ test("every non-system menu is selectable for every role; ticking one outside th
   expect(hrefs(owner, ["/users/cards"])).toContain("/users/cards");
 });
 
-test("APPROVER keeps its two default menus and can be granted any other", () => {
+test("APPROVER keeps its shortcuts and can count stock", () => {
   const kaew = { role: "APPROVER" as const, email: "kaew@stockify.com" };
-  expect(getVisibleNavItems(kaew, null).map(({ href }) => href).slice(0, 2)).toEqual(["/production/jobs", "/movements/transfer"]);
+  expect(getVisibleNavItems(kaew, null).map(({ href }) => href).slice(0, 3)).toEqual(["/production/jobs", "/movements/transfer", "/stock-counts"]);
   expect(getVisibleNavItems(kaew, null).map(({ href }) => href)).not.toContain("/movements/receive");
   const selectable = getSelectableMenuItems(kaew).map(({ href }) => href);
-  expect(selectable.slice(0, 2)).toEqual(["/production/jobs", "/movements/transfer"]);
+  expect(selectable.slice(0, 3)).toEqual(["/production/jobs", "/movements/transfer", "/stock-counts"]);
   expect(selectable).toContain("/movements/receive");
   expect(getVisibleNavItems(kaew, ["/movements/receive"]).map(({ href }) => href)[0]).toBe("/movements/receive");
 });
