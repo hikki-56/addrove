@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { ScannedCountProduct } from "@/types/count-round";
 import { errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import { formatSavedNotice } from "@/app/(dashboard)/stock-counts/_lib/count-ui";
+import { getCountPositions } from "@/lib/stock-count-positions";
 
 export default function CountScanner({ warehouse }: { warehouse: string }) {
   const [product, setProduct] = useState<ScannedCountProduct>();
@@ -24,6 +25,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
   const scanInput = useRef<HTMLInputElement>(null);
 
   const step = !product ? 1 : !shelf ? 2 : 3;
+  const positions = step === 2 ? getCountPositions(warehouse) : undefined;
 
   function resetAll() {
     setProduct(undefined);
@@ -104,6 +106,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-m3-grey-800">
             {step === 1 ? <label htmlFor="count-scan">สแกนสินค้า</label>
+              : positions ? <label htmlFor="count-position">เลือกตำแหน่งที่ตรวจนับ</label>
               : step === 2 ? <label htmlFor="count-scan">สแกนตำแหน่ง</label>
               : "กรอกจำนวนที่นับได้"}
           </h2>
@@ -140,7 +143,14 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
         </div>
       )}
 
-      {step < 3 && (
+      {positions && (
+        <select id="count-position" value="" disabled={busy} onChange={e => void scan(e.target.value)}
+          className="min-h-12 w-full rounded-xl border border-m3-grey-300 bg-white px-3 text-base">
+          <option value="" disabled>เลือกห้องและชั้น</option>
+          {positions.map(position => <option key={position} value={position}>{position}</option>)}
+        </select>
+      )}
+      {step < 3 && !positions && (
         <>
           <BarcodeScanInput
             inputRef={scanInput}

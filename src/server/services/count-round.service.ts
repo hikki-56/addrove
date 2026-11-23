@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getCountPositions } from "@/lib/stock-count-positions";
 import { normalizeReceiveScanCode } from "@/features/receive/utils";
 import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
 import { authorize, PERMISSIONS, type Actor } from "@/server/security";
@@ -25,6 +26,7 @@ export async function findCountProduct(scan: string) {
 }
 
 export async function findCountLocation(warehouse: string, scan: string) {
+  if (getCountPositions(warehouse)?.includes(scan)) return scan;
   const codes = await query<{ code: string }>(`select location_id, location_code as code from locations
     where warehouse_id=$1 and active and upper(location_code)=upper($2)
     union select l.location_id, s.shelf_code from shelves s join locations l using(location_id)

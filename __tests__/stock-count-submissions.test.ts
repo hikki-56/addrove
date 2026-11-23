@@ -49,6 +49,25 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await mockDb?.close(); });
 
+test("warehouse 5 accepts the fourteen room/floor positions and saves the entered quantity", async () => {
+  await mockDb.exec("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values ('wh-05','WH5','โกดัง 5')");
+  signIn("a", "STAFF");
+  const location = (warehouse: string, value: string) => get(new URLSearchParams({ warehouse, location: value }).toString());
+  expect((await location("wh-01", "ห้อง 1 ชั้น 1")).status).toBe(400);
+  mockActor.warehouseAccess = "wh-05";
+  for (let room = 1; room <= 7; room++) {
+    for (const floor of [1, 2]) {
+      const position = `ห้อง ${room} ชั้น ${floor}`;
+      expect((await (await location("wh-05", position)).json()).data).toBe(position);
+    }
+  }
+  expect((await location("wh-05", "ห้อง 8 ชั้น 1")).status).toBe(400);
+  const body = { ...submission, warehouse: "wh-05", shelf: "ห้อง 7 ชั้น 2", quantity: 12, request: randomUUID() };
+  expect((await post(body)).status).toBe(200);
+  expect((await mockDb.query("select shelf_code, entered_qty::int as qty from stock_count_entries where request_id=$1", [body.request])).rows)
+    .toEqual([{ shelf_code: body.shelf, qty: 12 }]);
+});
+
 test("staff scan, confirm and retry; TY sees each person's entered quantity on the Bangkok submission date", async () => {
   signIn("a", "STAFF");
   expect((await (await get("")).json()).data.reviewer).toBe(false);
