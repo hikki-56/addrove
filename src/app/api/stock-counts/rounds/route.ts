@@ -6,7 +6,10 @@ import { authorize, createActorFromSession, isAuthorized, PERMISSIONS, SecurityE
 import { query } from "@/server/repositories/postgres/database";
 import { getStorageDriver } from "@/server/repositories/storage-driver";
 import { withMaintenanceGuard } from "@/server/storage-transaction";
-import { countSubmission, CountProblem, findCountProduct, findCountLocation, countReport, submitCount } from "@/server/services/count-round.service";
+import { countSubmission, findCountProduct, findCountLocation, countReport, submitCount } from "@/server/services/count-round.service";
+import { CountProblem } from "@/server/services/count-problem";
+import { warehouseReference, importCountReference, productComparison, dailyComparison, referenceImport } from "@/server/services/count-reference.service";
+import { withDatabaseTransaction } from "@/server/repositories/postgres/database";
 
 async function handle(req: NextRequest, action: (actor: Actor, reviewer: boolean) => Promise<unknown>) {
   try {
@@ -40,12 +43,16 @@ export function GET(req: NextRequest) {
       return { warehouses: rows.filter(row => isAuthorized(actor, permission, row.warehouse_id)), userId: actor.id, reviewer };
     }
     authorize(actor, permission, warehouse);
+    if (params.has("reference") && reviewer) return warehouseReference(warehouse);
     if (params.has("date")) {
       if (!reviewer) throw new ForbiddenError();
-      return countReport(warehouse, z.iso.date().parse(params.get("date")));
+      const date = z.iso.date().parse(params.get("date"));
+      const entries = await countReport(warehouse, date);
+      return params.has("comparison") ? dailyComparison(warehouse, date, entries) : entries;
     }
     if (reviewer) throw new ForbiddenError();
     const code = z.string().trim().min(1).max(200);
+    if (params.has("compare")) return productComparison(warehouse, code.parse(params.get("compare")));
     if (params.has("product")) return findCountProduct(code.parse(params.get("product")));
     if (params.has("location")) return findCountLocation(warehouse, code.parse(params.get("location")));
     throw new CountProblem("กรุณาเปิดหน้าตรวจนับใหม่", 400);
@@ -54,6 +61,12 @@ export function GET(req: NextRequest) {
 
 export const POST = withMaintenanceGuard((req: NextRequest) =>
   handle(req, async (actor, reviewer) => {
-    if (reviewer) throw new ForbiddenError();
-    return submitCount(countSubmission.parse(await req.json()), actor);
+    const body = await req.json();
+    if (reviewer) {
+      if (body?.action !== "reference") throw new ForbiddenError();
+      const cmd = referenceImport.parse(body);
+      authorize(actor, PERMISSIONS.STOCK_COUNT_VIEW, cmd.warehouse);
+      return withDatabaseTransaction(() => importCountReference(cmd.warehouse, cmd.name, cmd.rows));
+    }
+    return submitCount(countSubmission.parse(body), actor);
   }));

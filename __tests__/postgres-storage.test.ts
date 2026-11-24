@@ -1,4 +1,7 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import { dailyComparison, importCountReference } from "@/server/services/count-reference.service";
+import { countReport, submitCount } from "@/server/services/count-round.service";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import type { QueryResultRow } from "pg";
@@ -147,6 +150,26 @@ test("all schema migrations are rerunnable and server-only RLS is enabled", asyn
     finally {
         await mockDb.exec("RESET ROLE;");
     }
+});
+
+test("TY daily totals include repeated submissions across shelves and count a retry only once", async () => {
+    const warehouse = "wh-ref";
+    const [item] = await query("select product_id from products where sku='TEST'");
+    await query("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values($1,'REF','Reference')", [warehouse]);
+    await query("insert into locations(location_id,warehouse_id,location_code) values('ref-a',$1,'A'),('ref-b',$1,'B')", [warehouse]);
+    await withDatabaseTransaction(() => importCountReference(warehouse, "reference.csv", [{ row: 2, code: "TEST", shelf: "", quantity: 6 }]));
+    const actor = { id: "ref-staff", username: "Counter", role: "ADMIN" as const, correlationId: randomUUID() };
+    const first = { action: "submit" as const, warehouse, product: item.product_id, shelf: "A", quantity: 1, request: randomUUID() };
+    await submitCount(first, actor);
+    await submitCount(first, actor);
+    await submitCount({ ...first, quantity: 2, request: randomUUID() }, actor);
+    const last = await submitCount({ ...first, shelf: "B", quantity: 3, request: randomUUID() }, actor);
+    expect(last.totals).toEqual({ expected: 6, counted: 6 });
+    const day = new Date().toLocaleDateString("sv-SE", {timeZone: "Asia/Bangkok"});
+    const report = await dailyComparison(warehouse, day, await countReport(warehouse, day));
+    expect(report.entries).toHaveLength(3);
+    expect(report.totals).toEqual([expect.objectContaining({ sku: "TEST", expected: 6, counted: 6 })]);
+    expect((await dailyComparison(warehouse, "2000-01-01", [])).reference).toBeNull();
 });
 test("document numbering is durable and unique under concurrent requests", async () => {
     const docs = await Promise.all(Array.from({ length: 12 }, () => repo.documents.create({ document_type: "RECEIVE", document_date: "2026-10-12", reference_no: "", status: "PENDING", note: "", created_by: "test" })));

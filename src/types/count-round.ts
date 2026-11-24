@@ -20,3 +20,15 @@ export interface CountEntry extends CountProduct {
 export interface CountReportEntry extends CountEntry {
   barcode: string | null;
 }
+
+export interface CountReferenceFile { id: number; file_name: string; row_count: number }
+export interface CountReferenceRow { row: number; code: string; shelf: string; quantity: number; warehouse?: string }
+export interface ProductComparison {
+  hasReference: boolean;
+  shelves: { shelf_code: string; expected_qty: number | null; counted_qty: number | null }[];
+}
+export interface DailyCountReport {
+  entries: CountReportEntry[];
+  reference: CountReferenceFile | null;
+  totals: (CountProduct & { expected: number | null; counted: number | null })[];
+}

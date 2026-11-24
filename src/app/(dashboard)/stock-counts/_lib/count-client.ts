@@ -1,4 +1,5 @@
-import type { CountReportEntry } from "@/types/count-round";
+import type { CountReportEntry, DailyCountReport } from "@/types/count-round";
+import { countComparisonLabel } from "@/lib/count-comparison";
 
 const endpoint = "/api/stock-counts/rounds";
 
@@ -35,7 +36,7 @@ export const countReportColumns: {
   { label: "เวลาบันทึก (ไทย)", width: 28, value: row => dateLabel(row.counted_at) },
 ];
 
-export async function downloadCounts(entries: CountReportEntry[], warehouseName: string, date: string) {
+export async function downloadCounts(entries: CountReportEntry[], warehouseName: string, date: string, report?: DailyCountReport) {
   const XLSX = await import("xlsx");
   const data = [countReportColumns.map(column => column.label),
     ...entries.map(row => countReportColumns.map(column => column.value(row, warehouseName)))];
@@ -43,6 +44,11 @@ export async function downloadCounts(entries: CountReportEntry[], warehouseName:
   sheet["!cols"] = countReportColumns.map(column => ({ wch: column.width }));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "ผลตรวจนับ");
+  if (report?.reference) {
+    const comparison = [["รหัสสินค้า", "ชื่อสินค้า", "ในไฟล์", "นับรวม", "หน่วย", "ผลเทียบยอด"],
+      ...report.totals.map(r => [r.sku, r.product_name, r.expected, r.counted, r.base_unit, countComparisonLabel(r.expected, r.counted)])];
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(comparison), "เทียบยอด");
+  }
   XLSX.writeFile(workbook, `ตรวจนับ-${warehouseName}-${date}.xlsx`);
 }
 

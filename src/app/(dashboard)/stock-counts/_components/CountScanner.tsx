@@ -10,6 +10,8 @@ import type { ScannedCountProduct } from "@/types/count-round";
 import { errorText, getCount, sendCount } from "@/app/(dashboard)/stock-counts/_lib/count-client";
 import { formatSavedNotice } from "@/app/(dashboard)/stock-counts/_lib/count-ui";
 import { getCountPositions } from "@/lib/stock-count-positions";
+import LiveCountComparison, { matchStyle, mismatchStyle } from "./LiveCountComparison";
+import { countComparisonLabel } from "@/lib/count-comparison";
 
 export default function CountScanner({ warehouse }: { warehouse: string }) {
   const [product, setProduct] = useState<ScannedCountProduct>();
@@ -20,6 +22,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [mismatch, setMismatch] = useState(false);
   const processing = useRef(false);
   const pending = useRef<{ signature: string; request: string } | null>(null);
   const scanInput = useRef<HTMLInputElement>(null);
@@ -87,8 +90,10 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
       };
       const signature = JSON.stringify(body);
       if (pending.current?.signature !== signature) pending.current = { signature, request: uuid() };
-      await sendCount({ ...body, request: pending.current.request });
-      setNotice(formatSavedNotice({ ...product, shelf_code: shelf, quantity }));
+      const { totals } = await sendCount<{ totals?: { expected: number | null; counted: number | null } }>({ ...body, request: pending.current.request });
+      const result = totals ? ` · รวมทั้งโกดัง ${totals.counted} ${product.base_unit} · ในไฟล์ ${totals.expected ?? "—"} · ${countComparisonLabel(totals.expected, totals.counted)}` : "";
+      setMismatch(Boolean(totals && totals.expected !== totals.counted));
+      setNotice(formatSavedNotice({ ...product, shelf_code: shelf, quantity }) + result);
       resetAll();
     } catch (e) {
       setError(errorText(e));
@@ -115,8 +120,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
       </header>
 
       {notice && step === 1 && (
-        <p role="status" className="flex items-center gap-2 rounded-xl bg-[rgba(0,167,111,.12)] px-3 py-2.5 text-[13px] font-bold text-[#007867]">
-          <span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center rounded-full bg-m3-primary text-[11px] text-white">✓</span>
+        <p role="status" className={mismatch ? mismatchStyle : matchStyle}>
           <span className="min-w-0 break-words">{notice}</span>
         </p>
       )}
@@ -143,6 +147,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
         </div>
       )}
 
+      {product && <LiveCountComparison key={product.product_id} warehouse={warehouse} product={product} quantity={qty} />}
       {positions && (
         <select id="count-position" value="" disabled={busy} onChange={e => void scan(e.target.value)}
           className="min-h-12 w-full rounded-xl border border-m3-grey-300 bg-white px-3 text-base">

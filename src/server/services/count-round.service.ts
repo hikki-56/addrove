@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { CountProblem } from "./count-problem";
+import { productComparison } from "./count-reference.service";
+import { productTotals } from "@/lib/count-comparison";
 import { getCountPositions } from "@/lib/stock-count-positions";
 import { normalizeReceiveScanCode } from "@/features/receive/utils";
 import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
@@ -14,8 +17,9 @@ export const countSubmission = z.object({
   request: z.uuid(),
 });
 
-export class CountProblem extends Error {
-  constructor(message: string, readonly status = 409) { super(message); }
+async function countReceipt(cmd: z.infer<typeof countSubmission>) {
+  const comparison = await productComparison(cmd.warehouse, cmd.product);
+  return { quantity: cmd.quantity, totals: comparison.hasReference ? productTotals(comparison) : null };
 }
 
 export async function findCountProduct(scan: string) {
@@ -55,7 +59,7 @@ export function submitCount(cmd: z.infer<typeof countSubmission>, actor: Actor) 
       if (receipt.counted_by !== actor.id || receipt.warehouse_id !== cmd.warehouse ||
         receipt.product_id !== cmd.product || receipt.shelf_code.toUpperCase() !== cmd.shelf.toUpperCase() ||
         receipt.quantity !== cmd.quantity) throw new CountProblem("รหัสคำขอนี้ถูกใช้กับข้อมูลอื่นแล้ว");
-      return { quantity: receipt.quantity };
+      return countReceipt(cmd);
     }
 
     const [product] = await query<CountProduct>("select product_id, sku, product_name, base_unit from products where active and product_id=$1", [cmd.product]);
@@ -75,6 +79,6 @@ export function submitCount(cmd: z.infer<typeof countSubmission>, actor: Actor) 
       values($1,$2,$3,$4,$5,$6,$7,$8,$8,'set',$9,$10,$11,$12)`,
       [cmd.request, id, code, product.product_id, product.sku, product.product_name, product.base_unit,
         cmd.quantity, previous?.request_id ?? null, (previous?.revision ?? 0) + 1, actor.id, actor.username]);
-    return { quantity: cmd.quantity };
+    return countReceipt(cmd);
   });
 }
