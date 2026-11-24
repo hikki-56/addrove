@@ -197,7 +197,7 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
     const quantity = Number(total.toFixed(3));
     if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999)
       throw new Error(`แถว ${i + 1} จำนวนในหน่วยย่อยเกินช่วงหรือความละเอียดที่รองรับ`);
-    rows.push({ row: i + 1, code, quantity, shelf: "", ...(warehouse ? { warehouse } : {}) });
+    rows.push({ row: i + 1, code, quantity, shelf: "" });
   }
   if (!rows.length) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   return rows;

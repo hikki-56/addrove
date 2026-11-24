@@ -264,19 +264,27 @@ export function getDefaultShelvesForLocation(locationId: string): any[] {
   ];
 }
 
-/** Compare a report's warehouse label with the selected warehouse and its code/name. */
-export function sameWarehouseRef(value: string | undefined, ...idents: string[]) {
-  if (!value?.trim()) return true;
-  const canon = (s: string) => {
-    const lower = s.trim().toLowerCase();
-    if (
-      /^wh-0?[1-6]$/.test(lower) ||
-      /^wh0?[1-6]$/.test(lower) ||
-      /^[1-6]$/.test(lower) ||
-      /โกดัง\s*[1-6]/.test(lower)
-    ) return normalizeWarehouseId(s);
-    return lower;
-  };
-  return new Set(idents.filter(Boolean).map(canon)).has(canon(value));
+
+/** Extract warehouse 1-6 from ids like wh-05, WH-5, 5, or โกดัง 5. Returns null if uncertain. */
+export function warehouseNumber(value: string | undefined) {
+  if (!value?.trim()) return null;
+  const lower = value.trim().toLowerCase();
+  if (lower.includes("สำนักงานใหญ่")) return 6;
+  const match = lower.match(/^wh-0?([1-6])$/) || lower.match(/^wh0?([1-6])$/) ||
+    lower.match(/^([1-6])$/) || lower.match(/โกดัง\s*([1-6])/);
+  return match ? Number(match[1]) : null;
 }
 
+/** True only when the row clearly names a different warehouse 1-6. Uncertain values do not block import. */
+export function isForeignWarehouseRow(rowWarehouse: string | undefined, ...idents: string[]) {
+  const rowNo = warehouseNumber(rowWarehouse);
+  if (rowNo == null) return false;
+  const identNos = [...new Set(idents.map(warehouseNumber).filter((n): n is number => n != null))];
+  if (!identNos.length) return false;
+  return !identNos.includes(rowNo);
+}
+
+/** Compare a report's warehouse label with the selected warehouse and its code/name. */
+export function sameWarehouseRef(value: string | undefined, ...idents: string[]) {
+  return !isForeignWarehouseRow(value, ...idents);
+}

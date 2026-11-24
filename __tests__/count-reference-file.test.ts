@@ -22,8 +22,8 @@ test("warehouse report uses the quantity columns and converts major units before
     ["รวมทั้งสิ้น", "1", "คลัง", "2", "สินค้า"],
   ];
   const expected = [
-    { row: 4, warehouse: "wh-05", code: "001", shelf: "", quantity: 27 },
-    { row: 5, warehouse: "wh-05", code: "002", shelf: "", quantity: 8 },
+    { row: 4, code: "001", shelf: "", quantity: 27 },
+    { row: 5, code: "002", shelf: "", quantity: 8 },
   ];
   expect(readWarehouseStockReport(sheet)).toEqual(expected);
   sheet[5][3] = "99";
@@ -40,7 +40,7 @@ test("warehouse report parses when the รวมคลัง row is missing", ()
     ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่องx12.0000", "3", "ชิ้น", "750"],
   ];
   expect(readWarehouseStockReport(sheet)).toEqual([
-    { row: 4, warehouse: "wh-05", code: "001", shelf: "", quantity: 27 },
+    { row: 4, code: "001", shelf: "", quantity: 27 },
   ]);
 });
 
@@ -159,7 +159,7 @@ test("warehouse report still works when a leading column is inserted and headers
     ["", "รวมทั้งสิ้น", "1", "คลัง", "2", "สินค้า"],
   ];
   expect(readWarehouseStockReport(sheet)).toEqual([
-    { row: 4, warehouse: "wh-05", code: "001", shelf: "", quantity: 27 },
+    { row: 4, code: "001", shelf: "", quantity: 27 },
   ]);
 });
 

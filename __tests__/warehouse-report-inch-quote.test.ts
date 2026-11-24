@@ -14,8 +14,8 @@ const NAME_904 = 'D0904#50-904 ชุดข้อต่อสายยาง 1/2
 const NAME_904_MID = 'D0904#50-904 ชุดข้อต่อสายยาง 1/2" แบบแยก 2 ทาง';
 const NAME_737 = 'D0737#50-737 ข้อต่อแบบสวมเร็ว 1/2 3/4""';
 const EXPECTED_904_737 = [
-  { row: 3, warehouse: "wh-05", code: "50-904", shelf: "", quantity: 2088 },
-  { row: 4, warehouse: "wh-05", code: "50-737", shelf: "", quantity: 1920 },
+  { row: 3, code: "50-904", shelf: "", quantity: 2088 },
+  { row: 4, code: "50-737", shelf: "", quantity: 1920 },
 ];
 
 function warehouseHeader() {
@@ -89,8 +89,8 @@ test("warehouse report keeps 50-737 with a doubled inch quote and a mid-name inc
     ...warehouseTotals("2", "4008", "0"),
   ];
   expect(readWarehouseStockReport(sheet)).toEqual([
-    { row: 3, warehouse: "wh-05", code: "50-737", shelf: "", quantity: 1920 },
-    { row: 4, warehouse: "wh-05", code: "50-904", shelf: "", quantity: 2088 },
+    { row: 3, code: "50-737", shelf: "", quantity: 1920 },
+    { row: 4, code: "50-904", shelf: "", quantity: 2088 },
   ]);
 });
 
@@ -116,7 +116,7 @@ test("warehouse report still rejects a missing multiplier and skips a wrong ware
     ...warehouseTotals("1", "2089", "0"),
   ];
   expect(readWarehouseStockReport(wrongTotal)).toEqual([
-    { row: 3, warehouse: "wh-05", code: "50-904", shelf: "", quantity: 2088 },
+    { row: 3, code: "50-904", shelf: "", quantity: 2088 },
   ]);
 });
 
