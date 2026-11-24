@@ -21,7 +21,7 @@ export interface CountReportEntry extends CountEntry {
   barcode: string | null;
 }
 
-export interface CountReferenceFile { id: number; file_name: string; row_count: number }
+export interface CountReferenceFile { id: number; file_name: string; row_count: number; unmatched_count?: number }
 export interface CountReferenceRow { row: number; code: string; shelf: string; quantity: number; warehouse?: string }
 export interface ProductComparison {
   hasReference: boolean;

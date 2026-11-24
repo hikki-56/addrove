@@ -94,21 +94,21 @@ test("warehouse report keeps 50-737 with a doubled inch quote and a mid-name inc
   ]);
 });
 
-test("warehouse report still rejects a missing multiplier and skips a wrong warehouse total", () => {
+test("warehouse report skips a missing multiplier and still skips a wrong warehouse total", () => {
   const missing = [
     warehouseHeader(),
     ["5", "โกดัง 5"],
     ["", "", "50-904", NAME_904, "", "", "", "", "", "2088", "ตัว", "0", "ตัว", "62640"],
     ...warehouseTotals("1", "2088", "0"),
   ];
-  expect(() => readWarehouseStockReport(missing)).toThrow("แถว 3 อ่านตัวคูณหน่วยใหญ่ของ 50-904 ไม่ได้");
+  expect(() => readWarehouseStockReport(missing)).toThrow("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   const emptyUnit = [
     warehouseHeader(),
     ["5", "โกดัง 5"],
     ["", "", "50-904", `${NAME_904}",",",",",",2088"`, "", "0", "ตัว", "62640"],
     ...warehouseTotals("1", "2088", "0"),
   ];
-  expect(() => readWarehouseStockReport(emptyUnit)).toThrow("แถว 3 อ่านตัวคูณหน่วยใหญ่ของ 50-904 ไม่ได้");
+  expect(() => readWarehouseStockReport(emptyUnit)).toThrow("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   const wrongTotal = [
     warehouseHeader(),
     ["5", "โกดัง 5"],

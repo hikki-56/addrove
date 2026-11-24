@@ -50,6 +50,7 @@ export default function ReferenceUpload({ warehouse, name, onImported }: {
       }} />
     </div>
     {file && <p className="break-all text-sm">กำลังใช้ {file.file_name} · {file.row_count.toLocaleString()} รายการ</p>}
+    {!!file?.unmatched_count && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{file.unmatched_count.toLocaleString()} รายการไม่พบในระบบ จะจับคู่เมื่อสแกน</p>}
     {file === null && <p className="text-sm">ยังไม่มีไฟล์เทียบยอดสำหรับโกดังนี้</p>}
     <p className="text-sm text-m3-grey-600">นำเข้ารายงาน “สินค้าคงเหลือ แยกตามคลังสินค้า” หรือ Excel/CSV ที่มีรหัสสินค้าและจำนวน ระบบรวมยอดนับทุกชั้นของวันที่เลือก และเทียบกับไฟล์ล่าสุด ณ วันนั้น</p>
     {(error || loadError) && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error || loadError}</p>}

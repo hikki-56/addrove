@@ -44,31 +44,38 @@ test("warehouse report parses when the รวมคลัง row is missing", ()
   ]);
 });
 
-test("warehouse report still rejects two warehouses in one file", () => {
+test("warehouse report keeps the first warehouse section and skips later warehouses", () => {
   const header = ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"];
   const product = ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่องx12.0000", "3", "ชิ้น", "750"];
-  expect(() => readWarehouseStockReport([
+  const firstOnly = [{ row: 3, code: "001", shelf: "", quantity: 27 }];
+  expect(readWarehouseStockReport([
     header,
     ["5", "โกดัง 5"],
     product,
     ["รวมคลัง", "", "5", "1", "สินค้า", "", "", "", "", "2", "", "3"],
     ["6", "โกดัง 6"],
     ["", "", "002", "น็อต", "", "", "", "", "", "1", "ตัวx1.0000", "0", "ตัว", "1"],
-  ])).toThrow("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
-  expect(() => readWarehouseStockReport([
+  ])).toEqual(firstOnly);
+  expect(readWarehouseStockReport([
     header,
     ["5", "โกดัง 5"],
     product,
     ["6", "โกดัง 6"],
-  ])).toThrow("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
+  ])).toEqual(firstOnly);
 });
 
-test("warehouse report still rejects an invalid unit multiplier", () => {
+test("warehouse report skips a row with an invalid unit multiplier", () => {
   expect(() => readWarehouseStockReport([
     ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"],
     ["5", "โกดัง 5"],
     ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่อง", "3", "ชิ้น", "750"],
-  ])).toThrow("แถว 3 อ่านตัวคูณหน่วยใหญ่ของ 001 ไม่ได้");
+  ])).toThrow("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
+  expect(readWarehouseStockReport([
+    ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"],
+    ["5", "โกดัง 5"],
+    ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่อง", "3", "ชิ้น", "750"],
+    ["", "", "002", "น็อต", "", "", "", "", "", "1", "ตัวx1.0000", "0", "ตัว", "1"],
+  ])).toEqual([{ row: 4, code: "002", shelf: "", quantity: 1 }]);
 });
 
 test("a two-column Excel file preserves formatted barcodes and the underlying quantity", async () => {
@@ -83,9 +90,11 @@ test("a two-column Excel file preserves formatted barcodes and the underlying qu
   ]);
 });
 
-test("a blank quantity rejects the entire CSV and identifies the row", async () => {
+test("a blank quantity skips that row and still imports the rest of the CSV", async () => {
   const input = new File(["SKU,qty\n0008,0\n0009,\n"], "reference.csv");
-  await expect(readReferenceFile(input)).rejects.toThrow("แถว 3");
+  await expect(readReferenceFile(input)).resolves.toEqual([
+    { row: 2, code: "0008", shelf: "", quantity: 0 },
+  ]);
 });
 
 test("compare quantities across shelves, preserving zero and distinguishing an absent product", () => {

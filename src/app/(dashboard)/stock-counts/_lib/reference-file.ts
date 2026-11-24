@@ -81,9 +81,9 @@ function readGenericRows(
     const place = values[shelf]?.trim() ?? "";
     const cell = sheet[XLSX.utils.encode_cell({ r: i, c: qty })];
     const value = String(cell?.v ?? "").trim();
-    if (!code) throw new Error(`แถว ${i + 1} กรุณาระบุรหัสสินค้าหรือบาร์โค้ด`);
+    if (!code) continue;
     if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,3})?$/.test(value) || Number(value.replaceAll(",", "")) > 99999999999.999)
-      throw new Error(`แถว ${i + 1} จำนวนต้องเป็นเลขตั้งแต่ 0 ถึง 99,999,999,999.999 และมีทศนิยมไม่เกิน 3 ตำแหน่ง`);
+      continue;
     rows.push({ row: i + 1, code, shelf: place, quantity: Number(value.replaceAll(",", "")), warehouse: values[warehouse]?.trim() || undefined });
   }
   if (!rows.length) throw new Error("ไม่มีรายการสินค้าในไฟล์");

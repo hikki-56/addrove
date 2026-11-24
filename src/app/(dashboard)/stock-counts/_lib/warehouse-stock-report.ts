@@ -1,9 +1,9 @@
 import type { CountReferenceRow } from "@/types/count-round";
 
-function amount(text: string | undefined, row: number) {
+function amount(text: string | undefined) {
   const value = text?.trim() ?? "";
   if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value))
-    throw new Error(`แถว ${row} อ่านจำนวนในรายงานคลังไม่ได้`);
+    return null;
   return Number(value.replaceAll(",", ""));
 }
 
@@ -174,29 +174,31 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
 
   const rows: CountReferenceRow[] = [];
   let warehouse = "";
+  let skipSection = false;
   for (let i = header + 1; i < table.length; i++) {
     const r = table[i];
     const label = cellName(r[iWarehouse]);
     const code = r[iCode]?.trim();
     if (label && /^0?[1-6]$/.test(label) && !code) {
       const id = `wh-${label.padStart(2, "0")}`;
-      if (warehouse && warehouse !== id) throw new Error("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
-      warehouse = id;
+      if (!warehouse) warehouse = id;
+      skipSection = warehouse !== id;
       continue;
     }
+    if (skipSection) continue;
     if (!code || label === "รวมทั้งสิ้น" || label === "รวมคลัง" || label.startsWith("รวม") ||
       (label === "คลัง" && cellName(code) === "รหัสสินค้า")) continue;
     const large = r[iLarge], unit = iUnit >= 0 ? r[iUnit] : "", small = r[iSmall];
     const factor = unit?.trim().match(UNIT_FACTOR);
     const hasQty = NUMBER.test((large ?? "").trim()) || NUMBER.test((small ?? "").trim());
     if (!hasQty) continue;
-    if (!factor || Number(factor[1]) <= 0) throw new Error(`แถว ${i + 1} อ่านตัวคูณหน่วยใหญ่ของ ${code} ไม่ได้`);
-    const largeQty = amount(large, i + 1);
-    const smallQty = amount(small, i + 1);
+    if (!factor || Number(factor[1]) <= 0) continue;
+    const largeQty = amount(large);
+    const smallQty = amount(small);
+    if (largeQty === null || smallQty === null) continue;
     const total = largeQty * Number(factor[1]) + smallQty;
     const quantity = Number(total.toFixed(3));
-    if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999)
-      throw new Error(`แถว ${i + 1} จำนวนในหน่วยย่อยเกินช่วงหรือความละเอียดที่รองรับ`);
+    if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999) continue;
     rows.push({ row: i + 1, code, quantity, shelf: "" });
   }
   if (!rows.length) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
