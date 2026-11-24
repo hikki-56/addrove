@@ -145,31 +145,34 @@ export async function dailyComparison(warehouse: string, date: string, entries: 
   if (!reference) return { entries, reference, totals: [] };
   const expected = await query<DailyCountReport["totals"][number]>(`
     with file_rows as (
-      select trim(cells->>0) code, nullif(trim(cells->>3), '') barcode,
-        ${normSql("cells->>0")} ncode, sum((cells->>2)::numeric) qty
+      select row_number() over () as id, trim(cells->>0) code, nullif(trim(cells->>3), '') barcode,
+        sum((cells->>2)::numeric) qty
       from storage_rows where tab_id=$1
-      group by 1, 2, 3
+      group by trim(cells->>0), nullif(trim(cells->>3), '')
     ),
-    catalog as (
-      select product_id, ${normSql("sku")} sku, nullif(${normSql("barcode")}, '') barcode
-      from products where active
+    catalog_keys as (
+      select p.product_id, k.kind, k.value
+      from products p
+      cross join lateral (values
+        ('id', p.product_id),
+        ('code', ${normSql("p.sku")}),
+        ('code', nullif(${normSql("p.barcode")}, ''))
+      ) as k(kind, value)
+      where p.active and k.value is not null
     ),
-    hits as (
-      select f.code, f.barcode, f.qty, c.product_id
+    file_keys as (
+      select f.id, k.kind, k.value
       from file_rows f
-      join catalog c on c.product_id = f.code
-        or c.sku = f.ncode
-        or (c.barcode is not null and c.barcode = f.ncode)
-        or (f.barcode is not null and (
-          c.product_id = f.barcode
-          or c.sku = ${normSql("f.barcode")}
-          or (c.barcode is not null and c.barcode = ${normSql("f.barcode")})
-        ))
+      cross join lateral (values
+        ('id', f.code), ('id', f.barcode),
+        ('code', ${normSql("f.code")}), ('code', ${normSql("f.barcode")})
+      ) as k(kind, value)
+      where k.value is not null
     ),
     matched as (
-      select code, barcode, min(product_id) product_id, count(distinct product_id) hits
-      from hits
-      group by code, barcode
+      select f.id, min(c.product_id) product_id
+      from file_keys f join catalog_keys c using(kind, value)
+      group by f.id having count(distinct c.product_id) = 1
     )
     select coalesce(p.product_id, f.code) product_id,
       coalesce(p.sku, f.code) sku,
@@ -177,7 +180,7 @@ export async function dailyComparison(warehouse: string, date: string, entries: 
       coalesce(p.base_unit, '') base_unit,
       f.qty expected, null::numeric counted
     from file_rows f
-    left join matched m on m.code = f.code and m.barcode is not distinct from f.barcode and m.hits = 1
+    left join matched m on m.id = f.id
     left join products p on p.product_id = m.product_id
     order by coalesce(p.sku, f.code)`, [reference.id]);
   const countedRows = await query<{ product_id: string; sku: string; product_name: string; base_unit: string; quantity: number }>(`
