@@ -263,3 +263,20 @@ export function getDefaultShelvesForLocation(locationId: string): any[] {
     },
   ];
 }
+
+/** Compare a report's warehouse label with the selected warehouse and its code/name. */
+export function sameWarehouseRef(value: string | undefined, ...idents: string[]) {
+  if (!value?.trim()) return true;
+  const canon = (s: string) => {
+    const lower = s.trim().toLowerCase();
+    if (
+      /^wh-0?[1-6]$/.test(lower) ||
+      /^wh0?[1-6]$/.test(lower) ||
+      /^[1-6]$/.test(lower) ||
+      /โกดัง\s*[1-6]/.test(lower)
+    ) return normalizeWarehouseId(s);
+    return lower;
+  };
+  return new Set(idents.filter(Boolean).map(canon)).has(canon(value));
+}
+

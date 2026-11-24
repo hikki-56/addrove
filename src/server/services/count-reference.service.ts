@@ -1,3 +1,4 @@
+import { sameWarehouseRef } from "@/lib/warehouse-utils";
 import { query } from "@/server/repositories/postgres/database";
 import { ensurePostgresTab, postgresTabId } from "@/server/repositories/postgres/tab-adapter";
 import { randomUUID } from "node:crypto";
@@ -25,8 +26,7 @@ export async function importCountReference(warehouse: string, name: string, rows
   const [wh] = await query<{ warehouse_name: string; warehouse_code: string }>(
     "select warehouse_name, warehouse_code from warehouses where warehouse_id=$1 and active", [warehouse]);
   if (!wh) throw new CountProblem("ไม่พบโกดังที่เปิดใช้งาน", 400);
-  const aliases = [warehouse, wh.warehouse_code, wh.warehouse_name].map(s => s.trim().toUpperCase());
-  const foreign = rows.find(r => r.warehouse && !aliases.includes(r.warehouse.toUpperCase()));
+  const foreign = rows.find(r => !sameWarehouseRef(r.warehouse, warehouse, wh.warehouse_code, wh.warehouse_name));
   if (foreign) throw new CountProblem(`แถว ${foreign.row} เป็นข้อมูลของโกดังอื่น`, 400);
 
   const resolved = await query<{ row: number; product_id: string | null; shelf_code: string | null; quantity: number }>(`

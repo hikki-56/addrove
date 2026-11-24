@@ -174,28 +174,22 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
 
   const rows: CountReferenceRow[] = [];
   let warehouse = "";
-  let ended = false;
   for (let i = header + 1; i < table.length; i++) {
     const r = table[i];
     const label = cellName(r[iWarehouse]);
     const code = r[iCode]?.trim();
-    if (label && /^\d+$/.test(label) && !code) {
-      if (!/^0?[1-6]$/.test(label)) throw new Error(`แถว ${i + 1} ไม่รู้จักรหัสคลัง ${label}`);
+    if (label && /^0?[1-6]$/.test(label) && !code) {
       const id = `wh-${label.padStart(2, "0")}`;
       if (warehouse && warehouse !== id) throw new Error("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
       warehouse = id;
       continue;
     }
-    if (label === "รวมทั้งสิ้น") break;
-    if (label === "รวมคลัง" || label.startsWith("รวม")) {
-      ended = true;
-      continue;
-    }
-    if (!code || (label === "คลัง" && cellName(code) === "รหัสสินค้า")) continue;
-    if (ended) continue;
-    if (!warehouse) throw new Error(`แถว ${i + 1} พบสินค้านอกส่วนข้อมูลของโกดัง`);
+    if (!code || label === "รวมทั้งสิ้น" || label === "รวมคลัง" || label.startsWith("รวม") ||
+      (label === "คลัง" && cellName(code) === "รหัสสินค้า")) continue;
     const large = r[iLarge], unit = iUnit >= 0 ? r[iUnit] : "", small = r[iSmall];
     const factor = unit?.trim().match(UNIT_FACTOR);
+    const hasQty = NUMBER.test((large ?? "").trim()) || NUMBER.test((small ?? "").trim());
+    if (!hasQty) continue;
     if (!factor || Number(factor[1]) <= 0) throw new Error(`แถว ${i + 1} อ่านตัวคูณหน่วยใหญ่ของ ${code} ไม่ได้`);
     const largeQty = amount(large, i + 1);
     const smallQty = amount(small, i + 1);
@@ -203,7 +197,7 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
     const quantity = Number(total.toFixed(3));
     if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999)
       throw new Error(`แถว ${i + 1} จำนวนในหน่วยย่อยเกินช่วงหรือความละเอียดที่รองรับ`);
-    rows.push({ row: i + 1, code, quantity, warehouse, shelf: "" });
+    rows.push({ row: i + 1, code, quantity, shelf: "", ...(warehouse ? { warehouse } : {}) });
   }
   if (!rows.length) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   return rows;
