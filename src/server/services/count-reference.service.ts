@@ -93,15 +93,34 @@ export async function productComparison(warehouse: string, product: string): Pro
     ),
     counted as (select e.shelf_code, sum(e.entered_qty) counted_qty from stock_count_entries e
       join stock_count_rounds r using(round_id) where r.warehouse_id=$3 and e.product_id=$2
-      and e.counted_at >= (date_trunc('day', now() at time zone 'Asia/Bangkok') at time zone 'Asia/Bangkok')
+      and (r.closed_at is null
+        or e.counted_at >= (date_trunc('day', now() at time zone 'Asia/Bangkok') at time zone 'Asia/Bangkok'))
       group by e.shelf_code)
     select shelf_code, expected_qty, counted_qty from expected full join counted using(shelf_code) order by shelf_code`,
     [file.id, product, warehouse]);
   return { hasReference: true, shelves };
 }
 
+async function referenceForComparison(warehouse: string, date: string) {
+  const asOfDate = await warehouseReference(warehouse, date);
+  if (asOfDate) return asOfDate;
+  const latest = await warehouseReference(warehouse);
+  if (!latest) return null;
+  const [eligible] = await query<{ ok: boolean }>(`select exists (
+      select 1 where $2::date = (now() at time zone 'Asia/Bangkok')::date
+      or exists (
+        select 1 from stock_count_entries e
+        join stock_count_rounds r using(round_id)
+        where r.warehouse_id=$1 and r.closed_at is null
+          and e.counted_at >= ($2::date::timestamp at time zone 'Asia/Bangkok')
+          and e.counted_at < (($2::date + 1)::timestamp at time zone 'Asia/Bangkok')
+      )
+    ) as ok`, [warehouse, date]);
+  return eligible?.ok ? latest : null;
+}
+
 export async function dailyComparison(warehouse: string, date: string, entries: DailyCountReport["entries"]): Promise<DailyCountReport> {
-  const reference = await warehouseReference(warehouse, date);
+  const reference = await referenceForComparison(warehouse, date);
   if (!reference) return { entries, reference, totals: [] };
   const expected = await query<DailyCountReport["totals"][number]>(`
     with file_rows as (
@@ -131,8 +150,28 @@ export async function dailyComparison(warehouse: string, date: string, entries: 
     left join matched m on m.ncode = f.ncode and m.hits = 1
     left join products p on p.product_id = m.product_id
     order by coalesce(p.sku, f.code)`, [reference.id]);
+  const countedRows = await query<{ product_id: string; sku: string; product_name: string; base_unit: string; quantity: number }>(`
+    select e.product_id, e.sku, e.product_name, e.base_unit, e.entered_qty as quantity
+    from stock_count_entries e
+    join stock_count_rounds r using(round_id)
+    where r.warehouse_id=$1 and (
+      (e.counted_at >= ($2::date::timestamp at time zone 'Asia/Bangkok')
+        and e.counted_at < (($2::date + 1)::timestamp at time zone 'Asia/Bangkok'))
+      or (
+        r.closed_at is null
+        and (
+          $2::date = (now() at time zone 'Asia/Bangkok')::date
+          or exists (
+            select 1 from stock_count_entries e2
+            where e2.round_id = r.round_id
+              and e2.counted_at >= ($2::date::timestamp at time zone 'Asia/Bangkok')
+              and e2.counted_at < (($2::date + 1)::timestamp at time zone 'Asia/Bangkok')
+          )
+        )
+      )
+    )`, [warehouse, date]);
   const totals = new Map(expected.map(row => [row.product_id, row]));
-  for (const row of entries) {
+  for (const row of countedRows) {
     const total = totals.get(row.product_id) ?? { product_id: row.product_id, sku: row.sku, product_name: row.product_name,
       base_unit: row.base_unit, expected: null, counted: null };
     total.counted = Math.round(((total.counted ?? 0) + row.quantity) * 1000) / 1000;
