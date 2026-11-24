@@ -24,7 +24,11 @@ async function countReceipt(cmd: z.infer<typeof countSubmission>) {
 
 export async function findCountProduct(scan: string) {
   const products = await query<ScannedCountProduct>(`select product_id, sku, product_name, base_unit, barcode from products
-    where active and (upper(sku)=upper($1) or barcode=$1) limit 2`, [normalizeReceiveScanCode(scan)]);
+    where active and (
+      upper(regexp_replace(trim(sku), '\\s+', '', 'g')) = upper(regexp_replace(trim($1), '\\s+', '', 'g'))
+      or (coalesce(trim(barcode), '') <> ''
+        and upper(regexp_replace(trim(barcode), '\\s+', '', 'g')) = upper(regexp_replace(trim($1), '\\s+', '', 'g')))
+    ) limit 2`, [normalizeReceiveScanCode(scan)]);
   if (products.length !== 1) throw new CountProblem(products.length ? "รหัสตรงกับสินค้ามากกว่าหนึ่งรายการ" : "ไม่พบสินค้าที่เปิดใช้งานตามรหัสนี้", 400);
   return products[0];
 }

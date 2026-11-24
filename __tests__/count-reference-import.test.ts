@@ -8,7 +8,7 @@ import { productTotals } from "@/lib/count-comparison";
 import { PostgresStockRepository } from "@/server/repositories/postgres/stock.repository";
 import { query, withDatabaseTransaction } from "@/server/repositories/postgres/database";
 import { dailyComparison, importCountReference, productComparison, warehouseReference } from "@/server/services/count-reference.service";
-import { countReport, submitCount } from "@/server/services/count-round.service";
+import { countReport, findCountProduct, submitCount } from "@/server/services/count-round.service";
 
 let mockDb: PGlite;
 let mockConnectionTail = Promise.resolve();
@@ -204,4 +204,86 @@ test("a later upload still compares against earlier scans in the open round on a
 
     const live = await productComparison(warehouse, product.product_id);
     expect(productTotals(live)).toEqual({ expected: 7, counted: 3 });
+});
+
+test("a reference file code that is a product barcode is compared as that product", async () => {
+    const warehouse = "wh-bar-code";
+    await query("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values($1,'BARCODE','Barcode code')", [warehouse]);
+    const product = await repo.products.create({
+        sku: "SKU-BAR-1", product_name: "จับคู่บาร์โค้ด", category: "test", barcode: "8851234567890",
+        base_unit: "ชิ้น", minimum_stock: 0, description: "",
+    });
+    const file = await withDatabaseTransaction(() => importCountReference(warehouse, "barcode-as-code.csv", [
+        { row: 2, code: " 8851234567890 ", shelf: "", quantity: 4 },
+    ]));
+    expect(file).toEqual(expect.objectContaining({ row_count: 1, unmatched_count: 0 }));
+    const comparison = await productComparison(warehouse, product.product_id);
+    expect(productTotals(comparison)).toEqual({ expected: 4, counted: null });
+    const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const report = await dailyComparison(warehouse, day, []);
+    expect(report.totals).toEqual([expect.objectContaining({ product_id: product.product_id, sku: "SKU-BAR-1", expected: 4 })]);
+});
+
+test("scanning a barcode matches a reference row stored by sku", async () => {
+    const warehouse = "wh-bar-scan";
+    await query("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values($1,'BARSCAN','Barcode scan')", [warehouse]);
+    const product = await repo.products.create({
+        sku: "SKU-BAR-2", product_name: "สแกนบาร์โค้ด", category: "test", barcode: "BAR-SCAN-2",
+        base_unit: "ชิ้น", minimum_stock: 0, description: "",
+    });
+    await withDatabaseTransaction(() => importCountReference(warehouse, "sku-rows.csv", [
+        { row: 2, code: "sku-bar-2", shelf: "", quantity: 6 },
+    ]));
+    const scanned = await findCountProduct(" bar-scan-2 ");
+    expect(scanned.product_id).toBe(product.product_id);
+    expect(productTotals(await productComparison(warehouse, scanned.product_id))).toEqual({ expected: 6, counted: null });
+});
+
+test("a reference file barcode column is used when the product code does not match", async () => {
+    const warehouse = "wh-bar-col";
+    await query("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values($1,'BARCOL','Barcode column')", [warehouse]);
+    const product = await repo.products.create({
+        sku: "SKU-BAR-3", product_name: "คอลัมน์บาร์โค้ด", category: "test", barcode: "8859990001112",
+        base_unit: "ชิ้น", minimum_stock: 0, description: "",
+    });
+    const parsed = await readReferenceFile(new File([
+        "รหัสสินค้า,บาร์โค้ด,จำนวน\nWRONG-SKU,8859990001112,9\n",
+    ], "with-barcode.csv"));
+    expect(parsed).toEqual([
+        { row: 2, code: "WRONG-SKU", barcode: "8859990001112", shelf: "", quantity: 9 },
+    ]);
+    const file = await withDatabaseTransaction(() => importCountReference(warehouse, "with-barcode.csv", parsed));
+    expect(file.unmatched_count).toBe(0);
+    expect(productTotals(await productComparison(warehouse, product.product_id))).toEqual({ expected: 9, counted: null });
+    const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const report = await dailyComparison(warehouse, day, []);
+    expect(report.totals).toEqual([expect.objectContaining({ product_id: product.product_id, sku: "SKU-BAR-3", expected: 9 })]);
+});
+
+test("an ambiguous file barcode is stored without double-counting daily totals", async () => {
+    const warehouse = "wh-bar-ambig";
+    await query("insert into warehouses(warehouse_id,warehouse_code,warehouse_name) values($1,'BARAMB','Ambiguous barcode')", [warehouse]);
+    const first = await repo.products.create({
+        sku: "FOO-BAR", product_name: "Foo", category: "test", barcode: "SHARE-BAR",
+        base_unit: "ชิ้น", minimum_stock: 0, description: "",
+    });
+    const second = await repo.products.create({
+        sku: "SHARE-BAR", product_name: "Bar", category: "test", barcode: "OTHER-BAR",
+        base_unit: "ชิ้น", minimum_stock: 0, description: "",
+    });
+    const file = await withDatabaseTransaction(() => importCountReference(warehouse, "ambig-bar.csv", [
+        { row: 2, code: "SHARE-BAR", shelf: "", quantity: 5 },
+    ]));
+    expect(file.unmatched_count).toBe(1);
+    expect((await productComparison(warehouse, first.product_id)).shelves).toEqual([
+        expect.objectContaining({ expected_qty: 5 }),
+    ]);
+    expect((await productComparison(warehouse, second.product_id)).shelves).toEqual([
+        expect.objectContaining({ expected_qty: 5 }),
+    ]);
+    const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    const report = await dailyComparison(warehouse, day, []);
+    expect(report.totals.filter(t => t.expected === 5)).toEqual([
+        expect.objectContaining({ product_id: "SHARE-BAR", sku: "SHARE-BAR", expected: 5 }),
+    ]);
 });

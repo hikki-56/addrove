@@ -84,7 +84,13 @@ function readGenericRows(
     if (!code) continue;
     if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,3})?$/.test(value) || Number(value.replaceAll(",", "")) > 99999999999.999)
       continue;
-    rows.push({ row: i + 1, code, shelf: place, quantity: Number(value.replaceAll(",", "")), warehouse: values[warehouse]?.trim() || undefined });
+    const fileBarcode = (barcode >= 0 ? values[barcode]?.trim() : "") || "";
+    const fileWarehouse = warehouse >= 0 ? values[warehouse]?.trim() : "";
+    rows.push({
+      row: i + 1, code, shelf: place, quantity: Number(value.replaceAll(",", "")),
+      ...(fileWarehouse ? { warehouse: fileWarehouse } : {}),
+      ...(fileBarcode && fileBarcode !== code ? { barcode: fileBarcode } : {}),
+    });
   }
   if (!rows.length) throw new Error("ไม่มีรายการสินค้าในไฟล์");
   return rows;

@@ -166,6 +166,7 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
   const iWarehouse = col(head, "คลัง");
   const iCode = col(head, "รหัสสินค้า");
   const iName = col(head, "ชื่อสินค้า");
+  const iBarcode = ["บาร์โค้ด", "เลขบาร์โค้ด", "barcode"].map(name => col(head, name)).find(index => index >= 0) ?? -1;
   const iLarge = col(head, "หน่วยใหญ่");
   const iSmall = col(head, "หน่วยย่อย");
   const iUnit = iLarge + 1 === iSmall ? -1 : iLarge + 1;
@@ -199,7 +200,8 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
     const total = largeQty * Number(factor[1]) + smallQty;
     const quantity = Number(total.toFixed(3));
     if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999) continue;
-    rows.push({ row: i + 1, code, quantity, shelf: "" });
+    const fileBarcode = (iBarcode >= 0 ? r[iBarcode]?.trim() : "") || "";
+    rows.push({ row: i + 1, code, quantity, shelf: "", ...(fileBarcode && fileBarcode !== code ? { barcode: fileBarcode } : {}) });
   }
   if (!rows.length) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   return rows;

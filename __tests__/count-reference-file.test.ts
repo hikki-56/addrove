@@ -120,14 +120,14 @@ test("reads Stockify warehouse tab and count result exports, including a title r
       ["รหัสสินค้า", "บาร์โค้ด", "ชื่อสินค้า", "หมวดสินค้า", "หน่วย", "จำนวนคงเหลือ", "ตำแหน่ง", "ผู้จัดจำหน่าย", "อัปเดตเมื่อ"],
       ["A01", "123", "น็อต", "ทั่วไป", "ชิ้น", 7, "A-1", "", ""],
     ],
-  }))).resolves.toEqual([{ row: 2, code: "A01", quantity: 7, shelf: "A-1" }]);
+  }))).resolves.toEqual([{ row: 2, code: "A01", quantity: 7, shelf: "A-1", barcode: "123" }]);
   await expect(readReferenceFile(workbook({
     ผลตรวจนับ: [
       ["รายงานผลตรวจนับ"],
       ["โกดัง", "รหัสสินค้า", "เลขบาร์โค้ด", "ชื่อสินค้า", "จำนวนที่นับได้", "หน่วย", "ผู้ตรวจนับ", "เวลาบันทึก (ไทย)"],
       ["โกดัง 5", "A01", "123", "น็อต", 3, "ชิ้น", "สมชาย", ""],
     ],
-  }))).resolves.toEqual([{ row: 3, code: "A01", quantity: 3, shelf: "", warehouse: "โกดัง 5" }]);
+  }))).resolves.toEqual([{ row: 3, code: "A01", quantity: 3, shelf: "", warehouse: "โกดัง 5", barcode: "123" }]);
 });
 
 test("accepts a UTF-8 BOM, wrapped parentheses in headers, and Thai or English aliases", async () => {
