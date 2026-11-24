@@ -21,12 +21,54 @@ test("warehouse report uses the quantity columns and converts major units before
     ["รวมคลัง", "", "5", "2", "สินค้า", "", "", "", "", "10", "", "3"],
     ["รวมทั้งสิ้น", "1", "คลัง", "2", "สินค้า"],
   ];
-  expect(readWarehouseStockReport(sheet)).toEqual([
+  const expected = [
     { row: 4, warehouse: "wh-05", code: "001", shelf: "", quantity: 27 },
     { row: 5, warehouse: "wh-05", code: "002", shelf: "", quantity: 8 },
-  ]);
+  ];
+  expect(readWarehouseStockReport(sheet)).toEqual(expected);
+  sheet[5][3] = "99";
   sheet[5][9] = "11";
-  expect(() => readWarehouseStockReport(sheet)).toThrow("ไม่ตรงกับบรรทัดรวมคลัง");
+  expect(readWarehouseStockReport(sheet)).toEqual(expected);
+  expect(readWarehouseStockReport(sheet)?.map(row => row.code)).toEqual(["001", "002"]);
+});
+
+test("warehouse report parses when the รวมคลัง row is missing", () => {
+  const sheet = [
+    ["สินค้าคงเหลือ แยกตามคลังสินค้า"],
+    ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"],
+    ["5", "โกดัง 5"],
+    ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่องx12.0000", "3", "ชิ้น", "750"],
+  ];
+  expect(readWarehouseStockReport(sheet)).toEqual([
+    { row: 4, warehouse: "wh-05", code: "001", shelf: "", quantity: 27 },
+  ]);
+});
+
+test("warehouse report still rejects two warehouses in one file", () => {
+  const header = ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"];
+  const product = ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่องx12.0000", "3", "ชิ้น", "750"];
+  expect(() => readWarehouseStockReport([
+    header,
+    ["5", "โกดัง 5"],
+    product,
+    ["รวมคลัง", "", "5", "1", "สินค้า", "", "", "", "", "2", "", "3"],
+    ["6", "โกดัง 6"],
+    ["", "", "002", "น็อต", "", "", "", "", "", "1", "ตัวx1.0000", "0", "ตัว", "1"],
+  ])).toThrow("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
+  expect(() => readWarehouseStockReport([
+    header,
+    ["5", "โกดัง 5"],
+    product,
+    ["6", "โกดัง 6"],
+  ])).toThrow("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
+});
+
+test("warehouse report still rejects an invalid unit multiplier", () => {
+  expect(() => readWarehouseStockReport([
+    ["คลัง", "", "รหัสสินค้า", "ชื่อสินค้า", "", "", "", "", "", "หน่วยใหญ่", "", "หน่วยย่อย"],
+    ["5", "โกดัง 5"],
+    ["", "", "001", "กล่อง", "", "", "", "", "", "2", "กล่อง", "3", "ชิ้น", "750"],
+  ])).toThrow("แถว 3 อ่านตัวคูณหน่วยใหญ่ของ 001 ไม่ได้");
 });
 
 test("a two-column Excel file preserves formatted barcodes and the underlying quantity", async () => {

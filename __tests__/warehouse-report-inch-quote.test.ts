@@ -94,7 +94,7 @@ test("warehouse report keeps 50-737 with a doubled inch quote and a mid-name inc
   ]);
 });
 
-test("warehouse report still rejects a missing multiplier and a wrong warehouse total", () => {
+test("warehouse report still rejects a missing multiplier and skips a wrong warehouse total", () => {
   const missing = [
     warehouseHeader(),
     ["5", "โกดัง 5"],
@@ -115,7 +115,9 @@ test("warehouse report still rejects a missing multiplier and a wrong warehouse 
     ["", "", "50-904", `${NAME_904}",",",",",",2088"`, "ตัวx1.0000", "0", "ตัว", "62640"],
     ...warehouseTotals("1", "2089", "0"),
   ];
-  expect(() => readWarehouseStockReport(wrongTotal)).toThrow("ไม่ตรงกับบรรทัดรวมคลัง");
+  expect(readWarehouseStockReport(wrongTotal)).toEqual([
+    { row: 3, warehouse: "wh-05", code: "50-904", shelf: "", quantity: 2088 },
+  ]);
 });
 
 test("reads the exact 50-904 warehouse CSV row with another product after it", async () => {

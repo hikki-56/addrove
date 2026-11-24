@@ -170,29 +170,15 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
   const iSmall = col(head, "หน่วยย่อย");
   const iUnit = iLarge + 1 === iSmall ? -1 : iLarge + 1;
   const iPacked = iName >= 0 ? iName : iCode + 1;
-  const iTotalWarehouses = iWarehouse + 1;
   table = repairPackedRows(table, iPacked, iLarge, iUnit, iSmall);
 
   const rows: CountReferenceRow[] = [];
   let warehouse = "";
-  let largeSum = 0;
-  let smallSum = 0;
-  let checked = false;
+  let ended = false;
   for (let i = header + 1; i < table.length; i++) {
     const r = table[i];
     const label = cellName(r[iWarehouse]);
     const code = r[iCode]?.trim();
-    if (label === "รวมคลัง") {
-      if (!warehouse || Number(code) !== Number(warehouse.slice(3)) || rows.length !== amount(r[iPacked], i + 1) ||
-        largeSum !== Math.round(amount(r[iLarge], i + 1) * 1000) || smallSum !== Math.round(amount(r[iSmall], i + 1) * 1000))
-        throw new Error(`แถว ${i + 1} จำนวนรายการหรือยอดรวมที่อ่านได้ไม่ตรงกับบรรทัดรวมคลัง`);
-      checked = true;
-      continue;
-    }
-    if (label === "รวมทั้งสิ้น") {
-      if (amount(r[iTotalWarehouses], i + 1) !== 1) throw new Error("กรุณาใช้รายงานของโกดังเดียวต่อไฟล์");
-      break;
-    }
     if (label && /^\d+$/.test(label) && !code) {
       if (!/^0?[1-6]$/.test(label)) throw new Error(`แถว ${i + 1} ไม่รู้จักรหัสคลัง ${label}`);
       const id = `wh-${label.padStart(2, "0")}`;
@@ -200,8 +186,14 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
       warehouse = id;
       continue;
     }
+    if (label === "รวมทั้งสิ้น") break;
+    if (label === "รวมคลัง" || label.startsWith("รวม")) {
+      ended = true;
+      continue;
+    }
     if (!code || (label === "คลัง" && cellName(code) === "รหัสสินค้า")) continue;
-    if (!warehouse || checked) throw new Error(`แถว ${i + 1} พบสินค้านอกส่วนข้อมูลของโกดัง`);
+    if (ended) continue;
+    if (!warehouse) throw new Error(`แถว ${i + 1} พบสินค้านอกส่วนข้อมูลของโกดัง`);
     const large = r[iLarge], unit = iUnit >= 0 ? r[iUnit] : "", small = r[iSmall];
     const factor = unit?.trim().match(UNIT_FACTOR);
     if (!factor || Number(factor[1]) <= 0) throw new Error(`แถว ${i + 1} อ่านตัวคูณหน่วยใหญ่ของ ${code} ไม่ได้`);
@@ -212,9 +204,7 @@ export function readWarehouseStockReport(table: string[][]): CountReferenceRow[]
     if (Math.abs(quantity - total) > 0.000001 || quantity > 99999999999.999)
       throw new Error(`แถว ${i + 1} จำนวนในหน่วยย่อยเกินช่วงหรือความละเอียดที่รองรับ`);
     rows.push({ row: i + 1, code, quantity, warehouse, shelf: "" });
-    largeSum += Math.round(largeQty * 1000);
-    smallSum += Math.round(smallQty * 1000);
   }
-  if (!rows.length || !checked) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้าและบรรทัดรวมคลัง");
+  if (!rows.length) throw new Error("ข้อมูลรายงานไม่ครบ กรุณาตรวจสอบรายการสินค้า");
   return rows;
 }
