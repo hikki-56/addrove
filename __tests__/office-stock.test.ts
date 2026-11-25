@@ -6,6 +6,7 @@ import { PostgresStockRepository } from "@/server/repositories/postgres/stock.re
 import { query } from "@/server/repositories/postgres/database";
 import { getOfficeHistory, getOfficeProducts, getOfficeSetup, transferToOffice } from "@/server/services/office.service";
 import { hasOfficeBarcode, matchesOfficeSearch } from "@/lib/office";
+import { cutOfficeStock, OfficeStockCutSchema } from "@/server/services/office-stock-cut.service";
 
 let mockDb: PGlite;
 let mockConnectionTail = Promise.resolve();
@@ -54,6 +55,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await query("DELETE FROM stock_movements");
   await query("DELETE FROM stock_summary");
+  await query("DELETE FROM locations WHERE location_id='office-B'");
   await query("DELETE FROM documents");
   await query("DELETE FROM idempotency_records");
   await query("DELETE FROM operation_journal");
@@ -67,6 +69,32 @@ afterAll(async () => {
 });
 
 const input = (key: string, quantity = 12, location_code = "OF-A-01") => ({ from_warehouse_id: "wh-1", idempotency_key: key, lines: [{ product_id: "p13", quantity, location_code }] });
+
+const cutActor = { id: actor.id, username: actor.name, role: "ADMIN" as const, correlationId: "cut-test" };
+const cutInput = { idempotency_key: "0c9229ed-c527-4803-8de1-726130338d7f", note: "ใช้ในสำนักงาน", lines: [{ product_id: "p13", quantity: 4 }, { product_id: "p13b", quantity: 1.5 }] };
+
+test("office cut posts one issue across products and shelves and replays after a sellout", async () => {
+  await query("INSERT INTO products(product_id,sku,barcode,product_name,base_unit) VALUES('p13b','B-2','0123456789012','สินค้าที่สอง','เมตร')");
+  await query("INSERT INTO locations(location_id,warehouse_id,location_code) VALUES('office-B','wh-6','OF-B-01')");
+  await query("INSERT INTO stock_summary(product_id,warehouse_id,location_id,quantity) VALUES('p13','wh-6','office-B',2),('p13b','wh-6','office-A',2)");
+  const doc = await cutOfficeStock(repo, "wh-6", cutInput, cutActor);
+  expect(doc).toMatchObject({ document_type: "ISSUE", note: cutInput.note, status: "POSTED" });
+  expect(await repo.movements.findByDocumentId(doc.document_id)).toHaveLength(3);
+  expect((await cutOfficeStock(repo, "wh-6", cutInput, cutActor)).document_id).toBe(doc.document_id);
+  expect(await repo.movements.getWarehouseBalance("p13", "wh-6")).toBe(0);
+  expect(await repo.movements.getWarehouseBalance("p13b", "wh-6")).toBe(0.5);
+  expect(await repo.movements.getWarehouseBalance("p13", "wh-1")).toBe(25);
+});
+
+test("office cut rejects ineligible items and overdraws before recording any lines", async () => {
+  for (const product_id of ["p8", "pAlpha", "p13"]) {
+    const lines = [{ product_id: "p13", quantity: 1 }, { product_id, quantity: 2 }];
+    await expect(cutOfficeStock(repo, "wh-6", { ...cutInput, lines }, cutActor)).rejects.toThrow();
+  }
+  expect(await repo.movements.getWarehouseBalance("p13", "wh-6")).toBe(2);
+  expect(await repo.documents.findAll()).toMatchObject({ total: 0 });
+  expect(OfficeStockCutSchema.safeParse({ ...cutInput, warehouse_id: "wh-1" }).success).toBe(false);
+});
 
 test("office catalog only includes numeric 13-digit barcodes and is scoped to office stock", async () => {
   const setup = await getOfficeSetup(repo);

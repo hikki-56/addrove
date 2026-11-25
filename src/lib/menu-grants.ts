@@ -29,6 +29,7 @@ export const MENU_GRANT_PERMISSIONS: Record<string, readonly Permission[]> = {
   "/movements/transfer": TRANSFER,
   "/staff/transfer": TRANSFER,
   "/temporary-stock-cuts": [P.STOCK_VIEW],
+  "/office-stock-cuts": [P.OFFICE_STOCK_CUT],
   "/movements/transfer/history": [P.STOCK_VIEW, P.DOCUMENT_VIEW],
   "/outbound": [P.STOCK_VIEW, P.OUTBOUND_IMPORT, P.OUTBOUND_APPROVE],
   "/outbound/office": [P.STOCK_VIEW, P.DOCUMENT_VIEW, P.OFFICE_TRANSFER],

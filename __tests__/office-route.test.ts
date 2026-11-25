@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/office/route";
+import { GET as getCuts, POST as postCut } from "@/app/api/office/stock-cuts/route";
 import { createActorFromSession, PERMISSIONS, type Actor } from "@/server/security";
 import { getAuthSession } from "@/server/auth-session";
 import { getOfficeSetup, getOfficeProducts, getOfficeHistory, transferToOffice } from "@/server/services/office.service";
@@ -7,7 +8,9 @@ import { getRoleMenuItems } from "@/components/layout/nav-items";
 import { getGrantedPermissions } from "@/lib/menu-grants";
 
 jest.mock("@/server/auth-session", () => ({ getAuthSession: jest.fn() }));
-jest.mock("@/server/repositories", () => ({ getRepository: () => ({}) }));
+jest.mock("@/server/repositories", () => ({
+  getRepository: () => ({ warehouses: { findAll: async () => [{ active: true, warehouse_id: "wh-6", warehouse_code: "WH06" }] } }),
+}));
 jest.mock("@/server/storage-transaction", () => ({ withStorageRequest: (handler: unknown) => handler }));
 jest.mock("@/server/security", () => ({ ...jest.requireActual("@/server/security"), createActorFromSession: jest.fn() }));
 jest.mock("@/server/services/office.service", () => ({
@@ -76,4 +79,22 @@ test("employee roles have an office-products menu", () => {
     expect(getRoleMenuItems({ role }).some((item) => item.href === "/products/office")).toBe(true);
     expect(getRoleMenuItems({ role }).some((item) => item.href === "/outbound/office")).toBe(false);
   }
+});
+
+test("the headquarters cut menu grants only that operation and still requires headquarters access", async () => {
+  const href = "/office-stock-cuts";
+  expect(getRoleMenuItems({ role: "ADMIN" }).some(item => item.href === href)).toBe(true);
+  expect(getGrantedPermissions("VIEWER", [href])).toEqual([PERMISSIONS.OFFICE_STOCK_CUT]);
+  jest.mocked(createActorFromSession).mockResolvedValue(null);
+  expect((await postCut(post())).status).toBe(401);
+  jest.mocked(createActorFromSession).mockResolvedValue(actor);
+  expect((await postCut(post())).status).toBe(403);
+  const granted = { ...actor, grantedPermissions: [PERMISSIONS.OFFICE_STOCK_CUT] };
+  jest.mocked(createActorFromSession).mockResolvedValue({ ...granted, warehouseAccess: '["wh-1"]' });
+  expect((await getCuts(get())).status).toBe(403);
+  expect((await postCut(post())).status).toBe(403);
+  jest.mocked(createActorFromSession).mockResolvedValue(granted);
+  expect((await getCuts(get("?warehouse_id=wh-1"))).status).toBe(200);
+  expect(getOfficeProducts).toHaveBeenCalledWith(expect.anything(), "wh-6", true);
+  expect((await postCut(post({ ...body, warehouse_id: "wh-1" }))).status).toBe(400);
 });

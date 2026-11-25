@@ -306,6 +306,12 @@ export const navItems: NavItem[] = [
     roles: ["ADMIN", "WAREHOUSE_STAFF", "APPROVER"],
   },
   {
+    href: "/office-stock-cuts",
+    label: "ตัดสต็อกสำนักงานใหญ่",
+    icon: <Icon><path d="M3 7h18v14H3zM3 7l3-4h12l3 4M8 14h8" /></Icon>,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/temporary-stock-cuts",
     label: "ตัดสต็อกชั่วคราว",
     icon: (
