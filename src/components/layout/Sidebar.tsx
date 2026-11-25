@@ -28,6 +28,7 @@ const OPERATION_ORDER = [
   ASSIGN_LOCATION_REQUESTS_HREF,
   "/stock-counts",
   "/temporary-stock-cuts",
+  "/office-stock-cuts",
   "/movements/receive/history",
   "/movements/transfer/history",
   "/movements/history",
@@ -246,6 +247,7 @@ export default function Sidebar({
         ASSIGN_LOCATION_REQUESTS_HREF,
         "/stock-counts",
         "/temporary-stock-cuts",
+        "/office-stock-cuts",
       ].includes(i.href)
     )
     .sort(byOperationOrder);

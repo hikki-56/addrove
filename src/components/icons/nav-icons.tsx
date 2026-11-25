@@ -50,6 +50,7 @@ export const NAV_ICONS: Record<string, ComponentType<SolarIconProps>> = {
   "/movements/move": SolarNavigationArrow,
   "/staff/move": SolarNavigationArrow,
   "/temporary-stock-cuts": SolarScissors,
+  "/office-stock-cuts": SolarExpressOut,
   "/movements/receive/history": SolarInboxHistory,
   "/movements/transfer/history": SolarOutboxHistory,
   "/movements/history": SolarHistory,
