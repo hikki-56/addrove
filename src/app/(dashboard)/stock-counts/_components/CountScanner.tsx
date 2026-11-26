@@ -183,7 +183,7 @@ export default function CountScanner({ warehouse }: { warehouse: string }) {
               onFocus={e => e.currentTarget.select()} onChange={e => setQty(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void save(); } }} />
           </label>
-          <button type="button" className="m3-btn m3-btn-dark min-h-[52px] w-full sm:min-h-12" disabled={busy || !qty.trim()} onClick={() => void save()}>
+          <button type="button" className="m3-btn m3-btn-primary min-h-[52px] w-full sm:min-h-12" disabled={busy || !qty.trim()} onClick={() => void save()}>
             ยืนยัน
           </button>
         </div>
