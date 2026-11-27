@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ProductionMaterialActual, ProductionMaterialPlan } from "@/types/production-bom";
+import type { ReportLocationOption } from "@/features/production/lib/report-locations";
 import { isValidProductionStockQuantity, previewProductionBom } from "@/lib/production-bom";
 import ReasonSelect from "./ReasonSelect";
 
@@ -10,25 +11,14 @@ export interface MaterialReportValue {
   error: string | null;
 }
 
-interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean; showErrors?: boolean }
+interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean; showErrors?: boolean; locations?: ReportLocationOption[]; locationError?: string | null }
 type Edit = { used?: string; scrap?: string; cause?: string };
 
-export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false, showErrors = true }: Props) {
+export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false, showErrors = true, locations = [], locationError = null }: Props) {
   const [edits, setEdits] = useState<Record<number, Edit>>({});
   const [location, setLocation] = useState("");
   const [reason, setReason] = useState("");
-  const [locations, setLocations] = useState<Array<{ location_id: string; location_code: string }>>([]);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const preview = useMemo(() => previewProductionBom(plan.snapshot, good, plan.selection, { allowZero: true }), [plan, good]);
-  useEffect(() => {
-    let live = true;
-    fetch("/api/production/locations", { cache: "no-store" }).then(r => r.json()).then(json => {
-      if (!live) return;
-      if (!json.success) throw new Error(json.message || "โหลดตำแหน่งเก็บไม่สำเร็จ");
-      setLocations(json.data);
-    }).catch(e => { if (live) setLocationError(e instanceof Error ? e.message : "โหลดตำแหน่งเก็บไม่สำเร็จ"); });
-    return () => { live = false; };
-  }, []);
   const value = useMemo(() => {
     let error = preview.issues[0] || null;
     const materials = preview.materials.map(i => {
@@ -81,7 +71,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     {!dailyClose && <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
   </>;
   const locationField = (compact || good > 0) && <label className="block text-sm font-semibold">ตำแหน่งเก็บ
-      <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.location_code}</option>)}</select>
+      <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.label || l.location_code}</option>)}</select>
     </label>;
   return <section className="space-y-3">
     {compact ? <>

@@ -197,13 +197,16 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
   for (const i of details) if (!registry.some(p => p.product_id === i.product_id && p.active && p.base_unit === i.stock_unit)) throw new ProductionError(`${i.sku}: หน่วยหรือสถานะวัตถุดิบเปลี่ยนหลังวางแผน กรุณาตรวจสอบ`);
   if (!registry.some(p => p.product_id === job.product_id && p.active && p.base_unit === plan.snapshot.stock_unit)) throw new ProductionError("หน่วยหรือสถานะสินค้าสำเร็จรูปเปลี่ยนหลังวางแผน");
   const warehouses = await repo.warehouses.findAll();
-  const receiveWarehouse = warehouses.find(w => w.active && (w.warehouse_name === "โกดัง2" || /^wh-0?2$/.test(w.warehouse_id)));
-  if (!receiveWarehouse) throw new ProductionError("ไม่พบคลังรับสินค้าสำเร็จรูปโกดัง 2");
-  let location: { location_id: string } | undefined;
+  const receiveWarehouse2 = warehouses.find(w => w.active && (w.warehouse_name === "โกดัง2" || /^wh-0?2$/.test(w.warehouse_id)));
+  const officeWarehouse = warehouses.find(w => w.active && (/^wh-0?6$/i.test(w.warehouse_id) || /^wh-?0?6$/i.test(w.warehouse_code)));
+  const receiveWarehouseIds = [receiveWarehouse2?.warehouse_id, officeWarehouse?.warehouse_id].filter((id): id is string => !!id);
+  if (!receiveWarehouse2) throw new ProductionError("ไม่พบคลังรับสินค้าสำเร็จรูปโกดัง 2");
+  let location: { location_id: string; warehouse_id: string } | undefined;
   if (report.good_qty > 0) {
-    [location] = await query<{ location_id: string }>("SELECT location_id FROM locations WHERE warehouse_id=$1 AND active AND (location_id=$2 OR location_code=$2)", [receiveWarehouse.warehouse_id, input.receipt_location_id || ""]);
-    if (!location) throw new ProductionError("กรุณาเลือกตำแหน่งเก็บสินค้าดีที่มีอยู่ในโกดัง 2");
+    [location] = await query<{ location_id: string; warehouse_id: string }>("SELECT location_id,warehouse_id FROM locations WHERE warehouse_id=ANY($1::text[]) AND active AND (location_id=$2 OR location_code=$2)", [receiveWarehouseIds, input.receipt_location_id || ""]);
+    if (!location) throw new ProductionError("กรุณาเลือกตำแหน่งเก็บสินค้าดีที่เป็นโกดัง 2 หรือออฟฟิศ");
   }
+  const receiveWarehouse = location ? warehouses.find(w => w.warehouse_id === location!.warehouse_id) || receiveWarehouse2 : receiveWarehouse2;
   const totals = new Map<string, { qty: number; product_id: string; warehouse_id: string; sku: string }>();
   for (const i of details) {
     const key = i.product_id + "\0" + i.warehouse_id, old = totals.get(key);

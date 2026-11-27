@@ -57,8 +57,37 @@ import {
   postAdjustStockToWh2,
   PRODUCTION_RECEIVE_WAREHOUSE,
 } from "@/server/production/production-stock.service";
+import { formatCartonVarianceNote } from "@/features/production/lib/report-locations";
 
 // ---- Error ประจำโมดูล ----
+
+async function resolveCartonVarianceNote(job: ProductionJob, input: ReportProductionInput): Promise<string> {
+  const overQty = input.carton_over_qty || 0;
+  const shortQty = input.carton_short_qty || 0;
+  if (overQty <= 0 && shortQty <= 0) return input.note || "";
+  if (overQty > 0) {
+    const materialIds = new Set((job.material_plan?.snapshot.items || []).map(item => `rm:${item.item_id}`));
+    const allowed = input.carton_over_item_id === "fg" || input.carton_over_item_id === job.product_id || materialIds.has(input.carton_over_item_id || "");
+    if (!input.carton_over_item_id || !allowed) throw new ProductionError("กรุณาเลือกตัวไหนเกินจากลังจากรายการในงานนี้");
+    if (!input.leftover_location_id) throw new ProductionError("กรุณาเลือกที่เก็บของเกินในโกดัง 2");
+  }
+  let leftoverCode = input.leftover_location_id || "";
+  if (overQty > 0 && getStorageDriver() === "postgres") {
+    const [location] = await databaseQuery<{ location_id: string; location_code: string }>(
+      "SELECT location_id,location_code FROM locations WHERE active AND coalesce(location_code,'') <> '' AND (location_id=$1 OR location_code=$1) AND warehouse_id IN ('wh-02','wh-2')",
+      [input.leftover_location_id],
+    );
+    if (!location) throw new ProductionError("กรุณาเลือกที่เก็บของเกินในโกดัง 2");
+    leftoverCode = location.location_code || leftoverCode;
+  }
+  const overItem = input.carton_over_item_id === "fg" || input.carton_over_item_id === job.product_id
+    ? job.product_name
+    : job.material_plan?.snapshot.items.find(item => `rm:${item.item_id}` === input.carton_over_item_id);
+  const overItemLabel = typeof overItem === "string" ? overItem : (overItem?.name || overItem?.sku || input.carton_over_item_id);
+  const generated = formatCartonVarianceNote({ overQty, shortQty, overItemLabel: overQty > 0 ? overItemLabel : undefined, leftoverCode: overQty > 0 ? leftoverCode : undefined });
+  return input.note?.trim() ? input.note : generated;
+}
+
 
 
 // ---- helpers ----
@@ -886,7 +915,7 @@ async function reportProductionInternal(
       defect_qty: defect,
       defect_cause: input.defect_cause || "",
       reason: closeReason,
-      note: input.note || "",
+      note: await resolveCartonVarianceNote({ ...base, material_plan: materialPlan || undefined } as ProductionJob, input),
       photo_url: input.photo_url || "",
       reported_by: actor.id,
       reported_by_name: actor.name,

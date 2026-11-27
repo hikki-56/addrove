@@ -48,8 +48,12 @@ export default function TableProductionResult({ jobNo, role, onBusyChange }: Pro
   return <div className="space-y-5">
     <div>
       <h2 className="text-lg font-bold text-m3-grey-800">{job.product_name}</h2>
-      <p className="mt-1 text-xs text-m3-grey-500">{job.sku} · เป้า {formatQty(job.target_qty)} {job.unit} · {PRODUCTION_JOB_STATUS_LABELS[job.status]}</p>
-      {job.status === "IN_PROGRESS" && job.report_count > 0 && <p className="mt-1 text-xs text-m3-grey-600">บันทึกแล้ว: ดี {formatQty(job.produced_good)} · เสีย {formatQty(job.defect_total)}</p>}
+      <p className="mt-1 text-xs text-m3-grey-500">{job.sku} · {PRODUCTION_JOB_STATUS_LABELS[job.status]}</p>
+      <div className="mt-4 rounded-2xl bg-m3-grey-100 px-4 py-5 text-center">
+        <p className="text-sm font-semibold tracking-wide text-m3-grey-600">สั่งผลิต</p>
+        <p className="mt-1 text-5xl font-bold tabular-nums leading-none text-m3-grey-800">{formatQty(job.target_qty)}<span className="ml-2 text-xl font-semibold">{job.unit}</span></p>
+      </div>
+      {job.status === "IN_PROGRESS" && job.report_count > 0 && <p className="mt-3 text-xs text-m3-grey-600">บันทึกแล้ว: ดี {formatQty(job.produced_good)} · เสีย {formatQty(job.defect_total)}</p>}
     </div>
     {job.status !== "IN_PROGRESS" && <div className="grid grid-cols-3 gap-2">
       {[{ label: "เป้า", value: job.target_qty }, { label: "ผลิตดี", value: job.produced_good }, { label: "เสีย", value: job.defect_total }].map(stat =>

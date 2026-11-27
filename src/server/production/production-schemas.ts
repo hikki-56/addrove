@@ -81,7 +81,18 @@ export const reportProductionSchema = z.object({
   report_kind: z.enum(["PARTIAL", "FINAL"], { message: "กรุณาเลือกรายงานบางส่วนหรือจบงาน" }),
   /** บังคับเมื่อจบงานแล้วยอดไม่ครบเป้า หรือผลิตดีเกินเป้า */
   close_reason: z.string().trim().max(500).optional().default(""),
+  carton_over_qty: qty.optional(),
+  carton_short_qty: qty.optional(),
+  carton_over_item_id: z.string().trim().max(100).optional(),
+  leftover_location_id: z.string().trim().max(100).optional(),
   idempotency_key: z.string().trim().min(8, "idempotency key ไม่ถูกต้อง").max(100),
+}).superRefine((value, ctx) => {
+  if ((value.carton_over_qty || 0) > 0 && !value.carton_over_item_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "กรุณาเลือกตัวไหนเกินจากลัง", path: ["carton_over_item_id"] });
+  }
+  if ((value.carton_over_qty || 0) > 0 && !value.leftover_location_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "กรุณาเลือกที่เก็บของเกินในโกดัง 2", path: ["leftover_location_id"] });
+  }
 });
 
 export const adjustProductionSchema = z.object({
