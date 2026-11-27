@@ -103,26 +103,32 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     })}
     {!dailyClose && <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
   </>;
-  const selectClass = "mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500";
+  const fieldClass = "h-11 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500";
   const usedIds = new Set(lines.map((line) => line.location_id).filter(Boolean));
+  const canRemove = lines.length > 1;
   const locationField = (compact || good > 0) && <div className="space-y-2">
-    <p className="text-sm font-semibold">ผลิตได้จริงเก็บที่</p>
+    <div className="flex items-end gap-2">
+      <p className="min-w-0 flex-1 text-sm font-semibold">ผลิตได้จริงเก็บที่</p>
+      <p className="w-28 shrink-0 text-sm font-semibold">{unit || "จำนวน"}</p>
+      <span className="w-10 shrink-0" aria-hidden />
+    </div>
     {lines.map((line, index) => (
-      <div key={line.key} className="flex items-end gap-2">
+      <div key={line.key} className="flex items-center gap-2">
         <label className="min-w-0 flex-1 text-sm">
           <span className="sr-only">ที่เก็บ {index + 1}</span>
-          <select disabled={disabled} value={line.location_id} onChange={e => updateLine(line.key, { location_id: e.target.value })} className={selectClass}>
+          <select disabled={disabled} value={line.location_id} onChange={e => updateLine(line.key, { location_id: e.target.value })} className={fieldClass}>
             <option value="">เลือกที่เก็บ</option>
             {locations.filter((item) => item.location_id === line.location_id || !usedIds.has(item.location_id)).map((item) => (
               <option key={item.location_id} value={item.location_id}>{item.label || item.location_code}</option>
             ))}
           </select>
         </label>
-        <label className="w-28 shrink-0 text-sm font-semibold">{unit || "จำนวน"}
+        <label className="w-28 shrink-0 text-sm">
+          <span className="sr-only">{unit || "จำนวน"} {index + 1}</span>
           <input aria-label={`จำนวนที่เก็บ ${index + 1}`} type="number" inputMode="decimal" min="0" step="any" disabled={disabled} value={line.qty}
-            onChange={e => updateLine(line.key, { qty: e.target.value })} className={`${selectClass} text-right font-bold`} />
+            onChange={e => updateLine(line.key, { qty: e.target.value })} className={`${fieldClass} text-right font-bold`} />
         </label>
-        {lines.length > 1 && <button type="button" aria-label="ลบที่เก็บ" disabled={disabled} onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))} className="mb-0.5 h-10 w-10 shrink-0 rounded-lg text-lg font-bold text-m3-grey-600 hover:bg-m3-grey-100 disabled:text-m3-grey-400">×</button>}
+        <button type="button" aria-label="ลบที่เก็บ" disabled={disabled || !canRemove} onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))} className={`h-11 w-10 shrink-0 rounded-lg text-lg font-bold text-m3-grey-600 hover:bg-m3-grey-100 disabled:text-m3-grey-400 ${canRemove ? "" : "invisible pointer-events-none"}`}>×</button>
       </div>
     ))}
     {locations.some((item) => !usedIds.has(item.location_id)) && <button type="button" disabled={disabled} onClick={() => setLines((current) => [...current, { key: String(nextKey.current++), location_id: "", qty: "" }])} className="text-sm font-semibold text-m3-grey-800">เพิ่มที่เก็บ</button>}
