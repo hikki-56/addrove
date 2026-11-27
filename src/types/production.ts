@@ -65,6 +65,7 @@ export interface ProductionJob {
 export interface ProductionReport {
   material_details?: Array<{ sku: string; stock_unit: string; used_qty: number; scrap_qty: number; scrap_cause: string; total_qty: number }>;
   receipt_location_code?: string;
+  receipt_locations?: Array<{ location_id: string; location_code: string; qty: number }>;
   material_reason?: string;
   report_id: string;
   job_no: string;

@@ -652,3 +652,25 @@ test("carton over/short is stored on production_reports columns", async () => {
     { carton_over_qty: 2, carton_short_qty: 1, carton_over_item_id: "fg", leftover_location_id: "fg-A" },
   ]);
 });
+
+test("finished goods can be received into more than one location", async () => {
+  const f = await fixture();
+  await query("INSERT INTO locations(location_id,warehouse_id,location_code) VALUES('fg-B','wh-02','FG-B') ON CONFLICT (location_id) DO NOTHING");
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  const input = { daily_close: true, good_qty: 3, defect_qty: 0, defect_cause: "", note: "", photo_url: "", report_kind: "FINAL" as const, close_reason: "",
+    receipt_location_id: "fg-A",
+    receipt_locations: [{ location_id: "fg-A", qty: 2 }, { location_id: "fg-B", qty: 1 }],
+    idempotency_key: "multi-receipt-locations",
+    materials: [{ item_id: f.mainId, used_qty: 6, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 3, scrap_qty: 0, scrap_cause: "" }] };
+  await reportProduction(actor, f.job.job_no, input);
+  expect((await getJobDetail(f.job.job_no))!.reports[0].receipt_location_code).toBe("FG 2 · FG-B 1");
+  expect(await query("SELECT location_id,quantity FROM stock_summary WHERE product_id=$1 ORDER BY location_id", [f.fg.product_id])).toEqual([
+    { location_id: "fg-A", quantity: 2 },
+    { location_id: "fg-B", quantity: 1 },
+  ]);
+  expect(await query("SELECT location_id,qty_change FROM stock_movements WHERE product_id=$1 AND qty_change>0 ORDER BY location_id", [f.fg.product_id])).toEqual([
+    { location_id: "fg-A", qty_change: 2 },
+    { location_id: "fg-B", qty_change: 1 },
+  ]);
+});

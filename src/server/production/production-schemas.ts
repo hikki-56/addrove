@@ -65,6 +65,10 @@ export const submitProductionJobsSchema = z.object({
 export const reportProductionSchema = z.object({
   daily_close: z.boolean().optional(),
   receipt_location_id: z.string().trim().max(100).optional(),
+  receipt_locations: z.array(z.object({
+    location_id: z.string().trim().min(1, "กรุณาเลือกที่เก็บสินค้า").max(100),
+    qty: qty.refine((v) => v > 0, "จำนวนที่เก็บต้องมากกว่า 0"),
+  })).optional(),
   material_reason: z.string().trim().max(500).optional(),
   create_backorder: z.boolean().optional(),
   materials: z.array(z.object({
@@ -92,6 +96,20 @@ export const reportProductionSchema = z.object({
   }
   if ((value.carton_over_qty || 0) > 0 && !value.leftover_location_id) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "กรุณาเลือกที่เก็บของเกินในโกดัง 2", path: ["leftover_location_id"] });
+  }
+  const lines = value.receipt_locations || [];
+  if (lines.length) {
+    const ids = lines.map((line) => line.location_id);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "เลือกที่เก็บไม่ให้ซ้ำ", path: ["receipt_locations"] });
+    }
+    if (value.good_qty > 0) {
+      const sum = Math.round(lines.reduce((total, line) => total + line.qty, 0) * 100) / 100;
+      const good = Math.round(value.good_qty * 100) / 100;
+      if (sum !== good) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "รวมจำนวนที่เก็บต้องเท่ากับยอดผลิตดี", path: ["receipt_locations"] });
+      }
+    }
   }
 });
 

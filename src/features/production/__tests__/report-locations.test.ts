@@ -1,5 +1,6 @@
 import {
   formatCartonVarianceNote,
+  formatReceiptLocationSummary,
   isWarehouse2Floor5Code,
   leftoverLocations,
   pickOfficeLocation,
@@ -62,5 +63,14 @@ describe("formatCartonVarianceNote", () => {
     })).toBe("เกินจากลัง 2 ชิ้น · ตัวที่เกิน: ชุดชำระ สีเหลือง · ที่เก็บของเกิน 2K51-1A · ขาดจากลัง 1 ชิ้น");
     expect(formatCartonVarianceNote({ overQty: 0, shortQty: 3 })).toBe("ขาดจากลัง 3 ชิ้น");
     expect(formatCartonVarianceNote({ overQty: 0, shortQty: 0 })).toBe("");
+  });
+});
+
+describe("formatReceiptLocationSummary", () => {
+  it("joins location labels and quantities", () => {
+    expect(formatReceiptLocationSummary([
+      { label: "2K51-1A", qty: 8 },
+      { label: "ออฟฟิศ", qty: 2 },
+    ])).toBe("2K51-1A 8 · ออฟฟิศ 2");
   });
 });

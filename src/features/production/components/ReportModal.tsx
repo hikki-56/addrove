@@ -15,6 +15,7 @@ export interface ReportPayload {
   daily_close?: boolean;
   materials?: ProductionMaterialActual[];
   receipt_location_id?: string;
+  receipt_locations?: Array<{ location_id: string; qty: number }>;
   material_reason?: string;
   create_backorder?: boolean;
   good_qty: number;
@@ -127,7 +128,7 @@ export default function ReportModal({ open, job, submitting, error, onClose, onS
           </select>
         </label>}
         {defect > 0 && !job.material_plan && <ReasonSelect label="สาเหตุของเสีย" value={defectCause} options={["ชำรุด", "แตก", "ประกอบเสีย"]} disabled={submitting} onChange={setDefectCause} />}
-        {job.material_plan && <MaterialReportFields key={job.job_no} compact dailyClose showErrors={false} plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} locations={receipt} locationError={locationError} />}
+        {job.material_plan && <MaterialReportFields key={job.job_no} compact dailyClose showErrors={false} plan={job.material_plan} good={good} defect={defect} disabled={submitting} onChange={setMaterialValue} locations={receipt} locationError={locationError} unit={job.unit} />}
         {hasQuantity && (remaining > 0 || over > 0) && !accountedFor && <ReasonSelect label="เหตุผลปิดงาน" value={closeReason}
           options={["ผลิตไม่ครบ", "วัตถุดิบไม่พอ", "หยุดงาน", "ผลิตเกินเป้า"]} disabled={submitting} onChange={setCloseReason} />}
         {attempted && formError && <p role="alert" className="text-sm font-semibold text-m3-error-dark">{formError}</p>}

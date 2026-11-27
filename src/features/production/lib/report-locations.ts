@@ -80,3 +80,10 @@ export function formatCartonVarianceNote(input: {
   if (input.shortQty > 0) parts.push(`ขาดจากลัง ${qty(input.shortQty)} ชิ้น`);
   return parts.join(" · ");
 }
+
+export function formatReceiptLocationSummary(lines: Array<{ label: string; qty: number }>): string {
+  return lines
+    .filter((line) => line.label)
+    .map((line) => `${line.label} ${Number.isInteger(line.qty) ? String(line.qty) : String(line.qty)}`)
+    .join(" · ");
+}

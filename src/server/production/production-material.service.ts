@@ -171,6 +171,7 @@ export interface MaterialReportInput {
   daily_close?: boolean;
   materials?: ProductionMaterialActual[];
   receipt_location_id?: string;
+  receipt_locations?: Array<{ location_id: string; qty: number }>;
   material_reason?: string;
 }
 
@@ -201,12 +202,23 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
   const officeWarehouse = warehouses.find(w => w.active && (/^wh-0?6$/i.test(w.warehouse_id) || /^wh-?0?6$/i.test(w.warehouse_code)));
   const receiveWarehouseIds = [receiveWarehouse2?.warehouse_id, officeWarehouse?.warehouse_id].filter((id): id is string => !!id);
   if (!receiveWarehouse2) throw new ProductionError("ไม่พบคลังรับสินค้าสำเร็จรูปโกดัง 2");
-  let location: { location_id: string; warehouse_id: string } | undefined;
-  if (report.good_qty > 0) {
-    [location] = await query<{ location_id: string; warehouse_id: string }>("SELECT location_id,warehouse_id FROM locations WHERE warehouse_id=ANY($1::text[]) AND active AND (location_id=$2 OR location_code=$2)", [receiveWarehouseIds, input.receipt_location_id || ""]);
-    if (!location) throw new ProductionError("กรุณาเลือกตำแหน่งเก็บสินค้าดีที่เป็นโกดัง 2 หรือออฟฟิศ");
+  const receiptLines = (input.receipt_locations && input.receipt_locations.length
+    ? input.receipt_locations
+    : (input.receipt_location_id && report.good_qty > 0 ? [{ location_id: input.receipt_location_id, qty: report.good_qty }] : []));
+  if (report.good_qty > 0 && !receiptLines.length) throw new ProductionError("กรุณาเลือกตำแหน่งเก็บสินค้าดีที่เป็นโกดัง 2 หรือออฟฟิศ");
+  if (report.good_qty > 0 && round(receiptLines.reduce((total, line) => total + line.qty, 0)) !== round(report.good_qty)) {
+    throw new ProductionError("รวมจำนวนที่เก็บต้องเท่ากับยอดผลิตดี");
   }
-  const receiveWarehouse = location ? warehouses.find(w => w.warehouse_id === location!.warehouse_id) || receiveWarehouse2 : receiveWarehouse2;
+  const resolvedReceipts: Array<{ location_id: string; warehouse_id: string; qty: number }> = [];
+  const seenReceipts = new Set<string>();
+  for (const line of receiptLines) {
+    const [location] = await query<{ location_id: string; warehouse_id: string }>("SELECT location_id,warehouse_id FROM locations WHERE warehouse_id=ANY($1::text[]) AND active AND (location_id=$2 OR location_code=$2)", [receiveWarehouseIds, line.location_id || ""]);
+    if (!location) throw new ProductionError("กรุณาเลือกตำแหน่งเก็บสินค้าดีที่เป็นโกดัง 2 หรือออฟฟิศ");
+    if (seenReceipts.has(location.location_id)) throw new ProductionError("เลือกที่เก็บไม่ให้ซ้ำ");
+    seenReceipts.add(location.location_id);
+    resolvedReceipts.push({ ...location, qty: line.qty });
+  }
+  const location = resolvedReceipts[0];
   const totals = new Map<string, { qty: number; product_id: string; warehouse_id: string; sku: string }>();
   for (const i of details) {
     const key = i.product_id + "\0" + i.warehouse_id, old = totals.get(key);
@@ -228,10 +240,31 @@ export async function postMaterialReport(repo: IStockRepository, job: Production
     await repo.stockSummary.applyChanges(allocations.map(a => ({ productId: i.product_id, warehouseId: i.warehouse_id, locationId: a.location_id, delta: -a.qty })));
     await repo.movements.batchCreate(allocations.map(a => ({ document_id: doc.document_id, product_id: i.product_id, warehouse_id: i.warehouse_id, location_id: a.location_id, qty_change: -a.qty, movement_type: "ISSUE", idempotency_key: `mfg-${report.report_id}-${i.item_id}-${a.location_id}`, created_by: actorId })));
   }
-  if (location && report.good_qty > 0) {
-    const qty = round(report.good_qty * preview.fg_factor!);
-    await repo.stockSummary.applyChanges([{ productId: job.product_id, warehouseId: receiveWarehouse.warehouse_id, locationId: location.location_id, delta: qty }]);
-    await repo.movements.batchCreate([{ document_id: doc.document_id, product_id: job.product_id, warehouse_id: receiveWarehouse.warehouse_id, location_id: location.location_id, qty_change: qty, movement_type: "RECEIVE", idempotency_key: `mfg-${report.report_id}-good`, created_by: actorId }]);
+  if (resolvedReceipts.length && report.good_qty > 0) {
+    const factor = preview.fg_factor!;
+    const totalStock = round(report.good_qty * factor);
+    let posted = 0;
+    const changes = [];
+    const movements = [];
+    for (let i = 0; i < resolvedReceipts.length; i++) {
+      const loc = resolvedReceipts[i];
+      const qty = i === resolvedReceipts.length - 1 ? round(totalStock - posted) : round(loc.qty * factor);
+      posted = round(posted + qty);
+      const warehouse = warehouses.find(w => w.warehouse_id === loc.warehouse_id) || receiveWarehouse2;
+      changes.push({ productId: job.product_id, warehouseId: warehouse.warehouse_id, locationId: loc.location_id, delta: qty });
+      movements.push({
+        document_id: doc.document_id,
+        product_id: job.product_id,
+        warehouse_id: warehouse.warehouse_id,
+        location_id: loc.location_id,
+        qty_change: qty,
+        movement_type: "RECEIVE" as const,
+        idempotency_key: resolvedReceipts.length === 1 ? `mfg-${report.report_id}-good` : `mfg-${report.report_id}-good-${loc.location_id}`,
+        created_by: actorId,
+      });
+    }
+    await repo.stockSummary.applyChanges(changes);
+    await repo.movements.batchCreate(movements);
   }
   await query("INSERT INTO production_material_reports(report_id,receipt_location_id,materials,request,reason) VALUES($1,$2,$3::jsonb,$4::jsonb,$5)", [report.report_id, location?.location_id || null, JSON.stringify(details), JSON.stringify(request), input.material_reason || ""]);
   return doc;

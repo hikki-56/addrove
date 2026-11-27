@@ -57,7 +57,7 @@ import {
   postAdjustStockToWh2,
   PRODUCTION_RECEIVE_WAREHOUSE,
 } from "@/server/production/production-stock.service";
-import { formatCartonVarianceNote } from "@/features/production/lib/report-locations";
+import { formatCartonVarianceNote, formatReceiptLocationSummary, OFFICE_LOCATION_LABEL } from "@/features/production/lib/report-locations";
 
 // ---- Error ประจำโมดูล ----
 
@@ -271,6 +271,20 @@ function reportToRow(r: ProductionReport): (string | number)[] {
   ];
 }
 
+
+function receiptLocationLines(request: unknown): Array<{ location_id: string; qty: number }> {
+  const raw = typeof request === "string" ? (() => { try { return JSON.parse(request); } catch { return null; } })() : request;
+  if (!raw || typeof raw !== "object") return [];
+  const rows = (raw as { receipt_locations?: unknown }).receipt_locations;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const locationId = String((row as { location_id?: unknown }).location_id || "").trim();
+    const qty = Number((row as { qty?: unknown }).qty);
+    return locationId && Number.isFinite(qty) && qty > 0 ? [{ location_id: locationId, qty }] : [];
+  });
+}
+
 // ---- อ่านข้อมูล ----
 
 async function readJobRows(forceFresh = false): Promise<string[][]> {
@@ -429,9 +443,30 @@ export async function getJobDetail(
   if (getStorageDriver() === "postgres" && reports.length) {
     const materials = await databaseQuery(`SELECT r.*,l.location_code FROM production_material_reports r
       LEFT JOIN locations l ON l.location_id=r.receipt_location_id WHERE r.report_id=ANY($1::text[])`, [reports.map(r => r.report_id)]);
+    const splitIds = [...new Set(materials.flatMap((row) => receiptLocationLines(row.request).map((line) => line.location_id)))];
+    const splitLocations = splitIds.length
+      ? await databaseQuery<{ location_id: string; location_code: string; warehouse_id: string }>(
+          "SELECT location_id,location_code,warehouse_id FROM locations WHERE location_id=ANY($1::text[])",
+          [splitIds],
+        )
+      : [];
+    const labelFor = (id: string, fallback = "") => {
+      const loc = splitLocations.find((item) => item.location_id === id);
+      if (!loc) return fallback;
+      return /^wh-0?6$/i.test(loc.warehouse_id) ? OFFICE_LOCATION_LABEL : loc.location_code;
+    };
     for (const r of reports) {
       const m = materials.find(m => m.report_id === r.report_id);
-      if (m) { r.material_details = m.materials; r.receipt_location_code = m.location_code || undefined; r.material_reason = m.reason; }
+      if (!m) continue;
+      r.material_details = m.materials;
+      r.material_reason = m.reason;
+      const lines = receiptLocationLines(m.request);
+      if (lines.length) {
+        r.receipt_locations = lines.map((line) => ({ location_id: line.location_id, location_code: labelFor(line.location_id), qty: line.qty }));
+        r.receipt_location_code = formatReceiptLocationSummary(r.receipt_locations.map((line) => ({ label: line.location_code, qty: line.qty }))) || m.location_code || undefined;
+      } else {
+        r.receipt_location_code = m.location_code || undefined;
+      }
     }
   }
   return detail;

@@ -376,7 +376,7 @@ export default function ProductionJobDetailPage() {
                   {r.material_details && (
                     <details className="mt-1.5 text-xs text-m3-grey-600">
                       <summary className="cursor-pointer font-semibold text-m3-primary-dark">วัตถุดิบใช้จริง / ของเสีย</summary>
-                      {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: โกดัง 2 · {r.receipt_location_code}</p>}
+                      {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: {r.receipt_location_code}</p>}
                       {r.material_details.map((m, i) => <p key={`${m.sku}-${i}`} className="mt-1 tabular-nums">{m.sku}: ใช้ผลิต {m.used_qty} · เสียเพิ่ม {m.scrap_qty} · รวมตัด {m.total_qty} {m.stock_unit}{m.scrap_cause && ` (${m.scrap_cause})`}</p>)}
                       {r.material_reason && <p className="mt-1">เหตุผลยอดใช้จริง: {r.material_reason}</p>}
                     </details>
@@ -440,7 +440,7 @@ export default function ProductionJobDetailPage() {
                         {r.material_details && (
                         <details className="mt-2 min-w-56 text-xs text-m3-grey-600">
                           <summary className="cursor-pointer font-semibold text-m3-primary-dark">วัตถุดิบใช้จริง / ของเสีย</summary>
-                          {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: โกดัง 2 · {r.receipt_location_code}</p>}
+                          {r.receipt_location_code && <p className="mt-1">รับสินค้าดี: {r.receipt_location_code}</p>}
                           {r.material_details.map((m, i) => <p key={`${m.sku}-${i}`} className="mt-1 tabular-nums">{m.sku}: ใช้ผลิต {m.used_qty} · เสียเพิ่ม {m.scrap_qty} · รวมตัด {m.total_qty} {m.stock_unit}{m.scrap_cause && ` (${m.scrap_cause})`}</p>)}
                           {r.material_reason && <p className="mt-1">เหตุผลยอดใช้จริง: {r.material_reason}</p>}
                         </details>

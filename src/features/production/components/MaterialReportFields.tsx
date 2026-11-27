@@ -1,24 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProductionMaterialActual, ProductionMaterialPlan } from "@/types/production-bom";
 import type { ReportLocationOption } from "@/features/production/lib/report-locations";
+import { parseQtyInput, roundQty } from "@/features/production/lib/quantity";
 import { isValidProductionStockQuantity, previewProductionBom } from "@/lib/production-bom";
 import ReasonSelect from "./ReasonSelect";
 
 export interface MaterialReportValue {
-  payload: { materials: ProductionMaterialActual[]; receipt_location_id: string; material_reason: string };
+  payload: { materials: ProductionMaterialActual[]; receipt_location_id: string; receipt_locations: Array<{ location_id: string; qty: number }>; material_reason: string };
   error: string | null;
 }
 
-interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean; showErrors?: boolean; locations?: ReportLocationOption[]; locationError?: string | null }
+interface Props { plan: ProductionMaterialPlan; good: number; defect: number; disabled: boolean; onChange: (value: MaterialReportValue) => void; compact?: boolean; dailyClose?: boolean; showErrors?: boolean; locations?: ReportLocationOption[]; locationError?: string | null; unit?: string }
 type Edit = { used?: string; scrap?: string; cause?: string };
+type ReceiptLine = { key: string; location_id: string; qty: string };
 
-export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false, showErrors = true, locations = [], locationError = null }: Props) {
+export default function MaterialReportFields({ plan, good, defect, disabled, onChange, compact = false, dailyClose = false, showErrors = true, locations = [], locationError = null, unit = "" }: Props) {
   const [edits, setEdits] = useState<Record<number, Edit>>({});
-  const [location, setLocation] = useState("");
+  const [lines, setLines] = useState<ReceiptLine[]>([{ key: "1", location_id: "", qty: "" }]);
+  const autoQty = useRef("");
+  const nextKey = useRef(2);
   const [reason, setReason] = useState("");
   const preview = useMemo(() => previewProductionBom(plan.snapshot, good, plan.selection, { allowZero: true }), [plan, good]);
+  useEffect(() => {
+    setLines((current) => {
+      if (current.length !== 1) return current;
+      const nextQty = good > 0 ? String(good) : "";
+      if (current[0].qty === nextQty) return current;
+      if (current[0].qty === "" || current[0].qty === autoQty.current) {
+        autoQty.current = nextQty;
+        return [{ ...current[0], qty: nextQty }];
+      }
+      return current;
+    });
+  }, [good]);
   const value = useMemo(() => {
     let error = preview.issues[0] || null;
     const materials = preview.materials.map(i => {
@@ -31,15 +47,32 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
       if (scrapQty > 0 && !cause.trim()) error ||= `เลือกสาเหตุ: ${i.sku}`;
       return { item_id: i.item_id, used_qty: usedQty, scrap_qty: scrapQty, scrap_cause: cause.trim() };
     });
-    if (good > 0 && !location) error ||= "กรุณาเลือกที่เก็บสินค้า";
+    const filled = lines.filter((line) => line.location_id || line.qty.trim());
+    const receipt_locations: Array<{ location_id: string; qty: number }> = [];
+    if (good > 0) {
+      if (!filled.length) error ||= "กรุณาเลือกที่เก็บสินค้า";
+      const ids = new Set<string>();
+      let sum = 0;
+      for (const line of filled) {
+        if (!line.location_id) { error ||= "กรุณาเลือกที่เก็บสินค้า"; continue; }
+        if (ids.has(line.location_id)) error ||= "เลือกที่เก็บไม่ให้ซ้ำ";
+        ids.add(line.location_id);
+        const parsed = parseQtyInput(line.qty, { allowEmpty: false, allowZero: false });
+        if (!parsed.ok) { error ||= parsed.error; continue; }
+        receipt_locations.push({ location_id: line.location_id, qty: parsed.value });
+        sum = roundQty(sum + parsed.value);
+      }
+      if (receipt_locations.length === filled.length && sum !== roundQty(good)) error ||= "รวมจำนวนที่เก็บต้องเท่ากับยอดผลิตดี";
+    }
     if (good > 0 && locationError) error ||= locationError;
     if (dailyClose && defect > 0 && !materials.some(m => m.scrap_qty > 0)) error ||= "ใส่จำนวนเสียวัตถุดิบ";
     const changed = materials.some((m, index) => m.used_qty !== (good > 0 ? preview.materials[index].stock_qty || 0 : 0));
     if (changed && !reason.trim()) error ||= "ใช้วัตถุดิบไม่ตรงสูตร กรุณาบอกเหตุผล";
-    return { payload: { materials, receipt_location_id: location, material_reason: reason.trim() }, error };
-  }, [preview, edits, good, location, locationError, reason, dailyClose, defect]);
+    return { payload: { materials, receipt_location_id: receipt_locations[0]?.location_id || filled[0]?.location_id || "", receipt_locations, material_reason: reason.trim() }, error };
+  }, [preview, edits, good, lines, locationError, reason, dailyClose, defect]);
   useEffect(() => { onChange(value); }, [value, onChange]);
   const edit = (id: number, change: Edit) => setEdits(old => ({ ...old, [id]: { ...old[id], ...change } }));
+  const updateLine = (key: string, change: Partial<ReceiptLine>) => setLines((current) => current.map((line) => line.key === key ? { ...line, ...change } : line));
   const materialFields = <>
     {preview.materials.map(i => {
       const expected = good > 0 ? i.stock_qty || 0 : 0;
@@ -70,9 +103,30 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     })}
     {!dailyClose && <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
   </>;
-  const locationField = (compact || good > 0) && <label className="block text-sm font-semibold">ผลิตได้จริงเก็บที่
-      <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.label || l.location_code}</option>)}</select>
-    </label>;
+  const selectClass = "mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500";
+  const usedIds = new Set(lines.map((line) => line.location_id).filter(Boolean));
+  const locationField = (compact || good > 0) && <div className="space-y-2">
+    <p className="text-sm font-semibold">ผลิตได้จริงเก็บที่</p>
+    {lines.map((line, index) => (
+      <div key={line.key} className="flex items-end gap-2">
+        <label className="min-w-0 flex-1 text-sm">
+          <span className="sr-only">ที่เก็บ {index + 1}</span>
+          <select disabled={disabled} value={line.location_id} onChange={e => updateLine(line.key, { location_id: e.target.value })} className={selectClass}>
+            <option value="">เลือกที่เก็บ</option>
+            {locations.filter((item) => item.location_id === line.location_id || !usedIds.has(item.location_id)).map((item) => (
+              <option key={item.location_id} value={item.location_id}>{item.label || item.location_code}</option>
+            ))}
+          </select>
+        </label>
+        <label className="w-28 shrink-0 text-sm font-semibold">{unit || "จำนวน"}
+          <input aria-label={`จำนวนที่เก็บ ${index + 1}`} type="number" inputMode="decimal" min="0" step="any" disabled={disabled} value={line.qty}
+            onChange={e => updateLine(line.key, { qty: e.target.value })} className={`${selectClass} text-right font-bold`} />
+        </label>
+        {lines.length > 1 && <button type="button" aria-label="ลบที่เก็บ" disabled={disabled} onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))} className="mb-0.5 h-10 w-10 shrink-0 rounded-lg text-lg font-bold text-m3-grey-600 hover:bg-m3-grey-100 disabled:text-m3-grey-400">×</button>}
+      </div>
+    ))}
+    {locations.some((item) => !usedIds.has(item.location_id)) && <button type="button" disabled={disabled} onClick={() => setLines((current) => [...current, { key: String(nextKey.current++), location_id: "", qty: "" }])} className="text-sm font-semibold text-m3-grey-800">เพิ่มที่เก็บ</button>}
+  </div>;
   return <section className="space-y-3">
     {compact ? <>
       {locationField}

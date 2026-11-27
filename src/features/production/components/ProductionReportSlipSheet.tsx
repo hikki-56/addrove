@@ -31,7 +31,7 @@ export default function ProductionReportSlipSheet({ slip }: { slip: ProductionRe
         {slip.reasons.map(r => <div key={r.label}><dt>{r.label}</dt><dd>{r.value}</dd></div>)}
       </dl>}
       {slip.materials.length > 0 && <>
-        <h3>วัตถุดิบใช้จริง / ของเสีย{slip.receipt_location_code ? ` · รับสินค้าดี: โกดัง 2 · ${slip.receipt_location_code}` : ""}</h3>
+        <h3>วัตถุดิบใช้จริง / ของเสีย{slip.receipt_location_code ? ` · รับสินค้าดี: ${slip.receipt_location_code}` : ""}</h3>
         <table className="production-work-order-materials">
           <thead><tr><th className="production-work-order-index">ลำดับ</th><th>วัตถุดิบ</th><th className="production-report-num">ใช้ได้</th><th className="production-report-num">เสีย</th><th className="production-report-num">รวมใช้ไป</th><th>หน่วย</th><th>สาเหตุ</th></tr></thead>
           <tbody>{slip.materials.map((m, i) => <tr key={`${m.sku}-${i}`}>
