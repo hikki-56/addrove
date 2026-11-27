@@ -37,7 +37,7 @@ describe("warehouse 2 floor from location code", () => {
 });
 
 describe("receipt and leftover location lists", () => {
-  it("lists only warehouse 2 floor 5 plus the office location for ตำแหน่งเก็บ", () => {
+  it("lists only warehouse 2 floor 5 plus the office location for ผลิตได้จริงเก็บที่", () => {
     const rows = receiptLocations([...wh2, officeA1, officeShelf], "wh-02", officeA1);
     expect(rows.map((r) => r.label)).toEqual(["2K51-1A", "2K58-2B", "ออฟฟิศ"]);
     expect(rows[2]).toMatchObject({ location_id: "off-a1", label: "ออฟฟิศ" });

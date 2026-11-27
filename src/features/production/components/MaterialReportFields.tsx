@@ -70,7 +70,7 @@ export default function MaterialReportFields({ plan, good, defect, disabled, onC
     })}
     {!dailyClose && <label className="block text-xs">ถ้าใช้ไม่ตรงสูตร บอกเหตุผล<input disabled={disabled} value={reason} onChange={e => setReason(e.target.value)} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500" /></label>}
   </>;
-  const locationField = (compact || good > 0) && <label className="block text-sm font-semibold">ตำแหน่งเก็บ
+  const locationField = (compact || good > 0) && <label className="block text-sm font-semibold">ผลิตได้จริงเก็บที่
       <select disabled={disabled} value={location} onChange={e => setLocation(e.target.value)} className="mt-1.5 h-10 w-full px-3 tabular-nums rounded-lg border border-[rgba(145,158,171,0.32)] bg-white text-sm text-m3-grey-800 focus:border-m3-grey-800 focus:ring-1 focus:ring-m3-grey-800 focus:outline-none disabled:bg-m3-grey-100 disabled:text-m3-grey-500"><option value="">เลือกที่เก็บ</option>{locations.map(l => <option key={l.location_id} value={l.location_id}>{l.label || l.location_code}</option>)}</select>
     </label>;
   return <section className="space-y-3">
