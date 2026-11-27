@@ -83,7 +83,6 @@ export default function ProductionWorkspace() {
         if (!started) { setConfirmation({ kind: "start", jobs: pending.slice(index) }); setActionError(response.message); emitProductionUpdated(); await reload(); return; }
       }
       setConfirmation(null); await refresh("เริ่มผลิตแล้ว");
-      if (pending.length === 1) setDialogJob(pending[0].job_no);
     } else {
       const response = confirmation.kind === "submit"
         ? await productionApi("/api/production/jobs/submit", "POST", { job_nos: pending.map(j => j.job_no) })
