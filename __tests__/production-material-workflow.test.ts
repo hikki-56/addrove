@@ -639,3 +639,16 @@ test("failed receipt rolls back material deductions, report, ledger and reservat
   expect((await getJobDetail(f.job.job_no))!.reports).toHaveLength(0);
   expect(await query("SELECT * FROM documents WHERE reference_no=$1", [f.job.job_no])).toEqual([]);
 });
+
+test("carton over/short is stored on production_reports columns", async () => {
+  const f = await fixture();
+  await submitJobs(admin, [f.job.job_no]);
+  await startJob(actor, f.job.job_no);
+  const input = { daily_close: true, good_qty: 3, defect_qty: 0, defect_cause: "", note: "", photo_url: "", report_kind: "FINAL" as const, close_reason: "", receipt_location_id: "fg-A", idempotency_key: "carton-columns",
+    carton_over_qty: 2, carton_short_qty: 1, carton_over_item_id: "fg", leftover_location_id: "fg-A",
+    materials: [{ item_id: f.mainId, used_qty: 6, scrap_qty: 0, scrap_cause: "" }, { item_id: f.sharedId, used_qty: 3, scrap_qty: 0, scrap_cause: "" }] };
+  const result = await reportProduction(actor, f.job.job_no, input);
+  expect(await query("SELECT carton_over_qty,carton_short_qty,carton_over_item_id,leftover_location_id FROM production_reports WHERE report_id=$1", [result.report.report_id])).toEqual([
+    { carton_over_qty: 2, carton_short_qty: 1, carton_over_item_id: "fg", leftover_location_id: "fg-A" },
+  ]);
+});

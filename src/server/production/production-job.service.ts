@@ -61,16 +61,33 @@ import { formatCartonVarianceNote } from "@/features/production/lib/report-locat
 
 // ---- Error ประจำโมดูล ----
 
-async function resolveCartonVarianceNote(job: ProductionJob, input: ReportProductionInput): Promise<string> {
+
+type CartonVarianceFields = {
+  note: string;
+  carton_over_qty: number;
+  carton_short_qty: number;
+  carton_over_item_id: string;
+  leftover_location_id: string;
+};
+
+async function resolveCartonVariance(job: ProductionJob, input: ReportProductionInput): Promise<CartonVarianceFields> {
   const overQty = input.carton_over_qty || 0;
   const shortQty = input.carton_short_qty || 0;
-  if (overQty <= 0 && shortQty <= 0) return input.note || "";
+  const empty: CartonVarianceFields = {
+    note: input.note || "",
+    carton_over_qty: overQty,
+    carton_short_qty: shortQty,
+    carton_over_item_id: "",
+    leftover_location_id: "",
+  };
+  if (overQty <= 0 && shortQty <= 0) return empty;
   if (overQty > 0) {
     const materialIds = new Set((job.material_plan?.snapshot.items || []).map(item => `rm:${item.item_id}`));
     const allowed = input.carton_over_item_id === "fg" || input.carton_over_item_id === job.product_id || materialIds.has(input.carton_over_item_id || "");
     if (!input.carton_over_item_id || !allowed) throw new ProductionError("กรุณาเลือกตัวไหนเกินจากลังจากรายการในงานนี้");
     if (!input.leftover_location_id) throw new ProductionError("กรุณาเลือกที่เก็บของเกินในโกดัง 2");
   }
+  let leftoverId = "";
   let leftoverCode = input.leftover_location_id || "";
   if (overQty > 0 && getStorageDriver() === "postgres") {
     const [location] = await databaseQuery<{ location_id: string; location_code: string }>(
@@ -78,14 +95,23 @@ async function resolveCartonVarianceNote(job: ProductionJob, input: ReportProduc
       [input.leftover_location_id],
     );
     if (!location) throw new ProductionError("กรุณาเลือกที่เก็บของเกินในโกดัง 2");
+    leftoverId = location.location_id;
     leftoverCode = location.location_code || leftoverCode;
+  } else if (overQty > 0) {
+    leftoverId = input.leftover_location_id || "";
   }
   const overItem = input.carton_over_item_id === "fg" || input.carton_over_item_id === job.product_id
     ? job.product_name
     : job.material_plan?.snapshot.items.find(item => `rm:${item.item_id}` === input.carton_over_item_id);
   const overItemLabel = typeof overItem === "string" ? overItem : (overItem?.name || overItem?.sku || input.carton_over_item_id);
   const generated = formatCartonVarianceNote({ overQty, shortQty, overItemLabel: overQty > 0 ? overItemLabel : undefined, leftoverCode: overQty > 0 ? leftoverCode : undefined });
-  return input.note?.trim() ? input.note : generated;
+  return {
+    note: input.note?.trim() ? input.note : generated,
+    carton_over_qty: overQty,
+    carton_short_qty: shortQty,
+    carton_over_item_id: overQty > 0 ? (input.carton_over_item_id || "") : "",
+    leftover_location_id: leftoverId,
+  };
 }
 
 
@@ -212,6 +238,10 @@ function reportRowToReport(row: string[]): ProductionReport {
     cumulative_good: round2(num(row[14])),
     cumulative_defect: round2(num(row[15])),
     idempotency_key: str(row[16]),
+    carton_over_qty: round2(num(row[17])),
+    carton_short_qty: round2(num(row[18])),
+    carton_over_item_id: str(row[19]),
+    leftover_location_id: str(row[20]),
   };
 }
 
@@ -234,6 +264,10 @@ function reportToRow(r: ProductionReport): (string | number)[] {
     r.cumulative_good,
     r.cumulative_defect,
     r.idempotency_key,
+    r.carton_over_qty || 0,
+    r.carton_short_qty || 0,
+    r.carton_over_item_id || "",
+    r.leftover_location_id || "",
   ];
 }
 
@@ -244,7 +278,7 @@ async function readJobRows(forceFresh = false): Promise<string[][]> {
 }
 
 async function readReportRows(forceFresh = false): Promise<string[][]> {
-  return readSheet(SHEETS.PRODUCTION_REPORTS, "A2:Q", forceFresh ? { forceFresh: true } : undefined).catch(() => []);
+  return readSheet(SHEETS.PRODUCTION_REPORTS, "A2:U", forceFresh ? { forceFresh: true } : undefined).catch(() => []);
 }
 
 export interface JobProgress {
@@ -905,6 +939,7 @@ async function reportProductionInternal(
 
     const reportNo = jobReports.length + 1;
     const nowIso = new Date().toISOString();
+    const carton = await resolveCartonVariance({ ...base, material_plan: materialPlan || undefined } as ProductionJob, input);
     const report: ProductionReport = {
       report_id: `prr-${crypto.randomUUID()}`,
       job_no: base.job_no,
@@ -915,7 +950,7 @@ async function reportProductionInternal(
       defect_qty: defect,
       defect_cause: input.defect_cause || "",
       reason: closeReason,
-      note: await resolveCartonVarianceNote({ ...base, material_plan: materialPlan || undefined } as ProductionJob, input),
+      note: carton.note,
       photo_url: input.photo_url || "",
       reported_by: actor.id,
       reported_by_name: actor.name,
@@ -923,6 +958,10 @@ async function reportProductionInternal(
       cumulative_good: newGood,
       cumulative_defect: newDefect,
       idempotency_key: input.idempotency_key,
+      carton_over_qty: carton.carton_over_qty,
+      carton_short_qty: carton.carton_short_qty,
+      carton_over_item_id: carton.carton_over_item_id,
+      leftover_location_id: carton.leftover_location_id,
     };
 
     const newStatus: ProductionJobStatus = isFinal ? "COMPLETED" : "IN_PROGRESS";

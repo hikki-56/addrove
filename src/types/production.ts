@@ -85,6 +85,10 @@ export interface ProductionReport {
   cumulative_good: number;
   cumulative_defect: number;
   idempotency_key: string;
+  carton_over_qty?: number;
+  carton_short_qty?: number;
+  carton_over_item_id?: string;
+  leftover_location_id?: string;
 }
 
 export interface ProductionHistoryEntry {
@@ -179,6 +183,10 @@ export const PRODUCTION_REPORTS_SHEET_HEADERS = [
   "ดีสะสม",
   "เสียสะสม",
   "idempotency_key",
+  "carton_over_qty",
+  "carton_short_qty",
+  "carton_over_item_id",
+  "leftover_location_id",
 ] as const;
 
 /** ProductionHistory — append-only ทุกการเปลี่ยนแปลง */
